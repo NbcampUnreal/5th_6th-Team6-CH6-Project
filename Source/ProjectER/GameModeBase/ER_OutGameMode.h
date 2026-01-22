@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -13,5 +13,9 @@ UCLASS()
 class PROJECTER_API AER_OutGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
+
+public:
+	void StartGame();
 	
+	void EndGame();
 };
