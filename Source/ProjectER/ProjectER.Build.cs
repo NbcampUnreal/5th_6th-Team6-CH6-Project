@@ -7,7 +7,7 @@ public class ProjectER : ModuleRules
 	public ProjectER(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-
+		
         PublicDependencyModuleNames.AddRange(new string[] {
             "Core",
             "CoreUObject",
