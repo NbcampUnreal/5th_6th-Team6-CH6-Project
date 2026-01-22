@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -14,4 +14,5 @@ class PROJECTER_API AER_GameModeBase : public AGameModeBase
 {
 	GENERATED_BODY()
 	
+	// 추후에 게임 모드 공통 기능이 생기면 여기로 옮긴 후 상속받아 사용
 };
