@@ -29,6 +29,7 @@ public class ProjectER : ModuleRules
             "HexGridPlugin",
             "PathFindingLibrary",
             "WorldBender",
+            "TopDownVision",
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {  });
