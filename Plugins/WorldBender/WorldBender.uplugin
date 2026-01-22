@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "WorldBender",
+	"Description": "this is for creating curved world effect using mateiral's world offset node. the material with custom bender function will be bent based on the center location updated on the mpc. the functions are for 1. world mesh bending, and 2. hud offest modifier",
+	"Category": "Other",
+	"CreatedBy": "NarpNarp",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "WorldBender",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
