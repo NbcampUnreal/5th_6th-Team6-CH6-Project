@@ -53,3 +53,11 @@ void UUI_MainHUD::ShowSkillUp(bool show)
         skill_up_04->SetVisibility(show ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
 	}
 }
+
+void UUI_MainHUD::UPdate_LV(int32 lv)
+{
+    if(IsValid(stat_LV))
+    {
+        stat_LV->SetText(FText::AsNumber(lv));
+	}
+}

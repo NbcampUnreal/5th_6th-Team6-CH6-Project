@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "Components/TextBlock.h"
 #include "UI_MainHUD.generated.h"
 
 class UTextBlock;
@@ -27,7 +26,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
 	void ShowSkillUp(bool show);
 
+	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
+	void UPdate_LV(int32 lv);
+
 protected:
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* stat_LV;
+
 	///  stat_nn = 임시명칭
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* stat_01;
