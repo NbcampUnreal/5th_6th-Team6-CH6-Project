@@ -18,4 +18,7 @@ public:
 	void StartGame();
 	
 	void EndGame();
+
+protected:
+	virtual void PostLogin(APlayerController* NewPlayer);
 };
