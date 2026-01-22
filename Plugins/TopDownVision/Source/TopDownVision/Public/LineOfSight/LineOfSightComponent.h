@@ -21,7 +21,7 @@ protected:
 	virtual void OnComponentCreated() override;
 	
 public:
-	//temp
+
 private:
 	//Helper functions
 	
