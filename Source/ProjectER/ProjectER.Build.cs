@@ -25,7 +25,10 @@ public class ProjectER : ModuleRules
             "GameplayAbilities",
             "GameplayTags",
             "GameplayTasks",
-            "Niagara"
+            "Niagara",
+            "HexGridPlugin",
+            "PathFindingLibrary",
+            "WorldBender",
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {  });
