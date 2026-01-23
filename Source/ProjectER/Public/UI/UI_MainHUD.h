@@ -9,6 +9,18 @@
 class UTextBlock;
 class UButton;
 class UProgressBar;
+class UImage;
+
+UENUM(BlueprintType)
+enum class ECharacterStat : uint8
+{
+	AD			UMETA(DisplayName = "Attack Damage"),
+	AP			UMETA(DisplayName = "Ability Power"),
+	AS			UMETA(DisplayName = "Attack Speed"),
+	DEF			UMETA(DisplayName = "Defence"),
+	ADEF		UMETA(DisplayName = "Ability Defence"),
+	SPD			UMETA(DisplayName = "Speed")
+};
 
 /**
  * 
@@ -28,6 +40,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
 	void UPdate_LV(int32 lv);
+
+	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
+	void setStat(ECharacterStat stat, int32 Value);
 
 protected:
 	UPROPERTY(meta = (BindWidget))
@@ -93,4 +108,7 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* max_MP;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* TEX_minamap;
 };

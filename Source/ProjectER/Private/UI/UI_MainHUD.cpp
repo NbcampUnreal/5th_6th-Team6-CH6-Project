@@ -61,3 +61,49 @@ void UUI_MainHUD::UPdate_LV(int32 lv)
         stat_LV->SetText(FText::AsNumber(lv));
 	}
 }
+
+void UUI_MainHUD::setStat(ECharacterStat stat, int32 value)
+{
+    if (stat == ECharacterStat::AD)
+    {
+        if (IsValid(stat_01))
+        {
+            stat_01->SetText(FText::AsNumber(value));
+        }
+    }
+    else if (stat == ECharacterStat::AP)
+    {
+        if (IsValid(stat_02))
+        {
+            stat_02->SetText(FText::AsNumber(value));
+        }
+    }
+    else if (stat == ECharacterStat::AS)
+    {
+        if (IsValid(stat_03))
+        {
+            stat_03->SetText(FText::AsNumber(value));
+        }
+    }
+    else if (stat == ECharacterStat::DEF)
+    {
+        if (IsValid(stat_04))
+        {
+            stat_04->SetText(FText::AsNumber(value));
+        }
+    }
+    else if (stat == ECharacterStat::ADEF)
+    {
+        if (IsValid(stat_05))
+        {
+            stat_05->SetText(FText::AsNumber(value));
+        }
+    }
+    else if (stat == ECharacterStat::SPD)
+    {
+        if (IsValid(stat_06))
+        {
+            stat_06->SetText(FText::AsNumber(value));
+        }
+    }
+}
