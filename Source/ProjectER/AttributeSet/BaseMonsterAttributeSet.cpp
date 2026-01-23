@@ -12,7 +12,7 @@ UBaseMonsterAttributeSet::UBaseMonsterAttributeSet()
 	InitDefense(10.f);
 	InitAttackSpeed(2.f);
 	InitMoveSpeed(100.f);
-	InitDamaged(0.f);
+	//InitDamaged(0.f);
 }
 
 void UBaseMonsterAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
