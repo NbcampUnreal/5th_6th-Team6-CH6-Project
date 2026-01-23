@@ -49,9 +49,13 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
 	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
 
-
 #pragma endregion
 
+#pragma region StateTree
+
+
+
+#pragma endregion
 };
 
 

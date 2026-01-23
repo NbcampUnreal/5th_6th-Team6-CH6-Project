@@ -19,11 +19,15 @@ void ABaseMonster::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	UE_LOG(LogTemp, Warning, TEXT("BeginPlay"));
+
 	InitAbilitySystem();
 }
 
 void ABaseMonster::PossessedBy(AController* newController)
 {
+	Super::PossessedBy(newController);
+
 	UE_LOG(LogTemp, Warning, TEXT("AI Controller Possessed"));
 }
 
@@ -36,6 +40,7 @@ void ABaseMonster::InitAbilitySystem()
 {
 	if (!ASC)
 	{
+		UE_LOG(LogTemp, Error, TEXT("%s Not ASC"), *GetName());
 		return;
 	}
 

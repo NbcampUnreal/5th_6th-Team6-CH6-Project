@@ -98,8 +98,8 @@ private:
 	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, MoveSpeed);
 
 	UPROPERTY(BlueprintReadOnly, Category = "Attribute", meta = (AllowPrivateAccess = "true"))
-	FGameplayAttributeData Damaged;
-	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, Damaged);
+	FGameplayAttributeData InComingDamage;
+	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, InComingDamage);
 #pragma endregion
 
 };

@@ -65,14 +65,14 @@ void UBaseMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 	// Attribute 변경
 	const FGameplayAttribute Attribute = Data.EvaluatedData.Attribute;
 
-	if (Attribute == GetDamagedAttribute())
+	if (Attribute == GetInComingDamageAttribute())
 	{
-		float Damage = GetDamaged() - GetDefense();
+		float Damage = GetInComingDamage() - GetDefense();
 		if (Damage > 0.f)
 		{
 			float NewHealth = FMath::Clamp(GetHealth() - Damage, 0.f, GetMaxHealth());
 			SetHealth(NewHealth);
-			SetDamaged(0.f);
+			SetInComingDamage(0.f);
 		}
 	}
 
