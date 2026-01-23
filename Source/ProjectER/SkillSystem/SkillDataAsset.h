@@ -4,22 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
-#include "GameplayTagContainer.h"
-#include "GameplayEffect.h"
+#include "SkillData.h"
 #include "SkillDataAsset.generated.h"
 
 /**
  * 
  */
-
-UENUM(BlueprintType)
-enum class ESkillActivationType : uint8 {
-    Instant    UMETA(DisplayName = "Instant"),
-    Targeted   UMETA(DisplayName = "Targeted"),
-    PointClick UMETA(DisplayName = "PointClick"),
-    ClickAndDrag       UMETA(DisplayName = "ClickAndDrag"),
-    Holding    UMETA(DisplayName = "Holding")
-};
 
 //UENUM(BlueprintType)
 //enum class ESkillFormType : uint8 {
@@ -29,38 +19,12 @@ enum class ESkillActivationType : uint8 {
 //    Attached   UMETA(DisplayName = "부착형")
 //};
 
-USTRUCT(BlueprintType)
-struct FSkillInfo {
-    GENERATED_BODY()
-
-    UPROPERTY(EditDefaultsOnly, Category = "Effect")
-    TSubclassOf<UGameplayEffect> SkillEffectClass;
-
-    UPROPERTY(EditDefaultsOnly)
-    FGameplayTag StatTag; // 참조할 스탯 (예: Stat.AttackPower, Stat.AbilityPower)
-
-    UPROPERTY(EditDefaultsOnly)
-    float Coefficient;    // 계수 (예: 0.6, 1.2)
-
-    UPROPERTY(EditAnywhere)
-    float CoeffPerLevel;
-
-    UPROPERTY(EditDefaultsOnly)
-    float BaseDamage;     // 스킬 기본 데미지
-
-    UPROPERTY(EditDefaultsOnly)
-    float ValuePerLevel; // 레벨별 스킬 기본 데미지 증가량
-};
-
 UCLASS()
 class PROJECTER_API USkillDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
 	
 public:
-    UPROPERTY(EditDefaultsOnly, Category = "Skill|Damage")
-    ESkillActivationType SkillActivationType;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Skill|Damage")
-    TArray<FSkillInfo> DamageInfos;
+    UPROPERTY(EditDefaultsOnly, Category = "Default")
+    FSkillDefaultData SkillData;
 };
