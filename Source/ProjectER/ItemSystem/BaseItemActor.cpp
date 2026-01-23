@@ -1,26 +1,30 @@
 ﻿#include "ItemSystem/BaseItemActor.h"
-#include "Components/StaticMeshComponent.h"
 #include "ItemSystem/BaseItemData.h"
+#include "ItemSystem/BaseInventoryComponent.h" // 인벤토리에 넣기 위해 필요
+#include "Components/StaticMeshComponent.h"
 
 ABaseItemActor::ABaseItemActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	// 컴포넌트 생성 및 루트 설정
 	ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
 	RootComponent = ItemMesh;
-
-	// 상호작용용 콜리전 (클릭 가능하도록)
-	ItemMesh->SetCollisionProfileName(TEXT("UI"));
 }
 
-void ABaseItemActor::BeginPlay()
+void ABaseItemActor::PickupItem(APawn* InHandler)
 {
-	Super::BeginPlay();
+	if (!InHandler || !ItemData) return;
 
-	// 데이터 에셋이 할당되어 있다면 메시를 자동으로 변경
-	if (ItemData && !ItemData->ItemMesh.IsNull())
+	// 인벤토리 컴포넌트가 있는지 확인
+	UBaseInventoryComponent* Inventory = InHandler->FindComponentByClass<UBaseInventoryComponent>();
+
+	if (Inventory)
 	{
-		ItemMesh->SetStaticMesh(ItemData->ItemMesh.LoadSynchronous());
+		if (Inventory->AddItem(ItemData))
+		{
+			// 성공 시 아이템 파괴 (획득 처리)
+			UE_LOG(LogTemp, Log, TEXT("Item Picked Up: %s"), *ItemData->ItemName.ToString());
+			Destroy();
+		}
 	}
 }
