@@ -31,7 +31,7 @@ private:
 protected:
     /** Vision range */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    float VisionRange = 500.f;
+    float VisionRange = 800.f;
 
     /** Number of radial rays */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")

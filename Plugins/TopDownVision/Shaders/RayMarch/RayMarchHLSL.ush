@@ -1,0 +1,8 @@
+#pragma once
+
+//HLSL Raymarching for getting "shadow" from obstacle
+
+float Test()
+{
+	return 1.0f;
+}

@@ -41,7 +41,12 @@ public class TopDownVision : ModuleRules
 				// ... add private dependencies that you statically link with here ...	
 				
 				//for the canvas render target
-				"Renderer",
+				"Renderer",// might not needed any more but still
+				
+				// Custom depth method
+				// for shader module
+				"RenderCore",
+				"RHI",//render hardware interface( in thiscase, 
 			}
 			);
 		
