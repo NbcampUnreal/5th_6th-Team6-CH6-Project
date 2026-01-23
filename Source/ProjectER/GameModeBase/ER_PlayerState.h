@@ -1,12 +1,18 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
+﻿
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include "ER_PlayerState.generated.h"
 
-
+UENUM(BlueprintType)
+enum class ETeam : uint8
+{
+	Team1 UMETA(DisplayName = "Team1"),
+	Team2 UMETA(DisplayName = "Team2"),
+	Team3 UMETA(DisplayName = "Team3"),
+	None UMETA(DisplayName = "None")
+};
 
 UCLASS()
 class PROJECTER_API AER_PlayerState : public APlayerState
@@ -36,5 +42,8 @@ public:
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsReady = false;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	ETeam Team = ETeam::None;
 	
 };

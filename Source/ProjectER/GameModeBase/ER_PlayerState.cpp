@@ -1,7 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "ER_PlayerState.h"
+﻿#include "ER_PlayerState.h"
 #include "Net/UnrealNetwork.h"
 
 AER_PlayerState::AER_PlayerState()
