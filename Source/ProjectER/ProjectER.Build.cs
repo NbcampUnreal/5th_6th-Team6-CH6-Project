@@ -33,6 +33,11 @@ public class ProjectER : ModuleRules
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {  });
+        PublicIncludePaths.AddRange(new string[] {
+            "ProjectER" 
+        });
+        // Uncomment if you are using Slate UI
+        // PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
 
 		PublicIncludePaths.AddRange(new string[] 
 		{
