@@ -1,20 +1,29 @@
 #include "CharacterSystem/Player/BasePlayerController.h"
+#include "CharacterSystem/Character/BaseCharacter.h"
+#include "CharacterSystem/Data/InputConfig.h"
+#include "CharacterSystem/GameplayTags/GameplayTags.h"
+
+#include "GameFramework/Character.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "CharacterSystem/Data/InputConfig.h"
+#include "Engine/World.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
+#include "AbilitySystemBlueprintLibrary.h"
 
 ABasePlayerController::ABasePlayerController()
 {
-	bShowMouseCursor = true; // 마우스 커서 표시 설정
+	bShowMouseCursor = true; 
 	DefaultMouseCursor = EMouseCursor::Default;
+	
+	bIsMousePressed = false;
+	LastRPCUpdateTime = 0.f;
+	CachedDestination = FVector::ZeroVector;
 }
 
 void ABasePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	// Enhanced Input Subsystem에 매핑 컨텍스트 등록
 	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
 	{
 		if (DefaultMappingContext)
@@ -24,20 +33,44 @@ void ABasePlayerController::BeginPlay()
 	}
 }
 
+void ABasePlayerController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+	
+	// Possess 할 시 캐릭터 캐싱 
+	ControlledBaseChar = Cast<ABaseCharacter>(InPawn);
+	
+	if (!ControlledBaseChar)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("OnPossess: ControlledBaseChar is Null!"));
+	}
+}
+
 void ABasePlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
-	
-	// CastChecked를 써서 EnhancedInputComponent가 아니면 크래시(경고)를 냄
-	if (UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(InputComponent))
+
+	if (IsLocalController())
 	{
-		if (InputConfig)
+		UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(InputComponent);
+		if (!EnhancedInputComponent || !InputConfig) return;
+	
+		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Started, this, &ABasePlayerController::OnMoveStarted);
+		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnMoveTriggered);
+		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Completed, this, &ABasePlayerController::OnMoveReleased);
+		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Canceled, this, &ABasePlayerController::OnMoveReleased);
+	
+		/*for (const FInputData& Action : InputConfig->AbilityInputAction)
 		{
-			// 이동(우클릭): 누르고 있는 동안, 그리고 눌렀을 때
-			EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Started, this, &ABasePlayerController::OnMoveTriggered);
-			EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Completed, this, &ABasePlayerController::OnMoveReleased);
-			// 필요하다면 Canceled, Triggered 등도 바인딩
-		}
+			if (Action.InputAction && Action.InputTag.IsValid())
+			{
+				// Pressed 바인딩
+				EnhancedInputComponent->BindAction(Action.InputAction, ETriggerEvent::Started, this, &ABasePlayerController::AbilityInputTagPressed, Action.InputTag);
+			
+				// Released 바인딩 (차징 스킬 등을 위해 필요)
+				EnhancedInputComponent->BindAction(Action.InputAction, ETriggerEvent::Completed, this, &ABasePlayerController::AbilityInputTagReleased, Action.InputTag);
+			}
+		}*/
 	}
 }
 
@@ -52,10 +85,15 @@ void ABasePlayerController::PlayerTick(float DeltaTime)
 	}
 }
 
-void ABasePlayerController::OnMoveTriggered()
+void ABasePlayerController::OnMoveStarted()
 {
 	bIsMousePressed = true;
-	MoveToMouseCursor(); // 클릭 즉시 1회 이동
+	MoveToMouseCursor(); 
+}
+
+void ABasePlayerController::OnMoveTriggered()
+{
+	
 }
 
 void ABasePlayerController::OnMoveReleased()
@@ -67,19 +105,41 @@ void ABasePlayerController::MoveToMouseCursor()
 {
 	APawn* ControlledPawn = GetPawn();
 	if (!ControlledPawn) return;
-
+	
+	if (!ControlledBaseChar)
+	{
+		ControlledBaseChar = Cast<ABaseCharacter>(ControlledPawn);
+	}
+	
+	if (!IsValid(ControlledBaseChar)) 
+	{
+		UE_LOG(LogTemp, Warning, TEXT("MoveToMouseCursor: ControlledBaseChar is Null!"));
+		return;
+	}
+	
 	FHitResult Hit;
-	// 마우스 커서 위치의 땅을 찾음 (ECC_Visibility 채널 사용)
 	if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))
 	{
 		if (Hit.bBlockingHit)
 		{
-			// 네비게이션 시스템을 이용해 해당 위치로 이동 명령
-			// [중요] CharacterMovementComponent가 NavMesh를 따라가게 함
-			UAIBlueprintHelperLibrary::SimpleMoveToLocation(this, Hit.Location);
-            
-			// (옵션) 클릭 지점에 FX 재생
-			// UNiagaraFunctionLibrary::SpawnSystemAtLocation(...);
+			ControlledBaseChar->MoveToLocation(Hit.Location);
+			
+			// SpawnDestinationEffect(Hit.Location);
 		}
 	}
+}
+
+void ABasePlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
+{
+	APawn* ControlledPawn = GetPawn();
+	if (!ControlledPawn) return;
+	
+	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ControlledPawn);
+	if (!ASC) return;
+	
+	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan, FString::Printf(TEXT("Input Tag Pressed: %s"), *InputTag.ToString()));
+}
+
+void ABasePlayerController::AbilityInputTagReleased(FGameplayTag InputTag)
+{
 }

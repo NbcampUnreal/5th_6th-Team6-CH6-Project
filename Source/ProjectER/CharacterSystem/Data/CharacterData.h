@@ -28,7 +28,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TMap<FGameplayTag, TSoftClassPtr<UGameplayAbility>> Abilities;
 	
-	// 초기 스탯 Curve Table (Curve Table Row Name)
-	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	// 스탯 커브 테이블 (Curve Table Pointer)
+	UPROPERTY(EditDefaultsOnly, Category = "Stats")
+	TSoftObjectPtr<UCurveTable> StatCurveTable;
+	
+	// 커브 테이블 행 이름 (Curve Table Row Name)
+	UPROPERTY(EditDefaultsOnly, Category = "Stats")
 	FName StatusRowName;
 };

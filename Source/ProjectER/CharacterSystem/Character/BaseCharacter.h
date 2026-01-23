@@ -26,6 +26,8 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	
+	virtual void Tick( float DeltaTime ) override;
+	
 	virtual void PossessedBy(AController* NewController) override;
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -64,7 +66,7 @@ protected:
 	
 #pragma endregion
 	
-#pragma region Character GAS
+#pragma region GAS
 public:
 	UPROPERTY(ReplicatedUsing=OnRep_HeroData, EditAnywhere, BlueprintReadWrite, Category = "Data", meta = (ExposeOnSpawn = true))
 	TObjectPtr<UCharacterData> HeroData;
@@ -78,5 +80,28 @@ protected:
 	
 #pragma endregion 
 
+#pragma region MoveToLocation
+public:
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_MoveToLocation(FVector TargetLocation); 
+	
+	void MoveToLocation(FVector TargetLocation);
+	
+protected:
+	void UpdatePathFollowing();
+	void StopPathFollowing();
+	
+private:
+	/** 현재 추적 중인 경로 포인트들 */
+	UPROPERTY()
+	TArray<FVector> PathPoints;
+
+	/** 현재 목표 웨이포인트 인덱스 */
+	int32 CurrentPathIndex;
+
+	/** 도착 판정 임계값 (제곱) */
+	const float ArrivalDistanceSq = 2500.f; // $50 \times 50$
+	
+#pragma endregion
 
 };
