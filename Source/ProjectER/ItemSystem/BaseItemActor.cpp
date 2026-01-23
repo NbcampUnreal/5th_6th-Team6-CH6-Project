@@ -1,6 +1,6 @@
 ﻿#include "ItemSystem/BaseItemActor.h"
 #include "ItemSystem/BaseItemData.h"
-#include "ItemSystem/BaseInventoryComponent.h" // 인벤토리에 넣기 위해 필요
+#include "ItemSystem/BaseInventoryComponent.h"
 #include "Components/StaticMeshComponent.h"
 
 ABaseItemActor::ABaseItemActor()
