@@ -4,12 +4,12 @@
 #include "ER_OutGamePlayerController.h"
 #include "ER_OutGameMode.h"
 
-void AER_OutGamePlayerController::ConnectToDedicatedServer(const FString& Ip, int32 Port)
+void AER_OutGamePlayerController::ConnectToDedicatedServer(const FString& Ip, int32 Port, const FString& UserName)
 {
 	if (!IsLocalController())
 		return;
 
-	const FString Address = FString::Printf(TEXT("%s:%d"), *Ip, Port);
+	const FString Address = FString::Printf(TEXT("%s:%d?UserName=%s"), *Ip, Port, *UserName);
 
 	UE_LOG(LogTemp, Log, TEXT("[PC] Connecting to server: %s"), *Address);
 

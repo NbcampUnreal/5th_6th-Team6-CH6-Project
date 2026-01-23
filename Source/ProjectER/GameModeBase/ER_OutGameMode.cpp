@@ -3,8 +3,37 @@
 
 #include "ER_OutGameMode.h"
 #include "ER_PlayerState.h"
+#include "GameFramework/PlayerState.h"
+#include "Kismet/GameplayStatics.h"
 
+FString AER_OutGameMode::InitNewPlayer(APlayerController* NewPlayerController,
+    const FUniqueNetIdRepl& UniqueId,
+    const FString& Options,
+    const FString& Portal)
+{
+    Super::InitNewPlayer(NewPlayerController, UniqueId, Options, Portal);
 
+    // URL에서 닉네임 파싱
+    FString UserName = UGameplayStatics::ParseOption(Options, TEXT("UserName"));
+
+    if (!UserName.IsEmpty())
+    {
+        // PlayerState에 닉네임 설정
+        if (APlayerState* PS = NewPlayerController->GetPlayerState<APlayerState>())
+        {
+            
+            if (AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS))
+            {
+                ERPS->SetPlayerName(UserName);
+                ERPS->SetPlayerStateName(UserName);
+
+                UE_LOG(LogTemp, Warning, TEXT("InitNewPlayer : %s"), *ERPS->GetPlayerName());
+                return TEXT("");
+            }
+        }
+    }
+    return TEXT("");
+}
 
 void AER_OutGameMode::PostLogin(APlayerController* NewPlayer)
 {
@@ -16,9 +45,7 @@ void AER_OutGameMode::PostLogin(APlayerController* NewPlayer)
     {
         if (AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS))
         {
-            //ERPS->SetPlayerName(ERPS->GetPlayerStateName());
-            UE_LOG(LogTemp, Warning, TEXT("%s"), *ERPS->GetPlayerName());
-            //ERPS->ForceNetUpdate();
+
         }
 
     }
