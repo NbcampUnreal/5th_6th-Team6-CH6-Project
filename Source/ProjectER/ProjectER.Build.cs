@@ -25,13 +25,30 @@ public class ProjectER : ModuleRules
             "GameplayAbilities",
             "GameplayTags",
             "GameplayTasks",
-            "Niagara"
+            "Niagara",
+            "HexGridPlugin",
+            "PathFindingLibrary",
+            "WorldBender",
+            "TopDownVision",
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {  });
         PublicIncludePaths.AddRange(new string[] {
             "ProjectER" 
         });
+        // Uncomment if you are using Slate UI
+        // PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
+
+		PublicIncludePaths.AddRange(new string[] 
+		{
+			"ProjectER"
+		});
+		// Uncomment if you are using Slate UI
+		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
+		
+		// Uncomment if you are using online features
+		// PrivateDependencyModuleNames.Add("OnlineSubsystem");
+
         // Uncomment if you are using Slate UI
         // PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
 
