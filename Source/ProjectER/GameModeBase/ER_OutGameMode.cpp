@@ -12,9 +12,9 @@ FString AER_OutGameMode::InitNewPlayer(APlayerController* NewPlayerController,
     Super::InitNewPlayer(NewPlayerController, UniqueId, Options, Portal);
 
     // URL에서 닉네임 파싱
-    FString UserName = UGameplayStatics::ParseOption(Options, TEXT("UserName"));
+    FString PlayerName = UGameplayStatics::ParseOption(Options, TEXT("PlayerName"));
 
-    if (!UserName.IsEmpty())
+    if (!PlayerName.IsEmpty())
     {
         // PlayerState에 닉네임 설정
         if (APlayerState* PS = NewPlayerController->GetPlayerState<APlayerState>())
@@ -22,8 +22,8 @@ FString AER_OutGameMode::InitNewPlayer(APlayerController* NewPlayerController,
             
             if (AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS))
             {
-                ERPS->SetPlayerName(UserName);
-                ERPS->SetPlayerStateName(UserName);
+                ERPS->SetPlayerName(PlayerName);
+                ERPS->SetPlayerStateName(PlayerName);
 
                 UE_LOG(LogTemp, Warning, TEXT("InitNewPlayer : %s"), *ERPS->GetPlayerName());
                 return TEXT("");
