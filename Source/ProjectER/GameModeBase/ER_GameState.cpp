@@ -1,5 +1,2 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "ER_GameState.h"
+﻿#include "ER_GameState.h"
 

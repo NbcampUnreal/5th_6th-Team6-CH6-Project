@@ -1,7 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "ER_OutGamePlayerController.h"
+﻿#include "ER_OutGamePlayerController.h"
 #include "ER_OutGameMode.h"
 
 void AER_OutGamePlayerController::ConnectToDedicatedServer(const FString& Ip, int32 Port, const FString& UserName)
