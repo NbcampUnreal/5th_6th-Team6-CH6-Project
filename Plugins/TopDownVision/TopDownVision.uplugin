@@ -1,0 +1,25 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "TopDownVision",
+	"Description": "This is for Character Vision Plugin using Line of sight and fog of war",
+	"Category": "Other",
+	"CreatedBy": "NarpNarp",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "TopDownVision",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"ShaderDirectory": "Shaders"
+}
