@@ -51,17 +51,17 @@ void AER_OutGameMode::PostLogin(APlayerController* NewPlayer)
             const TArray<APlayerState*>& Players = GS->PlayerArray;
 
             // 들어온 순서대로 팀 지정 이후 팀 선택이 필요하면 수정
-            switch (Players.Num() % 2)
+            switch (Players.Num() % 3)
             {
-            case 0:
+            case 1:
                 ERPS->Team = ETeam::Team1;
                 break;
 
-            case 1:
+            case 2:
                 ERPS->Team = ETeam::Team2;
                 break;
 
-            case 2:
+            case 0:
                 ERPS->Team = ETeam::Team3;
                 break;
 
@@ -69,7 +69,7 @@ void AER_OutGameMode::PostLogin(APlayerController* NewPlayer)
                 ERPS->Team = ETeam::None;
                 break;
             }
-
+            UE_LOG(LogTemp, Log, TEXT("Team = %s"), *UEnum::GetValueAsString(ERPS->Team));
         }
 
     }
