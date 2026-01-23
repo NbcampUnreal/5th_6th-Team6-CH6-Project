@@ -1,7 +1,8 @@
 #pragma once
 
 //HLSL Raymarching for getting "shadow" from obstacle
-
+//#include "/Plugin/TopDownVision/Shaders/RayMarch/RayMarchHLSL.ush" -> include this path to the custom node (on bottom)
+// Plugins/TopDownVision/Shaders/RayMarch/RayMarchHLSL.ush
 float Test()
 {
 	return 1.0f;

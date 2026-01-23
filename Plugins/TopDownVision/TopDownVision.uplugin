@@ -20,5 +20,6 @@
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
 		}
-	]
+	],
+	"ShaderDirectory": "Shaders"
 }

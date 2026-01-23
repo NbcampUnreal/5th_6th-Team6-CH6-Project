@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
+using System.IO;
 
 public class TopDownVision : ModuleRules
 {
@@ -9,8 +10,9 @@ public class TopDownVision : ModuleRules
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		
 		PublicIncludePaths.AddRange(
-			new string[] {
-				// ... add public include paths required here ...
+			new string[] 
+			{
+				Path.Combine(ModuleDirectory, "Shaders"),
 			}
 			);
 				
@@ -27,6 +29,7 @@ public class TopDownVision : ModuleRules
 			{
 				"Core",
 				// ... add other public dependencies that you statically link with here ...
+				"Projects",// for plugin module (IPluginManager::Get())
 			}
 			);
 			
