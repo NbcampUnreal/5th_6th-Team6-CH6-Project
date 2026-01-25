@@ -22,6 +22,7 @@ class PROJECTER_API UBaseMonsterAttributeSet : public UAttributeSet
 public:
 	UBaseMonsterAttributeSet();
 
+
 protected:
 
 	virtual void GetLifetimeReplicatedProps(
@@ -69,37 +70,59 @@ private:
 
 public:
 
-
-private:
-
 #pragma region Attribute
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxHealth, Category = "Attribute", meta = (AllowPrivateAccess = "true"))
 	FGameplayAttributeData MaxHealth;
 	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, MaxHealth);
-	
+
+	UPROPERTY(EditDefaultsOnly);
+	float MaxHealthAmount = 100.f;
+
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Health, Category = "Attribute", meta = (AllowPrivateAccess = "true"))
 	FGameplayAttributeData Health;
 	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, Health);
-	
+
+	UPROPERTY(EditDefaultsOnly);
+	float HealthAmount = 100.f;
+
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_AttackPower, Category = "Attribute", meta = (AllowPrivateAccess = "true"))
 	FGameplayAttributeData AttackPower;
 	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, AttackPower);
-	
+
+	UPROPERTY(EditDefaultsOnly);
+	float AttackPowerAmount = 10.f;
+
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Defense, Category = "Attribute", meta = (AllowPrivateAccess = "true"))
-	FGameplayAttributeData Defense; 
+	FGameplayAttributeData Defense;
 	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, Defense);
-	
+
+	UPROPERTY(EditDefaultsOnly);
+	float DefenseAmount = 5.f;
+
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_AttackSpeed, Category = "Attribute", meta = (AllowPrivateAccess = "true"))
 	FGameplayAttributeData AttackSpeed;
 	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, AttackSpeed);
-	
+
+	UPROPERTY(EditDefaultsOnly);
+	float AttackSpeedAmount = 2.f;
+
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MoveSpeed, Category = "Attribute", meta = (AllowPrivateAccess = "true"))
 	FGameplayAttributeData MoveSpeed;
 	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, MoveSpeed);
+
+	UPROPERTY(EditDefaultsOnly);
+	float MoveSpeedAmount = 200.f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Attribute", meta = (AllowPrivateAccess = "true"))
 	FGameplayAttributeData InComingDamage;
 	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, InComingDamage);
 #pragma endregion
+
+
+protected:
+
+
+private:
+
 
 };

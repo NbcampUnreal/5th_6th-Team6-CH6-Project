@@ -15,32 +15,36 @@ ABaseMonster::ABaseMonster()
 
 }
 
+UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
+{
+	return ASC;
+}
+
 void ABaseMonster::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	UE_LOG(LogTemp, Warning, TEXT("BeginPlay"));
+	UE_LOG(LogTemp, Warning, TEXT("%s : BeginPlay"), *GetName());
 
-	InitAbilitySystem();
 }
 
 void ABaseMonster::PossessedBy(AController* newController)
 {
 	Super::PossessedBy(newController);
 
-	UE_LOG(LogTemp, Warning, TEXT("AI Controller Possessed"));
-}
+	UE_LOG(LogTemp, Warning, TEXT("%s : PossessedBy"), *GetName());
 
-UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
-{
-	return ASC;
+	InitAbilitySystem();
+
+	ASC->GetGameplayAttributeValueChangeDelegate(AttributeSet->GetHealthAttribute())
+		.AddUObject(this, &ABaseMonster::OnHealthChangedCallback);
 }
 
 void ABaseMonster::InitAbilitySystem()
 {
 	if (!ASC)
 	{
-		UE_LOG(LogTemp, Error, TEXT("%s Not ASC"), *GetName());
+		UE_LOG(LogTemp, Error, TEXT("%s : Not ASC"), *GetName());
 		return;
 	}
 
@@ -58,4 +62,20 @@ void ABaseMonster::InitGiveAbilities()
 			FGameplayAbilitySpec(Ability, 1, INDEX_NONE, this)
 		);
 	}
+}
+
+void ABaseMonster::OnHealthChangedCallback(const FOnAttributeChangeData& Data) const
+{
+	OnHealthChanged.Broadcast(Data.NewValue, AttributeSet->GetMaxHealth());
+}
+
+void ABaseMonster::TryActivateAttackAbility()
+{
+	ASC->TryActivateAbilitiesByTag(FGameplayTagContainer(AttackAbilityTag));
+
+	FGameplayEventData Payload;
+	Payload.Instigator = this;
+	Payload.EventTag = CombatTag;
+	
+	ASC->HandleGameplayEvent(CombatTag, &Payload);
 }
