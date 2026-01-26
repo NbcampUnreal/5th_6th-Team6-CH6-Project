@@ -11,6 +11,7 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "Engine/World.h"
 #include "NavigationSystem.h"
 #include "NavigationPath.h"
@@ -30,7 +31,7 @@ ABaseCharacter::ABaseCharacter()
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 	
-	GetCharacterMovement()->bOrientRotationToMovement = true;
+	GetCharacterMovement()->bOrientRotationToMovement = false;
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 640.f, 0.f);
 	GetCharacterMovement()->bConstrainToPlane = true;
 	GetCharacterMovement()->bSnapToPlaneAtStart = true;
@@ -365,13 +366,16 @@ void ABaseCharacter::UpdatePathFollowing()
 		AddMovementInput(NormalDirection, 1.0f);
 
 		// 캐릭터 회전
-		FRotator CurrentRot = GetActorRotation();
 		FRotator TargetRot = NormalDirection.Rotation();
+		FRotator CurrentRot = GetActorRotation();
 		
 		FRotator NewRotation = FMath::RInterpTo(CurrentRot, TargetRot, GetWorld()->GetDeltaSeconds(), 20.0f);
         
 		SetActorRotation(NewRotation);
 	}
+	
+	FRotator MyRot = GetActorRotation();
+	UE_LOG(LogTemp, Warning, TEXT("Rotation Check -> Pitch: %f | Yaw: %f"), MyRot.Pitch, MyRot.Yaw);
 	
 #if WITH_EDITOR
 	// [디버깅] 경로 및 이동 방향 시각화
