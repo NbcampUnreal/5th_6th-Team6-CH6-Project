@@ -10,6 +10,8 @@
 
 UBaseAttributeSet::UBaseAttributeSet()
 {
+	InitLevel(1.0f);
+	InitMaxLevel(18.0f);
 	InitXP(0.0f);
 	InitMaxXP(0.0f);
 	InitHealth(0.0f);
@@ -32,6 +34,8 @@ void UBaseAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimePropert
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
+	DOREPLIFETIME_CONDITION_NOTIFY(UBaseAttributeSet, Level, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UBaseAttributeSet, MaxLevel, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBaseAttributeSet, XP, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBaseAttributeSet, MaxXP, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBaseAttributeSet, Health, COND_None, REPNOTIFY_Always);
@@ -101,6 +105,16 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 	}
 }
 
+void UBaseAttributeSet::OnRep_Level(const FGameplayAttributeData& OldLevel)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, Level, OldLevel);
+}
+
+void UBaseAttributeSet::OnRep_MaxLevel(const FGameplayAttributeData& OldMaxLevel)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, MaxLevel, OldMaxLevel);
+}
+
 void UBaseAttributeSet::OnRep_XP(const FGameplayAttributeData& OldXP)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, XP, OldXP);
@@ -153,17 +167,17 @@ void UBaseAttributeSet::OnRep_AttackSpeed(const FGameplayAttributeData& OldAttac
 
 void UBaseAttributeSet::OnRep_SkillAmp(const FGameplayAttributeData& OldSkillAmp)
 {
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, AttackSpeed, OldSkillAmp);
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, SkillAmp, OldSkillAmp);
 }
 
 void UBaseAttributeSet::OnRep_CriticalChance(const FGameplayAttributeData& OldCriticalChance)
 {
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, AttackSpeed, OldCriticalChance);
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, CriticalChance, OldCriticalChance);
 }
 
 void UBaseAttributeSet::OnRep_CriticalDamage(const FGameplayAttributeData& OldCriticalDamage)
 {
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, AttackSpeed, OldCriticalDamage);
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, CriticalDamage, OldCriticalDamage);
 }
 
 void UBaseAttributeSet::OnRep_Defense(const FGameplayAttributeData& OldDefense)

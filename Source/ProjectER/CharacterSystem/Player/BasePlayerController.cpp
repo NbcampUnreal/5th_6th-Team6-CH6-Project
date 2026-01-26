@@ -58,7 +58,9 @@ void ABasePlayerController::SetupInputComponent()
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnMoveTriggered);
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Completed, this, &ABasePlayerController::OnMoveReleased);
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Canceled, this, &ABasePlayerController::OnMoveReleased);
-	
+		
+		EnhancedInputComponent->BindAction(InputConfig->StopMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnStopTriggered);
+		
 		/*for (const FInputData& Action : InputConfig->AbilityInputAction)
 		{
 			if (Action.InputAction && Action.InputTag.IsValid())
@@ -130,6 +132,16 @@ void ABasePlayerController::MoveToMouseCursor()
 			
 			// SpawnDestinationEffect(Hit.Location);
 		}
+	}
+}
+
+void ABasePlayerController::OnStopTriggered()
+{
+	bIsMousePressed = false; 
+	
+	if (ControlledBaseChar)
+	{
+		ControlledBaseChar->StopMove();
 	}
 }
 

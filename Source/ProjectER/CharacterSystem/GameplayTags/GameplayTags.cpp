@@ -50,7 +50,7 @@ namespace ProjectER
 		namespace Action
 		{
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Move, "Input.Action.Move", "Move Command");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Pause, "Input.Action.Pausee", "Pause Command");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Stop, "Input.Action.Stop", "Stop Command");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "Input.Action.Attack", "Attack Command");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction, "Input.Action.Interaction", "Interaction Command");
 

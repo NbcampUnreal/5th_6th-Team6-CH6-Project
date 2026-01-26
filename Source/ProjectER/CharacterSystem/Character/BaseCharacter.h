@@ -76,10 +76,14 @@ protected:
 	
 #pragma region GAS
 public:
+	UFUNCTION(BlueprintCallable, Category = "GAS")
+	float GetCharacterLevel() const;
+	
+public:
 	UPROPERTY(ReplicatedUsing=OnRep_HeroData, EditAnywhere, BlueprintReadWrite, Category = "Data", meta = (ExposeOnSpawn = true))
 	TObjectPtr<UCharacterData> HeroData;
 	
-	UPROPERTY(EditDefaultsOnly) 
+	UPROPERTY(EditDefaultsOnly,Category = "GAS") 
 	TSubclassOf<UGameplayEffect> InitStatusEffectClass;
 	
 protected:
@@ -97,7 +101,11 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_MoveToLocation(FVector TargetLocation); 
 	
+	UFUNCTION(Server, Reliable)
+	void Server_StopMove();
+	
 	void MoveToLocation(FVector TargetLocation);
+	void StopMove();
 	
 protected:
 	void UpdatePathFollowing();

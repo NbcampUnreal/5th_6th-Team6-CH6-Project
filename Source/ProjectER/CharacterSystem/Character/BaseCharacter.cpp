@@ -111,6 +111,16 @@ void ABaseCharacter::OnRep_PlayerState()
 	InitAbilitySystem();
 }
 
+float ABaseCharacter::GetCharacterLevel() const
+{
+	if (const UBaseAttributeSet* BaseSet = GetPlayerState<ABasePlayerState>() ? GetPlayerState<ABasePlayerState>()->GetAttributeSet() : nullptr)
+	{
+		return BaseSet->GetLevel();
+	}
+
+	return 1.0f; // 기본값 (1레벨 시작)
+}
+
 void ABaseCharacter::OnRep_HeroData()
 {
 	// 비주엃 초기화 (클라이언트)
@@ -150,13 +160,11 @@ void ABaseCharacter::InitAbilitySystem()
 				ASC->GiveAbility(Spec);
 			}
 		}*/
-
-		// B. 스탯(Attributes) 초기화
-		// 방법 1: GE_InitStats를 만들고 SetByCaller나 CurveTable을 이용해 초기화
-		// 방법 2: AttributeSet에 직접 접근 (초기화 단계에서만 허용되는 방식)
         
 		// Attribute Set 초기화
 		InitAttributes(); 
+		
+		UE_LOG(LogTemp, Warning, TEXT("Initialize Attribute."));
 	}
 }
 
@@ -168,8 +176,9 @@ void ABaseCharacter::InitAttributes()
 	UCurveTable* CurveTable = HeroData->StatCurveTable.LoadSynchronous();
 	if (!CurveTable) return;
 	
-	// GE Spec 생성 (레벨은 현재 캐릭터 레벨을 넣음, 여기선 1로 가정)
-	float Level = 1.0f; 
+	float Level = GetCharacterLevel();
+	if (Level <= 0.f) Level = 1.0f;
+	
 	FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
 	Context.AddSourceObject(this);
 
@@ -177,7 +186,6 @@ void ABaseCharacter::InitAttributes()
     
 	if (SpecHandle.IsValid())
 	{
-		// 커브 테이블에서 값 읽어오기 & SetByCaller 설정 헬퍼 람다
 		auto SetStat = [&](FGameplayTag AttributeTag, FString RowSuffix)
 		{
 			FName RowName = FName(*HeroData->StatusRowName.ToString().Append(RowSuffix));
@@ -187,7 +195,7 @@ void ABaseCharacter::InitAttributes()
 			{
 				float Value = Curve->Eval(Level);
                 
-				// GE Spec에 값 주입 (SetByCaller)
+				// GE Spec 값 주입 (SetByCaller)
 				SpecHandle.Data->SetSetByCallerMagnitude(AttributeTag, Value);
 			}
 			else
@@ -195,14 +203,17 @@ void ABaseCharacter::InitAttributes()
 				UE_LOG(LogTemp, Warning, TEXT("Curve Row Not Found: %s"), *RowName.ToString());
 			}
 		};
-
+		
+		// 레벨 설정
+		SpecHandle.Data->SetSetByCallerMagnitude(ProjectER::Status::Level, Level);
+		
 		// 스탯별 값 주입 실행
 		SetStat(ProjectER::Status::MaxLevel,   "_MaxLevel");
 		SetStat(ProjectER::Status::MaxXP,   "_MaxXp");
 		SetStat(ProjectER::Status::MaxHealth,   "_MaxHealth");
 		SetStat(ProjectER::Status::HealthRegen, "_HealthRegen");
 		SetStat(ProjectER::Status::MaxStamina,  "_MaxStamina");
-		SetStat(ProjectER::Status::StaminaRegen,  "_MaxStamina");
+		SetStat(ProjectER::Status::StaminaRegen,  "_StaminaRegen");
 		SetStat(ProjectER::Status::AttackPower, "_AttackPower");
 		SetStat(ProjectER::Status::AttackSpeed, "_AttackSpeed");
 		SetStat(ProjectER::Status::SkillAmp, "_SkillAmp");
@@ -223,7 +234,7 @@ void ABaseCharacter::InitVisuals()
 {
 	if (!HeroData) return;
 
-	// 1. 스켈레탈 메시 로드 및 설정
+	// 스켈레탈 메시 로드 및 설정
 	// TSoftObjectPtr을 동기 로드(LoadSynchronous)합니다.
 	// 최적화 Tip: AssetManager를 통해 게임 시작 전(로딩 화면)에 미리 AsyncLoad 해두면 
 	// 여기서 LoadSynchronous를 호출해도 딜레이가 0입니다.
@@ -276,6 +287,11 @@ bool ABaseCharacter::Server_MoveToLocation_Validate(FVector TargetLocation)
 	return true;
 }
 
+void ABaseCharacter::Server_StopMove_Implementation()
+{
+	StopMove();
+}
+
 void ABaseCharacter::MoveToLocation(FVector TargetLocation)
 {
 	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
@@ -298,6 +314,18 @@ void ABaseCharacter::MoveToLocation(FVector TargetLocation)
 	if (!HasAuthority())
 	{
 		Server_MoveToLocation(TargetLocation);
+	}
+}
+
+void ABaseCharacter::StopMove()
+{
+	StopPathFollowing();
+	
+	GetCharacterMovement()->StopMovementImmediately();
+	
+	if (!HasAuthority())
+	{
+		Server_StopMove();
 	}
 }
 

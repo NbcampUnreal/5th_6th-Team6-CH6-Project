@@ -32,7 +32,7 @@ protected:
 	void OnMoveTriggered();
 	void OnMoveReleased();
 	void MoveToMouseCursor();
-	void UpdateCachedDestination();
+	void OnStopTriggered();
 	
 	// 키 입력 시, 어빌리티 호출
 	void AbilityInputTagPressed(FGameplayTag InputTag);
