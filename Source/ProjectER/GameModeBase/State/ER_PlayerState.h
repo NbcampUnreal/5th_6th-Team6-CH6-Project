@@ -8,10 +8,11 @@
 UENUM(BlueprintType)
 enum class ETeam : uint8
 {
+	None UMETA(DisplayName = "None"),
 	Team1 UMETA(DisplayName = "Team1"),
 	Team2 UMETA(DisplayName = "Team2"),
-	Team3 UMETA(DisplayName = "Team3"),
-	None UMETA(DisplayName = "None")
+	Team3 UMETA(DisplayName = "Team3")
+
 };
 
 UCLASS()
@@ -45,5 +46,9 @@ public:
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	ETeam Team = ETeam::None;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	bool bIsDead = false;
+
 	
 };

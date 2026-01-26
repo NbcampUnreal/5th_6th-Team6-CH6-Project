@@ -12,7 +12,7 @@ class PROJECTER_API AER_OutGamePlayerController : public APlayerController
 	
 public:
 	UFUNCTION(BlueprintCallable, Category = "Network")
-	void ConnectToDedicatedServer(const FString& Ip, int32 Port, const FString& UserName);
+	void ConnectToDedicatedServer(const FString& Ip, int32 Port, const FString& PlayerName);
 
 private:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
@@ -20,5 +20,4 @@ private:
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_TEMP_OutGame();
-
 };
