@@ -34,4 +34,7 @@ protected:
 public:
 	UPROPERTY(BlueprintAssignable, Category = "Inventory")
 	FOnInventoryUpdatedSignature OnInventoryUpdated;
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void DebugPrintInventory(); // 디버그용 프린트로그
 };
