@@ -15,6 +15,19 @@ void UER_RespawnSubsystem::HandlePlayerDeath(AER_PlayerState& PS, AER_GameState&
 		return;
 
 	PS.bIsDead = true;
-	UE_LOG(LogTemp, Log, TEXT("bIsDead"));
-	// 이후 처리 로직 추가
+	UE_LOG(LogTemp, Warning, TEXT("PS.bIsDead = %s"), PS.bIsDead ? TEXT("True") : TEXT("False"));
+}
+
+bool UER_RespawnSubsystem::EvaluateTeamElimination(AER_PlayerState& PS, AER_GameState& GS)
+{
+	if (!GS.HasAuthority())
+		return false;
+
+	if (PS.Team == ETeam::None)
+		return false;
+
+	int32 TeamIdx = static_cast<int32>(PS.Team);
+
+	return GS.GetTeamElimination(TeamIdx);
+
 }

@@ -6,6 +6,8 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "ER_RespawnSubsystem.generated.h"
 
+// 팀 전멸 판정, 부활 처리 담당
+
 class AER_PlayerState;
 class AER_GameState;
 
@@ -16,5 +18,6 @@ class PROJECTER_API UER_RespawnSubsystem : public UWorldSubsystem
 
 public:
 	void HandlePlayerDeath(AER_PlayerState& PS, AER_GameState& GS);
+	bool EvaluateTeamElimination(AER_PlayerState& PS, AER_GameState& GS);
 	
 };
