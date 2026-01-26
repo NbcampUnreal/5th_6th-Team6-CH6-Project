@@ -2,6 +2,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "AttributeSet/BaseMonsterAttributeSet.h"
+#include "Components/StateTreeComponent.h"
 
 ABaseMonster::ABaseMonster()
 {
@@ -12,23 +13,7 @@ ABaseMonster::ABaseMonster()
 	ASC->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
 
 	AttributeSet = CreateDefaultSubobject<UBaseMonsterAttributeSet>(TEXT("AttributeSet"));
-
-}
-
-void ABaseMonster::BeginPlay()
-{
-	Super::BeginPlay();
-	
-	UE_LOG(LogTemp, Warning, TEXT("BeginPlay"));
-
-	InitAbilitySystem();
-}
-
-void ABaseMonster::PossessedBy(AController* newController)
-{
-	Super::PossessedBy(newController);
-
-	UE_LOG(LogTemp, Warning, TEXT("AI Controller Possessed"));
+	StateTreeComp = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTree"));
 }
 
 UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
@@ -36,11 +21,31 @@ UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
 	return ASC;
 }
 
+void ABaseMonster::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	UE_LOG(LogTemp, Warning, TEXT("%s : BeginPlay"), *GetName());
+
+}
+
+void ABaseMonster::PossessedBy(AController* newController)
+{
+	Super::PossessedBy(newController);
+
+	UE_LOG(LogTemp, Warning, TEXT("%s : PossessedBy"), *GetName());
+
+	InitAbilitySystem();
+
+	ASC->GetGameplayAttributeValueChangeDelegate(AttributeSet->GetHealthAttribute())
+		.AddUObject(this, &ABaseMonster::OnHealthChangedCallback);
+}
+
 void ABaseMonster::InitAbilitySystem()
 {
 	if (!ASC)
 	{
-		UE_LOG(LogTemp, Error, TEXT("%s Not ASC"), *GetName());
+		UE_LOG(LogTemp, Error, TEXT("%s : Not ASC"), *GetName());
 		return;
 	}
 
@@ -59,3 +64,24 @@ void ABaseMonster::InitGiveAbilities()
 		);
 	}
 }
+
+void ABaseMonster::OnHealthChangedCallback(const FOnAttributeChangeData& Data) const
+{
+	OnHealthChanged.Broadcast(Data.NewValue, AttributeSet->GetMaxHealth());
+}
+
+void ABaseMonster::SetPlayerCount(int32 Amount)
+{
+	PlayerCount += Amount;
+}
+
+int32 ABaseMonster::GetPlayerCount()
+{
+	return PlayerCount;
+}
+
+UStateTreeComponent* ABaseMonster::GetStateTreeComponent()
+{
+	return StateTreeComp;
+}
+

@@ -1,18 +1,17 @@
 ﻿#include "AttributeSet/BaseMonsterAttributeSet.h"
 
 #include "Net/UnrealNetwork.h"
-#include "GameplayEffectExtension.h" //FGameplayEffectModCallbackData
-//#include "GameplayEffectTypes.h"  //FOnAttributeChangeData
+#include "GameplayEffectExtension.h"
 
 UBaseMonsterAttributeSet::UBaseMonsterAttributeSet()
 {
-	InitMaxHealth(100.f);
-	InitHealth(100.f);
-	InitAttackPower(20.f);
-	InitDefense(10.f);
-	InitAttackSpeed(2.f);
-	InitMoveSpeed(100.f);
-	//InitDamaged(0.f);
+	InitMaxHealth(MaxHealthAmount);
+	InitHealth(HealthAmount);
+	InitAttackPower(AttackPowerAmount);
+	InitDefense(DefenseAmount);
+	InitAttackSpeed(AttackSpeedAmount);
+	InitMoveSpeed(MoveSpeedAmount);
+	InitInComingDamage(0.f);
 }
 
 void UBaseMonsterAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -29,6 +28,9 @@ void UBaseMonsterAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 
 void UBaseMonsterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
 {
+	Super::PreAttributeBaseChange(Attribute, NewValue);
+
+	//GameplayEffect가 적용되기 직전
 	if (Attribute == GetMaxHealthAttribute())
 	{
 		NewValue = FMath::Max(1.f, NewValue);
@@ -62,12 +64,15 @@ void UBaseMonsterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attr
 
 void UBaseMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
+	Super::PostGameplayEffectExecute(Data);
+
 	// Attribute 변경
 	const FGameplayAttribute Attribute = Data.EvaluatedData.Attribute;
 
 	if (Attribute == GetInComingDamageAttribute())
 	{
-		float Damage = GetInComingDamage() - GetDefense();
+		float Damage = FMath::Max(0.f, GetInComingDamage() - GetDefense());
+		UE_LOG(LogTemp, Warning, TEXT("%s : TakeDamage %f "), *GetName(), Damage);
 		if (Damage > 0.f)
 		{
 			float NewHealth = FMath::Clamp(GetHealth() - Damage, 0.f, GetMaxHealth());
@@ -78,12 +83,14 @@ void UBaseMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 
 	if (GetHealth() <= 0.f) 
 	{ 
-		// 사망
+		UE_LOG(LogTemp, Warning, TEXT("%s : Die "), *GetName());
 	}
 }
 
 void UBaseMonsterAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue)
 {
+	Super::PostAttributeChange(Attribute, OldValue, NewValue);
+
 	// Attribute 변경된 후
 }
 
