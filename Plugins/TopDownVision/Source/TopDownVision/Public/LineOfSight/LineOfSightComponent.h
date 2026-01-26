@@ -2,9 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Engine/CanvasRenderTarget2D.h"
 #include "Materials/MaterialParameterCollection.h"
-#include "Materials/MaterialParameterCollectionInstance.h"
 #include "LineOfSightComponent.generated.h"
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
@@ -32,14 +30,6 @@ protected:
     /** Vision range */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     float VisionRange = 800.f;
-
-    /** Number of radial rays */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    int32 RayCounts = 100;
-
-    /** Canvas render target to draw LOS */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    UCanvasRenderTarget2D* CanvasRenderTarget;
 
     /** Material parameter collection for actor location */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOS")

@@ -34,10 +34,10 @@ float CalculateLineOfSight(
 	// 2. Eye Level in CM (e.g., if floor is 1000cm and eye is 150cm, eyes are at 850cm)
 	float EyeLevel = FloorAtPawn - EyeOffset; 
 
-	[loop]
-	for (int i = 1; i <= (int)MaxSteps; i++)
+	[loop]//Must hint the gpu that this is loops!!!!! 
+	for (int i = 1; i <= (int)MaxSteps; i++)//() cast to int for loop
 	{
-		float Progress = (float)i / (float)MaxSteps;
+		float Progress = (float)i / (float)MaxSteps;//cast back to float for value
 		float2 SampleUV = PawnUV + (RayDir * lerp(0.02, 1.0, Progress));
         
 		// 3. Sample and convert to world height 
