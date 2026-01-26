@@ -4,6 +4,28 @@
 #include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
 
+
+void AER_OutGameMode::BeginPlay()
+{
+    Super::BeginPlay();
+
+    /// mpyi _ 마우스 보이게 하기
+    // 서버에선 실행 안되게
+    if (UKismetSystemLibrary::IsDedicatedServer(GetWorld()))
+    {
+        return;
+    }
+
+    // 로컬에서만 실행
+    APlayerController* PC = GetWorld()->GetFirstPlayerController();
+    if (IsValid(PC))
+    {
+        FInputModeUIOnly InputMode;
+        PC->SetInputMode(InputMode);
+        PC->bShowMouseCursor = true;
+    }
+}
+
 FString AER_OutGameMode::InitNewPlayer(APlayerController* NewPlayerController,
     const FUniqueNetIdRepl& UniqueId,
     const FString& Options,

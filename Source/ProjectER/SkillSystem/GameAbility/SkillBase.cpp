@@ -4,18 +4,22 @@
 #include "SkillBase.h"
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayTag.h"
+#include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 
 USkillBase::USkillBase()
 {
+	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	CastingTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Casting"));
 	ActiveTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Active"));
+
+	//AbilityTriggers.Add(SkillData.InputKeyTag);
 }
 
 void USkillBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-
-	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	GetCooldownGameplayEffect();
+	if (CommitAbility(Handle, ActorInfo, ActivationInfo) == false)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
@@ -25,13 +29,12 @@ void USkillBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const 
 	if (SkillData.bIsUseCasting)
 	{
 		// 1. 태스크 생성 및 델리게이트 연결 (ReadyForActivation 전 수행)
+		UAbilityTask_PlayMontageAndWait* PlayTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, TEXT("SkillAnimation"), SkillData.AnimMontage);
+		PlayTask->ReadyForActivation();
+
 		UAbilityTask_WaitGameplayTagAdded* WaitTagAdd = UAbilityTask_WaitGameplayTagAdded::WaitGameplayTagAdd(this, ActiveTag);
 		WaitTagAdd->Added.AddDynamic(this, &USkillBase::OnActiveTagAdded);
 		WaitTagAdd->ReadyForActivation();
-
-		// [수정] LooseTag 대신 ReplicatedLooseTag 혹은 GE 사용 권장
-		// 하지만 더 좋은 방법은 'AbilityTag' 설정을 이용해 실행 중 자동으로 붙게 하는 것입니다.
-		// 여기서는 수동 제어를 위해 Replicated 버전을 사용합니다.
 		AddTagToOwner(CastingTag);
 	}
 	else
@@ -40,6 +43,21 @@ void USkillBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const 
 		ExecuteSkill();
 	}
 }
+
+void USkillBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	if (bWasCancelled == true)
+	{
+		OnCancelAbility();
+	}
+
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
+
+//void USkillBase::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+//{
+//	Super::PostEditChangeProperty(PropertyChangedEvent);
+//}
 
 void USkillBase::ExecuteSkill()
 {
@@ -55,7 +73,7 @@ void USkillBase::OnActiveTagAdded()
 		ExecuteSkill();
 	}
 	else {
-		//Cancled
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 	}
 }
 
@@ -63,6 +81,11 @@ void USkillBase::FinishSkill()
 {
 	RemoveTagFromOwner(ActiveTag);
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+}
+
+void USkillBase::OnCancelAbility()
+{
+
 }
 
 void USkillBase::AddTagToOwner(FGameplayTag Tag)

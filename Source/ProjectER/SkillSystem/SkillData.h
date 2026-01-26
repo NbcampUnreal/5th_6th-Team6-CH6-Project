@@ -35,7 +35,9 @@ struct FSkillEffectData{
 
     UPROPERTY(EditDefaultsOnly, Category = "Status|Base")
     float ValuePerLevel; // 레벨별 스킬 기본 데미지 증가량
-     //스킬이 키입력시 시전시간이 존재하는지 여부 
+
+    UPROPERTY(EditDefaultsOnly, Category = "Status")
+    FScalableFloat LevelBasedValue;
 };
 
 UENUM(BlueprintType)
@@ -53,14 +55,17 @@ USTRUCT(BlueprintType)
 struct FSkillDefaultData {
     GENERATED_BODY()
 
-    UPROPERTY(EditDefaultsOnly, Category = "Skill|Damage")
+    UPROPERTY(EditDefaultsOnly, Category = "Skill")
     ESkillActivationType SkillActivationType;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Skill|Tags", meta = (Categories = "Input.Action.Skill"))
+    FGameplayTag InputKeyTag;
 
     UPROPERTY(EditDefaultsOnly, Category = "Skill")
     bool bIsUseCasting;
 
     UPROPERTY(EditDefaultsOnly, Category = "Skill|Animation")
-    TSubclassOf<UAnimMontage> Animation;
+    TObjectPtr<UAnimMontage> AnimMontage;
 
     UPROPERTY(EditDefaultsOnly, Category = "Skill|Effect")
     TArray<FSkillEffectData> EffectDatas;

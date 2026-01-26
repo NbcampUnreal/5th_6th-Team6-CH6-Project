@@ -22,6 +22,8 @@ namespace ProjectER
 	
 	namespace Status
 	{
+		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Level, "Status.Level", "Current Level");
+		UE_DEFINE_GAMEPLAY_TAG_COMMENT(MaxLevel, "Status.MaxLevel", "Max Level");
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(XP, "Status.XP", "Current XP");
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(MaxXP, "Status.MaxXP", "XP required for next level");
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Health, "Status.Health", "Current Health");
@@ -48,7 +50,7 @@ namespace ProjectER
 		namespace Action
 		{
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Move, "Input.Action.Move", "Move Command");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Pause, "Input.Action.Pausee", "Pause Command");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Stop, "Input.Action.Stop", "Stop Command");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "Input.Action.Attack", "Attack Command");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction, "Input.Action.Interaction", "Interaction Command");
 
