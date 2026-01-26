@@ -3,7 +3,154 @@
 //HLSL Raymarching for getting "shadow" from obstacle
 //#include "/Plugin/TopDownVision/Shaders/RayMarch/RayMarchHLSL.ush" -> include this path to the custom node (on bottom)
 // Plugins/TopDownVision/Shaders/RayMarch/RayMarchHLSL.ush
+
 float Test()
 {
+	return 1.0f;
+}
+
+
+float CalculateLineOfSight(
+	Texture2D Tex, 
+	SamplerState TexSampler, //auto generated
+	float2 UV, 
+	float2 PawnUV, //0.5, 0.5 . center location
+	float MaxSteps, //32 for low
+	float CamDepth, // pass it by param. the distance from scene cpature comp to the ground right below comp
+	float Bias, //threshold for the detection
+	float EyeOffset // the world distance(from ground) of the actual eye sight
+)
+{
+	float2 RayDir = UV - PawnUV; 
+	float Visibility = 1.0;
+
+	// 1. Get raw values and convert to CM
+	float FloorAtPawnRaw = Tex.SampleLevel(TexSampler, PawnUV, 0).g;
+	float FloorAtTargetRaw = Tex.SampleLevel(TexSampler, UV, 0).g;
+    
+	float FloorAtPawn = FloorAtPawnRaw * CamDepth;
+	float FloorAtTarget = FloorAtTargetRaw * CamDepth;
+
+	// 2. Eye Level in CM (e.g., if floor is 1000cm and eye is 150cm, eyes are at 850cm)
+	float EyeLevel = FloorAtPawn - EyeOffset; 
+
+	[loop]//Must hint the gpu that this is loops!!!!! 
+	for (int i = 1; i <= (int)MaxSteps; i++)//() cast to int for loop
+	{
+		float Progress = (float)i / (float)MaxSteps;//cast back to float for value
+		float2 SampleUV = PawnUV + (RayDir * lerp(0.02, 1.0, Progress));
+        
+		// 3. Sample and convert to world height 
+		float SampleHeight = Tex.SampleLevel(TexSampler, SampleUV, 0).g * CamDepth;
+
+		// 4. Sloped vision line
+		float VisionLine = lerp(EyeLevel, FloorAtTarget, Progress);
+
+		// 5. Check against Bias
+		if (SampleHeight < VisionLine - Bias)
+		{
+			Visibility = 0.0;
+			break; 
+		}
+	}
+	return Visibility;
+}
+
+
+
+
+
+// This function is identical to your "working" code, just wrapped for USH
+float USH_Verification_Test(
+	Texture2D InTex, 
+	SamplerState InSampler, 
+	float2 InUV, 
+	float2 InPawnUV, 
+	float InMaxSteps, 
+	float InBias
+)
+{
+	float2 RayDir = InUV - InPawnUV; 
+	float Visibility = 1.0;
+
+	// Use the explicit Sampler provided by the Custom Node
+	float FloorAtPawn = InTex.SampleLevel(InSampler, InPawnUV, 0).g;
+	float FloorAtTarget = InTex.SampleLevel(InSampler, InUV, 0).g;
+
+	// Hardcoded 0.1 for the eye level to match your "fully working" snippet
+	float EyeLevel = FloorAtPawn - 0.1; 
+
+	[loop]
+	for (int i = 1; i <= (int)InMaxSteps; i++)
+	{
+		float Progress = (float)i / (float)InMaxSteps;
+		float2 SampleUV = InPawnUV + (RayDir * lerp(0.02, 1.0, Progress));
+		float SampleHeight = InTex.SampleLevel(InSampler, SampleUV, 0).g;
+
+		float VisionLine = lerp(EyeLevel, FloorAtTarget, Progress);
+
+		if (SampleHeight < VisionLine - InBias)
+		{
+			Visibility = 0.0;
+			break; 
+		}
+	}
+	return Visibility;
+}
+
+
+
+
+
+// Ray Marching for LOS
+
+
+// Inputs:
+//   float2 UV         - UV of the pixel being evaluated
+//   Texture2D ObsTex  - obstacle mask texture (G channel = Z/depth)
+//   SamplerState ObsSampler
+//   float2 CenterUV   - pawn center UV (usually 0.5,0.5)
+//   float MaxRadius   - vision radius in UV space
+//   int Steps         - number of ray march steps
+//   float ZThreshold  - obstacle detection threshold
+//
+// Output:
+//   float            - 1.0 = visible, 0.0 = blocked
+
+
+// RayMarchHLSL.ush
+float RayMarchLOS(
+	Texture2D ObstacleTexture, 
+	SamplerState ObstacleSampler,
+	float2 UV,
+	float2 CenterUV,
+	float MaxRadius,
+	float Steps,
+	float ZThreshold
+)
+{
+	float2 RayVector = UV - CenterUV;
+	float Distance = length(RayVector);
+
+	if (Distance > MaxRadius) return 0.0f;
+	if (Distance < 0.001f)   return 1.0f;
+
+	float2 StepDelta = RayVector / Steps;
+	float2 CurrentPos = CenterUV;
+
+	for (int i = 0; i < 128; i++) 
+	{
+		if (i >= (int)Steps) break;
+
+		CurrentPos += StepDelta;
+
+		// Use the passed-in Sampler
+		float ObstacleZ = ObstacleTexture.SampleLevel(ObstacleSampler, CurrentPos, 0).g;
+
+		if (ObstacleZ > ZThreshold)
+		{
+			return 0.0f;
+		}
+	}
 	return 1.0f;
 }
