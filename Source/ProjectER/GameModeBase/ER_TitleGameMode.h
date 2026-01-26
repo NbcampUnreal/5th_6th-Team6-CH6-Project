@@ -19,10 +19,5 @@ public:
 protected:
     virtual void BeginPlay() override;
 
-    // 타이틀 UI 블루프린트에서 집어넣는거 잊지 말기
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
-    TSubclassOf<class UUserWidget> TitleWidgetClass;
 
-    UPROPERTY()
-    class UUserWidget* CurrentTitleWidget;
 };
