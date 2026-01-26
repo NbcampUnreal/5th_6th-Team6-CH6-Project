@@ -2,6 +2,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "AttributeSet/BaseMonsterAttributeSet.h"
+#include "Components/StateTreeComponent.h"
 
 ABaseMonster::ABaseMonster()
 {
@@ -12,7 +13,7 @@ ABaseMonster::ABaseMonster()
 	ASC->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
 
 	AttributeSet = CreateDefaultSubobject<UBaseMonsterAttributeSet>(TEXT("AttributeSet"));
-
+	StateTreeComp = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTree"));
 }
 
 UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
@@ -69,13 +70,18 @@ void ABaseMonster::OnHealthChangedCallback(const FOnAttributeChangeData& Data) c
 	OnHealthChanged.Broadcast(Data.NewValue, AttributeSet->GetMaxHealth());
 }
 
-void ABaseMonster::TryActivateAttackAbility()
+void ABaseMonster::SetPlayerCount(int32 Amount)
 {
-	ASC->TryActivateAbilitiesByTag(FGameplayTagContainer(AttackAbilityTag));
-
-	FGameplayEventData Payload;
-	Payload.Instigator = this;
-	Payload.EventTag = CombatTag;
-	
-	ASC->HandleGameplayEvent(CombatTag, &Payload);
+	PlayerCount += Amount;
 }
+
+int32 ABaseMonster::GetPlayerCount()
+{
+	return PlayerCount;
+}
+
+UStateTreeComponent* ABaseMonster::GetStateTreeComponent()
+{
+	return StateTreeComp;
+}
+

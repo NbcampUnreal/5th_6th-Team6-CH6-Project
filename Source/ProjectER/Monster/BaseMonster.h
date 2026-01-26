@@ -23,6 +23,10 @@ public:
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
+	void SetPlayerCount(int32 Amount);
+	int32 GetPlayerCount();
+
+	UStateTreeComponent* GetStateTreeComponent();
 
 protected:
 	virtual void BeginPlay() override;
@@ -31,9 +35,6 @@ protected:
 
 
 private:
-
-	UFUNCTION(BlueprintCallable, meta = (AllowprivateAccess = "ture"))
-	virtual void TryActivateAttackAbility();
 
 	void InitAbilitySystem();
 
@@ -82,11 +83,11 @@ private:
 
 #pragma region StateTree
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<APawn> TargetPlayer;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UStateTreeComponent> StateTreeComp;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
-	FVector TargetPlayerLocation;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	int32 PlayerCount;
 
 #pragma endregion
 };
