@@ -37,7 +37,6 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 	
-	// Possess 할 시 캐릭터 캐싱 
 	ControlledBaseChar = Cast<ABaseCharacter>(InPawn);
 	
 	if (!ControlledBaseChar)
@@ -81,7 +80,12 @@ void ABasePlayerController::PlayerTick(float DeltaTime)
 	// 마우스를 꾹 누르고 있으면 계속 이동 위치 갱신 
 	if (bIsMousePressed)
 	{
-		MoveToMouseCursor();
+		// 0.1초 쿨타임 체크
+		if (GetWorld()->GetTimeSeconds() - LastRPCUpdateTime > RPCUpdateInterval)
+		{
+			MoveToMouseCursor();
+			LastRPCUpdateTime = GetWorld()->GetTimeSeconds();
+		}
 	}
 }
 

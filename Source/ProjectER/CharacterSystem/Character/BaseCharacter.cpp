@@ -14,29 +14,27 @@
 #include "Engine/World.h"
 #include "NavigationSystem.h"
 #include "NavigationPath.h"
+#include "GameplayEffect.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "GameplayAbilitySpec.h"
+#include "DrawDebugHelpers.h"
 
 ABaseCharacter::ABaseCharacter()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	
-	// Set size for player capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
-
-	// Don't rotate character to camera direction
+	
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
-
-	// Configure character movement
+	
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 640.f, 0.f);
 	GetCharacterMovement()->bConstrainToPlane = true;
 	GetCharacterMovement()->bSnapToPlaneAtStart = true;
-
-	// Create the camera boom component
+	
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 
 	CameraBoom->SetupAttachment(RootComponent);
@@ -44,14 +42,11 @@ ABaseCharacter::ABaseCharacter()
 	CameraBoom->TargetArmLength = 800.f;
 	CameraBoom->SetRelativeRotation(FRotator(-60.f, 0.f, 0.f));
 	CameraBoom->bDoCollisionTest = false;
-
-	// Create the camera component
+	
 	TopDownCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
 
 	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	TopDownCameraComponent->bUsePawnControlRotation = false;
-
-	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = false;
 	
@@ -66,6 +61,12 @@ void ABaseCharacter::BeginPlay()
 	Super::BeginPlay();
 	
 	SetActorTickEnabled(false);
+	
+	// 클라이언트 초기화
+	if (HeroData) 
+	{
+		InitVisuals();
+	}
 }
 
 void ABaseCharacter::Tick(float DeltaTime)
@@ -130,7 +131,7 @@ void ABaseCharacter::InitAbilitySystem()
 	
 	if (HasAuthority() && HeroData)
 	{
-		// Ability 부여
+		/* // Ability 부여
 		for (const auto& AbilityPair : HeroData->Abilities)
 		{
 			FGameplayTag InputTag = AbilityPair.Key;
@@ -148,16 +149,74 @@ void ABaseCharacter::InitAbilitySystem()
                 
 				ASC->GiveAbility(Spec);
 			}
-		}
+		}*/
 
 		// B. 스탯(Attributes) 초기화
 		// 방법 1: GE_InitStats를 만들고 SetByCaller나 CurveTable을 이용해 초기화
 		// 방법 2: AttributeSet에 직접 접근 (초기화 단계에서만 허용되는 방식)
         
-		// MOBA에서는 보통 CurveTable을 이용한 GE 초기화를 권장함.
-		// 이 부분은 별도의 GE_InitStats 구현이 필요하므로 주석 처리
-		// InitializeAttributes(ASC, HeroData->StatusRowName); 
+		// Attribute Set 초기화
+		InitAttributes(); 
 	}
+}
+
+void ABaseCharacter::InitAttributes()
+{
+	if (!AbilitySystemComponent.IsValid() || !HeroData || !InitStatusEffectClass) return;
+	
+	// 커브 테이블 로드
+	UCurveTable* CurveTable = HeroData->StatCurveTable.LoadSynchronous();
+	if (!CurveTable) return;
+	
+	// GE Spec 생성 (레벨은 현재 캐릭터 레벨을 넣음, 여기선 1로 가정)
+	float Level = 1.0f; 
+	FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+	Context.AddSourceObject(this);
+
+	FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(InitStatusEffectClass, Level, Context);
+    
+	if (SpecHandle.IsValid())
+	{
+		// 커브 테이블에서 값 읽어오기 & SetByCaller 설정 헬퍼 람다
+		auto SetStat = [&](FGameplayTag AttributeTag, FString RowSuffix)
+		{
+			FName RowName = FName(*HeroData->StatusRowName.ToString().Append(RowSuffix));
+			
+			FRealCurve* Curve = CurveTable->FindCurve(RowName, FString());
+			if (Curve)
+			{
+				float Value = Curve->Eval(Level);
+                
+				// GE Spec에 값 주입 (SetByCaller)
+				SpecHandle.Data->SetSetByCallerMagnitude(AttributeTag, Value);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Curve Row Not Found: %s"), *RowName.ToString());
+			}
+		};
+
+		// 스탯별 값 주입 실행
+		SetStat(ProjectER::Status::MaxLevel,   "_MaxLevel");
+		SetStat(ProjectER::Status::MaxXP,   "_MaxXp");
+		SetStat(ProjectER::Status::MaxHealth,   "_MaxHealth");
+		SetStat(ProjectER::Status::HealthRegen, "_HealthRegen");
+		SetStat(ProjectER::Status::MaxStamina,  "_MaxStamina");
+		SetStat(ProjectER::Status::StaminaRegen,  "_MaxStamina");
+		SetStat(ProjectER::Status::AttackPower, "_AttackPower");
+		SetStat(ProjectER::Status::AttackSpeed, "_AttackSpeed");
+		SetStat(ProjectER::Status::SkillAmp, "_SkillAmp");
+		SetStat(ProjectER::Status::CritChance, "_CritChance");
+		SetStat(ProjectER::Status::CritDamage, "_CritDamage");
+		SetStat(ProjectER::Status::Defense,     "_Defense");
+		SetStat(ProjectER::Status::MoveSpeed,   "_MoveSpeed");
+		SetStat(ProjectER::Status::CooldownReduction,   "_CooldownReduction");
+		SetStat(ProjectER::Status::Tenacity,   "_Tenacity");
+		
+		// 적용
+		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	}
+	
 }
 
 void ABaseCharacter::InitVisuals()
@@ -270,7 +329,75 @@ void ABaseCharacter::UpdatePathFollowing()
 		Direction.Z = 0.f;
 	}
 	
-	AddMovementInput(Direction.GetSafeNormal(), 1.0f);
+	if (!Direction.IsNearlyZero())
+	{
+		FVector NormalDirection = Direction.GetSafeNormal();
+        
+		// 캐릭터 이동 입력 
+		AddMovementInput(NormalDirection, 1.0f);
+
+		// 캐릭터 회전
+		FRotator CurrentRot = GetActorRotation();
+		FRotator TargetRot = NormalDirection.Rotation();
+		
+		FRotator NewRotation = FMath::RInterpTo(CurrentRot, TargetRot, GetWorld()->GetDeltaSeconds(), 20.0f);
+        
+		SetActorRotation(NewRotation);
+	}
+	
+#if WITH_EDITOR
+	// [디버깅] 경로 및 이동 방향 시각화
+	if (bShowMovementDebug)
+	{
+		// 전체 경로 그리기 (초록색 선)
+		for (int32 i = 0; i < PathPoints.Num() - 1; ++i)
+		{
+			DrawDebugLine(
+				GetWorld(),
+				PathPoints[i],
+				PathPoints[i + 1],
+				FColor::Green,
+				false, -1.0f, 0, 3.0f // 두께 3.0
+			);
+		}
+
+		// 현재 목표 지점 (빨간색 구체)
+		if (PathPoints.IsValidIndex(CurrentPathIndex))
+		{
+			DrawDebugSphere(
+				GetWorld(),
+				PathPoints[CurrentPathIndex],
+				30.0f, // 반지름
+				12,
+				FColor::Red,
+				false, -1.0f, 0, 2.0f
+			);
+            
+			// 내 위치에서 목표 지점까지 연결선 (노란색 점선)
+			DrawDebugLine(
+				GetWorld(),
+				GetActorLocation(),
+				PathPoints[CurrentPathIndex],
+				FColor::Yellow,
+				false, -1.0f, 0, 1.5f
+			);
+		}
+
+		// 실제 이동 방향 (파란색 화살표)
+		FVector Velocity = GetVelocity();
+		if (!Velocity.IsNearlyZero())
+		{
+			DrawDebugDirectionalArrow(
+				GetWorld(),
+				GetActorLocation(),
+				GetActorLocation() + Velocity.GetSafeNormal() * 100.0f, // 1m 길이
+				50.0f, // 화살표 크기
+				FColor::Blue,
+				false, -1.0f, 0, 5.0f // 두께
+			);
+		}
+	}
+#endif
 }
 
 void ABaseCharacter::StopPathFollowing()
