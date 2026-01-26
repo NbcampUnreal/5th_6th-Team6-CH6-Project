@@ -9,6 +9,7 @@ class UCameraComponent;
 class USpringArmComponent;
 class UAbilitySystemComponent;
 class UBaseAttributeSet;
+class UGameplayEffect;
 class UCharacterData;
 
 UCLASS()
@@ -31,6 +32,13 @@ protected:
 	virtual void PossessedBy(AController* NewController) override;
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
+#pragma region Debug
+public:
+	UPROPERTY(EditAnywhere, Category = "Debug")
+	bool bShowMovementDebug = true;
+	
+#pragma endregion
 	
 #pragma region Component
 protected:
@@ -68,14 +76,22 @@ protected:
 	
 #pragma region GAS
 public:
+	UFUNCTION(BlueprintCallable, Category = "GAS")
+	float GetCharacterLevel() const;
+	
+public:
 	UPROPERTY(ReplicatedUsing=OnRep_HeroData, EditAnywhere, BlueprintReadWrite, Category = "Data", meta = (ExposeOnSpawn = true))
 	TObjectPtr<UCharacterData> HeroData;
+	
+	UPROPERTY(EditDefaultsOnly,Category = "GAS") 
+	TSubclassOf<UGameplayEffect> InitStatusEffectClass;
 	
 protected:
 	UFUNCTION()
 	void OnRep_HeroData();
 
 	void InitAbilitySystem(); // ASC 초기화
+	void InitAttributes(); // AttributeSet 초기화
 	void InitVisuals(); // 메시, 애니메이션 로드
 	
 #pragma endregion 
@@ -85,22 +101,26 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_MoveToLocation(FVector TargetLocation); 
 	
+	UFUNCTION(Server, Reliable)
+	void Server_StopMove();
+	
 	void MoveToLocation(FVector TargetLocation);
+	void StopMove();
 	
 protected:
 	void UpdatePathFollowing();
 	void StopPathFollowing();
 	
 private:
-	/** 현재 추적 중인 경로 포인트들 */
+	// 현재 추적 중인 경로 포인트들
 	UPROPERTY()
 	TArray<FVector> PathPoints;
 
-	/** 현재 목표 웨이포인트 인덱스 */
+	// 현재 목표 웨이포인트 인덱스
 	int32 CurrentPathIndex;
 
-	/** 도착 판정 임계값 (제곱) */
-	const float ArrivalDistanceSq = 2500.f; // $50 \times 50$
+	// 도착 판정 임계값 (제곱)
+	const float ArrivalDistanceSq = 2500.f; 
 	
 #pragma endregion
 

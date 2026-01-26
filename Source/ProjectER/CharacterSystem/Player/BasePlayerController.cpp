@@ -37,7 +37,6 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 	
-	// Possess 할 시 캐릭터 캐싱 
 	ControlledBaseChar = Cast<ABaseCharacter>(InPawn);
 	
 	if (!ControlledBaseChar)
@@ -59,7 +58,9 @@ void ABasePlayerController::SetupInputComponent()
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnMoveTriggered);
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Completed, this, &ABasePlayerController::OnMoveReleased);
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Canceled, this, &ABasePlayerController::OnMoveReleased);
-	
+		
+		EnhancedInputComponent->BindAction(InputConfig->StopMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnStopTriggered);
+		
 		/*for (const FInputData& Action : InputConfig->AbilityInputAction)
 		{
 			if (Action.InputAction && Action.InputTag.IsValid())
@@ -81,7 +82,12 @@ void ABasePlayerController::PlayerTick(float DeltaTime)
 	// 마우스를 꾹 누르고 있으면 계속 이동 위치 갱신 
 	if (bIsMousePressed)
 	{
-		MoveToMouseCursor();
+		// 0.1초 쿨타임 체크
+		if (GetWorld()->GetTimeSeconds() - LastRPCUpdateTime > RPCUpdateInterval)
+		{
+			MoveToMouseCursor();
+			LastRPCUpdateTime = GetWorld()->GetTimeSeconds();
+		}
 	}
 }
 
@@ -126,6 +132,16 @@ void ABasePlayerController::MoveToMouseCursor()
 			
 			// SpawnDestinationEffect(Hit.Location);
 		}
+	}
+}
+
+void ABasePlayerController::OnStopTriggered()
+{
+	bIsMousePressed = false; 
+	
+	if (ControlledBaseChar)
+	{
+		ControlledBaseChar->StopMove();
 	}
 }
 

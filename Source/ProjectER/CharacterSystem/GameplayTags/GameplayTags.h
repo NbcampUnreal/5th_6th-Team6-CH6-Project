@@ -27,6 +27,8 @@ namespace ProjectER
 	namespace Status // 스탯
 	{
 		// 레벨 및 경험치
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Level); // 현재 레벨
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(MaxLevel); // 최대 레벨
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(XP); // 경험치
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(MaxXP); // 최대 경험치
 		
@@ -57,7 +59,7 @@ namespace ProjectER
 		namespace Action
 		{
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Move); // 이동 명령 입력
-			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Pause); // 정지 명령 입력
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Stop); // 정지 명령 입력
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack); // 공격 명령 입력
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Interaction); // 상호작용
 

@@ -30,9 +30,12 @@ public:
 	// 마우스 우클릭 (이동/공격)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MouseClick")
 	TObjectPtr<UInputAction> InputMove;
+	
+	// 이동 정지 명령
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Command")
+	TObjectPtr<UInputAction> StopMove;
 
 	// 스킬 입력 
-	/* 입력 시, Input Data의 Gameplay Tag 전달 -> 어빌리티 실행 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilitiy", meta = (TitleProperty = "InputTag"))
 	TArray<FInputData> AbilityInputAction;
 };

@@ -32,7 +32,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Stats")
 	TSoftObjectPtr<UCurveTable> StatCurveTable;
 	
-	// 커브 테이블 행 이름 (Curve Table Row Name)
+	// 커브 테이블 행 이름   (Curve Table Row Name)
 	UPROPERTY(EditDefaultsOnly, Category = "Stats")
 	FName StatusRowName;
 };

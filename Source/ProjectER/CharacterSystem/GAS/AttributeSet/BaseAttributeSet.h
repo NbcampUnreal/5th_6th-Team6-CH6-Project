@@ -31,6 +31,16 @@ class PROJECTER_API UBaseAttributeSet : public UAttributeSet
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
 	
 #pragma region Vital Attribute
+	// Level (현재 레벨)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Vital", ReplicatedUsing = OnRep_Level)
+	FGameplayAttributeData Level;
+	ATTRIBUTE_ACCESSORS(UBaseAttributeSet, Level);
+	
+	// MaxLevel (최대 레벨)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Vital", ReplicatedUsing = OnRep_MaxLevel)
+	FGameplayAttributeData MaxLevel;
+	ATTRIBUTE_ACCESSORS(UBaseAttributeSet, MaxLevel);
+	
 	// XP (경험치 = HP)
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Vital", ReplicatedUsing = OnRep_XP)
 	FGameplayAttributeData XP;
@@ -136,6 +146,10 @@ class PROJECTER_API UBaseAttributeSet : public UAttributeSet
 	
 protected:
 	// OnRep Functions
+	UFUNCTION() 
+	void OnRep_Level(const FGameplayAttributeData& OldLevel);
+	UFUNCTION() 
+	void OnRep_MaxLevel(const FGameplayAttributeData& OldMaxLevel);
 	UFUNCTION() 
 	void OnRep_XP(const FGameplayAttributeData& OldXP);
 	UFUNCTION() 
