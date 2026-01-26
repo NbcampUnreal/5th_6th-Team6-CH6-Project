@@ -15,7 +15,6 @@ class PROJECTER_API AER_GameState : public AGameStateBase
 public:
 	void BuildTeamCache();
 	void RemoveTeamCache();
-	
 
 public:
 	TArray<TArray<TWeakObjectPtr<AER_PlayerState>>> TeamCache;

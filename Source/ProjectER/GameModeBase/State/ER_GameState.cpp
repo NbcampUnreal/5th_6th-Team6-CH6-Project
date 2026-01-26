@@ -22,8 +22,9 @@ void AER_GameState::RemoveTeamCache()
 	if (!HasAuthority()) 
 		return;
 
-	for (auto& Arr : TeamCache)
+	for (auto& Team : TeamCache)
 	{
-		Arr.Reset();
+		Team.Reset();
 	}
 }
+
