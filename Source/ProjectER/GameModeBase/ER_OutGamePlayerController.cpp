@@ -1,5 +1,5 @@
 ﻿#include "ER_OutGamePlayerController.h"
-#include "ER_OutGameMode.h"
+#include "GameMode/ER_OutGameMode.h"
 
 void AER_OutGamePlayerController::ConnectToDedicatedServer(const FString& Ip, int32 Port, const FString& PlayerName)
 {

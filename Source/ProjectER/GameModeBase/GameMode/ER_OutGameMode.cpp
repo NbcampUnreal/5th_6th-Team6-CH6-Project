@@ -1,6 +1,6 @@
 ﻿#include "ER_OutGameMode.h"
-#include "ER_PlayerState.h"
-#include "ER_GameState.h"
+#include "GameModeBase/State/ER_PlayerState.h"
+#include "GameModeBase/State/ER_GameState.h"
 #include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
 
