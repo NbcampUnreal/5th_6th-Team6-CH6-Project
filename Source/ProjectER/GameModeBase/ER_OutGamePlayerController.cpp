@@ -6,7 +6,7 @@ void AER_OutGamePlayerController::ConnectToDedicatedServer(const FString& Ip, in
 	if (!IsLocalController())
 		return;
 
-	const FString Address = FString::Printf(TEXT("%s:%d?UserName=%s"), *Ip, Port, *PlayerName);
+	const FString Address = FString::Printf(TEXT("%s:%d?PlayerName=%s"), *Ip, Port, *PlayerName);
 
 	UE_LOG(LogTemp, Log, TEXT("[PC] Connecting to server: %s"), *Address);
 

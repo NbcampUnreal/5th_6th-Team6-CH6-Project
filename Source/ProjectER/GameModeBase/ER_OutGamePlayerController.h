@@ -20,5 +20,4 @@ private:
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_TEMP_OutGame();
-
 };
