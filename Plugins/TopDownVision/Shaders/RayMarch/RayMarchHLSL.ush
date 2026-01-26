@@ -14,8 +14,8 @@ float CalculateLineOfSight(
 	Texture2D Tex, 
 	SamplerState TexSampler, //auto generated
 	float2 UV, 
-	float2 PawnUV, //0.5, 0.5
-	float MaxSteps, //32 or 64
+	float2 PawnUV, //0.5, 0.5 . center location
+	float MaxSteps, //32 for low
 	float CamDepth, // pass it by param. the distance from scene cpature comp to the ground right below comp
 	float Bias, //threshold for the detection
 	float EyeOffset // the world distance(from ground) of the actual eye sight
@@ -40,7 +40,7 @@ float CalculateLineOfSight(
 		float Progress = (float)i / (float)MaxSteps;
 		float2 SampleUV = PawnUV + (RayDir * lerp(0.02, 1.0, Progress));
         
-		// 3. Sample and convert to CM
+		// 3. Sample and convert to world height 
 		float SampleHeight = Tex.SampleLevel(TexSampler, SampleUV, 0).g * CamDepth;
 
 		// 4. Sloped vision line
