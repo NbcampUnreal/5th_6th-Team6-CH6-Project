@@ -51,13 +51,11 @@ void USTT_PlayerCounting::OnBeginOverlap(
 			UStateTreeComponent* STComp = OwnerActor->GetStateTreeComponent();
 			if (IsValid(STComp) == false)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("11111111111"));
 				return;
 			}
-			UE_LOG(LogTemp, Warning, TEXT("2222222222"));
+
 			FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("AI.Event.Awake"));
 			STComp->SendStateTreeEvent(FStateTreeEvent(EventTag));
-			//OwnerActor->GetStateTreeComponent()->SendStateTreeEvent(FStateTreeEvent(FGameplayTag::RequestGameplayTag(FName("AI.Event.Awake"))));
 		}
 	}
 }
@@ -74,7 +72,14 @@ void USTT_PlayerCounting::OnEndOverlap(
 
 		if (OwnerActor->GetPlayerCount() == 0)
 		{
-			//ContextBind.SendEvent(FGameplayTag::RequestGameplayTag(FName("AI.Event.Sleep")));
+			UStateTreeComponent* STComp = OwnerActor->GetStateTreeComponent();
+			if (IsValid(STComp) == false)
+			{
+				return;
+			}
+
+			FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("AI.Event.Sleep"));
+			STComp->SendStateTreeEvent(FStateTreeEvent(EventTag));
 		}
 
 	}
