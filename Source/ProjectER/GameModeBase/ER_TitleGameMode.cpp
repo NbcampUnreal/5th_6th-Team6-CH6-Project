@@ -22,13 +22,13 @@ void AER_TitleGameMode::BeginPlay()
     APlayerController* PC = GetWorld()->GetFirstPlayerController();  
     if (PC && PC->IsLocalController() && TitleWidgetClass)
     {
-        UUserWidget* TitleUI = CreateWidget<UUserWidget>(GetWorld(), TitleWidgetClass);
-        if (TitleUI)
+        CurrentTitleWidget = CreateWidget<UUserWidget>(GetWorld(), TitleWidgetClass);
+        if (IsValid(CurrentTitleWidget))
         {
-            TitleUI->AddToViewport();
+            CurrentTitleWidget->AddToViewport();
 
             FInputModeUIOnly InputMode;
-            InputMode.SetWidgetToFocus(TitleUI->TakeWidget());
+            InputMode.SetWidgetToFocus(CurrentTitleWidget->TakeWidget());
             PC->SetInputMode(InputMode);
             PC->bShowMouseCursor = true;
         }
