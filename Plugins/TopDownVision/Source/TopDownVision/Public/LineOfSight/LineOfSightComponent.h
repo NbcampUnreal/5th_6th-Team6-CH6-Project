@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
+#include "Components/SceneComponent.h"
 #include "Engine/CanvasRenderTarget2D.h"// for layer composition
 #include "Materials/MaterialInterface.h"
 //#include "Materials/MaterialParameterCollection.h"// to update the location -> for dynamic number of the stamps, this is done by MID
@@ -12,7 +12,7 @@
 //LOG
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOPDOWNVISION_API ULineOfSightComponent : public UActorComponent
+class TOPDOWNVISION_API ULineOfSightComponent : public USceneComponent//changed it into SceneComp for 2dSceneComp can be attached to
 {
     GENERATED_BODY()
 
@@ -37,12 +37,7 @@ public:
 
     //Vision Getter, Setter
     float GetVisibleRange() const {return VisionRange;}
-    //Getter for MID Param Names
-    void GetMIDParamNames(FName& OutLocationParam, FName& OutVisibleRangeParam) const
-    {
-        OutLocationParam=LocationVectorValueName;
-        OutVisibleRangeParam=VisibleRangeScalarValueName;
-    }
+
     //Getter for Channel
     UFUNCTION(BlueprintCallable, Category="LineOfSight")
     int32 GetVisionChannel()const {return VisionChannel;}
@@ -59,9 +54,15 @@ protected:
     UFUNCTION()
     void DrawLOS(UCanvas* Canvas, int32 Width, int32 Height);
 
-    void PrepareDynamics();// make CRT and MID
+    void CreateResources();// make CRT and MID
 
 protected:
+    //Depth Capture
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    USceneCaptureComponent2D* SceneCaptureComp = nullptr;
+
+
+    
     //Vision Channel of this LOS stamp
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     int32 VisionChannel=INDEX_NONE;//not registered yet
@@ -74,7 +75,7 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     float VisionRange = 800.f;
 
-    /** Local render target for this actor */
+    // will be dynamically generated for the local LOS stamp, and be rendered by 2D Scene capture component
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     UCanvasRenderTarget2D* CanvasRenderTarget;
     
@@ -88,19 +89,22 @@ protected:
 
     UPROPERTY(Transient)// mark as transient, causee it does not have to be serialized and saved. runtime only
     UMaterialInstanceDynamic* LOSMaterialMID = nullptr;
+
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    FName MIDTextureParam=NAME_None;
     
     /*/** Material Parameter Collection for actor location #1#
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")//---> no more MPC
     UMaterialParameterCollection* VisionMPC;*/
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    
+    //no longer need MPC, it is done by LayerCompositing Comp, CameraVisionManager. just need the TextureParam name
+    /*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     FName LocationVectorValueName="VisionCenterLocation";
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    FName VisibleRangeScalarValueName="SightRange";
+    FName VisibleRangeScalarValueName="SightRange";*/
 
 private:
-    /** Internal dirty flag to skip unnecessary updates */
-    bool bDirty = true;
-
     bool ShouldUpdate=false;// only update when the camera vision capturing it
 };

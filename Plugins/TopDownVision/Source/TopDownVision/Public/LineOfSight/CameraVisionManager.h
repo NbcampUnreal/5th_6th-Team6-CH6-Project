@@ -48,7 +48,9 @@ public:
 	/** Get the current camera-local RT for post-process */
 	UCanvasRenderTarget2D* GetCameraLOSTexture() const { return CameraLocalRT; }
 
-protected:
+private:
+	//Internal helpers
+	
 	/** Actually draws all registered LOS providers to the Canvas */
 	UFUNCTION()
 	void DrawLOS(UCanvas* Canvas, int32 Width, int32 Height);
@@ -60,6 +62,12 @@ protected:
 		FVector2D& OutPixelPosition,
 		float& OutTileSize) const;
 
+	bool GetVisibleProviders(
+		//Out
+		TArray<ULineOfSightComponent*>& OutProviders) const;
+
+
+	
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	int32 VisionChannel=INDEX_NONE;
@@ -89,7 +97,4 @@ protected:
 	/** Resolution of the camera-local RT */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	int32 RTSize = 1024;
-
-	/** Dirty flag to avoid unnecessary redraws */
-	bool bDirty = true;
 };

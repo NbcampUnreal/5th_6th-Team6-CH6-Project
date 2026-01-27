@@ -12,17 +12,18 @@
 class ULineOfSightComponent;// the source of the texture
 
 USTRUCT()
-struct FRegisterdProviders
+struct FRegisteredProviders
 {
 	GENERATED_BODY()
 	
 	UPROPERTY()
-	TArray<ULineOfSightComponent*> RegisterdList;
+	TArray<ULineOfSightComponent*> RegisteredList;
 };
 
 /**
  *  this will be used for minimap. the main RT will be camera focused
  */
+
 //Log
 TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(VisionSubsystem, Log, All);
 
@@ -36,6 +37,7 @@ public:
 	virtual void Deinitialize() override;
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 
+	//Registration
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
 	bool RegisterProvider(ULineOfSightComponent* Provider, int32 InVisionChannel);
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
@@ -55,16 +57,16 @@ private:
 	//UFUNCTION()
 	//void DrawGlobalLOS(UCanvas* Canvas, int32 Width, int32 Height);
 	
-private:
-	// Global composited render target
+	// Global composited render target -> this will be used for the minimap RT
 	UPROPERTY()
 	UCanvasRenderTarget2D* GlobalRenderTarget = nullptr;
-
-	// Registered actor-local LOS providers
-	UPROPERTY()
-	TMap<int32, FRegisterdProviders> VisionMap;
-
 	// Resolution of global RT
 	UPROPERTY(EditAnywhere, Category="Vision")
 	int32 GlobalResolution = 1024;//default
+	
+	// Registered actor-local LOS providers
+	UPROPERTY()
+	TMap<int32, FRegisteredProviders> VisionMap;
+
+
 };

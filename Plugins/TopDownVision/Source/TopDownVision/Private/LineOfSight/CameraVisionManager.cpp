@@ -12,7 +12,6 @@ UCameraVisionManager::UCameraVisionManager()
 	VisionChannel = INDEX_NONE;
 	CameraVisionRange = 1000.f;
 	RTSize = 1024;
-	bDirty = true;
 
 	UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::Constructor >> Component constructed"));
 }
@@ -38,23 +37,17 @@ void UCameraVisionManager::Initialize(APlayerCameraManager* InCamera)
 	// Bind the draw callback
 	CameraLocalRT->OnCanvasRenderTargetUpdate.AddDynamic(this, &UCameraVisionManager::DrawLOS);
 	CameraLocalRT->UpdateResource(); // Initial draw
-	bDirty = true;
 
 	UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::Initialize >> Initialized with CameraLocalRT: %s"), *CameraLocalRT->GetName());
 }
 
 void UCameraVisionManager::UpdateCameraLOS()
 {
-	UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::UpdateCameraLOS >> Called, bDirty=%s"), bDirty ? TEXT("true") : TEXT("false"));
+	UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::UpdateCameraLOS >> Called"));
 
 	if (!CameraLocalRT)
 	{
 		UE_LOG(LOSVision, Error, TEXT("CameraLocalRT is null!"));
-		return;
-	}
-	if (!bDirty)
-	{
-		UE_LOG(LOSVision, Log, TEXT("Skipping update because bDirty is false"));
 		return;
 	}
 
@@ -88,11 +81,10 @@ void UCameraVisionManager::UpdateCameraLOS()
 
 	// Draw all providers to the RT
 	CameraLocalRT->UpdateResource();
-	bDirty = false;
 	UE_LOG(LOSVision, Log, TEXT("CameraLocalRT UpdateResource called"));
 
-	// Optional: update MPC scalars (camera location, size)
-	if (PostProcessMPC && ActiveCamera)
+	// update MPC scalars (camera location, size)
+	if (PostProcessMPC)
 	{
 		UMaterialParameterCollectionInstance* MPCInstance = GetWorld()->GetParameterCollectionInstance(PostProcessMPC);
 		if (MPCInstance)
@@ -130,31 +122,35 @@ void UCameraVisionManager::SetActiveCamera(APlayerCameraManager* InCamera)
 	}
 
 	ActiveCamera = InCamera;
-	bDirty = true;
 }
 
 void UCameraVisionManager::DrawLOS(UCanvas* Canvas, int32 Width, int32 Height)
 {
-	UE_LOG(LOSVision, Log, TEXT("DrawLOS called: Canvas=%s, Width=%d, Height=%d"), *GetNameSafe(Canvas), Width, Height);
+	UE_LOG(LOSVision, Log,
+		TEXT("UCameraVisionManager::DrawLOS >> Canvas=%s, Width=%d, Height=%d"),
+		*GetNameSafe(Canvas), Width, Height);
 
 	if (!Canvas || !CameraLocalRT)
 	{
 		UE_LOG(LOSVision, Warning,
-			TEXT("DrawLOS skipped: Canvas or CameraLocalRT is null"));
+			TEXT("UCameraVisionManager::DrawLOS >> Canvas or CameraLocalRT is null"));
 		return;
 	}
 
 	// Clear canvas
-	Canvas->K2_DrawTexture(nullptr, FVector2D(0, 0), FVector2D(Width, Height), FVector2D(0, 0));
+	Canvas->K2_DrawTexture(
+		nullptr,
+		FVector2D(0, 0),
+		FVector2D(Width, Height),
+		FVector2D(0, 0));
 
-	UVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<UVisionSubsystem>();
-	if (!Subsystem)
+	TArray<ULineOfSightComponent*> ActiveProviders;//catchers
+	if (!GetVisibleProviders(ActiveProviders))
 	{
-		UE_LOG(LOSVision, Warning, TEXT("DrawLOS skipped: VisionSubsystem not found"));
+		UE_LOG(LOSVision, Error,
+			TEXT("UCameraVisionManager::DrawLOS >> Failed to bring VisibleProviders"));
 		return;
 	}
-
-	const TArray<ULineOfSightComponent*>& ActiveProviders = Subsystem->GetProvidersForTeam(VisionChannel);
 	int32 CompositedCount = 0;
 
 	for (ULineOfSightComponent* Provider : ActiveProviders)
@@ -166,26 +162,32 @@ void UCameraVisionManager::DrawLOS(UCanvas* Canvas, int32 Width, int32 Height)
 		if (!MID)
 			continue;
 
+		//Catcher
 		FVector2D PixelPos;
 		float TileSize;
+		
 		if (!ConvertWorldToRT(
 			Provider->GetOwner()->GetActorLocation(),
 			Provider->GetVisibleRange(),
+			//outputs
 			PixelPos,
 			TileSize))
 			continue;
 
 		FCanvasTileItem Tile(
-			PixelPos - FVector2D(TileSize * 0.5f, TileSize * 0.5f),
-			MID->GetRenderProxy(),
-			FVector2D(TileSize, TileSize));
-		Tile.BlendMode = SE_BLEND_AlphaComposite;
-		Canvas->DrawItem(Tile);
+			PixelPos - FVector2D(TileSize * 0.5f, TileSize * 0.5f),// set the pivot to the center of the texture
+			MID->GetRenderProxy(),//handle for the rendering
+			FVector2D(TileSize, TileSize));//size of the texture(always square)
+		
+		Tile.BlendMode = SE_BLEND_AlphaComposite;//draw over with alpha mask
+		Canvas->DrawItem(Tile);//draw the tile over the canvas
 
-		CompositedCount++;
+		CompositedCount++;//increment the count
 	}
 
-	UE_LOG(LOSVision, Log, TEXT("DrawLOS >> Composited %d providers"), CompositedCount);
+	UE_LOG(LOSVision, Log,
+		TEXT("UCameraVisionManager::DrawLOS >> Composited %d providers"),
+		CompositedCount);
 }
 
 bool UCameraVisionManager::ConvertWorldToRT(const FVector& ProviderWorldLocation, const float& ProviderVisionRange, FVector2D& OutPixelPosition, float& OutTileSize) const
@@ -215,3 +217,24 @@ bool UCameraVisionManager::ConvertWorldToRT(const FVector& ProviderWorldLocation
 
 	return true;
 }
+
+bool UCameraVisionManager::GetVisibleProviders(TArray<ULineOfSightComponent*>& OutProviders) const
+{
+	if (VisionChannel==INDEX_NONE)
+	{
+		UE_LOG(LOSVision, Error,
+			TEXT("UCameraVisionManager::GetVisibleProviders >> Invalid VisionChannel"));
+		return false;
+	}
+	UVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<UVisionSubsystem>();
+	if (!Subsystem)
+	{
+		UE_LOG(LOSVision, Error,
+			TEXT("UCameraVisionManager::GetVisibleProviders >> VisionSubsystem not found"));
+		return false;
+	}
+	//Get the Teams
+	OutProviders = Subsystem->GetProvidersForTeam(VisionChannel);
+	return true;
+}
+

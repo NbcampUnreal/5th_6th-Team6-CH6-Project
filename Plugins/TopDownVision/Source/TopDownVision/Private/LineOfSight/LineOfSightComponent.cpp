@@ -7,17 +7,22 @@
 #include "Kismet/KismetRenderingLibrary.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "TopDownVisionLogCategories.h"// log
+#include "Components/SceneCaptureComponent2D.h"
 
 ULineOfSightComponent::ULineOfSightComponent()
 {
     PrimaryComponentTick.bCanEverTick = false; // Manual draw
+
+    //Create 2DSceneCaptureComp
+    SceneCaptureComp = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("LOS_SceneCapture"));
+    SceneCaptureComp->SetupAttachment(this);//attach to the owner's root
 }
 
 void ULineOfSightComponent::BeginPlay()
 {
     Super::BeginPlay();
 
-    PrepareDynamics();// make CRT and MID
+    CreateResources();// make CRT and MID
 }
 
 void ULineOfSightComponent::UpdateLocalLOS()
@@ -29,22 +34,24 @@ void ULineOfSightComponent::UpdateLocalLOS()
         return;
     }
 
+    if (!SceneCaptureComp)
+    {
+        UE_LOG(LOSVision, Error,
+            TEXT("ULineOfSightComponent::UpdateLocalLOS >> Invalid SceneCaptureComp"));
+        return;
+    }
+    
     if (!CanvasRenderTarget)
     {
         UE_LOG(LOSVision, Warning,
-            TEXT("ULineOfSightComponent::UpdateLocalLOS >> CanvasRenderTarget is null"));
+            TEXT("ULineOfSightComponent::UpdateLocalLOS >> Invalid CanvasRenderTarget"));
         return;
     }
-
-    if (!LOSMaterialMID)
-    {
-        UE_LOG(LOSVision, Warning,
-            TEXT("ULineOfSightComponent::UpdateLocalLOS >> LOSMaterialMID is null"));
-        return;
-    }
-
-    bDirty = true;
+    
+    SceneCaptureComp->CaptureScene();// Capture the scene
     CanvasRenderTarget->UpdateResource(); // triggers DrawLOS
+   
+    
     UE_LOG(LOSVision, Log,
         TEXT("ULineOfSightComponent::UpdateLocalLOS >> UpdateResource called"));
 }
@@ -52,7 +59,6 @@ void ULineOfSightComponent::UpdateLocalLOS()
 void ULineOfSightComponent::UpdateVisibleRange(float NewRange)
 {
     VisionRange = FMath::Max(0.f, NewRange); // clamp to non-negative
-    bDirty = true;
 
     UE_LOG(LOSVision, Log,
         TEXT("ULineOfSightComponent::UpdateVisibleRange >> VisionRange set to %f"),
@@ -71,7 +77,6 @@ void ULineOfSightComponent::ToggleUpdate(bool bIsOn)
     }
     
     ShouldUpdate = bIsOn;
-    bDirty = true;
 
     UE_LOG(LOSVision, Log,
         TEXT("ULineOfSightComponent::ToggleUpdate >> ShouldUpdate set to %s"),
@@ -98,41 +103,49 @@ void ULineOfSightComponent::DrawLOS(UCanvas* Canvas, int32 Width, int32 Height)
 
     UE_LOG(LOSVision, Log,
         TEXT("ULineOfSightComponent::DrawLOS >> MID material drawn to Canvas"));
-
-    bDirty = false;
 }
 
-void ULineOfSightComponent::PrepareDynamics()
+void ULineOfSightComponent::CreateResources()
 {
-    if (!CanvasRenderTarget && GetWorld())
+    if (!GetWorld())
+        return;
+
+    // Create dynamic LOS render target
+    CanvasRenderTarget = UCanvasRenderTarget2D::CreateCanvasRenderTarget2D(
+        GetWorld(),
+        UCanvasRenderTarget2D::StaticClass(),
+        PixelResolution,
+        PixelResolution);
+
+    if (!CanvasRenderTarget)
     {
-        CanvasRenderTarget = UCanvasRenderTarget2D::CreateCanvasRenderTarget2D(
-            GetWorld(),
-            UCanvasRenderTarget2D::StaticClass(),
-            PixelResolution,
-            PixelResolution
-        );
-
-        if (CanvasRenderTarget)
-        {
-            CanvasRenderTarget->OnCanvasRenderTargetUpdate.AddDynamic(this, &ULineOfSightComponent::DrawLOS);
-            UE_LOG(LOSVision, Log,
-                TEXT("ULineOfSightComponent::PrepareDynamics >> CanvasRenderTarget created"));
-        }
-        else
-        {
-            UE_LOG(LOSVision, Warning,
-                TEXT("ULineOfSightComponent::PrepareDynamics >> Failed to create CanvasRenderTarget"));
-        }
+        UE_LOG(LOSVision, Warning,
+                 TEXT("ULineOfSightComponent::PrepareDynamics >> Failed to create CanvasRenderTarget"));
+        return;
     }
+    
+    //add dynamic for updating LOSdraw
+    CanvasRenderTarget->OnCanvasRenderTargetUpdate.AddDynamic(this, &ULineOfSightComponent::DrawLOS);
+    UE_LOG(LOSVision, Log,
+        TEXT("ULineOfSightComponent::PrepareDynamics >> CanvasRenderTarget created"));
 
+    SceneCaptureComp->TextureTarget = CanvasRenderTarget;//draw on newly created CRT
+    
     // Create MID from the base material so that it can be drawn and be used as texture obj
-    if (LOSMaterial && !LOSMaterialMID)
+    if (!LOSMaterial)
     {
-        LOSMaterialMID = UMaterialInstanceDynamic::Create(LOSMaterial, this);
-        UE_LOG(LOSVision, Log,
-            TEXT("ULineOfSightComponent::PrepareDynamics >> LOSMaterialMID created"));
+        UE_LOG(LOSVision, Warning,
+                TEXT("ULineOfSightComponent::PrepareDynamics >> Invalid Material for Making MID"));
+        return;
     }
+    
+    LOSMaterialMID = UMaterialInstanceDynamic::Create(LOSMaterial, this);
+    UE_LOG(LOSVision, Log,
+        TEXT("ULineOfSightComponent::PrepareDynamics >> LOSMaterialMID created"));
+
+    LOSMaterialMID->SetTextureParameterValue(
+        MIDTextureParam,
+        CanvasRenderTarget);// pass the CRT to the MID
 }
 
 
