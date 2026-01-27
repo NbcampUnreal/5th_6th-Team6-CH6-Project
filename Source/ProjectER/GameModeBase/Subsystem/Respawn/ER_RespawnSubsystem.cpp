@@ -11,6 +11,9 @@ void UER_RespawnSubsystem::HandlePlayerDeath(AER_PlayerState& PS, AER_GameState&
 	if (!GS.HasAuthority())
 		return;
 
+	UE_LOG(LogTemp, Warning, TEXT("[RSS] : Start HandlePlayerDeath"));
+
+
 	if (PS.bIsDead)
 		return;
 
@@ -23,11 +26,53 @@ bool UER_RespawnSubsystem::EvaluateTeamElimination(AER_PlayerState& PS, AER_Game
 	if (!GS.HasAuthority())
 		return false;
 
-	if (PS.Team == ETeam::None)
-		return false;
+	UE_LOG(LogTemp, Warning, TEXT("[RSS] : Start EvaluateTeamElimination"));
+
 
 	int32 TeamIdx = static_cast<int32>(PS.Team);
 
-	return GS.GetTeamElimination(TeamIdx);
+	return GS.GetTeamEliminate(TeamIdx);
 
 }
+
+void UER_RespawnSubsystem::ShowLoseUI(AER_PlayerState& PS)
+{
+	if (!PS.HasAuthority())
+		return;
+
+	UE_LOG(LogTemp, Warning, TEXT("[RSS] : Start ShowLoseUI"));
+
+	if (PS.bIsLose)
+		return;
+
+	PS.bIsLose = true;
+}
+
+void UER_RespawnSubsystem::ShowWinUI(AER_PlayerState& PS)
+{
+	if (!PS.HasAuthority())
+		return;
+
+	UE_LOG(LogTemp, Warning, TEXT("[RSS] : Start ShowWinUI"));
+
+	if (PS.bIsWin)
+		return;
+
+	PS.bIsWin = true;
+}
+
+void UER_RespawnSubsystem::CheckIsLastTeam(AER_GameState& GS)
+{
+	if (!GS.HasAuthority())
+		return;
+
+	UE_LOG(LogTemp, Warning, TEXT("[RSS] : Start CheckIsLastTeam"));
+
+	int32 LastTeamIdx = GS.GetLastTeamIdx();
+
+	if (LastTeamIdx == -1)
+		return;
+
+	GS.SetTeamWin(LastTeamIdx);
+}
+
