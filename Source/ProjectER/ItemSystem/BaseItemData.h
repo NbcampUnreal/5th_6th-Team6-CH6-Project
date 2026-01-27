@@ -4,28 +4,32 @@
 #include "Engine/DataAsset.h"
 #include "BaseItemData.generated.h"
 
-/**
- * 아이템의 정적 데이터를 관리하는 베이스 데이터 에셋
- */
+UENUM(BlueprintType)
+enum class EItemPickupType : uint8
+{
+    Automatic    UMETA(DisplayName = "자동 습득 (접촉)"),
+    Interaction  UMETA(DisplayName = "수동 습득 (클릭)")
+};
+
 UCLASS(BlueprintType)
 class PROJECTER_API UBaseItemData : public UPrimaryDataAsset
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	// 생성자 선언
-	UBaseItemData();
+    UBaseItemData();
 
-	// 에셋 매니저 식별자
-	virtual FPrimaryAssetId GetPrimaryAssetId() const override;
+    virtual FPrimaryAssetId GetPrimaryAssetId() const override;
 
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Info")
-	FText ItemName;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item|Info")
+    FText ItemName;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Visual")
-	TSoftObjectPtr<UStaticMesh> ItemMesh;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item|Visual")
+    TSoftObjectPtr<UStaticMesh> ItemMesh;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Visual")
-	TSoftObjectPtr<UTexture2D> ItemIcon;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item|Visual")
+    TSoftObjectPtr<UTexture2D> ItemIcon;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item|Settings")
+    EItemPickupType PickupType;
 };

@@ -32,11 +32,15 @@ void UBaseCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	// 속력 계산 (Z축 제외, XY평면 속도)
 	FVector Velocity = MovementComponent->Velocity;
-	GroundSpeed = Velocity.Size2D();
+	float TargetSpeed = Velocity.Size2D();
+	
+	// GroundSpeed = Velocity.Size2D();
+	// FInterpTo 보간 적용으로 Ground Speed 를 점진적으로 조절
+	GroundSpeed = FMath::FInterpTo(GroundSpeed, TargetSpeed, DeltaSeconds, 5.0f); 
 	
 	// 이동 여부 판별
 	bool bHasAcceleration = MovementComponent->GetCurrentAcceleration().SizeSquared() > KINDA_SMALL_NUMBER;
-	bShouldMove = (GroundSpeed > 3.f) && bHasAcceleration;
+	bShouldMove = (TargetSpeed > 3.f) && bHasAcceleration;
 
 	// 공중에 뜸 판별
 	bIsFalling = MovementComponent->IsFalling();
