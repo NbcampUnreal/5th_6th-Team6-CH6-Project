@@ -3,9 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UObject/NoExportTypes.h"
+#include "Components/ActorComponent.h"
 #include "Engine/CanvasRenderTarget2D.h"
 #include "Materials/MaterialInterface.h"
+#include "Materials/MaterialInstance.h"
 #include "CameraVisionManager.generated.h"
 
 // Forward declaration
@@ -16,23 +17,31 @@ class ULineOfSightComponent;// for the local LOS stamps
  */
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOPDOWNVISION_API UCameraVisionManager : public UObject
+class TOPDOWNVISION_API UCameraVisionManager : public UActorComponent
 {
 	GENERATED_BODY()
-
 public:
-	/** Initialize with the owning camera/player */
+	UCameraVisionManager();
+
+protected:
+	virtual void BeginPlay() override;
+	
+public:
+	
+	UFUNCTION(BlueprintCallable, Category="LineOfSight")// Initialize with the owning camera/player
 	void Initialize(APlayerCameraManager* InCamera);
 
-	/** Register a LOS source (player, NPC, event) */
+	/*UFUNCTION(BlueprintCallable, Category="LineOfSight")// Register a LOS source (player, NPC, event)
 	void RegisterLOSProvider(ULineOfSightComponent* Provider);
+	UFUNCTION(BlueprintCallable, Category="LineOfSight")// Unregister a LOS source
+	void UnregisterLOSProvider(ULineOfSightComponent* Provider);*/
+	// Registration will be done only in the subsystem.
 
-	/** Unregister a LOS source */
-	void UnregisterLOSProvider(ULineOfSightComponent* Provider);
-
-	/** Update RT (called every frame or when dirty) */
+	//Update Main CRT (called every frame or when dirty)
+	UFUNCTION(BlueprintCallable, Category="LineOfSight")
 	void UpdateCameraLOS();
 
+	UFUNCTION(BlueprintCallable, Category="LineOfSight")
 	void SetActiveCamera(APlayerCameraManager* InCamera);
 
 	
@@ -52,28 +61,34 @@ protected:
 		float& OutTileSize) const;
 
 protected:
-	/** Owning camera */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
+	int32 VisionChannel=INDEX_NONE;
+	
+	/** Owning cam*/
 	UPROPERTY()
 	APlayerCameraManager* ActiveCamera = nullptr;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Vision")
-	float CameraVisionRange;// the half radius of the camera view range
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Vision")
+	float CameraVisionRange;// the half-radius of the camera view range
 
 	/** Camera-local render target */
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	UCanvasRenderTarget2D* CameraLocalRT = nullptr;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Vision")
+	UMaterialParameterCollection* PostProcessMPC=nullptr;// update MPC not MID. the post process is just one
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
+	FName CenterLocationParam=NAME_None;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
+	FName VisibleRangeParam=NAME_None;
+	
 	/** Material used for stamping LOS sources */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
-	UMaterialInterface* LOSMaterial;
+	UMaterialInterface* LOSMaterial=nullptr;
 
 	/** Resolution of the camera-local RT */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	int32 RTSize = 1024;
-
-	/** Registered LOS sources */
-	UPROPERTY()
-	TArray<TObjectPtr<ULineOfSightComponent>> LOSProviders;
 
 	/** Dirty flag to avoid unnecessary redraws */
 	bool bDirty = true;

@@ -29,9 +29,6 @@ public:
     UFUNCTION(BlueprintCallable, Category="LineOfSight")
     void UpdateVisibleRange(float NewRange);// this only updates when range change
     //no need for the location
-
-    UFUNCTION(BlueprintCallable, Category="LineOfSight")
-    void UpdateMID();
     
     //Getter for the RT
     UCanvasRenderTarget2D* GetLocalLOSTexture() const { return CanvasRenderTarget; }
@@ -46,7 +43,12 @@ public:
         OutLocationParam=LocationVectorValueName;
         OutVisibleRangeParam=VisibleRangeScalarValueName;
     }
-
+    //Getter for Channel
+    UFUNCTION(BlueprintCallable, Category="LineOfSight")
+    int32 GetVisionChannel()const {return VisionChannel;}
+    UFUNCTION(BlueprintCallable, Category="LineOfSight")
+    void SetVisionChannel(int32 NewChannel) {VisionChannel = NewChannel;}
+    
     //Switch function for update
     void ToggleUpdate(bool bIsOn);
     bool IsUpdating() const{return ShouldUpdate;}
@@ -60,6 +62,14 @@ protected:
     void PrepareDynamics();// make CRT and MID
 
 protected:
+    //Vision Channel of this LOS stamp
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    int32 VisionChannel=INDEX_NONE;//not registered yet
+    /*
+     *  0 for shared vision
+     *  others are shared only by same channel
+     */
+    
     /** Vision range (optional for material logic) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     float VisionRange = 800.f;
@@ -67,14 +77,14 @@ protected:
     /** Local render target for this actor */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     UCanvasRenderTarget2D* CanvasRenderTarget;
+    
     //Rendertarget value
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     int32 PixelResolution=256;
     
     /** Material used to generate LOS mask */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    UMaterialInterface* LOSMaterial;
+    UMaterialInterface* LOSMaterial=nullptr;
 
     UPROPERTY(Transient)// mark as transient, causee it does not have to be serialized and saved. runtime only
     UMaterialInstanceDynamic* LOSMaterialMID = nullptr;

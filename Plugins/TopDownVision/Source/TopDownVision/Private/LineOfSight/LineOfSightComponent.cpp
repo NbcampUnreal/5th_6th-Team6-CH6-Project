@@ -59,45 +59,6 @@ void ULineOfSightComponent::UpdateVisibleRange(float NewRange)
         VisionRange);
 }
 
-void ULineOfSightComponent::UpdateMID()
-{
-    //Valid checks
-    {
-        if (!LOSMaterialMID)
-        {
-            UE_LOG(LOSVision, Error,
-                TEXT("ULineOfSightComponent::UpdateMID >> Invalid MID"));
-            return;
-        }
-        if (!GetOwner())
-        {
-            UE_LOG(LOSVision, Error,
-                TEXT("ULineOfSightComponent::UpdateMID >> Invalid Owner"));
-            return;
-        }
-        if (!ShouldUpdate)
-        {
-            UE_LOG(LOSVision, Error,
-                TEXT("ULineOfSightComponent::UpdateMID >> not activated yet"));
-            return;
-        }
-    }
-    
-    // Update location and range in the MID
-    //location
-    LOSMaterialMID->SetVectorParameterValue(
-        LocationVectorValueName,
-        GetOwner()->GetActorLocation());
-    //vision range
-    LOSMaterialMID->SetScalarParameterValue(
-        VisibleRangeScalarValueName,
-        VisionRange);
-
-    bDirty = false;
-
-    UE_LOG(LOSVision, Log,
-        TEXT("ULineOfSightComponent::UpdateMID >> MID updated"));
-}
 
 void ULineOfSightComponent::ToggleUpdate(bool bIsOn)
 {

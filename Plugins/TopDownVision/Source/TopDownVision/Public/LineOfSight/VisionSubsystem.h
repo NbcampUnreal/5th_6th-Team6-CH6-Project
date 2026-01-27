@@ -11,6 +11,14 @@
 //forward declare
 class ULineOfSightComponent;// the source of the texture
 
+USTRUCT()
+struct FRegisterdProviders
+{
+	GENERATED_BODY()
+	
+	UPROPERTY()
+	TArray<ULineOfSightComponent*> RegisterdList;
+};
 
 /**
  *  this will be used for minimap. the main RT will be camera focused
@@ -28,12 +36,20 @@ public:
 	virtual void Deinitialize() override;
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 
-	void RegisterProvider(ULineOfSightComponent* Provider);
-	void UnregisterProvider(ULineOfSightComponent* Provider);
+	UFUNCTION(BlueprintCallable, Category="LineOfSight")
+	bool RegisterProvider(ULineOfSightComponent* Provider, int32 InVisionChannel);
+	UFUNCTION(BlueprintCallable, Category="LineOfSight")
+	void UnregisterProvider(ULineOfSightComponent* Provider, int32 InVisionChannel);
+
+
 
 	//void UpdateGlobalLOS();// update the layered RT
 	//Getter
 	UCanvasRenderTarget2D* GetGlobalRenderTarget() const { return GlobalRenderTarget; }
+	
+	// getter of same team+shared vision
+	TArray<ULineOfSightComponent*> GetProvidersForTeam(int32 TeamChannel) const;
+	
 private:
 	// Draw callback for global canvas
 	//UFUNCTION()
@@ -46,7 +62,7 @@ private:
 
 	// Registered actor-local LOS providers
 	UPROPERTY()
-	TArray<TObjectPtr<ULineOfSightComponent>> RegisteredProviders;
+	TMap<int32, FRegisterdProviders> VisionMap;
 
 	// Resolution of global RT
 	UPROPERTY(EditAnywhere, Category="Vision")
