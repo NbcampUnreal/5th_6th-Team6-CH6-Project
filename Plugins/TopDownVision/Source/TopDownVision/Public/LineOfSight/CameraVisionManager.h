@@ -44,10 +44,20 @@ protected:
 	UFUNCTION()
 	void DrawLOS(UCanvas* Canvas, int32 Width, int32 Height);
 
+	bool ConvertWorldToRT(// this will output the relative coord to be used for pivot of the LOS stamps
+		const FVector& ProviderWorldLocation,
+		const float& ProviderVisionRange,
+		//out
+		FVector2D& OutPixelPosition,
+		float& OutTileSize) const;
+
 protected:
 	/** Owning camera */
 	UPROPERTY()
 	APlayerCameraManager* ActiveCamera = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Vision")
+	float CameraVisionRange;// the half radius of the camera view range
 
 	/** Camera-local render target */
 	UPROPERTY()

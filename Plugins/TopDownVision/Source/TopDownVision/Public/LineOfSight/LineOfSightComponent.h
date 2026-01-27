@@ -28,9 +28,11 @@ public:
     
     UFUNCTION(BlueprintCallable, Category="LineOfSight")
     void UpdateVisibleRange(float NewRange);// this only updates when range change
-    UFUNCTION(BlueprintCallable, Category="LineOfSight")
-    void UpdateCurrentLocation();// this is done per tick
+    //no need for the location
 
+    UFUNCTION(BlueprintCallable, Category="LineOfSight")
+    void UpdateMID();
+    
     //Getter for the RT
     UCanvasRenderTarget2D* GetLocalLOSTexture() const { return CanvasRenderTarget; }
     //getter for the LOS_MID
@@ -38,6 +40,17 @@ public:
 
     //Vision Getter, Setter
     float GetVisibleRange() const {return VisionRange;}
+    //Getter for MID Param Names
+    void GetMIDParamNames(FName& OutLocationParam, FName& OutVisibleRangeParam) const
+    {
+        OutLocationParam=LocationVectorValueName;
+        OutVisibleRangeParam=VisibleRangeScalarValueName;
+    }
+
+    //Switch function for update
+    void ToggleUpdate(bool bIsOn);
+    bool IsUpdating() const{return ShouldUpdate;}
+
     
 protected:
     /** Called by CanvasRenderTarget to draw material */
@@ -78,4 +91,6 @@ protected:
 private:
     /** Internal dirty flag to skip unnecessary updates */
     bool bDirty = true;
+
+    bool ShouldUpdate=false;// only update when the camera vision capturing it
 };
