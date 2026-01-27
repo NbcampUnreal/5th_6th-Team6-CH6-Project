@@ -24,6 +24,11 @@ void UUI_MainHUD::Update_HP(float CurrentHP, float MaxHP)
         // 디버깅용 색 변화
         current_HP->SetColorAndOpacity(FSlateColor(FLinearColor::Red));
     }
+
+    if (IsValid(max_HP))
+    {
+        max_HP->SetText(FText::AsNumber(FMath::RoundToInt(MaxHP)));
+    }
 }
 
 void UUI_MainHUD::UPdate_MP(float CurrentMP, float MaxMP)
