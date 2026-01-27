@@ -21,23 +21,23 @@ struct FSkillEffectData{
     //GE가 스탯태그를 참조하여 수치를 만들어서 반영함. 
     //스킬이 발동시킬 GE와 기본값이 있어야함. 
 
-    UPROPERTY(EditDefaultsOnly, Category = "Status|Tag")
-    FGameplayTag StatTag; // 참조할 스탯 (예: Stat.AttackPower, Stat.AbilityPower)
-
     UPROPERTY(EditDefaultsOnly, Category = "Status|Coefficient")
-    float Coefficient;    // 계수 (예: 0.6, 1.2)
-
-    UPROPERTY(EditDefaultsOnly, Category = "Status|Coefficient")
-    float CoeffPerLevel;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Status|Base")
-    float BaseValue;     // 스킬 기본 데미지
-
-    UPROPERTY(EditDefaultsOnly, Category = "Status|Base")
-    float ValuePerLevel; // 레벨별 스킬 기본 데미지 증가량
+    FScalableFloat Coefficient;    // 계수 (예: 0.6, 1.2)
 
     UPROPERTY(EditDefaultsOnly, Category = "Status")
-    FScalableFloat LevelBasedValue;
+    FScalableFloat BasedValue;
+
+    //UPROPERTY(EditDefaultsOnly, Category = "Status|Coefficient")
+    //float CoeffPerLevel;
+
+    //UPROPERTY(EditDefaultsOnly, Category = "Status|Base")
+    //float BaseValue;     // 스킬 기본 데미지
+
+    //UPROPERTY(EditDefaultsOnly, Category = "Status|Base")
+    //float ValuePerLevel; // 레벨별 스킬 기본 데미지 증가량
+
+    UPROPERTY(EditDefaultsOnly, Category = "Status|Attribute")
+    FGameplayAttribute TargetAttribute; //계산한 값을가지고 반영할 상대의 목표 스탯
 };
 
 UENUM(BlueprintType)
@@ -58,9 +58,6 @@ struct FSkillDefaultData {
     UPROPERTY(EditDefaultsOnly, Category = "Skill")
     ESkillActivationType SkillActivationType;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Skill|Tags", meta = (Categories = "Input.Action.Skill"))
-    FGameplayTag InputKeyTag;
-
     UPROPERTY(EditDefaultsOnly, Category = "Skill")
     bool bIsUseCasting;
 
@@ -71,10 +68,10 @@ struct FSkillDefaultData {
     TArray<FSkillEffectData> EffectDatas;
 
     UPROPERTY(EditDefaultsOnly, Category = "Skill|Status")
-    float BaseCoolTime; // 레벨별 스킬 기본 쿨타임
+    FScalableFloat BaseCoolTime;
 
     UPROPERTY(EditDefaultsOnly, Category = "Skill|Status")
-    float ReduceCoolTimePerLevel; // 레벨별 줄여드는 쿨타임량
+    FGameplayAttribute SourceAttribute; //계수값을 곱할 스텟값
 };
 
 //class PROJECTER_API SkillData

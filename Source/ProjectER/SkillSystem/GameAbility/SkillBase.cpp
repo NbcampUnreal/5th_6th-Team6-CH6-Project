@@ -5,14 +5,14 @@
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayTag.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
+#include "SkillSystem/SkillDataAsset.h"
 
 USkillBase::USkillBase()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	CastingTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Casting"));
 	ActiveTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Active"));
-
-	//AbilityTriggers.Add(SkillData.InputKeyTag);
+	StatusTag = FGameplayTag::RequestGameplayTag(FName("Skill.Data.IncomingStatus"));
 }
 
 void USkillBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -54,6 +54,11 @@ void USkillBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGame
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
+void USkillBase::Assign(USkillDataAsset* DataAsset)
+{
+	SkillData = DataAsset->SkillData;
+}
+
 //void USkillBase::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 //{
 //	Super::PostEditChangeProperty(PropertyChangedEvent);
@@ -61,6 +66,22 @@ void USkillBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGame
 
 void USkillBase::ExecuteSkill()
 {
+	/*float StatValue = 0.f;
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+
+	if (ASC && SkillData.SourceAttribute.IsValid())
+	{
+		FGameplayAttribute SourceAttribute = SkillData.SourceAttribute;
+		StatValue = ASC->GetNumericAttribute(SourceAttribute);
+	}*/
+
+	// 2. MMC에게 값 전달
+	/*FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(DamageGEClass, GetAbilityLevel());
+	if (SpecHandle.IsValid())
+	{
+		SpecHandle.Data.Get()->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.IncomingStat"), StatValue);
+		ApplyGameplayEffectSpecToTarget(SpecHandle, TargetData);
+	}*/
 	//FinishSkill();
 }
 
