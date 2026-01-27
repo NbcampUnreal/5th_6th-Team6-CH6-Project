@@ -113,7 +113,8 @@ void USkillBase::AddTagToOwner(FGameplayTag Tag)
 {
 	if (Tag.IsValid())
 	{
-		GetAbilitySystemComponentFromActorInfo()->AddLooseGameplayTag(Tag);
+		//같은 태그가 여러개 있어도 해당 태그를 1개로 설정
+		GetAbilitySystemComponentFromActorInfo()->AddLooseGameplayTag(Tag, 1);
 	}
 }
 
@@ -121,6 +122,7 @@ void USkillBase::RemoveTagFromOwner(FGameplayTag Tag)
 {
 	if (Tag.IsValid())
 	{
-		GetAbilitySystemComponentFromActorInfo()->RemoveLooseGameplayTag(Tag);
+		//같은 태그가 여러개 있어도 해당 태그를 0개로 설정
+		GetAbilitySystemComponentFromActorInfo()->RemoveLooseGameplayTag(Tag, 0);
 	}
 }
