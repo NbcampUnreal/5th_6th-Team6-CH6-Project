@@ -9,6 +9,8 @@
 class UBaseMonsterAttributeSet;
 class UGameplayAbility;
 class UStateTreeComponent;
+class USphereComponent;
+class UMonsterRangeComponent;
 class ABaseCharacter;
 struct FOnAttributeChangeData;
 
@@ -23,12 +25,13 @@ public:
 	ABaseMonster();
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	void SetPlayerCount(int32 Amount);
-	int32 GetPlayerCount();
-
 	UStateTreeComponent* GetStateTreeComponent();
+
+	void SetTargetPlayer(AActor* Target);
+	AActor* GetTargetPlayer();
 
 protected:
 	virtual void BeginPlay() override;
@@ -44,7 +47,7 @@ private:
 
 	void OnHealthChangedCallback(const FOnAttributeChangeData& Data) const;
 
-	
+
 public:
 
 #pragma region Delegate
@@ -70,16 +73,13 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UBaseMonsterAttributeSet> AttributeSet;
-
+    
 #pragma endregion
 
 #pragma region Tag
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag AttackAbilityTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag CombatTag;
 
 #pragma endregion
 
@@ -88,17 +88,15 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UStateTreeComponent> StateTreeComp;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
-	int32 PlayerCount;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UMonsterRangeComponent> MonsterRangeComp;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
-	ABaseCharacter* TargetPlayer;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	AActor* TargetPlayer;
 
-	// 전투상태
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	bool bIsCombat;
 
-	// 사망상태
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	bool bIsDead;
 
