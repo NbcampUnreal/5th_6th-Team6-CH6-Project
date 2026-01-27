@@ -57,6 +57,58 @@ float CalculateLineOfSight(
 }
 
 
+float CalculateLineOfSight_V2(
+	Texture2D Tex, 
+	SamplerState TexSampler, // auto generated
+	float2 UV, 
+	float2 PawnUV,// 0.5, 0.5, center location
+	float MaxSteps,// maximum steps for farthest pixel
+	float MinSteps,// minimum steps for closest pixel
+	float CamDepth,// distance from capture to floor in world units
+	float Bias,// threshold for detection
+	float EyeOffset// world distance from ground of the actual eye sight
+)
+{
+	float2 RayDir = UV - PawnUV; 
+	float Distance = length(RayDir);           // distance from center
+	float Visibility = 1.0;
+
+	// 1. Get raw values and convert to world height
+	float FloorAtPawn = Tex.SampleLevel(TexSampler, PawnUV, 0).g * CamDepth;
+	float FloorAtTarget = Tex.SampleLevel(TexSampler, UV, 0).g * CamDepth;
+
+	// 2. Eye level in world units
+	float EyeLevel = FloorAtPawn - EyeOffset;
+
+	// 3. Compute distance-dependent steps
+	float DistanceFraction = saturate(Distance);               // normalize 0..1 assuming UV range is 0..1
+	float StepsF = lerp(MinSteps, MaxSteps, DistanceFraction); // interpolate steps
+	int StepsI = max(1, (int)StepsF);                          // ensure at least 1 step
+
+	// 4. Ray march loop
+	[loop]
+	for (int i = 1; i <= StepsI; i++)
+	{
+		float Progress = (float)i / StepsF;                           // normalized progress along ray
+		float2 SampleUV = PawnUV + RayDir * lerp(0.02, 1.0, Progress);
+
+		// Sample world height
+		float SampleHeight = Tex.SampleLevel(TexSampler, SampleUV, 0).g * CamDepth;
+
+		// Compute sloped vision line
+		float VisionLine = lerp(EyeLevel, FloorAtTarget, Progress);
+
+		// Check if obstacle blocks vision
+		if (SampleHeight < VisionLine - Bias)
+		{
+			Visibility = 0.0;
+			break;
+		}
+	}
+
+	return Visibility;
+}
+
 
 
 
@@ -98,6 +150,55 @@ float USH_Verification_Test(
 	return Visibility;
 }
 
+float USH_Verification_Test_DistanceScaled(
+	Texture2D InTex, 
+	SamplerState InSampler, 
+	float2 InUV, 
+	float2 InPawnUV, 
+	float MinSteps,// minimum steps for close pixels
+	float MaxSteps,// maximum steps for far pixels
+	float InBias
+)
+{
+	float2 RayDir = InUV - InPawnUV; 
+	float Distance = length(RayDir); // distance from the center
+	float Visibility = 1.0;
+
+	// Sample floor values
+	float FloorAtPawn = InTex.SampleLevel(InSampler, InPawnUV, 0).g;
+	float FloorAtTarget = InTex.SampleLevel(InSampler, InUV, 0).g;
+
+	// Hardcoded eye level as before
+	float EyeLevel = FloorAtPawn - 0.1; 
+
+	// Compute distance-dependent step count
+	float DistanceFraction = saturate(Distance);                  // normalize 0..1
+	float StepsF = lerp(MinSteps, MaxSteps, DistanceFraction);   // interpolate steps
+	int StepsI = max(1, (int)StepsF);                             // at least 1 step
+
+	// Ray march loop
+	[loop]
+	for (int i = 1; i <= StepsI; i++)
+	{
+		float Progress = (float)i / StepsF;// progress along ray
+		float2 SampleUV = InPawnUV + RayDir * lerp(0.02, 1.0, Progress);
+
+		// Sample height
+		float SampleHeight = InTex.SampleLevel(InSampler, SampleUV, 0).g;
+
+		// Compute vision line
+		float VisionLine = lerp(EyeLevel, FloorAtTarget, Progress);
+
+		// Early exit if blocked
+		if (SampleHeight < VisionLine - InBias)
+		{
+			Visibility = 0.0;
+			break; 
+		}
+	}
+
+	return Visibility;
+}
 
 
 

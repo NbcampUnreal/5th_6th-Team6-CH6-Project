@@ -3,10 +3,10 @@
 
 #include "LineOfSight/LineOfSightComponent.h"
 #include "Engine/World.h"
-#include "CanvasItem.h"
 #include "Engine/Canvas.h"
 #include "Kismet/KismetRenderingLibrary.h"
-#include "DrawDebugHelpers.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "TopDownVisionLogCategories.h"// log
 
 ULineOfSightComponent::ULineOfSightComponent()
 {
@@ -17,97 +17,118 @@ void ULineOfSightComponent::BeginPlay()
 {
     Super::BeginPlay();
 
-    /*if (CanvasRenderTarget)
-    {
-        CanvasRenderTarget->OnCanvasRenderTargetUpdate.Clear();
-        CanvasRenderTarget->OnCanvasRenderTargetUpdate.AddDynamic(this, &ULineOfSightComponent::UpdateRenderTarget);
-
-        // Generate a simple white texture for drawing triangles
-        WhiteTexture = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), 1, 1);
-    }*/
+    PrepareDynamics();// make CRT and MID
 }
 
-void ULineOfSightComponent::OnComponentCreated()
+void ULineOfSightComponent::UpdateLocalLOS()
 {
-    /*Super::OnComponentCreated();
-
-    if (CanvasRenderTarget)
+    if (!CanvasRenderTarget)
     {
-        CanvasRenderTarget->OnCanvasRenderTargetUpdate.Clear();
-        CanvasRenderTarget->OnCanvasRenderTargetUpdate.AddDynamic(this, &ULineOfSightComponent::UpdateRenderTarget);
-
-        if (!WhiteTexture)
-        {
-            WhiteTexture = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), 1, 1);
-        }
-    }*/
-}
-
-/** Manual call to draw LOS */
-void ULineOfSightComponent::DrawLineOfSight()
-{
-    /*if (!CanvasRenderTarget || !GetOwner()) return;
-
-    // Update MPC with actor location
-    if (VisionMPC)
-    {
-        UMaterialParameterCollectionInstance* MPCInstance = GetWorld()->GetParameterCollectionInstance(VisionMPC);
-        if (MPCInstance)
-        {
-            FVector ActorLoc = GetOwner()->GetActorLocation();
-            MPCInstance->SetVectorParameterValue(FName("LOS_Center"), FLinearColor(ActorLoc));
-        }
+        UE_LOG(LOSVision, Warning,
+            TEXT("ULineOfSightComponent::UpdateLocalLOS >> CanvasRenderTarget is null"));
+        return;
     }
 
-    // Trigger canvas update
-    CanvasRenderTarget->UpdateResource();*/
+    if (!LOSMaterialMID)
+    {
+        UE_LOG(LOSVision, Warning,
+            TEXT("ULineOfSightComponent::UpdateLocalLOS >> LOSMaterialMID is null"));
+        return;
+    }
+
+    bDirty = true;
+    CanvasRenderTarget->UpdateResource(); // triggers DrawLOS
+    UE_LOG(LOSVision, Log,
+        TEXT("ULineOfSightComponent::UpdateLocalLOS >> UpdateResource called"));
 }
 
-/** Draw triangles to canvas using radial line traces */
-void ULineOfSightComponent::UpdateRenderTarget(UCanvas* Canvas, int32 Width, int32 Height)
+void ULineOfSightComponent::UpdateVisibleRange(float NewRange)
 {
-    /*if (!Canvas || !GetOwner() || !WhiteTexture) return;
-
-    FVector Center = GetOwner()->GetActorLocation();
-    float AngleStep = 360.f / RayCounts;
-
-    TArray<FVector2D> Points;
-    Points.Reserve(RayCounts + 1);
-
-    for (int32 i = 0; i <= RayCounts; ++i)
+    if (!LOSMaterialMID)// now update to the MID, not MPC
     {
-        float AngleDeg = i * AngleStep;
-        FRotator Rot(0.f, AngleDeg, 0.f);
-        FVector Dir = Rot.RotateVector(FVector::ForwardVector);
+        UE_LOG(LOSVision, Warning,
+            TEXT("ULineOfSightComponent::UpdateVisibleRange >> LOSMaterialMID is null"));
+        return;
+    }
+    VisionRange = FMath::Max(0.f, NewRange); // clamp to non-negative
+    
+    LOSMaterialMID->SetScalarParameterValue(VisibleRangeScalarValueName, NewRange);
+    UE_LOG(LOSVision, Log,
+        TEXT("ULineOfSightComponent::UpdateVisibleRange >> MID updated Range[%f]"),
+        NewRange);
+}
 
-        FVector End = Center + Dir * VisionRange;
-        FHitResult Hit;
+void ULineOfSightComponent::UpdateCurrentLocation()
+{
+    if (!LOSMaterialMID || !GetOwner())
+    {
+        UE_LOG(LOSVision, Warning,
+            TEXT("ULineOfSightComponent::UpdateCurrentLocation >> LOSMaterialMID or Owner is null"));
+        return;
+    }
 
-        FCollisionQueryParams Params;
-        Params.AddIgnoredActors(IgnoringActors);
-        for (UPrimitiveComponent* Comp : IgnoringComponents)
-        {
-            Params.AddIgnoredComponent(Comp);
-        }
+    LOSMaterialMID->SetVectorParameterValue(LocationVectorValueName, GetOwner()->GetActorLocation());
+    UE_LOG(LOSVision, Log,
+        TEXT("ULineOfSightComponent::UpdateCurrentLocation >> MID updated ActorLocation (%s)"),
+        *GetOwner()->GetActorLocation().ToString());
+}
 
-        bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Center, End, TraceChannel, Params);
-        FVector HitLocation = bHit ? Hit.Location : End;
 
-        float Scale = Width / (VisionRange * 2.f); 
-        FVector2D CanvasPos(
-            Width * 0.5f + (HitLocation.X - Center.X) * Scale,
-            Height * 0.5f - (HitLocation.Y - Center.Y) * Scale // flip Y
+void ULineOfSightComponent::DrawLOS(UCanvas* Canvas, int32 Width, int32 Height)
+{
+    if (!Canvas || !LOSMaterialMID)
+    {
+        UE_LOG(LOSVision, Warning,
+            TEXT("ULineOfSightComponent::DrawLOS >> Canvas or LOSMaterialMID is null"));
+        return;
+    }
+
+    FCanvasTileItem Tile(
+        FVector2D(0, 0),
+        LOSMaterialMID->GetRenderProxy(),
+        FVector2D(Width, Height)
+    );
+
+    Tile.BlendMode = SE_BLEND_Opaque; // full mask
+    Canvas->DrawItem(Tile);
+
+    UE_LOG(LOSVision, Log,
+        TEXT("ULineOfSightComponent::DrawLOS >> MID material drawn to Canvas"));
+
+    bDirty = false;
+}
+
+void ULineOfSightComponent::PrepareDynamics()
+{
+    if (!CanvasRenderTarget && GetWorld())
+    {
+        CanvasRenderTarget = UCanvasRenderTarget2D::CreateCanvasRenderTarget2D(
+            GetWorld(),
+            UCanvasRenderTarget2D::StaticClass(),
+            PixelResolution,
+            PixelResolution
         );
 
-        Points.Add(CanvasPos);
+        if (CanvasRenderTarget)
+        {
+            CanvasRenderTarget->OnCanvasRenderTargetUpdate.AddDynamic(this, &ULineOfSightComponent::DrawLOS);
+            UE_LOG(LOSVision, Log,
+                TEXT("ULineOfSightComponent::PrepareDynamics >> CanvasRenderTarget created"));
+        }
+        else
+        {
+            UE_LOG(LOSVision, Warning,
+                TEXT("ULineOfSightComponent::PrepareDynamics >> Failed to create CanvasRenderTarget"));
+        }
     }
 
-    // Draw triangles
-    FVector2D CanvasCenter(Width * 0.5f, Height * 0.5f);
-    for (int32 i = 0; i < Points.Num() - 1; ++i)
+    // Create MID from the base material so that it can be drawn and be used as texture obj
+    if (LOSMaterial && !LOSMaterialMID)
     {
-        FCanvasTriangleItem Tri(CanvasCenter, Points[i], Points[i + 1], WhiteTexture->Resource);
-        Tri.SetColor(FLinearColor::White);
-        Canvas->DrawItem(Tri);
-    }*/
+        LOSMaterialMID = UMaterialInstanceDynamic::Create(LOSMaterial, this);
+        UE_LOG(LOSVision, Log,
+            TEXT("ULineOfSightComponent::PrepareDynamics >> LOSMaterialMID created"));
+    }
 }
+
+
