@@ -74,7 +74,12 @@ void UBaseAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, 
 void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
 	Super::PostGameplayEffectExecute(Data);
-	
+	// Health 속성이 변경되었는지 확인
+	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
+	{
+		// %f는 실수(float)를 출력합니다.
+		UE_LOG(LogTemp, Warning, TEXT("!!! HP 변경 감지됨 !!! 현재 HP: %f / %f"), GetHealth(), GetMaxHealth());
+	}
 	// 데미지 처리
 	if (Data.EvaluatedData.Attribute == GetIncomingDamageAttribute())
 	{
