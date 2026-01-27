@@ -7,7 +7,7 @@
 #include "GameplayAbilitySpec.h"
 #include "GameAbility/SkillBase.h"
 
-FGameplayAbilitySpec USkillDataAsset::MakeSpec(UAbilitySystemComponent* AbilitySystemComponent, float Level)
+FGameplayAbilitySpec USkillDataAsset::MakeSpec()
 {
 	TSubclassOf<UGameplayAbility> ClassToUse = AbilityClass ? TSubclassOf<UGameplayAbility>(AbilityClass) : TSubclassOf<UGameplayAbility>(USkillBase::StaticClass());
 

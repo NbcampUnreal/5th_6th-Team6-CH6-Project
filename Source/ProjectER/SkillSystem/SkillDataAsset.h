@@ -20,13 +20,14 @@
 //};
 
 class UAbilitySystemComponent;
+class USkillBase;
 
 UCLASS()
 class PROJECTER_API USkillDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
 public:
-    FGameplayAbilitySpec MakeSpec(UAbilitySystemComponent* ASC, float Level);
+    FGameplayAbilitySpec MakeSpec();
 
 private:
     
