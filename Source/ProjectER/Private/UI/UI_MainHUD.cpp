@@ -12,11 +12,17 @@ void UUI_MainHUD::Update_HP(float CurrentHP, float MaxHP)
     {
         float HealthPercent = CurrentHP / MaxHP;
         PB_HP->SetPercent(HealthPercent);
+
+        // 디버깅용 색 변화
+        PB_HP->SetFillColorAndOpacity(FLinearColor::MakeRandomColor());
     }
 
     if (IsValid(current_HP))
     {
 		current_HP->SetText(FText::AsNumber(FMath::RoundToInt(CurrentHP)));
+
+        // 디버깅용 색 변화
+        current_HP->SetColorAndOpacity(FSlateColor(FLinearColor::Red));
     }
 }
 
