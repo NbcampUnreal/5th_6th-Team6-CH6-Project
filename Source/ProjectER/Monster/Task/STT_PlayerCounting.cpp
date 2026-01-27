@@ -11,8 +11,16 @@ EStateTreeRunStatus USTT_PlayerCounting::EnterState(FStateTreeExecutionContext& 
 	AActor* OwnerActor = Cast<AActor>(GetOuter());
 	if (!OwnerActor) return EStateTreeRunStatus::Failed;
 
+	//if (Isbool)
+	//{
+	//	return EStateTreeRunStatus::Succeeded;
+	//} 
+
+	UE_LOG(LogTemp, Warning, TEXT(" USTT_PlayerCounting EnterState"));
+	//Isbool = true;
+
 	Sphere = NewObject<USphereComponent>(OwnerActor);
-	Sphere->SetSphereRadius(Radius);
+	Sphere->SetSphereRadius(FindRadius);
 	Sphere->SetCollisionProfileName(TEXT("PlayerCounter")); // Pawn만 체크
 	Sphere->SetGenerateOverlapEvents(true);
 	Sphere->SetWorldLocation(OwnerActor->GetActorLocation());
@@ -26,7 +34,6 @@ EStateTreeRunStatus USTT_PlayerCounting::EnterState(FStateTreeExecutionContext& 
 
 EStateTreeRunStatus USTT_PlayerCounting::Tick(FStateTreeExecutionContext& Context, const float DeltaTime)
 {
-
 	return EStateTreeRunStatus();
 }
 
