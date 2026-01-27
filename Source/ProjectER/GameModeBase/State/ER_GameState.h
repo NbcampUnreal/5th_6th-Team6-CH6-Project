@@ -15,10 +15,11 @@ class PROJECTER_API AER_GameState : public AGameStateBase
 public:
 	void BuildTeamCache();
 	void RemoveTeamCache();
-	void CheckTeamEliminate(int32 idx);
 
-	// Getter
-	bool GetTeamElimination(int32 idx) { return TeamElimination[idx]; }
+	void SetTeamWin(int32 TeamIdx);
+
+	bool GetTeamEliminate(int32 idx);
+	int32 GetLastTeamIdx();
 
 public:
 	TArray<TArray<TWeakObjectPtr<AER_PlayerState>>> TeamCache;
