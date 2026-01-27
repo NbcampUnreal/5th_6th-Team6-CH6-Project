@@ -1,4 +1,4 @@
-#include "CharacterSystem/Character/BaseCharacter.h"
+﻿#include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Player/BasePlayerState.h"
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -21,6 +21,7 @@
 #include "GameplayAbilitySpec.h"
 #include "DrawDebugHelpers.h"
 
+#include "UI/UI_HUDFactory.h" // UI시스템 관리자
 ABaseCharacter::ABaseCharacter()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -68,14 +69,34 @@ void ABaseCharacter::BeginPlay()
 	{
 		InitVisuals();
 	}
-}
 
+}
 void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+
+	/// UI TEST를 위함 지우진 말아주세요!! {차후 제거할 예정}
+	/// mpyi
+	//{
+	//	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
+	//	UBaseAttributeSet* AS = Cast<UBaseAttributeSet>(GetPlayerState<ABasePlayerState>()->GetAttributeSet());
+	//	if (ASC && AS) // 둘 다 존재해야 함
+	//	{
+	//		ASC->ApplyModToAttribute(AS->GetHealthAttribute(), EGameplayModOp::Additive, -1.0f);
+	//		float CurrentHP = AS->GetHealth();
+	//		// UE_LOG(LogTemp, Warning, TEXT("명령 전송 완료 | 현재 실제 HP 수치: %f"), CurrentHP);
+	//	}
+	//	else
+	//	{
+	//		UE_LOG(LogTemp, Error, TEXT("ASC(%s) 또는 AS(%s)가 NULL입니다!"),
+	//			ASC ? TEXT("OK") : TEXT("NULL"),
+	//			AS ? TEXT("OK") : TEXT("NULL"));
+	//	}
+	//}
+
 	// Tick 활성화 시 경로 탐색 (서버)
 	UpdatePathFollowing();
+
 }
 
 void ABaseCharacter::PossessedBy(AController* NewController)
@@ -90,6 +111,9 @@ void ABaseCharacter::PossessedBy(AController* NewController)
 	{
 		InitVisuals();
 	}
+
+	// UI 초기화
+	InitUI();
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -110,6 +134,8 @@ void ABaseCharacter::OnRep_PlayerState()
 	
 	// ASC 초기화 (클라이언트)
 	InitAbilitySystem();
+	// UI 초기화
+	InitUI();
 }
 
 float ABaseCharacter::GetCharacterLevel() const
@@ -437,4 +463,30 @@ void ABaseCharacter::StopPathFollowing()
 	PathPoints.Empty();
 	CurrentPathIndex = INDEX_NONE;
 	SetActorTickEnabled(false);
+}
+
+void ABaseCharacter::InitUI()
+{
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (IsValid(PC) && PC->IsLocalController())
+	{
+		AHUD* GenericHUD = PC->GetHUD();
+		if (GenericHUD == nullptr)
+		{
+			UE_LOG(LogTemp, Error, TEXT("!!! HUD NONE CREATED!!!"));
+			return;
+		}
+
+		if (AUI_HUDFactory* HUD = Cast<AUI_HUDFactory>(GenericHUD))
+		{
+			HUD->InitOverlay(PC, GetPlayerState(), GetAbilitySystemComponent(), GetPlayerState<ABasePlayerState>()->GetAttributeSet());
+			UE_LOG(LogTemp, Warning, TEXT("HUD InitOverlay Success!"));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("!!! HUD Casting Fail! address : %s !!!"), *GenericHUD->GetName());
+		}
+
+	}
 }

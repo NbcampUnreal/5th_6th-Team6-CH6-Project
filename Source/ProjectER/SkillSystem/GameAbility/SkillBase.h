@@ -10,6 +10,8 @@
 /**
  * 
  */
+class USkillDataAsset;
+
 UCLASS()
 class PROJECTER_API USkillBase : public UGameplayAbility
 {
@@ -19,6 +21,7 @@ public:
 	USkillBase();
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
+	void Assign(USkillDataAsset* DataAsset);
 protected:
 	//virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	virtual void ExecuteSkill();
@@ -27,13 +30,11 @@ protected:
 	void AddTagToOwner(FGameplayTag Tag);
 	void RemoveTagFromOwner(FGameplayTag Tag);
 	void OnActiveTagAdded();
-private:
+//private:
 
 public:
 
 protected:
-
-private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"), Category = "Skill|Data")
 	FSkillDefaultData SkillData;
 
@@ -42,4 +43,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere, Category = "Skill|Tags")
 	FGameplayTag ActiveTag;
+
+	UPROPERTY(VisibleAnywhere, Category = "Skill|Tags")
+	FGameplayTag StatusTag;
+//private:
+	//FGameplayAttribute
 };

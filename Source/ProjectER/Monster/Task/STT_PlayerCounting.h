@@ -6,10 +6,27 @@
 
 class USphereComponent;
 
+USTRUCT()
+struct FCheckingSplineDistanceData
+{
+    GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category = "Task", meta = (AllowprivateAccess = "true"))
+	float FindRadius;
+
+	USphereComponent* Sphere = nullptr;
+
+	UPROPERTY(EditAnywhere, Category = "Task", meta = (AllowprivateAccess = "true"))
+	bool Isbool;
+};
+
 UCLASS()
 class PROJECTER_API USTT_PlayerCounting : public UStateTreeTaskBlueprintBase
 {
 	GENERATED_BODY()
+
+
+	UStruct* GetInstanceDataType() const { return FCheckingSplineDistanceData::StaticStruct(); }
 
 	virtual EStateTreeRunStatus EnterState(
 		FStateTreeExecutionContext& Context,
@@ -36,10 +53,12 @@ class PROJECTER_API USTT_PlayerCounting : public UStateTreeTaskBlueprintBase
 	void OnEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
-
 	UPROPERTY(EditAnywhere, Category = "Task", meta = (AllowprivateAccess = "true"))
-	float Radius = 500.f;
+	float FindRadius;
 
 	USphereComponent* Sphere = nullptr;
+
+	UPROPERTY(EditAnywhere, Category = "Task", meta = (AllowprivateAccess = "true"))
+	bool Isbool;
 
 };

@@ -12,7 +12,8 @@
 				"Engine",
 				"GameplayAbilities",
 				"UMG",
-				"StateTreeModule"
+				"StateTreeModule",
+				"CoreUObject"
 			]
 		}
 	],
