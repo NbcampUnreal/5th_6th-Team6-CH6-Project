@@ -19,5 +19,22 @@ class PROJECTER_API UER_RespawnSubsystem : public UWorldSubsystem
 public:
 	void HandlePlayerDeath(AER_PlayerState& PS, AER_GameState& GS);
 	bool EvaluateTeamElimination(AER_PlayerState& PS, AER_GameState& GS);
+
+	// 패배 처리
+	void SetTeamLose(AER_GameState& GS, int32 TeamIdx);
+
+	// 승리 처리
+	void SetTeamWin(AER_GameState& GS, int32 TeamIdx);
+
+	// 메인 메뉴로 나가기
+	//void ReturnClientToMenu
+
+	//리스폰 처리
+	void RespawnPlayer(AER_PlayerState& PS);
+
+	// 마지막 팀인지 확인하기
+	int32 CheckIsLastTeam(AER_GameState& GS);
+
+
 	
 };
