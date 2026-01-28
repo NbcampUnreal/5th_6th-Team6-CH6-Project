@@ -1,93 +1,32 @@
-﻿#include "Monster/Task/STT_PlayerCounting.h"
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+#include "Monster/Task/STT_PlayerCounting.h"
 
-#include "Components/SphereComponent.h"
-#include "Monster/BaseMonster.h"
+#include "StateTreeLinker.h"
 #include "StateTreeExecutionContext.h"
-#include "Components/StateTreeComponent.h"
-#include "GameplayTagContainer.h"
+#include "Monster/BaseMonster.h"
 
-EStateTreeRunStatus USTT_PlayerCounting::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition)
+bool FSTT_PlayerCounting::Link(FStateTreeLinker& Linker)
 {
-	AActor* OwnerActor = Cast<AActor>(GetOuter());
-	if (!OwnerActor) return EStateTreeRunStatus::Failed;
-
-	//if (Isbool)
-	//{
-	//	return EStateTreeRunStatus::Succeeded;
-	//} 
-
-	UE_LOG(LogTemp, Warning, TEXT(" USTT_PlayerCounting EnterState"));
-	//Isbool = true;
-
-	Sphere = NewObject<USphereComponent>(OwnerActor);
-	Sphere->SetSphereRadius(FindRadius);
-	Sphere->SetCollisionProfileName(TEXT("PlayerCounter")); // Pawn만 체크
-	Sphere->SetGenerateOverlapEvents(true);
-	Sphere->SetWorldLocation(OwnerActor->GetActorLocation());
-	Sphere->RegisterComponent();
-
-	Sphere->OnComponentBeginOverlap.AddDynamic(this, &USTT_PlayerCounting::OnBeginOverlap);
-	Sphere->OnComponentEndOverlap.AddDynamic(this, &USTT_PlayerCounting::OnEndOverlap);
-
-	return EStateTreeRunStatus::Running;
+	Linker.LinkExternalData(MonsterHandle);
+	return true;
 }
 
-EStateTreeRunStatus USTT_PlayerCounting::Tick(FStateTreeExecutionContext& Context, const float DeltaTime)
+EStateTreeRunStatus FSTT_PlayerCounting::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	ABaseMonster* Monster = &Context.GetExternalData(MonsterHandle);
+	if (IsValid(Monster) == false)
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+
+	return EStateTreeRunStatus();
+}
+
+EStateTreeRunStatus FSTT_PlayerCounting::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
 {
 	return EStateTreeRunStatus();
 }
 
-void USTT_PlayerCounting::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition)
+void FSTT_PlayerCounting::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
-
-}
-
-void USTT_PlayerCounting::OnBeginOverlap(
-	UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
-	bool bFromSweep, const FHitResult& SweepResult)
-{
-	if (OtherActor && OtherActor->IsA<APawn>())
-	{
-		ABaseMonster* OwnerActor = Cast<ABaseMonster>(GetOuter());
-		OwnerActor->SetPlayerCount(1);
-		UE_LOG(LogTemp, Warning, TEXT("PlayerCount: %d"), OwnerActor->GetPlayerCount());
-
-		if (OwnerActor->GetPlayerCount() == 1)
-		{
-			UStateTreeComponent* STComp = OwnerActor->GetStateTreeComponent();
-			if (IsValid(STComp) == false)
-			{
-				return;
-			}
-
-			FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("AI.Event.Awake"));
-			STComp->SendStateTreeEvent(FStateTreeEvent(EventTag));
-		}
-	}
-}
-
-void USTT_PlayerCounting::OnEndOverlap(
-	UPrimitiveComponent* OverlappedComp, AActor* OtherActor, 
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	if (OtherActor && OtherActor->IsA<APawn>())
-	{
-		ABaseMonster* OwnerActor = Cast<ABaseMonster>(GetOuter());
-		OwnerActor->SetPlayerCount(-1);
-		UE_LOG(LogTemp, Warning, TEXT("PlayerCount: %d"), OwnerActor->GetPlayerCount());
-
-		if (OwnerActor->GetPlayerCount() == 0)
-		{
-			UStateTreeComponent* STComp = OwnerActor->GetStateTreeComponent();
-			if (IsValid(STComp) == false)
-			{
-				return;
-			}
-
-			FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("AI.Event.Sleep"));
-			STComp->SendStateTreeEvent(FStateTreeEvent(EventTag));
-		}
-
-	}
 }
