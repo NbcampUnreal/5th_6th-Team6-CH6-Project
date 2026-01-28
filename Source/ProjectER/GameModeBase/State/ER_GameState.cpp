@@ -1,5 +1,7 @@
 ﻿#include "ER_GameState.h"
 #include "GameModeBase/State/ER_PlayerState.h"
+#include "GameModeBase/ER_OutGamePlayerController.h"
+
 
 void AER_GameState::BuildTeamCache()
 {
@@ -13,12 +15,6 @@ void AER_GameState::BuildTeamCache()
 	TeamCache.SetNum(TeamCount + 1);
 
 	RemoveTeamCache();
-
-	for (int32 TeamIdx = 1; TeamIdx <= TeamCount; ++TeamIdx)
-	{
-		TeamElimination.Add(TeamIdx, false);
-		UE_LOG(LogTemp, Log, TEXT("TeamElimination | %d"), TeamIdx);
-	}
 
 	for (APlayerState* PS : PlayerArray)
 	{
@@ -46,6 +42,18 @@ void AER_GameState::BuildTeamCache()
 		}
 	}
 
+	for (int32 TeamIdx = 1; TeamIdx <= TeamCount; ++TeamIdx)
+	{
+		if (!TeamCache[TeamIdx].IsEmpty())
+		{
+			TeamElimination.Add(TeamIdx, false);
+		}
+		else
+		{
+			TeamElimination.Add(TeamIdx, true);
+		}
+		UE_LOG(LogTemp, Log, TEXT("TeamElimination | %d | %s"), TeamIdx, *TeamElimination.Find(TeamIdx) ? TEXT("True") : TEXT("False"));
+	}
 
 }
 
@@ -63,20 +71,9 @@ void AER_GameState::RemoveTeamCache()
 	TeamElimination.Reset();
 }
 
-void AER_GameState::SetTeamWin(int32 TeamIdx)
+TArray<TWeakObjectPtr<AER_PlayerState>>& AER_GameState::GetTeamArray(int32 TeamIdx)
 {
-	UE_LOG(LogTemp, Warning, TEXT("[GS] : Start SetTeamWin"));
-
-	TArray<TWeakObjectPtr<AER_PlayerState>>& TeamArr = TeamCache[TeamIdx];
-;
-	for (TWeakObjectPtr<AER_PlayerState>& WeakPS : TeamArr)
-	{
-		AER_PlayerState* PS = WeakPS.Get();
-		if (!PS) continue;
-
-		PS->bIsWin = true;
-		PS->ForceNetUpdate();
-	}
+	return TeamCache[TeamIdx];
 }
 
 bool AER_GameState::GetTeamEliminate(int32 idx)
