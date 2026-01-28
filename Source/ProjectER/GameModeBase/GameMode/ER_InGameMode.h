@@ -13,11 +13,17 @@ class PROJECTER_API AER_InGameMode : public AGameModeBase
 public:
 	virtual void BeginPlay() override;
 	virtual void PostSeamlessTravel() override;
-
 	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
+	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
+
 
 	void EndGame();
 
 	UFUNCTION(BlueprintCallable)
 	void NotifyPlayerDied(ACharacter* VictimCharacter, AActor* DeathCauser);
+
+
+private:
+	int32 PlayersInitialized = 0;
+	int32 ExpectedPlayers = 0;
 };

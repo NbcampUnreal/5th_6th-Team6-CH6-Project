@@ -5,6 +5,7 @@
 
 #include "GameFramework/Character.h"
 #include "Engine/World.h"
+#include "Kismet/GameplayStatics.h"
 
 
 void AER_InGameMode::BeginPlay()
@@ -15,25 +16,55 @@ void AER_InGameMode::BeginPlay()
 void AER_InGameMode::PostSeamlessTravel()
 {
 	Super::PostSeamlessTravel();
+
+	PlayersInitialized = 0;
+
+	UE_LOG(LogTemp, Warning, TEXT("[GM] PostSeamlessTravel - Expecting %d players"), ExpectedPlayers);
+}
+
+void AER_InGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
+{
+	Super::InitGame(MapName, Options, ErrorMessage);
+
+	FString PlayerCountStr = UGameplayStatics::ParseOption(Options, TEXT("PlayerCount"));
+
+	if (!PlayerCountStr.IsEmpty())
+	{
+		ExpectedPlayers = FCString::Atoi(*PlayerCountStr);
+		UE_LOG(LogTemp, Warning, TEXT("[GM] InitGame - ExpectedPlayers from URL: %d"), ExpectedPlayers);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[GM] InitGame - No PlayerCount in URL Options!"));
+	}
 }
 
 void AER_InGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
 {
 	Super::HandleStartingNewPlayer_Implementation(NewPlayer);
 
-	UE_LOG(LogTemp, Warning, TEXT("[GM] : HandleStartingNewPlayer called for %s"), NewPlayer ? *NewPlayer->GetName() : TEXT("nullptr"));
+	if (!NewPlayer)
+		return;
 
-	AER_GameState* ERGS = GetGameState<AER_GameState>();
-	if (ERGS)
+	PlayersInitialized++;
+
+	UE_LOG(LogTemp, Warning, TEXT("[GM] HandleStartingNewPlayer %d/%d"), PlayersInitialized, ExpectedPlayers);
+
+	if (PlayersInitialized >= ExpectedPlayers)
 	{
-		// 다음 틱에 BuildTeamCache를 호출하여 모든 PlayerState가 완전히 복제되도록 함
-		GetWorld()->GetTimerManager().SetTimerForNextTick([ERGS]()
-			{
-				ERGS->BuildTeamCache();
-			});
+		UE_LOG(LogTemp, Warning, TEXT("[GM] All players ready! Building team cache..."));
+
+		AER_GameState* ERGS = GetGameState<AER_GameState>();
+		if (ERGS)
+		{
+			// 다음 틱에 실행
+			GetWorld()->GetTimerManager().SetTimerForNextTick([ERGS]()
+				{
+					ERGS->BuildTeamCache();
+				});
+		}
 	}
 }
-
 
 void AER_InGameMode::EndGame()
 {
@@ -62,11 +93,16 @@ void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter, AActor* Death
 		{
 			UE_LOG(LogTemp, Warning, TEXT("[GM] : NotifyPlayerDied , EvaluateTeamElimination = true"));
 			// 전멸 판정 true일 시
-			// 사출 함수 실행
-			RespawnSS->ShowLoseUI(*ERPS);
+			// 해당 유저의 팀 사출 실행
+			const int32 TeamIdx = static_cast<int32>(ERPS->Team);
+			RespawnSS->SetTeamLose(*ERGS, TeamIdx);
 
-			// 만약 사출일 시 승리 팀 체크
-			RespawnSS->CheckIsLastTeam(*ERGS);
+			// 승리 팀 체크
+			int32 LastTeamIdx = RespawnSS->CheckIsLastTeam(*ERGS);
+			if (LastTeamIdx != -1)
+			{
+				RespawnSS->SetTeamWin(*ERGS, LastTeamIdx);
+			}
 	
 		}
 		else
