@@ -52,8 +52,8 @@ bool UVisionSubsystem::RegisterProvider(ULineOfSightComponent* Provider, int32 I
 	}
 
 	// Get or create the channel entry
-	FRegisterdProviders& ChannelEntry = VisionMap.FindOrAdd(InVisionChannel);
-	if (ChannelEntry.RegisterdList.Contains(Provider))
+	FRegisteredProviders& ChannelEntry = VisionMap.FindOrAdd(InVisionChannel);
+	if (ChannelEntry.RegisteredList.Contains(Provider))
 	{
 		UE_LOG(VisionSubsystem, Warning,
 			TEXT("UVisionSubsystem::RegisterProvider >> Already registered provider[%s] in channel:%d"),
@@ -63,7 +63,7 @@ bool UVisionSubsystem::RegisterProvider(ULineOfSightComponent* Provider, int32 I
 	}
 
 	// Add to the list
-	ChannelEntry.RegisterdList.Add(Provider);
+	ChannelEntry.RegisteredList.Add(Provider);
 	UE_LOG(VisionSubsystem, Log,
 		TEXT("UVisionSubsystem::RegisterProvider >> Provider[%s] registered. channel:%d"),
 		*Provider->GetOwner()->GetName(),
@@ -81,10 +81,10 @@ void UVisionSubsystem::UnregisterProvider(ULineOfSightComponent* Provider, int32
 	}
 
 	// Try to find channel
-	if (FRegisterdProviders* ChannelEntry = VisionMap.Find(InVisionChannel))
+	if (FRegisteredProviders* ChannelEntry = VisionMap.Find(InVisionChannel))
 	{
 		// Remove provider if it exists
-		if (ChannelEntry->RegisterdList.Remove(Provider) > 0)
+		if (ChannelEntry->RegisteredList.Remove(Provider) > 0)
 		{
 			UE_LOG(VisionSubsystem, Log,
 				TEXT("UVisionSubsystem::UnregisterProvider >> Provider[%s] unregistered from channel:%d"),
@@ -106,9 +106,9 @@ TArray<ULineOfSightComponent*> UVisionSubsystem::GetProvidersForTeam(int32 TeamC
 	TArray<ULineOfSightComponent*> OutProviders;
 
 	// Add providers from the requested team channel
-	if (const FRegisterdProviders* TeamEntry = VisionMap.Find(TeamChannel))
+	if (const FRegisteredProviders* TeamEntry = VisionMap.Find(TeamChannel))
 	{
-		OutProviders.Append(TeamEntry->RegisterdList);
+		OutProviders.Append(TeamEntry->RegisteredList);
 	}
 	else
 	{
@@ -118,9 +118,9 @@ TArray<ULineOfSightComponent*> UVisionSubsystem::GetProvidersForTeam(int32 TeamC
 	}
 
 	// Add providers from shared vision channel (channel 0)
-	if (const FRegisterdProviders* SharedEntry = VisionMap.Find(0))
+	if (const FRegisteredProviders* SharedEntry = VisionMap.Find(0))
 	{
-		OutProviders.Append(SharedEntry->RegisterdList);
+		OutProviders.Append(SharedEntry->RegisteredList);
 	}
 	else
 	{
