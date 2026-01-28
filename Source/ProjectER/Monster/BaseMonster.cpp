@@ -5,6 +5,7 @@
 #include "Components/StateTreeComponent.h"
 #include "Monster/MonsterRangeComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "Components/WidgetComponent.h"
 
 ABaseMonster::ABaseMonster()
 {
@@ -17,7 +18,7 @@ ABaseMonster::ABaseMonster()
 
 	AttributeSet = CreateDefaultSubobject<UBaseMonsterAttributeSet>(TEXT("AttributeSet"));
 	StateTreeComp = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTree"));
-	MonsterRangeComp = CreateDefaultSubobject<UMonsterRangeComponent>(TEXT("MonsterRangeComponent"));
+	MonsterRangeComp = CreateDefaultSubobject<UMonsterRangeComponent>(TEXT("MonsterRangeComponent"));	
 }
 
 UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
@@ -100,23 +101,23 @@ AActor* ABaseMonster::GetTargetPlayer()
 	return TargetPlayer;
 }
 
-//void ABaseMonster::SetbIsCombat(bool* value)
-//{
-//	bIsCombat = value;
-//}
-//
-//bool ABaseMonster::GetbIsCombat()
-//{
-//	return bIsCombat;
-//}
-//
-//void ABaseMonster::SetbIsDead(bool* value)
-//{
-//	bIsDead = value;
-//}
-//
-//bool ABaseMonster::GetbIsDead()
-//{
-//	return bIsDead;
-//}
+void ABaseMonster::SetbIsCombat(bool value)
+{
+	bIsCombat = value;
+}
+
+bool ABaseMonster::GetbIsCombat()
+{
+	return bIsCombat;
+}
+
+void ABaseMonster::SetbIsDead(bool value)
+{
+	bIsDead = value;
+}
+
+bool ABaseMonster::GetbIsDead()
+{
+	return bIsDead;
+}
 

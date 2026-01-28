@@ -3,6 +3,7 @@
 #include "Monster/BaseMonster.h"
 #include "Net/UnrealNetwork.h"
 #include "GameplayEffectExtension.h"
+#include "Components/StateTreeComponent.h"
 
 UBaseMonsterAttributeSet::UBaseMonsterAttributeSet()
 {
@@ -76,8 +77,9 @@ void UBaseMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 			Data.EffectSpec.GetEffectContext();
 		AActor* InstigatorActor = Context.GetOriginalInstigator();
 		ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActor());
-		Monster->SetTargetPlayer(InstigatorActor);
 		
+		Monster->SetTargetPlayer(InstigatorActor);
+		Monster->SetbIsCombat(true);
 		UE_LOG(LogTemp, Warning, TEXT("Target : %s"), *InstigatorActor->GetName());
 
 
@@ -90,12 +92,36 @@ void UBaseMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 			SetHealth(NewHealth);
 			SetInComingDamage(0.f);
 		}
+
+		// State 전환용 hit 이벤트
+		UStateTreeComponent* STComp = Cast<ABaseMonster>(GetOwningActor())->GetStateTreeComponent();
+		if (IsValid(STComp) == false)
+		{
+			return;
+		}
+		FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("AI.Event.Hit"));
+		STComp->SendStateTreeEvent(FStateTreeEvent(EventTag));
 	}
 
 	// 사망 체크
 	if (GetHealth() <= 0.f) 
 	{ 
 		UE_LOG(LogTemp, Warning, TEXT("%s : Die "), *GetName());
+		ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActor());
+		if (IsValid(Monster) == false)
+		{
+			return;
+		}
+		Monster->SetbIsDead(true);
+
+		// State 전환용 hit 이벤트
+		UStateTreeComponent* STComp = Monster->GetStateTreeComponent();
+		if (IsValid(STComp) == false)
+		{
+			return;
+		}
+		FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("AI.Event.Die"));
+		STComp->SendStateTreeEvent(FStateTreeEvent(EventTag));
 	}
 }
 
