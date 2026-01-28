@@ -111,6 +111,26 @@ float CalculateLineOfSight_V2(
 	return Visibility;
 }
 
+//Internal function for radial mask
+float2 LOS_RadialMask(
+	float2 UV,
+	float2 CenterUV,
+	float Radius)// normalized distance (VisionRange/MaxVisionRange/2)
+{
+	float2 Delta = UV - CenterUV;
+	float Distance = length(Delta);
+
+	// Outside radius
+	if (Distance > Radius)
+	{
+		return float2(0.0, 0.0);
+	}
+
+	// Normalize distance within radius
+	float DistanceFrac = saturate(Distance / Radius);
+	return float2(1.0, DistanceFrac);
+}
+
 //This one is for SceneDepth. no need for De normalizing distance. just compare
 float CalculateLineOfSight_V3(
 	Texture2D Tex, 
@@ -119,9 +139,8 @@ float CalculateLineOfSight_V3(
 	float2 PawnUV,
 	float MaxSteps,
 	float MinSteps,
-	float Bias,      // Set this to something like 5.0 (5cm)
-	float EyeOffset  // How many cm above the ground the character "sees" from
-)
+	float Bias,
+	float EyeOffset )
 {
 	float2 RayDir = UV - PawnUV; 
 	float Distance = length(RayDir);
@@ -167,6 +186,65 @@ float CalculateLineOfSight_V3(
 	return Visibility;
 }
 
+
+//Scene Depth + Radial Mask as internal funciton
+float CalculateLineOfSight_V4(
+	Texture2D Tex, 
+	SamplerState TexSampler, 
+	float2 UV, 
+	float2 PawnUV,
+	float Radius01,
+	float MaxSteps,
+	float MinSteps,
+	float Bias,
+	float EyeOffset
+)
+{
+	// Radial Mask
+	float2 Radial = LOS_RadialMask(UV, PawnUV, Radius01);
+
+	// Outside vision radius → early exit
+	if (Radial.x == 0.0)
+		return 0.0;
+
+	float DistanceFraction = Radial.y;
+	
+	//  Ray direction
+	float2 RayDir = UV - PawnUV;
+	float Visibility = 1.0;
+	
+	// Scene Depth Sampling (cm)
+	float DepthAtPawn   = Tex.SampleLevel(TexSampler, PawnUV, 0).r;
+	float DepthAtTarget = Tex.SampleLevel(TexSampler, UV, 0).r;
+
+	float EyeDepth = DepthAtPawn - EyeOffset;
+	
+	// Distance-based step count
+	float StepsF = lerp(MinSteps, MaxSteps, DistanceFraction);
+	int   StepsI = max(1, (int)StepsF);
+	
+	// Ray March
+	[loop]
+	for (int i = 1; i <= StepsI; i++)
+	{
+		float Progress = (float)i / (float)StepsI;
+		float2 SampleUV = PawnUV + RayDir * Progress;
+
+		float SampledDepth = Tex.SampleLevel(TexSampler, SampleUV, 0).r;
+		float VisionLine   = lerp(EyeDepth, DepthAtTarget, Progress);
+
+		if (SampledDepth < VisionLine - Bias)
+		{
+			Visibility = 0.0;
+			break;
+		}
+	}
+
+	return Visibility;
+}
+
+
+//This only works without curve world shader. to solve this, 
 
 // This function is identical to your "working" code, just wrapped for USH
 float USH_Verification_Test(

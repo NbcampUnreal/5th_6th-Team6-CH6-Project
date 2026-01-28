@@ -100,8 +100,10 @@ protected:
 	//MPC Param for PostProcess Material
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="MPC")
 	FName MPCLocationParam=NAME_None;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="MPC")
-	FName MPCTextureSizeParam=NAME_None;
+	
+	/*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="MPC")// tuned out, the material doesn't need to know the resoultion. just size is enough
+	FName MPCTextureSizeParam=NAME_None;*/
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="MPC")
 	FName MPCVisibleRangeParam=NAME_None;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="MPC")
@@ -124,7 +126,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	FName LayeredLOSTextureParam = NAME_None;
 	
-	/** Resolution of the camera-local RT */
+	/*
+	/** Resolution of the camera-local RT #1#
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	int32 RTSize = 1024;
+	//-*///--> the CRT is already made in the Content browser, so no need to have resoultion in here
 };
