@@ -2,9 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
-#include "Engine/CanvasRenderTarget2D.h"// for layer composition
+#include "Engine/TextureRenderTarget2D.h"// no more CRT, just Texture RT
 #include "Materials/MaterialInterface.h"
-//#include "Materials/MaterialParameterCollection.h"// to update the location -> for dynamic number of the stamps, this is done by MID
 #include "Materials/MaterialInstanceDynamic.h"
 #include "LineOfSightComponent.generated.h"
 
@@ -31,8 +30,9 @@ public:
     //no need for the location
     
     //Getter for the RT
-    UCanvasRenderTarget2D* GetLocalLOSTexture() const { return CanvasRenderTarget; }
+    UTextureRenderTarget2D* GetLocalLOSTexture() const { return HeightRenderTarget; }
     //getter for the LOS_MID
+    UFUNCTION(BlueprintCallable, Category="LineOfSight")
     UMaterialInstanceDynamic* GetLOSMaterialMID() const { return LOSMaterialMID; }
 
     //Vision Getter, Setter
@@ -48,20 +48,24 @@ public:
     void ToggleUpdate(bool bIsOn);
     bool IsUpdating() const{return ShouldUpdate;}
 
+    //Obstacle registeration
+    /** Manually add an actor to the visibility list */
+    UFUNCTION(BlueprintCallable, Category="LineOfSight")
+    void RegisterObstacle(AActor* Obstacle);
+
+    /** Scans the world for actors with a specific tag and adds them to the capture list */
+    UFUNCTION(BlueprintCallable, Category="LineOfSight")
+    void RefreshObstaclesByTag();
+
     
 protected:
-    /** Called by CanvasRenderTarget to draw material */
-    UFUNCTION()
-    void DrawLOS(UCanvas* Canvas, int32 Width, int32 Height);
-
+    //prep
     void CreateResources();// make CRT and MID
 
 protected:
-    //Depth Capture
+    //Debug for toggling activation
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    USceneCaptureComponent2D* SceneCaptureComp = nullptr;
-
-
+    bool bDrawTextureRange = false;
     
     //Vision Channel of this LOS stamp
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
@@ -74,12 +78,22 @@ protected:
     /** Vision range (optional for material logic) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     float VisionRange = 800.f;
-
-    // will be dynamically generated for the local LOS stamp, and be rendered by 2D Scene capture component
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    UCanvasRenderTarget2D* CanvasRenderTarget;
+    float MaxVisionRange = 800.f;//<- this will be used for Fixed RenderTarget Size and OrthoWidth
+
+    //EyeSight (Local Z height value for eye sight)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    float EyeSightHeight = 200.f;//about 2m?
     
-    //Rendertarget value
+    //Depth Capture
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    USceneCaptureComponent2D* SceneCaptureComp = nullptr;
+    
+    // will be dynamically generated for the local LOS stamp, and be rendered by 2D Scene capture component
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="LineOfSight")
+    UTextureRenderTarget2D* HeightRenderTarget;// this is for capturing 
+    
+    //RenderTarget value
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     int32 PixelResolution=256;
     
@@ -90,9 +104,13 @@ protected:
     UPROPERTY(Transient)// mark as transient, causee it does not have to be serialized and saved. runtime only
     UMaterialInstanceDynamic* LOSMaterialMID = nullptr;
 
-
+    //MID Param
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     FName MIDTextureParam=NAME_None;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    FName MIDEyeSightHeightParam=NAME_None;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    FName MIDVisibleRangeParam=NAME_None;
     
     /*/** Material Parameter Collection for actor location #1#
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")//---> no more MPC
@@ -104,6 +122,11 @@ protected:
     FName LocationVectorValueName="VisionCenterLocation";
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     FName VisibleRangeScalarValueName="SightRange";*/
+
+    //Obstacle
+    /** The tag used to identify meshes that should block LOS (e.g., "LOS_Blocker") */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    FName BlockerTag = TEXT("LOS_Blocker");
 
 private:
     bool ShouldUpdate=false;// only update when the camera vision capturing it

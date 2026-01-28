@@ -48,6 +48,9 @@ public:
 	/** Get the current camera-local RT for post-process */
 	UCanvasRenderTarget2D* GetCameraLOSTexture() const { return CameraLocalRT; }
 
+	UFUNCTION(BlueprintCallable, Category="LineOfSight")
+	UMaterialInstanceDynamic* GetLayeredMID() const {return LayeredLOSInterfaceMID;}
+	
 private:
 	//Internal helpers
 	
@@ -69,6 +72,10 @@ private:
 
 	
 protected:
+	//Debug draw
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
+	bool bDrawTextureRange =false;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	int32 VisionChannel=INDEX_NONE;
 	
@@ -78,22 +85,45 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Vision")
 	float CameraVisionRange;// the half-radius of the camera view range
-
+	// or just a CRT texture pixel size
+	
 	/** Camera-local render target */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	UCanvasRenderTarget2D* CameraLocalRT = nullptr;
 
+	//MPC
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Vision")
 	UMaterialParameterCollection* PostProcessMPC=nullptr;// update MPC not MID. the post process is just one
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
-	FName CenterLocationParam=NAME_None;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
-	FName VisibleRangeParam=NAME_None;
+	UPROPERTY()
+	UMaterialParameterCollectionInstance* MPCInstance=nullptr;
+	
+	//MPC Param for PostProcess Material
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="MPC")
+	FName MPCLocationParam=NAME_None;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="MPC")
+	FName MPCTextureSizeParam=NAME_None;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="MPC")
+	FName MPCVisibleRangeParam=NAME_None;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="MPC")
+	FName MPCNearSightRangeParam=NAME_None;
 	
 	/** Material used for stamping LOS sources */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	UMaterialInterface* LOSMaterial=nullptr;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision")
+	UMaterialInstanceDynamic* LOSMaterialInstance = nullptr;
 
+
+	/** Interface material that exposes CameraLocalRT as a texture */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
+	UMaterialInterface* LayeredLOSInterfaceMaterial = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision")
+	UMaterialInstanceDynamic* LayeredLOSInterfaceMID = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
+	FName LayeredLOSTextureParam = NAME_None;
+	
 	/** Resolution of the camera-local RT */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	int32 RTSize = 1024;

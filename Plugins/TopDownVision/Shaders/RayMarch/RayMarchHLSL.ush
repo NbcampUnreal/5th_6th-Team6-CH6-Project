@@ -9,6 +9,8 @@ float Test()
 	return 1.0f;
 }
 
+//======= BigChange!!! -> No more Device Depth for the height.
+//--> Scene Depth has actual distance value, so no more de_normalizing the distance, the texture has the value
 
 float CalculateLineOfSight(
 	Texture2D Tex, 
@@ -109,7 +111,61 @@ float CalculateLineOfSight_V2(
 	return Visibility;
 }
 
+//This one is for SceneDepth. no need for De normalizing distance. just compare
+float CalculateLineOfSight_V3(
+	Texture2D Tex, 
+	SamplerState TexSampler, 
+	float2 UV, 
+	float2 PawnUV,
+	float MaxSteps,
+	float MinSteps,
+	float Bias,      // Set this to something like 5.0 (5cm)
+	float EyeOffset  // How many cm above the ground the character "sees" from
+)
+{
+	float2 RayDir = UV - PawnUV; 
+	float Distance = length(RayDir);
+	float Visibility = 1.0;
 
+	//  SceneDepth is already in World Units (cm). No CamDepth multiplier needed.
+	// Use .r because RTF_R32f is a single-channel format.
+	float DepthAtPawn = Tex.SampleLevel(TexSampler, PawnUV, 0).r;
+	float DepthAtTarget = Tex.SampleLevel(TexSampler, UV, 0).r;
+
+	// Eye Level Calculation
+	// Remember: Depth is distance from camera. 
+	// To be "higher" than the floor, the depth value must be SMALLER.
+	float EyeDepth = DepthAtPawn - EyeOffset;
+
+	// 3. Step logic (stays the same)
+	float DistanceFraction = saturate(Distance); 
+	float StepsF = lerp(MinSteps, MaxSteps, DistanceFraction);
+	int StepsI = max(1, (int)StepsF);
+
+	[loop]
+	for (int i = 1; i <= StepsI; i++)
+	{
+		float Progress = (float)i / (float)StepsI;
+		float2 SampleUV = PawnUV + RayDir * Progress;
+
+		// Sample current world depth
+		float SampledDepth = Tex.SampleLevel(TexSampler, SampleUV, 0).r;
+
+		// The line of sight path from EyeDepth to the Target Depth
+		float VisionLine = lerp(EyeDepth, DepthAtTarget, Progress);
+
+		// 4. Blockage Check
+		// If SampledDepth (the wall) is SMALLER than VisionLine, 
+		// it means the geometry is closer to the camera than our ray.
+		if (SampledDepth < VisionLine - Bias)
+		{
+			Visibility = 0.0;
+			break;
+		}
+	}
+
+	return Visibility;
+}
 
 
 // This function is identical to your "working" code, just wrapped for USH

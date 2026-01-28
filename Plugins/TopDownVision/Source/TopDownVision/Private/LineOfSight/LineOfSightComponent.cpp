@@ -3,11 +3,11 @@
 
 #include "LineOfSight/LineOfSightComponent.h"
 #include "Engine/World.h"
-#include "Engine/Canvas.h"
-#include "Kismet/KismetRenderingLibrary.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "TopDownVisionLogCategories.h"// log
 #include "Components/SceneCaptureComponent2D.h"
+#include "DrawDebugHelpers.h"//debug for visualizing the activation
+#include "Kismet/GameplayStatics.h"
 
 ULineOfSightComponent::ULineOfSightComponent()
 {
@@ -16,6 +16,27 @@ ULineOfSightComponent::ULineOfSightComponent()
     //Create 2DSceneCaptureComp
     SceneCaptureComp = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("LOS_SceneCapture"));
     SceneCaptureComp->SetupAttachment(this);//attach to the owner's root
+
+    //Basic Settings
+    SceneCaptureComp->ProjectionType=ECameraProjectionMode::Orthographic;//set to orthographic
+    SceneCaptureComp->OrthoWidth=MaxVisionRange*2;//width is double of MaxVisible range
+
+    SceneCaptureComp->CaptureSource=SCS_SceneDepth;//--> dont use Device depth, use SceneDepth which has actual distacne
+    //Should the depth be device depth or Scene depth? fuck
+    
+    //activation setting -> only captured when it is called
+    SceneCaptureComp->bCaptureEveryFrame=false;
+    SceneCaptureComp->bCaptureOnMovement=false;
+    
+    //Show only setting -> can register a list of actors to be not rendered
+    //SceneCaptureComp->PrimitiveRenderMode=ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
+    //-> TODO: this will be used when the Tag System is ready, but for now, just use Legacy Render
+    
+    SceneCaptureComp->PrimitiveRenderMode=ESceneCapturePrimitiveRenderMode::PRM_LegacySceneCapture;
+
+    //Transform Setting -> rotation need to be absolute so that it does not rotate with the owner
+    SceneCaptureComp->SetUsingAbsoluteRotation(true);
+    SceneCaptureComp->SetWorldRotation(FRotator(0, -90, 0));
 }
 
 void ULineOfSightComponent::BeginPlay()
@@ -23,6 +44,8 @@ void ULineOfSightComponent::BeginPlay()
     Super::BeginPlay();
 
     CreateResources();// make CRT and MID
+
+    RefreshObstaclesByTag();// find and register the obstacles
 }
 
 void ULineOfSightComponent::UpdateLocalLOS()
@@ -41,16 +64,31 @@ void ULineOfSightComponent::UpdateLocalLOS()
         return;
     }
     
-    if (!CanvasRenderTarget)
+    if (!HeightRenderTarget)
     {
         UE_LOG(LOSVision, Warning,
-            TEXT("ULineOfSightComponent::UpdateLocalLOS >> Invalid CanvasRenderTarget"));
+            TEXT("ULineOfSightComponent::UpdateLocalLOS >> Invalid HeightRenderTarget"));
         return;
     }
     
     SceneCaptureComp->CaptureScene();// Capture the scene
-    CanvasRenderTarget->UpdateResource(); // triggers DrawLOS
-   
+
+    if (bDrawTextureRange)//draw debug box for LOS stamp area
+    {
+        const FVector Center = GetOwner()->GetActorLocation();
+        const FVector Extent = FVector(VisionRange, VisionRange, 50.f);
+
+        DrawDebugBox(
+            GetWorld(),
+            Center,
+            Extent,
+            FQuat::Identity,
+            FColor::Green,
+            false,
+            -1.f,
+            0,
+            2.f );
+    }
     
     UE_LOG(LOSVision, Log,
         TEXT("ULineOfSightComponent::UpdateLocalLOS >> UpdateResource called"));
@@ -83,69 +121,91 @@ void ULineOfSightComponent::ToggleUpdate(bool bIsOn)
         ShouldUpdate ? TEXT("true") : TEXT("false"));
 }
 
-void ULineOfSightComponent::DrawLOS(UCanvas* Canvas, int32 Width, int32 Height)
+void ULineOfSightComponent::RegisterObstacle(AActor* Obstacle)
 {
-    if (!Canvas || !LOSMaterialMID)
+    if (SceneCaptureComp && Obstacle)
     {
-        UE_LOG(LOSVision, Warning,
-            TEXT("ULineOfSightComponent::DrawLOS >> Canvas or LOSMaterialMID is null"));
-        return;
+        // adds the actor's components to the "Show Only" whitelist
+        SceneCaptureComp->ShowOnlyActorComponents(Obstacle);
+    }
+}
+
+void ULineOfSightComponent::RefreshObstaclesByTag()//should this be in the subsystem?
+{
+    if (!GetWorld() || BlockerTag.IsNone()) return;
+
+    //Catchers
+    TArray<AActor*> FoundActors;
+    UGameplayStatics::GetAllActorsWithTag(
+        GetWorld(),
+        BlockerTag,
+        FoundActors);
+
+    for (AActor* Actor : FoundActors)
+    {
+        RegisterObstacle(Actor);
     }
 
-    FCanvasTileItem Tile(
-        FVector2D(0, 0),
-        LOSMaterialMID->GetRenderProxy(),
-        FVector2D(Width, Height)
-    );
-
-    Tile.BlendMode = SE_BLEND_Opaque; // full mask
-    Canvas->DrawItem(Tile);
-
     UE_LOG(LOSVision, Log,
-        TEXT("ULineOfSightComponent::DrawLOS >> MID material drawn to Canvas"));
+        TEXT("ULineOfSightComponent::RefreshObstaclesByTag >> Registered %d obstacles with tag: %s"),
+        FoundActors.Num(), *BlockerTag.ToString());
 }
+
 
 void ULineOfSightComponent::CreateResources()
 {
-    if (!GetWorld())
+    if (!GetWorld() || !SceneCaptureComp)
         return;
 
-    // Create dynamic LOS render target
-    CanvasRenderTarget = UCanvasRenderTarget2D::CreateCanvasRenderTarget2D(
-        GetWorld(),
-        UCanvasRenderTarget2D::StaticClass(),
-        PixelResolution,
-        PixelResolution);
-
-    if (!CanvasRenderTarget)
+    HeightRenderTarget = NewObject<UTextureRenderTarget2D>(this);
+    if (!HeightRenderTarget)
     {
-        UE_LOG(LOSVision, Warning,
-                 TEXT("ULineOfSightComponent::PrepareDynamics >> Failed to create CanvasRenderTarget"));
+        UE_LOG(LOSVision, Error,
+            TEXT("Failed to allocate HeightRenderTarget"));
         return;
     }
-    
-    //add dynamic for updating LOSdraw
-    CanvasRenderTarget->OnCanvasRenderTargetUpdate.AddDynamic(this, &ULineOfSightComponent::DrawLOS);
-    UE_LOG(LOSVision, Log,
-        TEXT("ULineOfSightComponent::PrepareDynamics >> CanvasRenderTarget created"));
 
-    SceneCaptureComp->TextureTarget = CanvasRenderTarget;//draw on newly created CRT
-    
-    // Create MID from the base material so that it can be drawn and be used as texture obj
+    HeightRenderTarget->RenderTargetFormat = RTF_R32f;
+    HeightRenderTarget->InitAutoFormat(PixelResolution, PixelResolution);
+    HeightRenderTarget->ClearColor = FLinearColor::Black;
+    //HeightRenderTarget->UpdateResourceImmediate(true);
+
+    SceneCaptureComp->TextureTarget = HeightRenderTarget;
+
+    UE_LOG(LOSVision, Log,
+        TEXT("HeightRenderTarget created (%dx%d)"),
+        PixelResolution, PixelResolution);
+
     if (!LOSMaterial)
     {
         UE_LOG(LOSVision, Warning,
-                TEXT("ULineOfSightComponent::PrepareDynamics >> Invalid Material for Making MID"));
+            TEXT("LOSMaterial is null"));
         return;
     }
-    
-    LOSMaterialMID = UMaterialInstanceDynamic::Create(LOSMaterial, this);
-    UE_LOG(LOSVision, Log,
-        TEXT("ULineOfSightComponent::PrepareDynamics >> LOSMaterialMID created"));
 
-    LOSMaterialMID->SetTextureParameterValue(
+    LOSMaterialMID = UMaterialInstanceDynamic::Create(LOSMaterial, this);
+    if (!LOSMaterialMID)
+    {
+        UE_LOG(LOSVision, Error,
+            TEXT("Failed to create LOSMaterialMID"));
+        return;
+    }
+
+    LOSMaterialMID->SetTextureParameterValue(// set Texture Param
         MIDTextureParam,
-        CanvasRenderTarget);// pass the CRT to the MID
+        HeightRenderTarget);
+
+    LOSMaterialMID->SetScalarParameterValue(//Set Vision Radius Param
+        MIDVisibleRangeParam,
+        VisionRange);
+    
+    LOSMaterialMID->SetScalarParameterValue(//Set EyeSight Param
+        MIDEyeSightHeightParam,
+        EyeSightHeight);
+    
+
+    UE_LOG(LOSVision, Log,
+        TEXT("LOSMaterialMID initialized"));
 }
 
 

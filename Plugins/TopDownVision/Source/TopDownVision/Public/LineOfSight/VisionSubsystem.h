@@ -69,4 +69,6 @@ private:
 	TMap<int32, FRegisteredProviders> VisionMap;
 
 
+
+
 };

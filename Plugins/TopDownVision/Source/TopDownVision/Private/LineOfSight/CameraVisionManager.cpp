@@ -7,13 +7,15 @@
 #include "TopDownVisionLogCategories.h"
 #include "LineOfSight/VisionSubsystem.h"
 
+
+//Internal helper
+
+
+
 UCameraVisionManager::UCameraVisionManager()
 {
-	VisionChannel = INDEX_NONE;
-	CameraVisionRange = 1000.f;
-	RTSize = 1024;
-
-	UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::Constructor >> Component constructed"));
+	UE_LOG(LOSVision, Log,
+		TEXT("UCameraVisionManager::Constructor >> Component constructed"));
 }
 
 void UCameraVisionManager::BeginPlay()
@@ -38,77 +40,132 @@ void UCameraVisionManager::Initialize(APlayerCameraManager* InCamera)
 	CameraLocalRT->OnCanvasRenderTargetUpdate.AddDynamic(this, &UCameraVisionManager::DrawLOS);
 	CameraLocalRT->UpdateResource(); // Initial draw
 
-	UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::Initialize >> Initialized with CameraLocalRT: %s"), *CameraLocalRT->GetName());
+	UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::Initialize >> Initialized with CameraLocalRT: %s"),
+		*CameraLocalRT->GetName());
+
+	//initialize the world location and texture size
+	MPCInstance = GetWorld()->GetParameterCollectionInstance(PostProcessMPC);
+	if (MPCInstance)
+	{
+		FVector WorldLocation = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
+
+		MPCInstance->SetVectorParameterValue(
+			MPCLocationParam,
+			FLinearColor(WorldLocation.X, WorldLocation.Y, WorldLocation.Z));
+
+		MPCInstance->SetScalarParameterValue(
+			MPCTextureSizeParam,
+			RTSize);
+
+		MPCInstance->SetScalarParameterValue(
+			MPCVisibleRangeParam,
+			CameraVisionRange);
+	}
+	else
+	{
+		UE_LOG(LOSVision, Warning,
+			TEXT("UCameraVisionManager::UpdateCameraLOS >> PostProcessMPC instance not found!"));
+	}
+
+	//Make a MID which will draw the Layered CRT
+	if (LayeredLOSInterfaceMaterial)
+	{
+		LayeredLOSInterfaceMID =
+			UMaterialInstanceDynamic::Create(LayeredLOSInterfaceMaterial, this);
+
+		if (LayeredLOSInterfaceMID)
+		{
+			LayeredLOSInterfaceMID->SetTextureParameterValue(
+				LayeredLOSTextureParam,
+				CameraLocalRT
+			);
+		}
+	}
+	else
+	{
+		UE_LOG(LOSVision, Warning,
+			TEXT("UCameraVisionManager::UpdateCameraLOS >> CameraLOSInterfaceMaterial is not assigned"));
+	}
+}
+
+//LayeredStamps
+
+
+//internal helper for checking overlap
+static bool RectOverlapsWorld(
+	const FVector& ACenter,
+	float AHalfSize,
+	const FVector& BCenter,
+	float BHalfSize)
+{
+	return !(
+		FMath::Abs(ACenter.X - BCenter.X) > (AHalfSize + BHalfSize) ||
+		FMath::Abs(ACenter.Y - BCenter.Y) > (AHalfSize + BHalfSize)
+	);
 }
 
 void UCameraVisionManager::UpdateCameraLOS()
 {
-	UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::UpdateCameraLOS >> Called"));
+	UE_LOG(LOSVision, Log,
+		TEXT("UCameraVisionManager::UpdateCameraLOS >> Called"));
 
 	if (!CameraLocalRT)
 	{
-		UE_LOG(LOSVision, Error, TEXT("CameraLocalRT is null!"));
+		UE_LOG(LOSVision, Error,
+			TEXT("UCameraVisionManager::UpdateCameraLOS >>CameraLocalRT is null!"));
 		return;
 	}
 
-	UVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<UVisionSubsystem>();
-	if (!Subsystem)
+	TArray<ULineOfSightComponent*> ActiveProviders;//catchers
+	if (!GetVisibleProviders(ActiveProviders))
 	{
-		UE_LOG(LOSVision, Error, TEXT("VisionSubsystem not found!"));
+		UE_LOG(LOSVision, Error,
+			TEXT("UCameraVisionManager::DrawLOS >> Failed to bring VisibleProviders"));
 		return;
 	}
 
-	const TArray<ULineOfSightComponent*>& ActiveProviders = Subsystem->GetProvidersForTeam(VisionChannel);
-	UE_LOG(LOSVision, Log, TEXT("Found %d active LOS providers for channel %d"), ActiveProviders.Num(), VisionChannel);
+	const FVector CameraCenter = GetOwner()->GetActorLocation();
 
-	// Toggle provider updates based on visibility
 	for (ULineOfSightComponent* Provider : ActiveProviders)
 	{
 		if (!Provider || !Provider->GetOwner())
 			continue;
 
-		FVector2D PixelPos;
-		float TileSize;
-		bool bVisible = ConvertWorldToRT(
+		const bool bVisible = RectOverlapsWorld(
+			CameraCenter,
+			CameraVisionRange,
 			Provider->GetOwner()->GetActorLocation(),
-			Provider->GetVisibleRange(),
-			PixelPos,
-			TileSize);
+			Provider->GetVisibleRange());
 
 		Provider->ToggleUpdate(bVisible);
-		UE_LOG(LOSVision, Log, TEXT("Provider %s visibility set to %s"), *Provider->GetOwner()->GetName(), bVisible ? TEXT("true") : TEXT("false"));
 	}
 
 	// Draw all providers to the RT
 	CameraLocalRT->UpdateResource();
-	UE_LOG(LOSVision, Log, TEXT("CameraLocalRT UpdateResource called"));
+	UE_LOG(LOSVision, Log,
+		TEXT("UCameraVisionManager::UpdateCameraLOS >> CameraLocalRT UpdateResource called"));
 
 	// update MPC scalars (camera location, size)
-	if (PostProcessMPC)
+	if (MPCInstance)
 	{
-		UMaterialParameterCollectionInstance* MPCInstance = GetWorld()->GetParameterCollectionInstance(PostProcessMPC);
-		if (MPCInstance)
-		{
-			FVector WorldLocation = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
+		FVector WorldLocation = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
 
-			MPCInstance->SetVectorParameterValue(
-				CenterLocationParam,
-				FLinearColor(WorldLocation.X, WorldLocation.Y, WorldLocation.Z));
+		MPCInstance->SetVectorParameterValue(
+			MPCLocationParam,
+			FLinearColor(WorldLocation.X, WorldLocation.Y, WorldLocation.Z));
 
-			MPCInstance->SetScalarParameterValue(
-				VisibleRangeParam,
-				CameraVisionRange * 2);
-
-			UE_LOG(LOSVision, Log, TEXT("PostProcessMPC updated: CenterLocation=%s, VisibleRange=%f"),
-				*WorldLocation.ToString(), CameraVisionRange*2);
-		}
-		else
-		{
-			UE_LOG(LOSVision, Warning, TEXT("PostProcessMPC instance not found!"));
-		}
+		UE_LOG(LOSVision, Log,
+			TEXT("UCameraVisionManager::UpdateCameraLOS >> CenterLocation=%s, VisibleRange=%f"),
+			*WorldLocation.ToString(), CameraVisionRange);
+	}
+	else
+	{
+		UE_LOG(LOSVision, Warning,
+			TEXT("UCameraVisionManager::UpdateCameraLOS >> PostProcessMPC instance not found!"));
 	}
 
-	UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::UpdateCameraLOS >> Update finished"));
+	UE_LOG(LOSVision, Log,
+		TEXT("UCameraVisionManager::UpdateCameraLOS >> Update finished"));
 }
 
 void UCameraVisionManager::SetActiveCamera(APlayerCameraManager* InCamera)
@@ -158,8 +215,8 @@ void UCameraVisionManager::DrawLOS(UCanvas* Canvas, int32 Width, int32 Height)
 		if (!Provider || !Provider->IsUpdating())
 			continue;
 
-		UMaterialInstanceDynamic* MID = Provider->GetLOSMaterialMID();
-		if (!MID)
+		LOSMaterialInstance = Provider->GetLOSMaterialMID();
+		if (!LOSMaterialInstance)
 			continue;
 
 		//Catcher
@@ -176,13 +233,34 @@ void UCameraVisionManager::DrawLOS(UCanvas* Canvas, int32 Width, int32 Height)
 
 		FCanvasTileItem Tile(
 			PixelPos - FVector2D(TileSize * 0.5f, TileSize * 0.5f),// set the pivot to the center of the texture
-			MID->GetRenderProxy(),//handle for the rendering
+			LOSMaterialInstance->GetRenderProxy(),//handle for the rendering
 			FVector2D(TileSize, TileSize));//size of the texture(always square)
-		
+
+		//Blend Mode for drawing over canvas
 		Tile.BlendMode = SE_BLEND_AlphaComposite;//draw over with alpha mask
+		//Tile.BlendMode = SE_BLEND_Additive;//testing
+		
 		Canvas->DrawItem(Tile);//draw the tile over the canvas
 
 		CompositedCount++;//increment the count
+	}
+
+
+	if (bDrawTextureRange)//draw debug box for LOS stamp area
+	{
+		const FVector Center = GetOwner()->GetActorLocation();
+		const FVector Extent = FVector(CameraVisionRange, CameraVisionRange, 50.f);
+
+		DrawDebugBox(
+			GetWorld(),
+			Center,
+			Extent,
+			FQuat::Identity,
+			FColor::Green,
+			false,
+			-1.f,
+			0,
+			2.f );
 	}
 
 	UE_LOG(LOSVision, Log,
@@ -192,28 +270,19 @@ void UCameraVisionManager::DrawLOS(UCanvas* Canvas, int32 Width, int32 Height)
 
 bool UCameraVisionManager::ConvertWorldToRT(const FVector& ProviderWorldLocation, const float& ProviderVisionRange, FVector2D& OutPixelPosition, float& OutTileSize) const
 {
-	if (!ActiveCamera || !CameraLocalRT)
-	{
-		UE_LOG(LOSVision, Error, TEXT("ConvertWorldToRT failed: invalid ActiveCamera or CameraLocalRT"));
+	if (!CameraLocalRT)
 		return false;
-	}
 
 	FVector Delta = ProviderWorldLocation - GetOwner()->GetActorLocation();
 
 	float NormalizedX = 0.5f + (Delta.X / CameraVisionRange);
 	float NormalizedY = 0.5f + (Delta.Y / CameraVisionRange);
 
-	if (NormalizedX < 0.f || NormalizedX > 1.f || NormalizedY < 0.f || NormalizedY > 1.f)
-	{
-		UE_LOG(LOSVision, Log, TEXT("ConvertWorldToRT >> Provider out of range: %s"), *ProviderWorldLocation.ToString());
-		return false;
-	}
-
 	OutPixelPosition.X = NormalizedX * CameraLocalRT->SizeX;
 	OutPixelPosition.Y = NormalizedY * CameraLocalRT->SizeY;
-	OutTileSize = FMath::Max(4.f, (ProviderVisionRange / CameraVisionRange) * CameraLocalRT->SizeX);
 
-	UE_LOG(LOSVision, Log, TEXT("ConvertWorldToRT >> PixelPos=(%.2f, %.2f), TileSize=%.2f"), OutPixelPosition.X, OutPixelPosition.Y, OutTileSize);
+	OutTileSize = (ProviderVisionRange / CameraVisionRange) * CameraLocalRT->SizeX;
+	OutTileSize = FMath::Max(4.f, OutTileSize);
 
 	return true;
 }
@@ -237,4 +306,7 @@ bool UCameraVisionManager::GetVisibleProviders(TArray<ULineOfSightComponent*>& O
 	OutProviders = Subsystem->GetProvidersForTeam(VisionChannel);
 	return true;
 }
+
+
+
 
