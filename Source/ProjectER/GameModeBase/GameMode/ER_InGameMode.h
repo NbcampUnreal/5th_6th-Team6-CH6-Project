@@ -22,6 +22,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void NotifyPlayerDied(ACharacter* VictimCharacter, AActor* DeathCauser);
 
+	UFUNCTION(BlueprintCallable)
+	void DisConnectClient(APlayerController* PC);
+
 
 private:
 	int32 PlayersInitialized = 0;

@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include "GameFramework/GameSession.h"
 
 
 void AER_InGameMode::BeginPlay()
@@ -111,5 +112,13 @@ void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter, AActor* Death
 			// 전멸 판정 false일 시
 			// 리스폰 함수 실행
 		}
+	}
+}
+
+void AER_InGameMode::DisConnectClient(APlayerController* PC)
+{
+	if (GameSession)
+	{
+		GameSession->KickPlayer(PC, FText::FromString(TEXT("Defeated")));
 	}
 }
