@@ -1,5 +1,6 @@
 ﻿#include "AttributeSet/BaseMonsterAttributeSet.h"
 
+#include "Monster/BaseMonster.h"
 #include "Net/UnrealNetwork.h"
 #include "GameplayEffectExtension.h"
 
@@ -66,11 +67,21 @@ void UBaseMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 {
 	Super::PostGameplayEffectExecute(Data);
 
-	// Attribute 변경
 	const FGameplayAttribute Attribute = Data.EvaluatedData.Attribute;
 
 	if (Attribute == GetInComingDamageAttribute())
 	{
+		// 공격 대상 설정
+		const FGameplayEffectContextHandle& Context =
+			Data.EffectSpec.GetEffectContext();
+		AActor* InstigatorActor = Context.GetOriginalInstigator();
+		ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActor());
+		Monster->SetTargetPlayer(InstigatorActor);
+		
+		UE_LOG(LogTemp, Warning, TEXT("Target : %s"), *InstigatorActor->GetName());
+
+
+		// 데미지 적용
 		float Damage = FMath::Max(0.f, GetInComingDamage() - GetDefense());
 		UE_LOG(LogTemp, Warning, TEXT("%s : TakeDamage %f "), *GetName(), Damage);
 		if (Damage > 0.f)
@@ -81,6 +92,7 @@ void UBaseMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 		}
 	}
 
+	// 사망 체크
 	if (GetHealth() <= 0.f) 
 	{ 
 		UE_LOG(LogTemp, Warning, TEXT("%s : Die "), *GetName());
