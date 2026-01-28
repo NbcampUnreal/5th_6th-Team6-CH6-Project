@@ -102,7 +102,17 @@ void AER_OutGameMode::StartGame()
 	if (!HasAuthority())
 		return;
 
-	GetWorld()->ServerTravel("/Game/Level/BasicMap", true);
+    UE_LOG(LogTemp, Log, TEXT("[GM] : StartGame"));
+
+    AER_GameState* GS = GetGameState<AER_GameState>();
+    if (GS)
+    {
+        UE_LOG(LogTemp, Log, TEXT("[GM] : StartGame"));
+        int32 PlayerCount = GS->PlayerArray.Num();
+        FString TravelURL = FString::Printf(TEXT("/Game/Level/BasicMap?PlayerCount=%d"), PlayerCount);
+
+        GetWorld()->ServerTravel(TravelURL, true);
+    }
 }
 
 void AER_OutGameMode::EndGame()
