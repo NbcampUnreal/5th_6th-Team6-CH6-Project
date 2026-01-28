@@ -22,6 +22,7 @@ UBaseAttributeSet::UBaseAttributeSet()
 	InitStaminaRegen(0.0f);
 	InitAttackPower(0.0f);
 	InitAttackSpeed(0.0f);
+	InitAttackRange(150.0f);
 	InitCriticalChance(0.0f);
 	InitCriticalDamage(0.0f);
 	InitDefense(0.0f);
@@ -46,6 +47,7 @@ void UBaseAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimePropert
 	DOREPLIFETIME_CONDITION_NOTIFY(UBaseAttributeSet, StaminaRegen, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBaseAttributeSet, AttackPower, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBaseAttributeSet, AttackSpeed, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UBaseAttributeSet, AttackRange, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBaseAttributeSet, CriticalChance, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBaseAttributeSet, CriticalDamage, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBaseAttributeSet, Defense, COND_None, REPNOTIFY_Always);
@@ -168,6 +170,11 @@ void UBaseAttributeSet::OnRep_AttackPower(const FGameplayAttributeData& OldAttac
 void UBaseAttributeSet::OnRep_AttackSpeed(const FGameplayAttributeData& OldAttackSpeed)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, AttackSpeed, OldAttackSpeed);
+}
+
+void UBaseAttributeSet::OnRep_AttackRange(const FGameplayAttributeData& OldAttackRange)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, AttackRange, OldAttackRange);
 }
 
 void UBaseAttributeSet::OnRep_SkillAmp(const FGameplayAttributeData& OldSkillAmp)

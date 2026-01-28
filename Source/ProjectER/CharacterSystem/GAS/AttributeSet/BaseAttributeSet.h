@@ -94,6 +94,11 @@ class PROJECTER_API UBaseAttributeSet : public UAttributeSet
 	FGameplayAttributeData AttackSpeed;
 	ATTRIBUTE_ACCESSORS(UBaseAttributeSet, AttackSpeed);
 	
+	// Attack Range (공격 사거리)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Combat", ReplicatedUsing = OnRep_AttackRange)
+	FGameplayAttributeData AttackRange;
+	ATTRIBUTE_ACCESSORS(UBaseAttributeSet, AttackRange);
+	
 	// Skill Amp (스킬 증폭)
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Combat", ReplicatedUsing = OnRep_SkillAmp)
 	FGameplayAttributeData SkillAmp;
@@ -170,6 +175,8 @@ protected:
 	void OnRep_AttackPower(const FGameplayAttributeData& OldAttackPower);
 	UFUNCTION() 
 	void OnRep_AttackSpeed(const FGameplayAttributeData& OldAttackSpeed);
+	UFUNCTION() 
+	void OnRep_AttackRange(const FGameplayAttributeData& OldAttackSpeed);
 	UFUNCTION() 
 	void OnRep_SkillAmp(const FGameplayAttributeData& OldSkillAmp);
 	UFUNCTION() 
