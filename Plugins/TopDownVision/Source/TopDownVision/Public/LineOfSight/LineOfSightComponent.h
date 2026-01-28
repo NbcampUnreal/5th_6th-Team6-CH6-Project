@@ -2,11 +2,12 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
-#include "Engine/TextureRenderTarget2D.h"// no more CRT, just Texture RT
-#include "Materials/MaterialInterface.h"
-#include "Materials/MaterialInstanceDynamic.h"
 #include "LineOfSightComponent.generated.h"
 
+//forwardDeclare
+class UTextureRenderTarget2D;
+class UMaterialInterface;
+class UMaterialInstanceDynamic;
 
 //LOG
 

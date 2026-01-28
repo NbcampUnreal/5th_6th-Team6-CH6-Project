@@ -53,9 +53,9 @@ void UCameraVisionManager::Initialize(APlayerCameraManager* InCamera)
 			MPCLocationParam,
 			FLinearColor(WorldLocation.X, WorldLocation.Y, WorldLocation.Z));
 
-		MPCInstance->SetScalarParameterValue(
+		/*MPCInstance->SetScalarParameterValue(
 			MPCTextureSizeParam,
-			RTSize);
+			RTSize);*/ // fuck off
 
 		MPCInstance->SetScalarParameterValue(
 			MPCVisibleRangeParam,
@@ -194,12 +194,21 @@ void UCameraVisionManager::DrawLOS(UCanvas* Canvas, int32 Width, int32 Height)
 		return;
 	}
 
-	// Clear canvas
+	/*// Clear canvas
 	Canvas->K2_DrawTexture(
 		nullptr,
 		FVector2D(0, 0),
 		FVector2D(Width, Height),
-		FVector2D(0, 0));
+		FVector2D(0, 0));*/
+
+	//Draw the tile with 0 alpha texture first
+	FCanvasTileItem ClearTile(
+		FVector2D(0,0),
+		FVector2D(Width,Height),
+		FLinearColor(0,0,0,0));
+	
+	ClearTile.BlendMode = SE_BLEND_Opaque; // Use opaque to fully overwrite
+	Canvas->DrawItem(ClearTile);
 
 	TArray<ULineOfSightComponent*> ActiveProviders;//catchers
 	if (!GetVisibleProviders(ActiveProviders))
@@ -268,22 +277,28 @@ void UCameraVisionManager::DrawLOS(UCanvas* Canvas, int32 Width, int32 Height)
 		CompositedCount);
 }
 
-bool UCameraVisionManager::ConvertWorldToRT(const FVector& ProviderWorldLocation, const float& ProviderVisionRange, FVector2D& OutPixelPosition, float& OutTileSize) const
+bool UCameraVisionManager::ConvertWorldToRT(
+	const FVector& ProviderWorldLocation,
+	const float& ProviderVisionRange,
+	FVector2D& OutPixelPosition,
+	float& OutTileSize) const
 {
-	if (!CameraLocalRT)
+	if (!CameraLocalRT || CameraVisionRange <= 0.f)
 		return false;
 
+	// Offset from center
 	FVector Delta = ProviderWorldLocation - GetOwner()->GetActorLocation();
+	
+	// Map world offset to pixel space
+	float PixelX = (0.5f + (Delta.X / (2.f * CameraVisionRange))) * CameraLocalRT->SizeX;
+	float PixelY = (0.5f + (Delta.Y / (2.f * CameraVisionRange))) * CameraLocalRT->SizeY;
 
-	float NormalizedX = 0.5f + (Delta.X / CameraVisionRange);
-	float NormalizedY = 0.5f + (Delta.Y / CameraVisionRange);
+	OutPixelPosition = FVector2D(PixelX, PixelY);
 
-	OutPixelPosition.X = NormalizedX * CameraLocalRT->SizeX;
-	OutPixelPosition.Y = NormalizedY * CameraLocalRT->SizeY;
-
+	// Tile size proportional to provider vision
 	OutTileSize = (ProviderVisionRange / CameraVisionRange) * CameraLocalRT->SizeX;
 	OutTileSize = FMath::Max(4.f, OutTileSize);
-
+	
 	return true;
 }
 

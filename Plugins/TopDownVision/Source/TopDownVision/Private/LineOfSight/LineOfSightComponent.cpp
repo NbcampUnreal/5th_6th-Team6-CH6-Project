@@ -7,6 +7,7 @@
 #include "TopDownVisionLogCategories.h"// log
 #include "Components/SceneCaptureComponent2D.h"
 #include "DrawDebugHelpers.h"//debug for visualizing the activation
+#include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/GameplayStatics.h"
 
 ULineOfSightComponent::ULineOfSightComponent()
@@ -197,7 +198,7 @@ void ULineOfSightComponent::CreateResources()
 
     LOSMaterialMID->SetScalarParameterValue(//Set Vision Radius Param
         MIDVisibleRangeParam,
-        VisionRange);
+        VisionRange/MaxVisionRange/2);// normalized/2 for half radius
     
     LOSMaterialMID->SetScalarParameterValue(//Set EyeSight Param
         MIDEyeSightHeightParam,
