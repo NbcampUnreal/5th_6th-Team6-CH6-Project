@@ -83,7 +83,16 @@ void ABaseCharacter::Tick(float DeltaTime)
 	//	if (ASC && AS) // 둘 다 존재해야 함
 	//	{
 	//		ASC->ApplyModToAttribute(AS->GetHealthAttribute(), EGameplayModOp::Additive, -1.0f);
-	//		float CurrentHP = AS->GetHealth();
+	//		ASC->ApplyModToAttribute(AS->GetStaminaAttribute(), EGameplayModOp::Additive, -1.0f);
+	//		ASC->ApplyModToAttribute(AS->GetLevelAttribute(), EGameplayModOp::Additive, 1.0f);
+	//		ASC->ApplyModToAttribute(AS->GetAttackPowerAttribute(), EGameplayModOp::Additive, 1.0f);
+	//		ASC->ApplyModToAttribute(AS->GetSkillAmpAttribute(), EGameplayModOp::Additive, 1.0f);
+	//		ASC->ApplyModToAttribute(AS->GetAttackSpeedAttribute(), EGameplayModOp::Additive, 1.0f);
+	//		ASC->ApplyModToAttribute(AS->GetDefenseAttribute(), EGameplayModOp::Additive, 1.0f);
+	//		ASC->ApplyModToAttribute(AS->GetXPAttribute(), EGameplayModOp::Additive, 1.0f);
+	//		
+	//		
+	//		// float CurrentHP = AS->GetHealth();
 	//		// UE_LOG(LogTemp, Warning, TEXT("명령 전송 완료 | 현재 실제 HP 수치: %f"), CurrentHP);
 	//	}
 	//	else

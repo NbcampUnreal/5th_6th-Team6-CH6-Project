@@ -6,6 +6,26 @@
 #include "Components/Button.h"
 #include "Components/ProgressBar.h"
 
+void UUI_MainHUD::Update_LV(float CurrentLV)
+{
+    if(IsValid(stat_LV))
+    {
+        stat_LV->SetText(FText::AsNumber(FMath::RoundToInt(CurrentLV)));
+	}
+}
+
+void UUI_MainHUD::Update_XP(float CurrentXP, float MaxXP)
+{
+    if (IsValid(PB_XP))
+    {
+        float HealthPercent = CurrentXP / MaxXP;
+        PB_XP->SetPercent(HealthPercent);
+
+        // 디버깅용 색 변화
+        PB_XP->SetFillColorAndOpacity(FLinearColor::MakeRandomColor());
+    }
+}
+
 void UUI_MainHUD::Update_HP(float CurrentHP, float MaxHP)
 {
     if (IsValid(PB_HP))
@@ -37,11 +57,22 @@ void UUI_MainHUD::UPdate_MP(float CurrentMP, float MaxMP)
     {
         float HealthPercent = CurrentMP / MaxMP;
         PB_MP->SetPercent(HealthPercent);
+
+        // 디버깅용 색 변화
+        PB_MP->SetFillColorAndOpacity(FLinearColor::MakeRandomColor());
     }
 
     if (IsValid(current_MP))
     {
         current_MP->SetText(FText::AsNumber(FMath::RoundToInt(CurrentMP)));
+
+        // 디버깅용 색 변화
+        current_MP->SetColorAndOpacity(FSlateColor(FLinearColor::Red));
+    }
+
+    if (IsValid(max_MP))
+    {
+        max_MP->SetText(FText::AsNumber(FMath::RoundToInt(MaxMP)));
     }
 }
 
@@ -62,14 +93,6 @@ void UUI_MainHUD::ShowSkillUp(bool show)
     if (IsValid(skill_up_04))
     {
         skill_up_04->SetVisibility(show ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
-	}
-}
-
-void UUI_MainHUD::UPdate_LV(int32 lv)
-{
-    if(IsValid(stat_LV))
-    {
-        stat_LV->SetText(FText::AsNumber(lv));
 	}
 }
 
