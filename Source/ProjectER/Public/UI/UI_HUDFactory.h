@@ -26,7 +26,10 @@ public:
 	virtual void BeginPlay() override;
 
     // 캐릭터에서 호출할 초기화 함수
+    UFUNCTION()
     void InitOverlay(APlayerController* PC, APlayerState* PS, UAbilitySystemComponent* ASC, UAttributeSet* AS);
+    UFUNCTION()
+    void InitMinimapComponent(class USceneCaptureComponent2D* SceneCapture2D);
 
 private:
     // 1. 위젯 클래스를 담을 변수 (에디터에서 선택 가능하게)

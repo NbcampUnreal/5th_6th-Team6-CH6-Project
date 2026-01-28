@@ -22,21 +22,22 @@
 #include "DrawDebugHelpers.h"
 
 #include "UI/UI_HUDFactory.h" // UI시스템 관리자
+#include "Components/SceneCaptureComponent2D.h" // 미니맵용
 ABaseCharacter::ABaseCharacter()
 {
 	PrimaryActorTick.bCanEverTick = false;
-	
+
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
-	
+
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
-	
+
 	GetCharacterMovement()->bOrientRotationToMovement = false;
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 640.f, 0.f);
 	GetCharacterMovement()->bConstrainToPlane = true;
 	GetCharacterMovement()->bSnapToPlaneAtStart = true;
-	
+
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 
 	CameraBoom->SetupAttachment(RootComponent);
@@ -44,18 +45,37 @@ ABaseCharacter::ABaseCharacter()
 	CameraBoom->TargetArmLength = 800.f;
 	CameraBoom->SetRelativeRotation(FRotator(-60.f, 0.f, 0.f));
 	CameraBoom->bDoCollisionTest = false;
-	
+
 	TopDownCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
 
 	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	TopDownCameraComponent->bUsePawnControlRotation = false;
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = false;
-	
+
 	CurrentPathIndex = INDEX_NONE;
-	
+
 	bReplicates = true;
 	SetReplicateMovement(true);
+
+	// 26.01.29. mpyi
+	// 미니맵을 위한 씬 컴포넌트 2D <- 차후 '카메라' 시스템으로 이동할 예정
+	MinimapCaptureComponent = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("MinimapCaptureComponent"));
+	MinimapCaptureComponent->SetupAttachment(RootComponent);
+
+	// 미니맵 캡처 기본 설정
+	MinimapCaptureComponent->SetAbsolute(false, true, false); // 순서대로: 위치, 회전, 스케일
+	// 위치는 캐릭터를 따라다녀야 함으로 앱솔루트 ㄴㄴ
+	MinimapCaptureComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 1000.0f));
+	MinimapCaptureComponent->SetRelativeRotation(FRotator(-90.0f, 0.0f, 0.0f));
+	MinimapCaptureComponent->ProjectionType = ECameraProjectionMode::Orthographic;
+	MinimapCaptureComponent->OrthoWidth = 2048.0f; // 이거로 미니맵 확대/축소 조절
+
+	/// 최적화 필요시 아래 플래그 조절해가면서 해결해 보기
+	//MinimapCaptureComponent->ShowFlags.SetDynamicShadows(false); // 동적 그림자
+	//MinimapCaptureComponent->ShowFlags.SetGlobalIllumination(false); // 루멘
+	//MinimapCaptureComponent->ShowFlags.SetMotionBlur(false); // 잔상 제거용
+	//MinimapCaptureComponent->CaptureSource = ESceneCaptureSource::SCS_BaseColor; // 포스트 프로세싱 무효화
 }
 
 void ABaseCharacter::BeginPlay()
@@ -490,6 +510,7 @@ void ABaseCharacter::InitUI()
 		if (AUI_HUDFactory* HUD = Cast<AUI_HUDFactory>(GenericHUD))
 		{
 			HUD->InitOverlay(PC, GetPlayerState(), GetAbilitySystemComponent(), GetPlayerState<ABasePlayerState>()->GetAttributeSet());
+			HUD->InitMinimapComponent(MinimapCaptureComponent);
 			UE_LOG(LogTemp, Warning, TEXT("HUD InitOverlay Success!"));
 		}
 		else
@@ -497,5 +518,12 @@ void ABaseCharacter::InitUI()
 			UE_LOG(LogTemp, Error, TEXT("!!! HUD Casting Fail! address : %s !!!"), *GenericHUD->GetName());
 		}
 
+	}
+
+	/// 미니맵 설정
+	if (!IsLocallyControlled())
+	{
+		/// '나' 이외는 캡쳐 컴포넌트를 꺼서 성능 최적화~
+		MinimapCaptureComponent->Deactivate();
 	}
 }

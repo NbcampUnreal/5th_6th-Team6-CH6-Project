@@ -63,3 +63,11 @@ void AUI_HUDFactory::InitOverlay(APlayerController* PC, APlayerState* PS, UAbili
         WidgetController->BroadcastSpeedChanges(BaseAS->GetMoveSpeed());
     }
 }
+
+void AUI_HUDFactory::InitMinimapComponent(USceneCaptureComponent2D* SceneCapture2D)
+{
+    if (IsValid(MainWidget))
+    {
+        MainWidget->InitMinimapCompo(SceneCapture2D);
+    }
+}

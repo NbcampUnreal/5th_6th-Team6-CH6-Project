@@ -44,6 +44,16 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
 	void setStat(ECharacterStat stat, int32 Value);
+	
+	UFUNCTION()
+	void InitMinimapCompo(USceneCaptureComponent2D* SceneCapture2D);
+
+protected:
+	// 마우스 우클릭 확인용
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+private:
+	void HandleMinimapClicked(const FPointerEvent& InMouseEvent);
+	class USceneCaptureComponent2D* MinimapCaptureComponent;
 
 protected:
 	UPROPERTY(meta = (BindWidget))
@@ -114,5 +124,5 @@ protected:
 	UTextBlock* max_MP;
 
 	UPROPERTY(meta = (BindWidget))
-	UImage* TEX_minamap;
+	UImage* TEX_Minimap;
 };

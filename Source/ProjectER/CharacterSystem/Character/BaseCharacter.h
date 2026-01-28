@@ -126,6 +126,12 @@ private:
 
 #pragma region UI
 public:
+	UFUNCTION()
 	void InitUI();
+
+protected:
+	// 미니맵용 씬 캡처 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI|Minimap")
+	class USceneCaptureComponent2D* MinimapCaptureComponent;
 #pragma endregion
 };
