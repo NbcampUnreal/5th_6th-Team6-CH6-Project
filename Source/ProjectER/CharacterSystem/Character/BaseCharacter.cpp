@@ -24,8 +24,12 @@
 #include "UI/UI_HUDFactory.h" // UI시스템 관리자
 ABaseCharacter::ABaseCharacter()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = false;
+	bReplicates = true;
+	SetReplicateMovement(true);
 	
+	/* === 기본 컴포넌트 === */
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 	
 	bUseControllerRotationPitch = false;
@@ -49,13 +53,12 @@ ABaseCharacter::ABaseCharacter()
 
 	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	TopDownCameraComponent->bUsePawnControlRotation = false;
-	PrimaryActorTick.bCanEverTick = true;
-	PrimaryActorTick.bStartWithTickEnabled = false;
 	
+	/* === 경로 설정 인덱스 초기화  === */
 	CurrentPathIndex = INDEX_NONE;
 	
-	bReplicates = true;
-	SetReplicateMovement(true);
+	/* === 팀 변수 초기화  === */
+	TeamID = ETeamType::None;
 }
 
 void ABaseCharacter::BeginPlay()
@@ -71,6 +74,7 @@ void ABaseCharacter::BeginPlay()
 	}
 
 }
+
 void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -123,6 +127,16 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ABaseCharacter, HeroData);
 }
 
+ETeamType ABaseCharacter::GetTeamType() const
+{
+	return TeamID;
+}
+
+bool ABaseCharacter::IsTargetable() const
+{
+	return true;
+}
+
 UAbilitySystemComponent* ABaseCharacter::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent.Get();
@@ -140,12 +154,35 @@ void ABaseCharacter::OnRep_PlayerState()
 
 float ABaseCharacter::GetCharacterLevel() const
 {
-	if (const UBaseAttributeSet* BaseSet = GetPlayerState<ABasePlayerState>() ? GetPlayerState<ABasePlayerState>()->GetAttributeSet() : nullptr)
+	/*if (const UBaseAttributeSet* BaseSet = GetPlayerState<ABasePlayerState>() ? GetPlayerState<ABasePlayerState>()->GetAttributeSet() : nullptr)
 	{
 		return BaseSet->GetLevel();
+	}*/
+	
+	if (const ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	{
+		if (const UBaseAttributeSet* AS = PS->GetAttributeSet())
+		{
+			return AS->GetLevel();
+		}
 	}
 
-	return 1.0f; // 기본값 (1레벨 시작)
+	// 기본값(1레벨 시작) 반환
+	return 1.0f; 
+}
+
+float ABaseCharacter::GetAttackRange() const
+{
+	if (const ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	{
+		if (const UBaseAttributeSet* AS = PS->GetAttributeSet())
+		{
+			return AS->GetAttackRange();
+		}
+	}
+
+	// 기본값(150) 반환
+	return 150.0f;
 }
 
 void ABaseCharacter::OnRep_HeroData()
@@ -243,6 +280,7 @@ void ABaseCharacter::InitAttributes()
 		SetStat(ProjectER::Status::StaminaRegen,  "_StaminaRegen");
 		SetStat(ProjectER::Status::AttackPower, "_AttackPower");
 		SetStat(ProjectER::Status::AttackSpeed, "_AttackSpeed");
+		SetStat(ProjectER::Status::AttackRange, "_AttackRange");
 		SetStat(ProjectER::Status::SkillAmp, "_SkillAmp");
 		SetStat(ProjectER::Status::CritChance, "_CritChance");
 		SetStat(ProjectER::Status::CritDamage, "_CritDamage");
@@ -400,12 +438,13 @@ void ABaseCharacter::UpdatePathFollowing()
 		SetActorRotation(NewRotation);
 	}
 	
-	FRotator MyRot = GetActorRotation();
-	UE_LOG(LogTemp, Warning, TEXT("Rotation Check -> Pitch: %f | Yaw: %f"), MyRot.Pitch, MyRot.Yaw);
-	
 #if WITH_EDITOR
+	// [디버깅] 액터 Rotation 체크
+	/*FRotator MyRot = GetActorRotation();
+	UE_LOG(LogTemp, Warning, TEXT("Rotation Check -> Pitch: %f | Yaw: %f"), MyRot.Pitch, MyRot.Yaw);*/
+	
 	// [디버깅] 경로 및 이동 방향 시각화
-	if (bShowMovementDebug)
+	if (bShowDebug)
 	{
 		// 전체 경로 그리기 (초록색 선)
 		for (int32 i = 0; i < PathPoints.Num() - 1; ++i)
@@ -463,6 +502,52 @@ void ABaseCharacter::StopPathFollowing()
 	PathPoints.Empty();
 	CurrentPathIndex = INDEX_NONE;
 	SetActorTickEnabled(false);
+}
+
+void ABaseCharacter::SetTarget(AActor* NewTarget)
+{
+	TargetActor = NewTarget;
+	
+#if WITH_EDITOR
+	if (bShowDebug) 
+	{
+		// NewTarget이 null일 경우 "None" 출력 (크래시 방지)
+		UE_LOG(LogTemp, Warning, TEXT("[%s] Set Target Actor -> %s"), 
+			*GetName(), 
+			NewTarget ? *NewTarget->GetName() : TEXT("None"));
+	}
+#endif
+	
+	// 추가 예정
+	// 타겟이 생길 시 -> Tick 켜기 -> 거리 체크 시작
+	/*if (TargetActor)
+	{
+		// SetActorTickEnabled(true);
+	}
+	else
+	{
+		// SetActorTickEnabled(false);
+	}*/
+	// 타겟 소멸 시 -> Tick 끄기 등 최적화 실시
+}
+
+void ABaseCharacter::CheckCombatTarget()
+{
+	if (!TargetActor) return;
+
+	float Distance = GetDistanceTo(TargetActor);
+	
+	if (Distance <= GetAttackRange()) 
+	{
+		// 사거리 내 진입 -> 정지 후 공격
+		StopMove();
+		// Attack();
+	}
+	else
+	{
+		// 사거리 밖 -> 추격
+		MoveToLocation(TargetActor->GetActorLocation());
+	}
 }
 
 void ABaseCharacter::InitUI()
