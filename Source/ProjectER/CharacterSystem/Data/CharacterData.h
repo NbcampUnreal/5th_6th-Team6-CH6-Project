@@ -9,6 +9,7 @@ class UGameplayAbility;
 class UGameplayEffect;
 class USkeletalMesh;
 class UAnimInstance;
+class USkillDataAsset;
 
 UCLASS(BlueprintType, Const)
 class PROJECTER_API UCharacterData : public UPrimaryDataAsset
@@ -24,9 +25,12 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Visual")
 	TSoftClassPtr<UAnimInstance> AnimClass;
 	
-	// GAS 스킬 (Q, W, E, R, Passive)
-	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TMap<FGameplayTag, TSoftClassPtr<UGameplayAbility>> Abilities;
+	//// GAS 스킬 (Q, W, E, R, Passive)
+	//UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	//TMap<FGameplayTag, TSoftClassPtr<UGameplayAbility>> Abilities;
+
+	UPROPERTY(EditDefaultsOnly, Category = "SkillDataAsset")
+	TArray<TSoftObjectPtr<USkillDataAsset>> SkillDataAsset;
 	
 	// 스탯 커브 테이블 (Curve Table Pointer)
 	UPROPERTY(EditDefaultsOnly, Category = "Stats")

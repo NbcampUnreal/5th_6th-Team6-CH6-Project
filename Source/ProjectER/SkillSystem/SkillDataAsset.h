@@ -19,12 +19,24 @@
 //    Attached   UMETA(DisplayName = "부착형")
 //};
 
+class UAbilitySystemComponent;
+
 UCLASS()
 class PROJECTER_API USkillDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
-	
 public:
+    FGameplayAbilitySpec MakeSpec(UAbilitySystemComponent* ASC, float Level);
+
+private:
+    
+public:
+    UPROPERTY(EditDefaultsOnly, Category = "Default|Ability")
+    TSubclassOf<USkillBase> AbilityClass;
+
     UPROPERTY(EditDefaultsOnly, Category = "Default")
     FSkillDefaultData SkillData;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Default|Input|Tag", meta = (Categories = "Input.Action.Skill"))
+    FGameplayTag InputKeyTag;
 };

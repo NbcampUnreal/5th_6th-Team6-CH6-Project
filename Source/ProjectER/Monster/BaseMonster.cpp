@@ -3,9 +3,12 @@
 #include "AbilitySystemComponent.h"
 #include "AttributeSet/BaseMonsterAttributeSet.h"
 #include "Components/StateTreeComponent.h"
+#include "Components/SphereComponent.h"
+#include "Net/UnrealNetwork.h"
 
 ABaseMonster::ABaseMonster()
 {
+	bReplicates = true;
 	PrimaryActorTick.bCanEverTick = false;
 
 	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -14,6 +17,7 @@ ABaseMonster::ABaseMonster()
 
 	AttributeSet = CreateDefaultSubobject<UBaseMonsterAttributeSet>(TEXT("AttributeSet"));
 	StateTreeComp = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTree"));
+	
 }
 
 UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
@@ -21,11 +25,20 @@ UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
 	return ASC;
 }
 
+void ABaseMonster::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	//DOREPLIFETIME(ABaseMonster, );
+}
+
 void ABaseMonster::BeginPlay()
 {
 	Super::BeginPlay();
 	
 	UE_LOG(LogTemp, Warning, TEXT("%s : BeginPlay"), *GetName());
+
+	
 
 }
 

@@ -9,6 +9,7 @@
 class UBaseMonsterAttributeSet;
 class UGameplayAbility;
 class UStateTreeComponent;
+class ABaseCharacter;
 struct FOnAttributeChangeData;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangeDelegate, float, CurrentValue, float, MaxValue);
@@ -22,6 +23,7 @@ public:
 	ABaseMonster();
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	void SetPlayerCount(int32 Amount);
 	int32 GetPlayerCount();
@@ -81,13 +83,24 @@ private:
 
 #pragma endregion
 
-#pragma region StateTree
+#pragma region State
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UStateTreeComponent> StateTreeComp;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	int32 PlayerCount;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	ABaseCharacter* TargetPlayer;
+
+	// 전투상태
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	bool bIsCombat;
+
+	// 사망상태
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	bool bIsDead;
 
 #pragma endregion
 };

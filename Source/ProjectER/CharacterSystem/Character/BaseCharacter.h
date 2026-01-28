@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -26,7 +26,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	
+
 	virtual void Tick( float DeltaTime ) override;
 	
 	virtual void PossessedBy(AController* NewController) override;
@@ -124,4 +124,8 @@ private:
 	
 #pragma endregion
 
+#pragma region UI
+public:
+	void InitUI();
+#pragma endregion
 };

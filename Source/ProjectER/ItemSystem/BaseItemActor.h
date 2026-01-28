@@ -5,7 +5,6 @@
 #include "I_ItemInteractable.h"
 #include "BaseItemActor.generated.h"
 
-// 컴포넌트 전방 선언
 class USphereComponent;
 class UBaseItemData;
 
@@ -20,13 +19,12 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	// 상호작용 인터페이스 구현
 	virtual void PickupItem(APawn* InHandler) override;
 
-	// 아이템 주변 감지용 콜리전
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item|Interaction")
 	TObjectPtr<USphereComponent> InteractionSphere;
 
-	// 부딪혔을 때 실행될 함수
 	UFUNCTION()
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,

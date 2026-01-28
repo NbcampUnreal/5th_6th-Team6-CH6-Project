@@ -1,7 +1,7 @@
 ﻿#include "ItemSystem/BaseItemActor.h"
 #include "ItemSystem/BaseItemData.h"
 #include "ItemSystem/BaseInventoryComponent.h"
-#include "Components/SphereComponent.h" // 추가
+#include "Components/SphereComponent.h"
 
 ABaseItemActor::ABaseItemActor()
 {
@@ -12,10 +12,9 @@ ABaseItemActor::ABaseItemActor()
 
     InteractionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionSphere"));
     InteractionSphere->SetupAttachment(RootComponent);
-    InteractionSphere->SetSphereRadius(150.f); // 캐릭터 습득 범위
+    InteractionSphere->SetSphereRadius(150.f);
 
     InteractionSphere->SetCollisionProfileName(TEXT("Trigger"));
-
 }
 
 void ABaseItemActor::BeginPlay()
@@ -32,13 +31,18 @@ void ABaseItemActor::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor*
     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
     bool bFromSweep, const FHitResult& SweepResult)
 {
-    if (OtherActor && OtherActor != this)
+    // 데이터가 있고, 타입이 Automatic일 때만 바로 습득 진행
+    if (OtherActor && OtherActor != this && ItemData)
     {
-        APawn* OverlappedPawn = Cast<APawn>(OtherActor);
-        if (OverlappedPawn)
+        if (ItemData->PickupType == EItemPickupType::Automatic)
         {
-            PickupItem(OverlappedPawn);
+            APawn* OverlappedPawn = Cast<APawn>(OtherActor);
+            if (OverlappedPawn)
+            {
+                PickupItem(OverlappedPawn);
+            }
         }
+        // Interaction 타입이라면 아무것도 하지 않음 (우클릭을 기다림)
     }
 }
 

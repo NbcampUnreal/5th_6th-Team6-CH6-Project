@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ItemSystem/I_ItemInteractable.h" // [김현수 추가분]
+
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "GameplayTagContainer.h" 
@@ -67,4 +69,17 @@ private:
 
 	// RPC 전송 간격 (0.1 = 초당 10번)
 	const float RPCUpdateInterval = 0.1f;
+
+/// [김현수 추가분] - 시작
+protected:
+	// 상호작용 타겟 캐싱
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "ProjectER|Item")
+	TObjectPtr<AActor> InteractionTarget;
+
+	// 거리 체크 로직 (PlayerTick에서 호출)
+	void CheckInteractionDistance();
+
+	// 기존 Move 함수를 확장하여 상호작용 판정 포함
+	void ProcessMouseInteraction();
+/// [김현수 추가분] - 끝
 };
