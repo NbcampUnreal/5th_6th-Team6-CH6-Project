@@ -42,6 +42,9 @@ private:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_TEMP_OutGame();
 
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_DisConnectServer();
+
 
 	// UI 출력 테스트
 	UPROPERTY(EditDefaultsOnly, Category = "UI")

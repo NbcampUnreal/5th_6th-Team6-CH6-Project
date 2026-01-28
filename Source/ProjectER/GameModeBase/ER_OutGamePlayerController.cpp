@@ -1,6 +1,7 @@
 ﻿#include "ER_OutGamePlayerController.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameMode/ER_OutGameMode.h"
+#include "GameMode/ER_InGameMode.h"
 #include "Blueprint/UserWidget.h"
 
 
@@ -53,7 +54,6 @@ void AER_OutGamePlayerController::ShowLoseUI()
 	LoseUIInstance->AddToViewport();
 }
 
-
 void AER_OutGamePlayerController::Server_StartGame_Implementation()
 {
 	auto OutGameMode = Cast<AER_OutGameMode>(GetWorld()->GetAuthGameMode());
@@ -64,6 +64,13 @@ void AER_OutGamePlayerController::Server_TEMP_OutGame_Implementation()
 {
 	auto OutGameMode = Cast<AER_OutGameMode>(GetWorld()->GetAuthGameMode());
 	OutGameMode->EndGame();
+}
+
+void AER_OutGamePlayerController::Server_DisConnectServer_Implementation()
+{
+	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
+
+	InGameMode->DisConnectClient(this);
 }
 
 void AER_OutGamePlayerController::Client_SetLose_Implementation()
