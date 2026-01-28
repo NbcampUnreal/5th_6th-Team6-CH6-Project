@@ -1,64 +1,49 @@
-﻿#pragma once
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+#pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/StateTreeTaskBlueprintBase.h"
+#include "StateTreeTaskBase.h"
 #include "STT_PlayerCounting.generated.h"
 
+class ABaseMonster;
 class USphereComponent;
 
 USTRUCT()
-struct FCheckingSplineDistanceData
-{
-    GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, Category = "Task", meta = (AllowprivateAccess = "true"))
-	float FindRadius;
-
-	USphereComponent* Sphere = nullptr;
-
-	UPROPERTY(EditAnywhere, Category = "Task", meta = (AllowprivateAccess = "true"))
-	bool Isbool;
-};
-
-UCLASS()
-class PROJECTER_API USTT_PlayerCounting : public UStateTreeTaskBlueprintBase
+struct FSTT_PlayerCountingInstaceData
 {
 	GENERATED_BODY()
 
+	UPROPERTY(EditAnywhere, Category = "Task", meta = (AllowprivateAccess = "true"))
+	USphereComponent* Sphere;
 
-	UStruct* GetInstanceDataType() const { return FCheckingSplineDistanceData::StaticStruct(); }
+	UPROPERTY(EditAnywhere, Category = "Task", meta = (AllowprivateAccess = "true"))
+	float FindRadius;
+};
+
+USTRUCT()
+struct FSTT_PlayerCounting : public FStateTreeTaskCommonBase
+{
+	GENERATED_BODY()
+
+	using FInstanceDataType = FSTT_PlayerCountingInstaceData;
+
+	virtual const UStruct* GetInstanceDataType() const override { return FSTT_PlayerCountingInstaceData::StaticStruct(); }
+	virtual bool Link(FStateTreeLinker& Linker) override;
 
 	virtual EStateTreeRunStatus EnterState(
-		FStateTreeExecutionContext& Context,
+		FStateTreeExecutionContext& Context, 
 		const FStateTreeTransitionResult& Transition
-	) override;
+	) const override;
 
 	virtual EStateTreeRunStatus Tick(
 		FStateTreeExecutionContext& Context,
 		const float DeltaTime
-	) override;
+	) const override;
 
 	virtual void ExitState(
-		FStateTreeExecutionContext& Context,
+		FStateTreeExecutionContext& Context, 
 		const FStateTreeTransitionResult& Transition
-	) override;
+	) const override;
 
-
-	UFUNCTION()
-	void OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
-		bool bFromSweep, const FHitResult& SweepResult);
-
-	UFUNCTION()
-	void OnEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-
-	UPROPERTY(EditAnywhere, Category = "Task", meta = (AllowprivateAccess = "true"))
-	float FindRadius;
-
-	USphereComponent* Sphere = nullptr;
-
-	UPROPERTY(EditAnywhere, Category = "Task", meta = (AllowprivateAccess = "true"))
-	bool Isbool;
-
+	TStateTreeExternalDataHandle<ABaseMonster> MonsterHandle;
 };
