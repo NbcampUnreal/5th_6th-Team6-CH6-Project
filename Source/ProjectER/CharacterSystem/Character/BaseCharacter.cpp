@@ -22,25 +22,31 @@
 #include "DrawDebugHelpers.h"
 
 #include "UI/UI_HUDFactory.h" // UI시스템 관리자
+#include "Components/SceneCaptureComponent2D.h" // 미니맵용
 ABaseCharacter::ABaseCharacter()
 {
+<<<<<<< HEAD
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = false;
 	bReplicates = true;
 	SetReplicateMovement(true);
 	
 	/* === 기본 컴포넌트 === */
+=======
+	PrimaryActorTick.bCanEverTick = false;
+
+>>>>>>> feature/UI
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
-	
+
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
-	
+
 	GetCharacterMovement()->bOrientRotationToMovement = false;
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 640.f, 0.f);
 	GetCharacterMovement()->bConstrainToPlane = true;
 	GetCharacterMovement()->bSnapToPlaneAtStart = true;
-	
+
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 
 	CameraBoom->SetupAttachment(RootComponent);
@@ -48,17 +54,46 @@ ABaseCharacter::ABaseCharacter()
 	CameraBoom->TargetArmLength = 800.f;
 	CameraBoom->SetRelativeRotation(FRotator(-60.f, 0.f, 0.f));
 	CameraBoom->bDoCollisionTest = false;
-	
+
 	TopDownCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
 
 	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	TopDownCameraComponent->bUsePawnControlRotation = false;
+<<<<<<< HEAD
 	
 	/* === 경로 설정 인덱스 초기화  === */
 	CurrentPathIndex = INDEX_NONE;
 	
 	/* === 팀 변수 초기화  === */
 	TeamID = ETeamType::None;
+=======
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = false;
+
+	CurrentPathIndex = INDEX_NONE;
+
+	bReplicates = true;
+	SetReplicateMovement(true);
+
+	// 26.01.29. mpyi
+	// 미니맵을 위한 씬 컴포넌트 2D <- 차후 '카메라' 시스템으로 이동할 예정
+	MinimapCaptureComponent = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("MinimapCaptureComponent"));
+	MinimapCaptureComponent->SetupAttachment(RootComponent);
+
+	// 미니맵 캡처 기본 설정
+	MinimapCaptureComponent->SetAbsolute(false, true, false); // 순서대로: 위치, 회전, 스케일
+	// 위치는 캐릭터를 따라다녀야 함으로 앱솔루트 ㄴㄴ
+	MinimapCaptureComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 1000.0f));
+	MinimapCaptureComponent->SetRelativeRotation(FRotator(-90.0f, 0.0f, 0.0f));
+	MinimapCaptureComponent->ProjectionType = ECameraProjectionMode::Orthographic;
+	MinimapCaptureComponent->OrthoWidth = 2048.0f; // 이거로 미니맵 확대/축소 조절
+
+	/// 최적화 필요시 아래 플래그 조절해가면서 해결해 보기
+	//MinimapCaptureComponent->ShowFlags.SetDynamicShadows(false); // 동적 그림자
+	//MinimapCaptureComponent->ShowFlags.SetGlobalIllumination(false); // 루멘
+	//MinimapCaptureComponent->ShowFlags.SetMotionBlur(false); // 잔상 제거용
+	//MinimapCaptureComponent->CaptureSource = ESceneCaptureSource::SCS_BaseColor; // 포스트 프로세싱 무효화
+>>>>>>> feature/UI
 }
 
 void ABaseCharacter::BeginPlay()
@@ -87,7 +122,16 @@ void ABaseCharacter::Tick(float DeltaTime)
 	//	if (ASC && AS) // 둘 다 존재해야 함
 	//	{
 	//		ASC->ApplyModToAttribute(AS->GetHealthAttribute(), EGameplayModOp::Additive, -1.0f);
-	//		float CurrentHP = AS->GetHealth();
+	//		ASC->ApplyModToAttribute(AS->GetStaminaAttribute(), EGameplayModOp::Additive, -1.0f);
+	//		ASC->ApplyModToAttribute(AS->GetLevelAttribute(), EGameplayModOp::Additive, 1.0f);
+	//		ASC->ApplyModToAttribute(AS->GetAttackPowerAttribute(), EGameplayModOp::Additive, 1.0f);
+	//		ASC->ApplyModToAttribute(AS->GetSkillAmpAttribute(), EGameplayModOp::Additive, 1.0f);
+	//		ASC->ApplyModToAttribute(AS->GetAttackSpeedAttribute(), EGameplayModOp::Additive, 1.0f);
+	//		ASC->ApplyModToAttribute(AS->GetDefenseAttribute(), EGameplayModOp::Additive, 1.0f);
+	//		ASC->ApplyModToAttribute(AS->GetXPAttribute(), EGameplayModOp::Additive, 1.0f);
+	//		
+	//		
+	//		// float CurrentHP = AS->GetHealth();
 	//		// UE_LOG(LogTemp, Warning, TEXT("명령 전송 완료 | 현재 실제 HP 수치: %f"), CurrentHP);
 	//	}
 	//	else
@@ -566,6 +610,7 @@ void ABaseCharacter::InitUI()
 		if (AUI_HUDFactory* HUD = Cast<AUI_HUDFactory>(GenericHUD))
 		{
 			HUD->InitOverlay(PC, GetPlayerState(), GetAbilitySystemComponent(), GetPlayerState<ABasePlayerState>()->GetAttributeSet());
+			HUD->InitMinimapComponent(MinimapCaptureComponent);
 			UE_LOG(LogTemp, Warning, TEXT("HUD InitOverlay Success!"));
 		}
 		else
@@ -573,5 +618,12 @@ void ABaseCharacter::InitUI()
 			UE_LOG(LogTemp, Error, TEXT("!!! HUD Casting Fail! address : %s !!!"), *GenericHUD->GetName());
 		}
 
+	}
+
+	/// 미니맵 설정
+	if (!IsLocallyControlled())
+	{
+		/// '나' 이외는 캡쳐 컴포넌트를 꺼서 성능 최적화~
+		MinimapCaptureComponent->Deactivate();
 	}
 }
