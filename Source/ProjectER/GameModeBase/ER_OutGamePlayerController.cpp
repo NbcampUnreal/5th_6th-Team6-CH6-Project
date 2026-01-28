@@ -9,7 +9,6 @@ AER_OutGamePlayerController::AER_OutGamePlayerController()
 
 }
 
-// 인 게임 컨트롤러로 이식 필요
 void AER_OutGamePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
