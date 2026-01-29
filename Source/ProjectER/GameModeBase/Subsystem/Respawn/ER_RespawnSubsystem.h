@@ -26,15 +26,19 @@ public:
 	// 승리 처리
 	void SetTeamWin(AER_GameState& GS, int32 TeamIdx);
 
-	// 메인 메뉴로 나가기
-	//void ReturnClientToMenu
-
+	//리스폰 타이머
+	void StartRespawnTimer(AER_PlayerState& PS, AER_GameState& GS);
+	void StopResapwnTimer(AER_GameState& GS, int32 TeamIdx);
+	
 	//리스폰 처리
-	void RespawnPlayer(AER_PlayerState& PS);
+	void RespawnPlayer();
 
 	// 마지막 팀인지 확인하기
 	int32 CheckIsLastTeam(AER_GameState& GS);
 
+	void InitializeRespawnMap(AER_GameState& GS);
 
-	
+
+private:
+	TMap<int32, FTimerHandle> RespawnMap;
 };

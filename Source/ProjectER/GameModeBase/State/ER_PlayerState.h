@@ -67,12 +67,14 @@ public:
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsDead = false;
 
-
 	UPROPERTY(ReplicatedUsing = OnRep_IsLose, BlueprintReadOnly)
 	bool bIsLose = false;
 
 	UPROPERTY(ReplicatedUsing = OnRep_IsWin, BlueprintReadOnly)
 	bool bIsWin = false;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	int32 RespawnTime = 5;
 
 
 	FOnLoseChanged OnLoseChanged;

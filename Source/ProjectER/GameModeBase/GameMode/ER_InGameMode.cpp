@@ -12,6 +12,20 @@
 void AER_InGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (UKismetSystemLibrary::IsDedicatedServer(GetWorld()))
+	{
+		return;
+	}
+
+	// 로컬에서만 실행
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	if (IsValid(PC))
+	{
+		FInputModeUIOnly InputMode;
+		PC->SetInputMode(InputMode);
+		PC->bShowMouseCursor = true;
+	}
 }
 
 void AER_InGameMode::PostSeamlessTravel()
@@ -93,9 +107,14 @@ void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter, AActor* Death
 		if (RespawnSS->EvaluateTeamElimination(*ERPS, *ERGS))
 		{
 			UE_LOG(LogTemp, Warning, TEXT("[GM] : NotifyPlayerDied , EvaluateTeamElimination = true"));
-			// 전멸 판정 true일 시
-			// 해당 유저의 팀 사출 실행
+
+			// 전멸 판정 true -> 해당 유저의 팀 사출 실행
 			const int32 TeamIdx = static_cast<int32>(ERPS->Team);
+
+			// 해당 팀의 리스폰 타이머 정지
+			RespawnSS->StopResapwnTimer(*ERGS, TeamIdx);
+
+			// 해당 팀 패배 처리
 			RespawnSS->SetTeamLose(*ERGS, TeamIdx);
 
 			// 승리 팀 체크
@@ -104,13 +123,13 @@ void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter, AActor* Death
 			{
 				RespawnSS->SetTeamWin(*ERGS, LastTeamIdx);
 			}
-	
 		}
 		else
 		{
 			UE_LOG(LogTemp, Warning, TEXT("[GM] : NotifyPlayerDied , EvaluateTeamElimination = false"));
-			// 전멸 판정 false일 시
-			// 리스폰 함수 실행
+
+			// 전멸 판정 false -> 리스폰 함수 실행
+			RespawnSS->StartRespawnTimer(*ERPS, *ERGS);
 		}
 	}
 }
