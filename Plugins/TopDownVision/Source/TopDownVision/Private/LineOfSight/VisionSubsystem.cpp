@@ -36,7 +36,7 @@ bool UVisionSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 	return false;
 }
 
-bool UVisionSubsystem::RegisterProvider(ULineOfSightComponent* Provider, int32 InVisionChannel)
+bool UVisionSubsystem::RegisterProvider(ULineOfSightComponent* Provider, EVisionChannel InVisionChannel)
 {
 	if (!Provider)
 	{
@@ -44,7 +44,7 @@ bool UVisionSubsystem::RegisterProvider(ULineOfSightComponent* Provider, int32 I
 			TEXT("UVisionSubsystem::RegisterProvider >>Invalid provider"));
 		return false;
 	}
-	if (InVisionChannel==INDEX_NONE)
+	if (InVisionChannel==EVisionChannel::None)
 	{
 		UE_LOG(VisionSubsystem, Error,
 			TEXT("UVisionSubsystem::RegisterProvider >>VisionChannel not settled"));
@@ -72,7 +72,7 @@ bool UVisionSubsystem::RegisterProvider(ULineOfSightComponent* Provider, int32 I
 	return true;
 }
 
-void UVisionSubsystem::UnregisterProvider(ULineOfSightComponent* Provider, int32 InVisionChannel)
+void UVisionSubsystem::UnregisterProvider(ULineOfSightComponent* Provider, EVisionChannel InVisionChannel)
 {
 	if (!Provider)
 	{
@@ -101,7 +101,7 @@ void UVisionSubsystem::UnregisterProvider(ULineOfSightComponent* Provider, int32
 		InVisionChannel);
 }
 
-TArray<ULineOfSightComponent*> UVisionSubsystem::GetProvidersForTeam(int32 TeamChannel) const
+TArray<ULineOfSightComponent*> UVisionSubsystem::GetProvidersForTeam(EVisionChannel TeamChannel) const
 {
 	TArray<ULineOfSightComponent*> OutProviders;
 
@@ -117,8 +117,8 @@ TArray<ULineOfSightComponent*> UVisionSubsystem::GetProvidersForTeam(int32 TeamC
 			TeamChannel);
 	}
 
-	// Add providers from shared vision channel (channel 0)
-	if (const FRegisteredProviders* SharedEntry = VisionMap.Find(0))
+	// Add providers from shared vision channel
+	if (const FRegisteredProviders* SharedEntry = VisionMap.Find(EVisionChannel::SharedVision))
 	{
 		OutProviders.Append(SharedEntry->RegisteredList);
 	}
