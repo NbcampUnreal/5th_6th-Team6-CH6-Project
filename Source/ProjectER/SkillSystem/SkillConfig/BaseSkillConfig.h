@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
 #include "SkillSystem/SkillData.h"
+#include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 #include "BaseSkillConfig.generated.h"
 
 /**
@@ -21,15 +22,13 @@ class PROJECTER_API UBaseSkillConfig : public UObject
 public:
 	UBaseSkillConfig();
 
-	UPROPERTY(EditDefaultsOnly, Category = "Data")
-	FSkillDefaultData SkillData;
+	UPROPERTY(EditDefaultsOnly, Category = "DefaultData")
+	FSkillDefaultData Data;
 
-protected:
-	UPROPERTY(VisibleAnywhere, Category = "AbilityType", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, Category = "DefaultData", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<USkillBase> AbilityClass;
+protected:
 
-	/*UPROPERTY(EditDefaultsOnly, Category = "Skill|Effect")
-	TArray<FSkillEffectData> EffectDatas;*/
 };
 
 UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced)
@@ -40,11 +39,11 @@ class PROJECTER_API UMouseTargetSkillConfig : public UBaseSkillConfig
 public:
 	UMouseTargetSkillConfig();
 	FORCEINLINE float GetRange() const { return Range; }
-	FORCEINLINE const TArray<FSkillEffectData>& GetEffects() const { return EffectsToApply; }
+	FORCEINLINE const TArray<TObjectPtr<USkillEffectDataAsset>>& GetEffectDataAssets() const { return EffectsToApply; }
 protected:
-	UPROPERTY(EditDefaultsOnly, Category = "AbilityType", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, Category = "Config", meta = (AllowPrivateAccess = "true"))
 	float Range;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Skill|Effect")
-	TArray<FSkillEffectData> EffectsToApply;
+	UPROPERTY(EditDefaultsOnly)
+	TArray<TObjectPtr<USkillEffectDataAsset>> EffectsToApply;
 };

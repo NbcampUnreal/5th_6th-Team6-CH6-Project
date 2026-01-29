@@ -13,5 +13,5 @@ UBaseSkillConfig::UBaseSkillConfig()
 UMouseTargetSkillConfig::UMouseTargetSkillConfig()
 {
 	AbilityClass = UMouseTargetSkill::StaticClass();
-	SkillData.SkillActivationType = ESkillActivationType::Targeted;
+	Data.SkillActivationType = ESkillActivationType::Targeted;
 }
