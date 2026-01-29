@@ -4,13 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
-#include "SkillSystem/SkillData.h"
+//#include "SkillSystem/SkillData.h"
 #include "SkillBase.generated.h"
 
 /**
  * 
  */
 class USkillDataAsset;
+class UBaseSkillConfig;
 
 UCLASS()
 class PROJECTER_API USkillBase : public UGameplayAbility
@@ -27,16 +28,28 @@ protected:
 	virtual void ExecuteSkill();
 	virtual void FinishSkill();
 	virtual void OnCancelAbility();
+	void Instant();
+	/*void Targeted();
+	void OnTargetConfirmed(float ElapsedTime);*/
+	/*virtual void PointClick();
+	virtual void ClickAndDrag();
+	virtual void Holding();*/
 	void AddTagToOwner(FGameplayTag Tag);
 	void RemoveTagFromOwner(FGameplayTag Tag);
 	void OnActiveTagAdded();
+	void PlayAnimMontage();
+	void SetWaitActiveTagTask();
+	void PrepareToActiveSkill();
 //private:
 
 public:
 
 protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"), Category = "Skill|Data")
-	FSkillDefaultData SkillData;
+	/*UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"), Category = "Skill|Data")
+	FSkillDefaultData SkillData;*/
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Config")
+	TObjectPtr<UBaseSkillConfig> SkillConfig;
 
 	UPROPERTY(VisibleAnywhere, Category = "Skill|Tags")
 	FGameplayTag CastingTag;
