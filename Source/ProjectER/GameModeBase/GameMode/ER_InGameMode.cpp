@@ -12,6 +12,20 @@
 void AER_InGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (UKismetSystemLibrary::IsDedicatedServer(GetWorld()))
+	{
+		return;
+	}
+
+	// 로컬에서만 실행
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	if (IsValid(PC))
+	{
+		FInputModeUIOnly InputMode;
+		PC->SetInputMode(InputMode);
+		PC->bShowMouseCursor = true;
+	}
 }
 
 void AER_InGameMode::PostSeamlessTravel()
