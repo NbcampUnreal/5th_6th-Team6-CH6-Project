@@ -5,6 +5,7 @@
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/ER_OutGamePlayerController.h"
+#include "CharacterSystem/Player/BasePlayerController.h"
 
 
 void UER_RespawnSubsystem::HandlePlayerDeath(AER_PlayerState& PS, AER_GameState& GS)
@@ -45,7 +46,7 @@ void UER_RespawnSubsystem::SetTeamLose(AER_GameState& GS, int32 TeamIdx)
 {
 	for (auto& player : GS.GetTeamArray(TeamIdx))
 	{
-		AER_OutGamePlayerController* PC = Cast<AER_OutGamePlayerController>(player->GetOwner());
+		ABasePlayerController* PC = Cast<ABasePlayerController>(player->GetOwner());
 
 		PC->Client_SetLose();
 	}
@@ -55,7 +56,7 @@ void UER_RespawnSubsystem::SetTeamWin(AER_GameState& GS, int32 TeamIdx)
 {
 	for (auto& player : GS.GetTeamArray(TeamIdx))
 	{
-		AER_OutGamePlayerController* PC = Cast<AER_OutGamePlayerController>(player->GetOwner());
+		ABasePlayerController* PC = Cast<ABasePlayerController>(player->GetOwner());
 
 		PC->Client_SetWin();
 	}
@@ -103,7 +104,7 @@ void UER_RespawnSubsystem::StartRespawnTimer(AER_PlayerState& PS, AER_GameState&
 	);
 
 	// 리스폰 UI 출력
-	AER_OutGamePlayerController* PC = Cast<AER_OutGamePlayerController>(PS.GetOwner());
+	ABasePlayerController* PC = Cast<ABasePlayerController>(PS.GetOwner());
 
 	PC->Client_StartRespawnTimer();
 	
@@ -122,7 +123,7 @@ void UER_RespawnSubsystem::StopResapwnTimer(AER_GameState& GS, int32 TeamIdx)
 		FTimerHandle& Handle = RespawnMap.FindOrAdd(PlayerId);
 		GetWorld()->GetTimerManager().ClearTimer(Handle);
 
-		AER_OutGamePlayerController* PC = Cast<AER_OutGamePlayerController>(player->GetOwner());
+		ABasePlayerController* PC = Cast<ABasePlayerController>(player->GetOwner());
 		// 사망한 팀원의 리스폰 UI 제거
 		PC->Client_StopRespawnTimer();
 	}
