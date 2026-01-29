@@ -1,0 +1,67 @@
+﻿//usf for reducing the current looping iteration render call, pass batching buffer to the material, ond execute only one draw call.
+// fuck yeah
+#pragma once
+
+#include "/Engine/Public/Platform.ush"
+
+struct FLOSStampData
+{
+	float4 CenterRadiusStrength; // xy=center, z=radius, w=strength
+	uint   ChannelBitMask;// bit flags: (1<<0), (1<<1), (1<<2), 0== shared vision for all
+
+	uint3  Padding; // dummy space for making it 16*2
+};
+
+StructuredBuffer<FLOSStampData> LOSStamps;
+uint NumStamps;
+
+// Provided per-view (material parameter / uniform buffer)
+uint ViewChannelMask;
+
+RWTexture2D<float> LOSOutput;
+
+[numthreads(8, 8, 1)]
+void MainCS(uint3 DTid : SV_DispatchThreadID)
+{
+	uint2 pix = DTid.xy;
+
+	uint width, height;
+	LOSOutput.GetDimensions(width, height);
+
+	if (pix.x >= width || pix.y >= height)
+		return;
+
+	float2 uv = (pix + 0.5f) / float2(width, height);
+
+	float result = LOSOutput[pix];
+
+	// ===== Batched evaluation =====
+	for (uint i = 0; i < NumStamps; i++)
+	{
+		FLOSStampData stamp = LOSStamps[i];
+
+		float2 center   = stamp.CenterRadiusStrength.xy;
+		float  radius   = stamp.CenterRadiusStrength.z;
+		float  strength = stamp.CenterRadiusStrength.w;
+
+		// Visibility filtering
+		// 0 = shared (always visible)
+		if (stamp.ChannelBitMask != 0 &&
+			(stamp.ChannelBitMask & ViewChannelMask) == 0)
+		{
+			continue;
+		}
+
+		float dist = distance(uv, center);
+		if (dist > radius)
+			continue;
+
+		float mask  = saturate(1.0f - dist / radius);
+		float value = mask * strength;
+
+		// Layering strategy (max)
+		result = max(result, value);
+	}
+
+	LOSOutput[pix] = result;
+}

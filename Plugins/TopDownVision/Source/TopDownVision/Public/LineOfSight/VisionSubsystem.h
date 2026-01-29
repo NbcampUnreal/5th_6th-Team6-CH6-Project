@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "Engine/CanvasRenderTarget2D.h"// like the name, the canvas for compositing local RTs
+#include "LineOfSight/VisionChannelEnum.h"// enum
 #include "VisionSubsystem.generated.h"
 
 
@@ -39,9 +40,9 @@ public:
 
 	//Registration
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	bool RegisterProvider(ULineOfSightComponent* Provider, int32 InVisionChannel);
+	bool RegisterProvider(ULineOfSightComponent* Provider, EVisionChannel InVisionChannel);
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	void UnregisterProvider(ULineOfSightComponent* Provider, int32 InVisionChannel);
+	void UnregisterProvider(ULineOfSightComponent* Provider, EVisionChannel InVisionChannel);
 
 
 
@@ -50,7 +51,7 @@ public:
 	UCanvasRenderTarget2D* GetGlobalRenderTarget() const { return GlobalRenderTarget; }
 	
 	// getter of same team+shared vision
-	TArray<ULineOfSightComponent*> GetProvidersForTeam(int32 TeamChannel) const;
+	TArray<ULineOfSightComponent*> GetProvidersForTeam(EVisionChannel TeamChannel) const;
 	
 private:
 	// Draw callback for global canvas
@@ -66,7 +67,7 @@ private:
 	
 	// Registered actor-local LOS providers
 	UPROPERTY()
-	TMap<int32, FRegisteredProviders> VisionMap;
+	TMap<EVisionChannel, FRegisteredProviders> VisionMap;
 
 
 

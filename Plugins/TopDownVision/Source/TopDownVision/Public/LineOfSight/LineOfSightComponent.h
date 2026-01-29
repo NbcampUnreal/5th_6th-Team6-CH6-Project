@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
+#include "LineOfSight/VisionChannelEnum.h"// now as enum
 #include "LineOfSightComponent.generated.h"
 
 //forwardDeclare
@@ -41,9 +42,9 @@ public:
 
     //Getter for Channel
     UFUNCTION(BlueprintCallable, Category="LineOfSight")
-    int32 GetVisionChannel()const {return VisionChannel;}
+    EVisionChannel GetVisionChannel()const {return VisionChannel;}
     UFUNCTION(BlueprintCallable, Category="LineOfSight")
-    void SetVisionChannel(int32 NewChannel) {VisionChannel = NewChannel;}
+    void SetVisionChannel(EVisionChannel NewChannel) {VisionChannel = NewChannel;}
     
     //Switch function for update
     void ToggleUpdate(bool bIsOn);
@@ -70,7 +71,7 @@ protected:
     
     //Vision Channel of this LOS stamp
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    int32 VisionChannel=INDEX_NONE;//not registered yet
+    EVisionChannel VisionChannel=EVisionChannel::None;//not registered yet
     /*
      *  0 for shared vision
      *  others are shared only by same channel
