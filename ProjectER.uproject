@@ -7,7 +7,14 @@
 		{
 			"Name": "ProjectER",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"GameplayAbilities",
+				"UMG",
+				"StateTreeModule",
+				"CoreUObject"
+			]
 		}
 	],
 	"Plugins": [
