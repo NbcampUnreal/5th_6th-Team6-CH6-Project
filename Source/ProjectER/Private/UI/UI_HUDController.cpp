@@ -17,9 +17,26 @@ void UUI_HUDController::BindCallbacksToDependencies()
 {
     UBaseAttributeSet* BaseAS = CastChecked<UBaseAttributeSet>(AttributeSet);
 
+    // LV 변경 감지 람다
+    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+        BaseAS->GetLevelAttribute()).AddLambda([this](const FOnAttributeChangeData& Data)
+            {
+                BroadcastLVChanges(Data.NewValue);
+            }
+        );
+
+    // XP 변경 감지 람다
+    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+        BaseAS->GetXPAttribute()).AddLambda([this](const FOnAttributeChangeData& Data)
+            {
+                float CurrentMaxXP = CastChecked<UBaseAttributeSet>(AttributeSet)->GetMaxXP();
+                BroadcastXPChanges(Data.NewValue, CurrentMaxXP);
+            }
+        );
+
     // HP 변경 감지 람다
-    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(BaseAS->GetHealthAttribute()).AddLambda(
-        [this](const FOnAttributeChangeData& Data)
+    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+        BaseAS->GetHealthAttribute()).AddLambda([this](const FOnAttributeChangeData& Data)
         {
             // UE_LOG(LogTemp, Log, TEXT("[Delegate] HP 변경 감지됨: %f"), Data.NewValue);
 
@@ -29,17 +46,91 @@ void UUI_HUDController::BindCallbacksToDependencies()
     );
 
     // MaxHP 변경 감지 람다
-    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(BaseAS->GetMaxHealthAttribute()).AddLambda(
-        [this](const FOnAttributeChangeData& Data)
+    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+        BaseAS->GetMaxHealthAttribute()).AddLambda([this](const FOnAttributeChangeData& Data)
         {
-            // UE_LOG(LogTemp, Log, TEXT("[Delegate] MaxHP 변경 감지됨: %f"), Data.NewValue);
-
             float CurrentHP = CastChecked<UBaseAttributeSet>(AttributeSet)->GetHealth();
             BroadcastHPChanges(CurrentHP, Data.NewValue);
         }
     );
+    // MP 변경 감지 람다
+    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+        BaseAS->GetStaminaAttribute()).AddLambda([this](const FOnAttributeChangeData& Data)
+            {
+                float CurrentMaxMP = CastChecked<UBaseAttributeSet>(AttributeSet)->GetMaxStamina();
+                BroadcastStaminaChanges(Data.NewValue, CurrentMaxMP);
+            }
+        );
 
+    // MaxMP 변경 감지 람다
+    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+        BaseAS->GetMaxStaminaAttribute()).AddLambda([this](const FOnAttributeChangeData& Data)
+            {
+                float CurrentMP = CastChecked<UBaseAttributeSet>(AttributeSet)->GetStamina();
+                BroadcastStaminaChanges(CurrentMP, Data.NewValue);
+            }
+        );
+
+    // ATK 변경 감지 람다
+    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+        BaseAS->GetAttackPowerAttribute()).AddLambda([this](const FOnAttributeChangeData& Data)
+            {
+                BroadcastATKChanges(Data.NewValue);
+            }
+        );
+    
+    // AS 변경 감지 람다
+    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+        BaseAS->GetAttackSpeedAttribute()).AddLambda([this](const FOnAttributeChangeData& Data)
+            {
+                BroadcastASChanges(Data.NewValue);
+            }
+        );
+
+    // DEF 변경 감지 람다
+    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+        BaseAS->GetDefenseAttribute()).AddLambda([this](const FOnAttributeChangeData& Data)
+            {
+                BroadcastDEFChanges(Data.NewValue);
+            }
+        );
+
+    // SkillAmp 변경 감지 람다
+    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+        BaseAS->GetSkillAmpAttribute()).AddLambda([this](const FOnAttributeChangeData& Data)
+            {
+                BroadcastSPChanges(Data.NewValue);
+            }
+        );
+
+    // CC 변경 감지 람다
+    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+        BaseAS->GetCriticalChanceAttribute()).AddLambda([this](const FOnAttributeChangeData& Data)
+            {
+                BroadcastCCChanges(Data.NewValue);
+            }
+        );
+
+    // Speed 변경 감지 람다
+    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+        BaseAS->GetMoveSpeedAttribute()).AddLambda([this](const FOnAttributeChangeData& Data)
+            {
+                BroadcastSpeedChanges(Data.NewValue);
+            }
+        );
     // 차후 위 람다식을 모든 스탯에 대해 반복 해야함~
+}
+
+void UUI_HUDController::BroadcastLVChanges(float CurrentLV)
+{
+    if (IsValid(MainHUDWidget))
+    {
+        MainHUDWidget->Update_LV(CurrentLV);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+    }
 }
 
 // 실제 체력 변화 브로드캐스트
@@ -49,6 +140,94 @@ void UUI_HUDController::BroadcastHPChanges(float CurrentHP, float MaxHP)
     {
         // UE_LOG(LogTemp, Warning, TEXT("[Broadcast] 위젯으로 전송 중: HP(%f), MaxHP(%f)"), CurrentHP, MaxHP);
         MainHUDWidget->Update_HP(CurrentHP, MaxHP);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+    }
+}
+
+void UUI_HUDController::BroadcastStaminaChanges(float CurrentST, float MaxST)
+{
+    if (IsValid(MainHUDWidget))
+    {
+        MainHUDWidget->UPdate_MP(CurrentST, MaxST);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+    }
+}
+
+void UUI_HUDController::BroadcastXPChanges(float CurrentXP, float MaxXP)
+{
+    if (IsValid(MainHUDWidget))
+    {
+        MainHUDWidget->Update_XP(CurrentXP, MaxXP);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+    }
+}
+
+void UUI_HUDController::BroadcastATKChanges(float CurrentATK)
+{    
+    if (IsValid(MainHUDWidget))
+    {
+        MainHUDWidget->setStat(ECharacterStat::AD, CurrentATK);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+    }
+}
+
+void UUI_HUDController::BroadcastSPChanges(float CurrentSP)
+{
+    if (IsValid(MainHUDWidget))
+    {
+        MainHUDWidget->setStat(ECharacterStat::AP, CurrentSP);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+    }
+}
+
+void UUI_HUDController::BroadcastASChanges(float CurrentAS)
+{
+    if (IsValid(MainHUDWidget))
+    {
+        MainHUDWidget->setStat(ECharacterStat::AS, CurrentAS);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+    }
+}
+
+void UUI_HUDController::BroadcastCCChanges(float CurrentCC)
+{
+}
+
+void UUI_HUDController::BroadcastDEFChanges(float CurrentDEF)
+{
+    if (IsValid(MainHUDWidget))
+    {
+        MainHUDWidget->setStat(ECharacterStat::DEF, CurrentDEF);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+    }
+}
+
+void UUI_HUDController::BroadcastSpeedChanges(float CurrentSpeed)
+{
+    if (IsValid(MainHUDWidget))
+    {
+        MainHUDWidget->setStat(ECharacterStat::SPD, CurrentSpeed);
     }
     else
     {

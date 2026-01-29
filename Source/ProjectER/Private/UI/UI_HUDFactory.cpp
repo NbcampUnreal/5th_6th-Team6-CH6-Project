@@ -51,6 +51,23 @@ void AUI_HUDFactory::InitOverlay(APlayerController* PC, APlayerState* PS, UAbili
     // 지금은 체력만 만들어놨지만 모든 스탯 추가할것!!!!!!!!!!!
     if (UBaseAttributeSet* BaseAS = Cast<UBaseAttributeSet>(AS))
     {
+        WidgetController->BroadcastLVChanges(BaseAS->GetLevel());
         WidgetController->BroadcastHPChanges(BaseAS->GetHealth(), BaseAS->GetMaxHealth());
+        WidgetController->BroadcastStaminaChanges(BaseAS->GetStamina(), BaseAS->GetMaxStamina());
+        WidgetController->BroadcastXPChanges(BaseAS->GetXP(), BaseAS->GetMaxXP());
+        WidgetController->BroadcastATKChanges(BaseAS->GetAttackPower());
+        WidgetController->BroadcastSPChanges(BaseAS->GetSkillAmp());
+        WidgetController->BroadcastASChanges(BaseAS->GetAttackSpeed());
+        WidgetController->BroadcastCCChanges(BaseAS->GetCriticalChance());
+        WidgetController->BroadcastDEFChanges(BaseAS->GetDefense());
+        WidgetController->BroadcastSpeedChanges(BaseAS->GetMoveSpeed());
+    }
+}
+
+void AUI_HUDFactory::InitMinimapComponent(USceneCaptureComponent2D* SceneCapture2D)
+{
+    if (IsValid(MainWidget))
+    {
+        MainWidget->InitMinimapCompo(SceneCapture2D);
     }
 }

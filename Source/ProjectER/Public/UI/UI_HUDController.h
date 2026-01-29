@@ -38,7 +38,20 @@ class PROJECTER_API UUI_HUDController : public UObject
 public:
     UPROPERTY()
     TObjectPtr<UUI_MainHUD> MainHUDWidget;
+
+    void BroadcastLVChanges(float CurrentLV);
     void BroadcastHPChanges(float CurrentHP, float MaxHP);
+    void BroadcastStaminaChanges(float CurrentST, float MaxST);
+    void BroadcastXPChanges(float CurrentXP, float MaxXP);
+    void BroadcastATKChanges(float CurrentATK);
+    void BroadcastSPChanges(float CurrentSP); // 스증
+    void BroadcastASChanges(float CurrentAS);
+    void BroadcastCCChanges(float CurrentCC); // 크리티컬 찬스 = CC
+    void BroadcastDEFChanges(float CurrentDEF);
+    void BroadcastSpeedChanges(float CurrentSpeed);
+
+
+
 
     // 초기 설정!
     void SetParams(const FWidgetControllerParams& Params);

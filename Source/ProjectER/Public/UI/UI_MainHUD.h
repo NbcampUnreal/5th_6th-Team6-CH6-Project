@@ -32,6 +32,10 @@ class PROJECTER_API UUI_MainHUD : public UUserWidget
 	
 public:
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
+	void Update_LV(float CurrentLV);
+	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
+	void Update_XP(float CurrentXP, float MaxXP);
+	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
 	void Update_HP(float CurrentHP, float MaxHP);
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
 	void UPdate_MP(float CurrentHP, float MaxHP);
@@ -39,14 +43,24 @@ public:
 	void ShowSkillUp(bool show);
 
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
-	void UPdate_LV(int32 lv);
-
-	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
 	void setStat(ECharacterStat stat, int32 Value);
+	
+	UFUNCTION()
+	void InitMinimapCompo(USceneCaptureComponent2D* SceneCapture2D);
+
+protected:
+	// 마우스 우클릭 확인용
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+private:
+	void HandleMinimapClicked(const FPointerEvent& InMouseEvent);
+	class USceneCaptureComponent2D* MinimapCaptureComponent;
 
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* stat_LV;
+
+	UPROPERTY(meta = (BindWidget))
+	UProgressBar* PB_XP;
 
 	///  stat_nn = 임시명칭
 	UPROPERTY(meta = (BindWidget))
@@ -110,5 +124,5 @@ protected:
 	UTextBlock* max_MP;
 
 	UPROPERTY(meta = (BindWidget))
-	UImage* TEX_minamap;
+	UImage* TEX_Minimap;
 };
