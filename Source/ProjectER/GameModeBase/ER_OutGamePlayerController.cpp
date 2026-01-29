@@ -15,11 +15,6 @@ void AER_OutGamePlayerController::BeginPlay()
 	Super::BeginPlay();
 }
 
-void AER_OutGamePlayerController::OnRep_PlayerState()
-{
-	Super::OnRep_PlayerState();
-
-}
 
 void AER_OutGamePlayerController::ConnectToDedicatedServer(const FString& Ip, int32 Port, const FString& PlayerName)
 {
@@ -88,12 +83,6 @@ void AER_OutGamePlayerController::Server_StartGame_Implementation()
 {
 	auto OutGameMode = Cast<AER_OutGameMode>(GetWorld()->GetAuthGameMode());
 	OutGameMode->StartGame();
-}
-
-void AER_OutGamePlayerController::Server_TEMP_OutGame_Implementation()
-{
-	auto OutGameMode = Cast<AER_OutGameMode>(GetWorld()->GetAuthGameMode());
-	OutGameMode->EndGame();
 }
 
 void AER_OutGamePlayerController::Server_DisConnectServer_Implementation()

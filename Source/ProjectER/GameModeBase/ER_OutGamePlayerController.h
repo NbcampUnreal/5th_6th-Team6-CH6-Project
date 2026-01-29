@@ -15,7 +15,6 @@ public:
 	
 private:
 	virtual void BeginPlay() override;
-	virtual void OnRep_PlayerState() override;
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Network")
@@ -50,13 +49,11 @@ private:
 	void Server_StartGame();
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_TEMP_OutGame();
-
-	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_DisConnectServer();
 
 
-	// UI 출력 테스트
+private:
+	// UI 출력
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> LoseUIClass;
 
