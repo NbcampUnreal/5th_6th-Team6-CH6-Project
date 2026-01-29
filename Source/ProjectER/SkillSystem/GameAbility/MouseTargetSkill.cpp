@@ -6,6 +6,7 @@
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
+#include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 
 UMouseTargetSkill::UMouseTargetSkill()
 {
@@ -21,52 +22,43 @@ void UMouseTargetSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 
 void UMouseTargetSkill::ExecuteSkill()
 {
-	UMouseTargetSkillConfig* Config = Cast<UMouseTargetSkillConfig>(SkillConfig);
-	if (!Config) return;
+    UMouseTargetSkillConfig* Config = Cast<UMouseTargetSkillConfig>(ChacedConfig);
+    if (!Config || AffectedActors.Num() == 0) return;
 
-	const TArray<FSkillEffectData>& Effects = Config->GetEffects();
+    UAbilitySystemComponent* InstigatorASC = GetAbilitySystemComponentFromActorInfo();
+    const TArray<TObjectPtr<USkillEffectDataAsset>>& EffectDataAssets = Config->GetEffectDataAssets();
 
-	// 타겟 획득 로직 (생략)...
+    FGameplayAbilityTargetDataHandle TargetDataHandle;
+    FGameplayAbilityTargetData_ActorArray* NewData = new FGameplayAbilityTargetData_ActorArray();
 
-	for (AActor* TargetActor : AffectedActors)
-	{
-		if (!IsValid(TargetActor)) continue;
+    for (AActor* Target : AffectedActors)
+    {
+        if (IsValid(Target))
+        {
+            NewData->TargetActorArray.Add(Target);
+        }
+    }
 
-		// 1. 타겟의 ASC(AbilitySystemComponent) 가져오기
-		UAbilitySystemComponent* TargetASC = nullptr;
+    TargetDataHandle.Add(NewData);
+    for (USkillEffectDataAsset* EffectData : EffectDataAssets)
+    {
+        if (!EffectData) continue;
+        TArray<FGameplayEffectSpecHandle> SpecHandles = EffectData->MakeSpecs(InstigatorASC, this, GetAvatarActorFromActorInfo());
 
-		if (IAbilitySystemInterface* ASInterface = Cast<IAbilitySystemInterface>(TargetActor))
-		{
-			TargetASC = ASInterface->GetAbilitySystemComponent();
-		}
-
-		if (!TargetASC) TargetASC = TargetActor->FindComponentByClass<UAbilitySystemComponent>();
-
-		FGameplayAbilityTargetDataHandle TargetDataHandle;
-		FGameplayAbilityTargetData_ActorArray* NewData = new FGameplayAbilityTargetData_ActorArray();
-		NewData->TargetActorArray.Add(TargetActor);
-		TargetDataHandle.Add(NewData);
-
-		if (TargetASC)
-		{
-			for (const FSkillEffectData& EffectData : Effects)
-			{
-				FGameplayEffectContextHandle ContextHandle = TargetASC->MakeEffectContext();
-				FGameplayEffectSpecHandle SpecHandle = TargetASC->MakeOutgoingSpec(EffectData.SkillEffectClass, GetAbilityLevel(), ContextHandle);
-
-				FGameplayTag DataTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage.Magnitude"));
-				//SpecHandle.Data.Get()->SetSetByCallerMagnitude(DataTag, FinalValue);
-				
-				// 3. 타겟에게 적용
-			
-
-				if (SpecHandle.IsValid())
-				{
-					ApplyGameplayEffectSpecToTarget(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, SpecHandle, TargetDataHandle);
-				}
-			}
-		}
-	}
+        for (FGameplayEffectSpecHandle& SpecHandle : SpecHandles)
+        {
+            if (SpecHandle.IsValid())
+            {
+                ApplyGameplayEffectSpecToTarget(
+                    CurrentSpecHandle,
+                    CurrentActorInfo,
+                    CurrentActivationInfo,
+                    SpecHandle,
+                    TargetDataHandle
+                );
+            }
+        }
+    }
 }
 
 void UMouseTargetSkill::Targeted()
@@ -97,7 +89,7 @@ void UMouseTargetSkill::OnTargetConfirmed(float ElapsedTime)
 		{
 			float Distance = FVector::Dist(GetAvatarActorFromActorInfo()->GetActorLocation(), HitActor->GetActorLocation());
 
-			UMouseTargetSkillConfig* Config = Cast<UMouseTargetSkillConfig>(SkillConfig);
+			UMouseTargetSkillConfig* Config = Cast<UMouseTargetSkillConfig>(ChacedConfig);
 			if (Config)
 			{
 				float Range = Config->GetRange();
