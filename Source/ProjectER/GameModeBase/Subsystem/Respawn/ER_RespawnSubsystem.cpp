@@ -69,10 +69,13 @@ void UER_RespawnSubsystem::StartRespawnTimer(AER_PlayerState& PS, AER_GameState&
 	if (!PS.bIsDead)
 		return;
 
+
+
 	const int32 PlayerId = PS.GetPlayerId();
 
 	// 리스폰 시간 계산 -> 추후에 페이즈, 레벨에 따라서 리스폰 시간 계산
 	int32 RespawnTime = 5;
+	PS.RespawnTime = GS.GetServerWorldTimeSeconds() + RespawnTime;
 
 	TWeakObjectPtr<AER_PlayerState> WeakPS(&PS);
 
@@ -100,7 +103,9 @@ void UER_RespawnSubsystem::StartRespawnTimer(AER_PlayerState& PS, AER_GameState&
 	);
 
 	// 리스폰 UI 출력
+	AER_OutGamePlayerController* PC = Cast<AER_OutGamePlayerController>(PS.GetOwner());
 
+	PC->Client_StartRespawnTimer();
 	
 }
 
@@ -116,6 +121,10 @@ void UER_RespawnSubsystem::StopResapwnTimer(AER_GameState& GS, int32 TeamIdx)
 		const int32 PlayerId = player->GetPlayerId();
 		FTimerHandle& Handle = RespawnMap.FindOrAdd(PlayerId);
 		GetWorld()->GetTimerManager().ClearTimer(Handle);
+
+		AER_OutGamePlayerController* PC = Cast<AER_OutGamePlayerController>(player->GetOwner());
+		// 사망한 팀원의 리스폰 UI 제거
+		PC->Client_StopRespawnTimer();
 	}
 }
 
