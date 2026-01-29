@@ -21,6 +21,7 @@
 
 class UAbilitySystemComponent;
 class USkillBase;
+class UBaseSkillConfig;
 
 UCLASS()
 class PROJECTER_API USkillDataAsset : public UDataAsset
@@ -32,12 +33,15 @@ public:
 private:
     
 public:
-    UPROPERTY(EditDefaultsOnly, Category = "Default|Ability")
-    TSubclassOf<USkillBase> AbilityClass;
+    /*UPROPERTY(EditDefaultsOnly, Category = "Default|Ability")
+    TSubclassOf<USkillBase> AbilityClass;*/
 
-    UPROPERTY(EditDefaultsOnly, Category = "Default")
-    FSkillDefaultData SkillData;
+    /*UPROPERTY(EditDefaultsOnly, Category = "Default")
+    FSkillDefaultData SkillData;*/
 
-    UPROPERTY(EditDefaultsOnly, Category = "Default|Input|Tag", meta = (Categories = "Input.Action.Skill"))
+    UPROPERTY(EditDefaultsOnly, Instanced, Category = "Config")
+    TObjectPtr<UBaseSkillConfig> SkillConfig;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Default|Input", meta = (Categories = "Input.Action.Skill"))
     FGameplayTag InputKeyTag;
 };
