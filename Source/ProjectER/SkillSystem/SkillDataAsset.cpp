@@ -6,10 +6,12 @@
 #include "AbilitySystemComponent.h"
 #include "GameplayAbilitySpec.h"
 #include "GameAbility/SkillBase.h"
+#include "SkillConfig/BaseSkillConfig.h"
 
 FGameplayAbilitySpec USkillDataAsset::MakeSpec()
 {
-	/*TSubclassOf<UGameplayAbility> ClassToUse = AbilityClass ? TSubclassOf<UGameplayAbility>(AbilityClass) : TSubclassOf<UGameplayAbility>(USkillBase::StaticClass());
+	TSubclassOf<USkillBase> AbilityClass = SkillConfig->AbilityClass;
+	TSubclassOf<UGameplayAbility> ClassToUse = AbilityClass ? AbilityClass : TSubclassOf<UGameplayAbility>(USkillBase::StaticClass());
 
 	FGameplayAbilitySpec Spec(ClassToUse, 1);
 
@@ -17,6 +19,5 @@ FGameplayAbilitySpec USkillDataAsset::MakeSpec()
 
 	Spec.DynamicAbilityTags.AddTag(InputKeyTag);
 
-    return Spec;*/
-	return FGameplayAbilitySpec();
+    return Spec;
 }

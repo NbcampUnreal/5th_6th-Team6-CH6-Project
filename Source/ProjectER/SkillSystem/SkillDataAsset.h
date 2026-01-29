@@ -33,15 +33,9 @@ public:
 private:
     
 public:
-    /*UPROPERTY(EditDefaultsOnly, Category = "Default|Ability")
-    TSubclassOf<USkillBase> AbilityClass;*/
-
-    /*UPROPERTY(EditDefaultsOnly, Category = "Default")
-    FSkillDefaultData SkillData;*/
-
-    UPROPERTY(EditDefaultsOnly, Instanced, Category = "Config")
+    UPROPERTY(EditDefaultsOnly, Instanced)
     TObjectPtr<UBaseSkillConfig> SkillConfig;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Default|Input", meta = (Categories = "Input.Action.Skill"))
+    UPROPERTY(EditDefaultsOnly, meta = (Categories = "Input.Action.Skill"))
     FGameplayTag InputKeyTag;
 };
