@@ -5,32 +5,12 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "GameplayEffect.h"
+#include "GameplyeEffect/BaseGameplayEffect.h"
 #include "SkillData.generated.h"
 
 /**
  * 
  */
-
-
-USTRUCT(BlueprintType)
-struct FSkillEffectData{
-    GENERATED_BODY()
-
-    UPROPERTY(EditDefaultsOnly, Category = "Effect")
-    TSubclassOf<UGameplayEffect> SkillEffectClass;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Status|Coefficient")
-    FScalableFloat Coefficient;// 계수 (예: 0.6, 1.2)
-
-    UPROPERTY(EditDefaultsOnly, Category = "Status")
-    FScalableFloat BasedValue;//기본값
-
-    UPROPERTY(EditDefaultsOnly, Category = "Skill|Status")
-    FGameplayAttribute SourceAttribute; //계수값을 곱할 스텟값
-
-    UPROPERTY(EditDefaultsOnly, Category = "Status|Attribute")
-    FGameplayAttribute TargetAttribute; //계산한 값을가지고 반영할 상대의 목표 스탯
-};
 
 UENUM(BlueprintType)
 enum class ESkillActivationType : uint8 {
