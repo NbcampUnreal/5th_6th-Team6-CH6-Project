@@ -3,6 +3,7 @@
 
 #include "SkillSystem/GameplyeEffect/BaseGameplayEffect.h"
 #include "SkillSystem/GameplayModMagnitudeCalculation/BaseMMC.h"
+#include "GameplayEffect.h"
 
 UBaseGameplayEffect::UBaseGameplayEffect()
 {
@@ -12,4 +13,29 @@ UBaseGameplayEffect::UBaseGameplayEffect()
 	FGameplayModifierInfo ModifierInfo;
 	ModifierInfo.ModifierMagnitude = FGameplayEffectModifierMagnitude(CustomCalculationBasedFloat);
 	Modifiers.Add(ModifierInfo);
+}
+
+void UBaseGameplayEffect::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+    Super::PostEditChangeProperty(PropertyChangedEvent);
+
+    // 1. 공용으로 쓸 설정 데이터 준비
+    FCustomCalculationBasedFloat CustomMagnitude;
+    CustomMagnitude.CalculationClassMagnitude = UBaseMMC::StaticClass();
+
+    for (FGameplayModifierInfo& Modifier : Modifiers)
+    {
+        // 현재 설정된 클래스 확인
+        TSubclassOf<UGameplayModMagnitudeCalculation> CurrentMMC = Modifier.ModifierMagnitude.GetCustomMagnitudeCalculationClass();
+
+        // 타입이 MMC가 아니거나, 클래스가 부적절한 경우 실행
+        bool bIsWrongType = (Modifier.ModifierMagnitude.GetMagnitudeCalculationType() != EGameplayEffectMagnitudeCalculation::CustomCalculationClass);
+        bool bIsWrongClass = (CurrentMMC == nullptr || !CurrentMMC->IsChildOf(UBaseMMC::StaticClass()));
+
+        if (bIsWrongType || bIsWrongClass)
+        {
+            // 강제로 MMC 타입 및 UBaseMMC 클래스로 고정
+            Modifier.ModifierMagnitude = FGameplayEffectModifierMagnitude(CustomMagnitude);
+        }
+    }
 }

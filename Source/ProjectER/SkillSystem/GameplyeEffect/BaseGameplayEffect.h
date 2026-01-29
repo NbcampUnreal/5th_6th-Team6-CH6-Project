@@ -16,13 +16,15 @@ class PROJECTER_API UBaseGameplayEffect : public UGameplayEffect
 
 public:
 	UBaseGameplayEffect();
+
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 protected:
 
 private:
 
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameplayEffect|GameplayModifier", meta = (FilterMetaTag = "HideFromModifiers"))
-	FGameplayAttribute SourceAttribute;
+	FGameplayAttribute SourceAttribute;	
 
 protected:
 
