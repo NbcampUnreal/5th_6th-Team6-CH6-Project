@@ -23,7 +23,11 @@
 #include "DrawDebugHelpers.h"
 
 #include "UI/UI_HUDFactory.h" // UI시스템 관리자
+
+#include "SkillSystem/SkillDataAsset.h"
+
 #include "Components/SceneCaptureComponent2D.h" // 미니맵용
+
 ABaseCharacter::ABaseCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -234,6 +238,15 @@ void ABaseCharacter::InitAbilitySystem()
 
 	if (HasAuthority() && HeroData)
 	{
+		for (TSoftObjectPtr<USkillDataAsset> SkillDataAsset : HeroData->SkillDataAsset)
+		{
+			if (SkillDataAsset.LoadSynchronous())
+			{
+				FGameplayAbilitySpec Spec = SkillDataAsset->MakeSpec();
+				ASC->GiveAbility(Spec);
+			}
+		}
+
 		/* // Ability 부여
 		for (const auto& AbilityPair : HeroData->Abilities)
 		{

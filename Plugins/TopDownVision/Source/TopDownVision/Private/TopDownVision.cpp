@@ -4,6 +4,7 @@
 //Add Shader directory for material node
 #include "ShaderCore.h"
 #include "Interfaces/IPluginManager.h"
+#include "LineOfSight/GPU/LOSStampPass.h"
 #include "Misc/Paths.h"
 
 #define LOCTEXT_NAMESPACE "FTopDownVisionModule"

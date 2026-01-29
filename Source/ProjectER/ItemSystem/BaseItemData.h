@@ -7,8 +7,8 @@
 UENUM(BlueprintType)
 enum class EItemPickupType : uint8
 {
-    Automatic    UMETA(DisplayName = "자동 습득 (접촉)"),
-    Interaction  UMETA(DisplayName = "수동 습득 (클릭)")
+    Automatic    UMETA(DisplayName = "Automatic Pickup (Overlap)"),
+    Interaction  UMETA(DisplayName = "Manual Pickup (Click)")
 };
 
 UCLASS(BlueprintType)
