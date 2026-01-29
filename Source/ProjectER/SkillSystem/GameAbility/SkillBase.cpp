@@ -5,7 +5,6 @@
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayTag.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
-//#include "SkillSystem/SkillDataAsset.h"
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 
 USkillBase::USkillBase()
@@ -59,6 +58,16 @@ void USkillBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGame
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
+void USkillBase::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
+{
+	Super::OnGiveAbility(ActorInfo, Spec);
+
+	if (Spec.SourceObject.IsValid())
+	{
+		ChacedConfig = Cast<UBaseSkillConfig>(Spec.SourceObject.Get());
+	}
+}
+
 void USkillBase::Assign(USkillDataAsset* DataAsset)
 {
 	//SkillData = DataAsset->SkillData;
@@ -76,7 +85,7 @@ void USkillBase::ExecuteSkill()
 
 void USkillBase::OnActiveTagAdded()
 {
-	if (SkillConfig.Get()->SkillData.bIsUseCasting)
+	if (ChacedConfig->Data.bIsUseCasting)
 	{
 		if (GetAbilitySystemComponentFromActorInfo()->HasMatchingGameplayTag(CastingTag))
 		{
@@ -91,7 +100,7 @@ void USkillBase::OnActiveTagAdded()
 
 void USkillBase::PlayAnimMontage()
 {
-	UAbilityTask_PlayMontageAndWait* PlayTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, TEXT("SkillAnimation"), SkillConfig.Get()->SkillData.AnimMontage);
+	UAbilityTask_PlayMontageAndWait* PlayTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, TEXT("SkillAnimation"), ChacedConfig->Data.AnimMontage);
 	PlayTask->ReadyForActivation();
 }
 
@@ -107,7 +116,7 @@ void USkillBase::PrepareToActiveSkill()
 	SetWaitActiveTagTask();
 
 	//캐스팅이 없는 스킬이면 Active 태그를 바로 붙여서 즉시 발동
-	if (SkillConfig.Get()->SkillData.bIsUseCasting == false)
+	if (ChacedConfig->Data.bIsUseCasting == false)
 	{
 		AddTagToOwner(ActiveTag);
 	}
