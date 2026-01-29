@@ -132,7 +132,7 @@ public:
 protected:
 	void UpdatePathFollowing();
 	void StopPathFollowing();
-	
+
 private:
 	// 현재 추적 중인 경로 포인트들
 	UPROPERTY()
@@ -144,6 +144,9 @@ private:
 	// 도착 판정 임계값 (제곱)
 	const float ArrivalDistanceSq = 2500.f; 
 	
+	// 갱신 타이머
+	float PathfindingTimer = 0.0f;
+	
 #pragma endregion
 	
 #pragma region Combat
@@ -152,7 +155,7 @@ public:
 	void SetTarget(AActor* NewTarget);
 	
 	// 공격 가능 사거리 확인
-	void CheckCombatTarget();
+	void CheckCombatTarget(float DeltaTime);
 	
 protected:
 	// 현재 타겟 (적)

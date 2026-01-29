@@ -17,6 +17,20 @@ namespace ProjectER
 		namespace Amount
 		{
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Health, "Data.Amount.Heal", "Heal Amount");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage, "Data.Amount.Damage", "Damage Amount");
+		}
+	}
+
+	namespace Ability
+	{
+		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "Ability.Attack", "Attack Ability");
+	}
+	
+	namespace Event
+	{
+		namespace Montage
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(AttackHit, "Event.Montage.AttackHit", "Event for Attack Hit");
 		}
 	}
 	
@@ -34,8 +48,8 @@ namespace ProjectER
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(StaminaRegen, "Status.StaminaRegen", "Stamina Regeneration per second");
 		
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(AttackPower, "Status.AttackPower", "Physical Attack Power");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(AttackSpeed, "Status.AttackSpeed", "Attacks per second");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(AttackRange, "Status.AttackRange", "Attacks Range");
+		UE_DEFINE_GAMEPLAY_TAG_COMMENT(AttackSpeed, "Status.AttackSpeed", "Attack Speed"); 
+		UE_DEFINE_GAMEPLAY_TAG_COMMENT(AttackRange, "Status.AttackRange", "Attack Range"); 
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(SkillAmp, "Status.SkillAmp", "Skill Amplification");
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(CritChance, "Status.CritChance", "Critical Hit Chance");
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(CritDamage, "Status.CritDamage", "Critical Hit Damage Multiplier");
@@ -77,8 +91,9 @@ namespace ProjectER
 		}
 	}
 	
-	namespace CoolDown 
+	namespace Cooldown // [Fixed] Consistency: CoolDown -> Cooldown
 	{
+		UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "Cooldown.AutoAttack", "Auto Attack Cooldown");
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Global, "Cooldown.Global", "Global Cooldown");
 
 		namespace Skill
@@ -125,7 +140,7 @@ namespace ProjectER
 				namespace Hard 
 				{
 					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Stun, "State.Debuff.CC.Hard.Stun", "Cannot Move or Act");
-					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Airborne, "State.Debuff.CC.Hard.Airborne", "Knocked Up");
+					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Airborne, "State.Debuff.CC.Hard.Airborne", "Knocked Up (Airborne)");
 				}
 				
 				UE_DEFINE_GAMEPLAY_TAG_COMMENT(BlockRegen, "State.Debuff.BlockRegen", "Cannot Regenerate Health");
@@ -158,8 +173,8 @@ namespace ProjectER
 				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Boss, "Unit.Type.Monster.Boss", "Boss Monster");
 			}
 			
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Structure, "Unit.Type.Structure", "Static Structures (ex: CCTV, Traps)");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Object, "Unit.Type.Object", "Interactable Objects (ex: Boxes)");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Structure, "Unit.Type.Structure", "Static Structures");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Object, "Unit.Type.Object", "Interactable Objects");
 		}
 		
 		namespace AttackType 
