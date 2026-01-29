@@ -9,7 +9,7 @@
 
 FGameplayAbilitySpec USkillDataAsset::MakeSpec()
 {
-	TSubclassOf<UGameplayAbility> ClassToUse = AbilityClass ? TSubclassOf<UGameplayAbility>(AbilityClass) : TSubclassOf<UGameplayAbility>(USkillBase::StaticClass());
+	/*TSubclassOf<UGameplayAbility> ClassToUse = AbilityClass ? TSubclassOf<UGameplayAbility>(AbilityClass) : TSubclassOf<UGameplayAbility>(USkillBase::StaticClass());
 
 	FGameplayAbilitySpec Spec(ClassToUse, 1);
 
@@ -17,5 +17,6 @@ FGameplayAbilitySpec USkillDataAsset::MakeSpec()
 
 	Spec.DynamicAbilityTags.AddTag(InputKeyTag);
 
-    return Spec;
+    return Spec;*/
+	return FGameplayAbilitySpec();
 }
