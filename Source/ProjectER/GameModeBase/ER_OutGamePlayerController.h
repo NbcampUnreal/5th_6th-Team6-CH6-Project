@@ -30,10 +30,20 @@ public:
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 	void Client_SetDead();
 
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_StartRespawnTimer();
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_StopRespawnTimer();
+
 private:
 	void ShowWinUI();
 
 	void ShowLoseUI();
+
+	void ShowRespawnTimerUI();
+
+	void HideRespawnTimerUI();
 
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
@@ -58,4 +68,10 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UUserWidget> WinUIInstance;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> RespawnUIClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> RespawnUIInstance;
 };
