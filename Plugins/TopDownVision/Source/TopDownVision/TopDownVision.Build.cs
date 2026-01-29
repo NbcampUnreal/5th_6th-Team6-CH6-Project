@@ -50,8 +50,7 @@ public class TopDownVision : ModuleRules
 				// for shader module
 				"RenderCore",
 				"RHI",//render hardware interface( in thiscase, 
-			}
-			);
+			});
 		
 		
 		DynamicallyLoadedModuleNames.AddRange(

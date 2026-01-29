@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "ItemSystem/I_ItemInteractable.h" // [김현수 추가분]
 
@@ -82,4 +82,65 @@ protected:
 	// 기존 Move 함수를 확장하여 상호작용 판정 포함
 	void ProcessMouseInteraction();
 /// [김현수 추가분] - 끝
+
+//-----------------------------------------------------------
+
+/// [전민성 추가분] - 시작
+public:
+	UFUNCTION(BlueprintCallable, Category = "Network")
+	void ConnectToDedicatedServer(const FString& Ip, int32 Port, const FString& PlayerName);
+
+	// Clinet RPC
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_SetLose();
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_SetWin();
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_SetDead();
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_StartRespawnTimer();
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_StopRespawnTimer();
+
+private:
+	// UI 출력
+	void ShowWinUI();
+
+	void ShowLoseUI();
+
+	void ShowRespawnTimerUI();
+
+	void HideRespawnTimerUI();
+
+	// Server RPC
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_StartGame();
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_DisConnectServer();
+
+
+private:
+	// UI 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> LoseUIClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> LoseUIInstance;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> WinUIClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> WinUIInstance;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> RespawnUIClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> RespawnUIInstance;
 };

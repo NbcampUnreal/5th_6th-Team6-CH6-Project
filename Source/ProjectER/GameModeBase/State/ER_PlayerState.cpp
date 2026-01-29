@@ -16,6 +16,8 @@ void AER_PlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AER_PlayerState, bIsWin);
 	DOREPLIFETIME(AER_PlayerState, bIsDead);
 	DOREPLIFETIME(AER_PlayerState, Team);
+	DOREPLIFETIME(AER_PlayerState, RespawnTime);
+
 }
 
 void AER_PlayerState::CopyProperties(APlayerState* PlayerState)

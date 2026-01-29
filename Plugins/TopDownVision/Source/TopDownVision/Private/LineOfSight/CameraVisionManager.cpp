@@ -1,4 +1,6 @@
 ﻿#include "LineOfSight/CameraVisionManager.h"
+
+#include "RenderGraphUtils.h"
 #include "LineOfSight/LineOfSightComponent.h"
 #include "Engine/World.h"
 #include "Engine/Canvas.h"
@@ -6,6 +8,7 @@
 #include "Materials/MaterialParameterCollectionInstance.h"
 #include "TopDownVisionLogCategories.h"
 #include "LineOfSight/VisionSubsystem.h"
+#include "LineOfSight/GPU/LOSStampPass.h"
 
 
 //Internal helper
@@ -36,12 +39,15 @@ void UCameraVisionManager::Initialize(APlayerCameraManager* InCamera)
 		return;
 	}
 
-	// Bind the draw callback
-	CameraLocalRT->OnCanvasRenderTargetUpdate.AddDynamic(this, &UCameraVisionManager::DrawLOS);
-	CameraLocalRT->UpdateResource(); // Initial draw
+	// Bind the draw callback if CPU
+	if (bUseCPU)
+	{
+		CameraLocalRT->OnCanvasRenderTargetUpdate.AddDynamic(this, &UCameraVisionManager::DrawLOS_CPU);
+		CameraLocalRT->UpdateResource(); // initial clear
 
-	UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::Initialize >> Initialized with CameraLocalRT: %s"),
+		UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::Initialize >> Initialized with CameraLocalRT: %s"),
 		*CameraLocalRT->GetName());
+	}
 
 	//initialize the world location and texture size
 	MPCInstance = GetWorld()->GetParameterCollectionInstance(PostProcessMPC);
@@ -116,6 +122,7 @@ void UCameraVisionManager::UpdateCameraLOS()
 		return;
 	}
 
+	// gather provider visibility update
 	TArray<ULineOfSightComponent*> ActiveProviders;//catchers
 	if (!GetVisibleProviders(ActiveProviders))
 	{
@@ -140,10 +147,32 @@ void UCameraVisionManager::UpdateCameraLOS()
 		Provider->ToggleUpdate(bVisible);
 	}
 
-	// Draw all providers to the RT
-	CameraLocalRT->UpdateResource();
-	UE_LOG(LOSVision, Log,
-		TEXT("UCameraVisionManager::UpdateCameraLOS >> CameraLocalRT UpdateResource called"));
+	if (bUseCPU)// if CPU
+	{
+		// Draw all providers to the RT
+		CameraLocalRT->UpdateResource();
+		UE_LOG(LOSVision, Log,
+			TEXT("UCameraVisionManager::UpdateCameraLOS >> CameraLocalRT UpdateResource called"));
+	}
+	else //GPU
+	{
+		ENQUEUE_RENDER_COMMAND(UpdateLOS_GPU)(
+			[this](FRHICommandListImmediate& RHICmdList)
+			{
+				FRDGBuilder GraphBuilder(RHICmdList);
+
+				FRDGTextureRef LOSTexture =
+					RegisterExternalTexture(
+						GraphBuilder,
+						CameraLocalRT->GetRenderTargetResource()->GetRenderTargetTexture(),
+						TEXT("CameraLOS_GPU"));
+
+				RenderLOS_GPU(GraphBuilder, LOSTexture);
+
+				GraphBuilder.Execute();
+			});
+	}
+
 
 	// update MPC scalars (camera location, size)
 	if (MPCInstance)
@@ -170,7 +199,9 @@ void UCameraVisionManager::UpdateCameraLOS()
 
 void UCameraVisionManager::SetActiveCamera(APlayerCameraManager* InCamera)
 {
-	UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::SetActiveCamera >> Called with %s"), *GetNameSafe(InCamera));
+	UE_LOG(LOSVision, Log,
+		TEXT("UCameraVisionManager::SetActiveCamera >> Called with %s"),
+		*GetNameSafe(InCamera));
 
 	if (!InCamera || InCamera == ActiveCamera)
 	{
@@ -180,8 +211,92 @@ void UCameraVisionManager::SetActiveCamera(APlayerCameraManager* InCamera)
 
 	ActiveCamera = InCamera;
 }
+//Internal helper for the Drawing LOS stamp
+void UCameraVisionManager::DrawLOSStamp(UCanvas* Canvas, const TArray<ULineOfSightComponent*>& Providers,
+	const FLinearColor& Color)
+{
+	if (!Canvas) return;// invalid canvas, just leave
+	if (Providers.Num() == 0) return; // nothing to draw, early return
+	
+	for (ULineOfSightComponent* Provider : Providers)
+	{
+		if (!Provider || !Provider->GetOwner() || !Provider->GetLOSMaterialMID())// no no case!
+			continue;
+		
+		FVector2D PixelPos;
+		float TileSize;
+		
+		if (!ConvertWorldToRT(
+			Provider->GetOwner()->GetActorLocation(),
+			Provider->GetVisibleRange(),
+			PixelPos, TileSize))
+			continue;
 
-void UCameraVisionManager::DrawLOS(UCanvas* Canvas, int32 Width, int32 Height)
+		FCanvasTileItem Tile(
+			PixelPos - FVector2D(TileSize*0.5f, TileSize*0.5f),
+			Provider->GetLOSMaterialMID()->GetRenderProxy(),
+			FVector2D(TileSize, TileSize)
+		);
+
+		Tile.BlendMode = SE_BLEND_AlphaBlend;
+		Tile.SetColor(Color);
+		Canvas->DrawItem(Tile);
+	}
+}
+
+void UCameraVisionManager::RenderLOS_GPU(FRDGBuilder& GraphBuilder, FRDGTextureRef LOSTexture)
+{
+	TArray<ULineOfSightComponent*> ActiveProviders;
+	if (!GetVisibleProviders(ActiveProviders))
+	{
+		return;
+	}
+
+	TArray<FLOSStampData> Stamps;//catcher for the stamps data
+	Stamps.Reserve(ActiveProviders.Num());
+
+	for (ULineOfSightComponent* Provider : ActiveProviders)
+	{
+		if (!Provider || !Provider->IsUpdating())
+			continue;
+
+		FVector2D PixelPos;
+		float TileSize;
+
+		if (!ConvertWorldToRT(
+			Provider->GetOwner()->GetActorLocation(),
+			Provider->GetVisibleRange(),
+			PixelPos,
+			TileSize))
+		{
+			continue;
+		}
+
+		FLOSStampData Stamp;
+		Stamp.CenterRadiusStrength = FVector4f(
+			PixelPos.X / CameraLocalRT->SizeX,
+			PixelPos.Y / CameraLocalRT->SizeY,
+			TileSize / CameraLocalRT->SizeX,
+			1.0f);
+
+		Stamp.ChannelBitMask =
+			1u << static_cast<uint8>(Provider->GetVisionChannel());
+
+		Stamps.Add(Stamp);
+	}
+
+	const uint32 ViewMask =
+		1u << static_cast<uint8>(VisionChannel);
+
+	AddLOSStampPass(
+		GraphBuilder,
+		LOSTexture,
+		Stamps,
+		ViewMask,
+		/*bClearBeforeStamp=*/true);
+}
+
+void UCameraVisionManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Height)
 {
 	UE_LOG(LOSVision, Log,
 		TEXT("UCameraVisionManager::DrawLOS >> Canvas=%s, Width=%d, Height=%d"),
@@ -193,15 +308,8 @@ void UCameraVisionManager::DrawLOS(UCanvas* Canvas, int32 Width, int32 Height)
 			TEXT("UCameraVisionManager::DrawLOS >> Canvas or CameraLocalRT is null"));
 		return;
 	}
-
-	/*// Clear canvas
-	Canvas->K2_DrawTexture(
-		nullptr,
-		FVector2D(0, 0),
-		FVector2D(Width, Height),
-		FVector2D(0, 0));*/
-
-	//Draw the tile with 0 alpha texture first
+	
+	//Draw the tile with 0 alpha texture first to clear completely
 	FCanvasTileItem ClearTile(
 		FVector2D(0,0),
 		FVector2D(Width,Height),
@@ -209,6 +317,7 @@ void UCameraVisionManager::DrawLOS(UCanvas* Canvas, int32 Width, int32 Height)
 	
 	ClearTile.BlendMode = SE_BLEND_Opaque; // Use opaque to fully overwrite
 	Canvas->DrawItem(ClearTile);
+
 
 	TArray<ULineOfSightComponent*> ActiveProviders;//catchers
 	if (!GetVisibleProviders(ActiveProviders))
@@ -219,42 +328,36 @@ void UCameraVisionManager::DrawLOS(UCanvas* Canvas, int32 Width, int32 Height)
 	}
 	int32 CompositedCount = 0;
 
+	//Make Container for VisionChannel Providers, so that it can reduce unnecessary iteration
+	TArray<ULineOfSightComponent*> VCShared;
+	TArray<ULineOfSightComponent*> VCTeamA;
+	TArray<ULineOfSightComponent*> VCTeamB;
+	TArray<ULineOfSightComponent*> VCTeamC;
+
 	for (ULineOfSightComponent* Provider : ActiveProviders)
 	{
-		if (!Provider || !Provider->IsUpdating())
+		if (!Provider || !Provider->IsUpdating() || !Provider->GetLOSMaterialMID())
 			continue;
 
-		LOSMaterialInstance = Provider->GetLOSMaterialMID();
-		if (!LOSMaterialInstance)
-			continue;
-
-		//Catcher
-		FVector2D PixelPos;
-		float TileSize;
-		
-		if (!ConvertWorldToRT(
-			Provider->GetOwner()->GetActorLocation(),
-			Provider->GetVisibleRange(),
-			//outputs
-			PixelPos,
-			TileSize))
-			continue;
-
-		FCanvasTileItem Tile(
-			PixelPos - FVector2D(TileSize * 0.5f, TileSize * 0.5f),// set the pivot to the center of the texture
-			LOSMaterialInstance->GetRenderProxy(),//handle for the rendering
-			FVector2D(TileSize, TileSize));//size of the texture(always square)
-
-		//Blend Mode for drawing over canvas
-		Tile.BlendMode = SE_BLEND_AlphaComposite;//draw over with alpha mask
-		//Tile.BlendMode = SE_BLEND_Additive;//testing
-		
-		Canvas->DrawItem(Tile);//draw the tile over the canvas
-
-		CompositedCount++;//increment the count
+		switch (Provider->GetVisionChannel())
+		{
+		case EVisionChannel::SharedVision: VCShared.Add(Provider); break;
+		case EVisionChannel::TeamA: VCTeamA.Add(Provider); break;
+		case EVisionChannel::TeamB: VCTeamB.Add(Provider); break;
+		case EVisionChannel::TeamC: VCTeamC.Add(Provider); break;
+			
+		case EVisionChannel::None:
+		default: break;
+		}
 	}
 
+	DrawLOSStamp(Canvas, VCShared, FLinearColor(1,1,1,1));
+	DrawLOSStamp(Canvas,VCTeamA, FLinearColor(1,0,0,1));
+	DrawLOSStamp(Canvas,VCTeamB, FLinearColor(0,1,0,1));
+	DrawLOSStamp(Canvas,VCTeamC, FLinearColor(0,0,1,1));
 
+	CompositedCount = VCShared.Num() + VCTeamA.Num() + VCTeamB.Num() + VCTeamC.Num();
+	
 	if (bDrawTextureRange)//draw debug box for LOS stamp area
 	{
 		const FVector Center = GetOwner()->GetActorLocation();
@@ -304,7 +407,7 @@ bool UCameraVisionManager::ConvertWorldToRT(
 
 bool UCameraVisionManager::GetVisibleProviders(TArray<ULineOfSightComponent*>& OutProviders) const
 {
-	if (VisionChannel==INDEX_NONE)
+	if (VisionChannel==EVisionChannel::None)
 	{
 		UE_LOG(LOSVision, Error,
 			TEXT("UCameraVisionManager::GetVisibleProviders >> Invalid VisionChannel"));
@@ -320,6 +423,26 @@ bool UCameraVisionManager::GetVisibleProviders(TArray<ULineOfSightComponent*>& O
 	//Get the Teams
 	OutProviders = Subsystem->GetProvidersForTeam(VisionChannel);
 	return true;
+}
+
+uint32 UCameraVisionManager::MakeChannelBitMask(const TArray<EVisionChannel>& ChannelEnums)
+{
+	uint32 Mask = 0;
+
+	for (EVisionChannel Channel : ChannelEnums)
+	{
+		if (Channel == EVisionChannel::None)
+		{
+			continue;
+		}
+
+		uint8 Index = static_cast<uint8>(Channel);
+		check(Index < 32);
+
+		Mask |= (1u << Index);
+	}
+
+	return Mask;
 }
 
 

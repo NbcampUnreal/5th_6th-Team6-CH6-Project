@@ -7,7 +7,9 @@
 #include "Engine/CanvasRenderTarget2D.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstance.h"
+#include "LineOfSight/VisionChannelEnum.h"// now as enum
 #include "CameraVisionManager.generated.h"
+
 
 // Forward declaration
 class ULineOfSightComponent;// for the local LOS stamps
@@ -30,13 +32,7 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")// Initialize with the owning camera/player
 	void Initialize(APlayerCameraManager* InCamera);
-
-	/*UFUNCTION(BlueprintCallable, Category="LineOfSight")// Register a LOS source (player, NPC, event)
-	void RegisterLOSProvider(ULineOfSightComponent* Provider);
-	UFUNCTION(BlueprintCallable, Category="LineOfSight")// Unregister a LOS source
-	void UnregisterLOSProvider(ULineOfSightComponent* Provider);*/
-	// Registration will be done only in the subsystem.
-
+	
 	//Update Main CRT (called every frame or when dirty)
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
 	void UpdateCameraLOS();
@@ -56,8 +52,21 @@ private:
 	
 	/** Actually draws all registered LOS providers to the Canvas */
 	UFUNCTION()
-	void DrawLOS(UCanvas* Canvas, int32 Width, int32 Height);
+	void DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Height);
+	
+	//Helper function for drawing LOS Stamps
+	void DrawLOSStamp(
+		UCanvas* Canvas,
+		const TArray<ULineOfSightComponent*>& Providers,
+		const FLinearColor& Color);
+	//This uses CPU method. Every LOS Stamps use its own DrawCall and it is causing bottle neck. need better solution
 
+	//GPU method. Pass the struct to the material and layer them in there. only need one draw call.
+	void RenderLOS_GPU(
+		FRDGBuilder& GraphBuilder,
+		FRDGTextureRef LOSTexture);
+	
+	
 	bool ConvertWorldToRT(// this will output the relative coord to be used for pivot of the LOS stamps
 		const FVector& ProviderWorldLocation,
 		const float& ProviderVisionRange,
@@ -70,14 +79,20 @@ private:
 		TArray<ULineOfSightComponent*>& OutProviders) const;
 
 
+
+
 	
 protected:
+	//CPU or GPU
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
+	bool bUseCPU=true;
+	
 	//Debug draw
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	bool bDrawTextureRange =false;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
-	int32 VisionChannel=INDEX_NONE;
+	EVisionChannel VisionChannel=EVisionChannel::None;
 	
 	/** Owning cam*/
 	UPROPERTY()
@@ -131,4 +146,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	int32 RTSize = 1024;
 	//-*///--> the CRT is already made in the Content browser, so no need to have resoultion in here
+
+	static uint32 MakeChannelBitMask(const TArray<EVisionChannel>& ChannelEnums);
+
 };
