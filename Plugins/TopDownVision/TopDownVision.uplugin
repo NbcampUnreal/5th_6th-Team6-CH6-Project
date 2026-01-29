@@ -18,7 +18,7 @@
 		{
 			"Name": "TopDownVision",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "PostConfigInit"
 		}
 	],
 	"ShaderDirectory": "Shaders"

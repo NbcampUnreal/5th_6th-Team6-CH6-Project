@@ -2,6 +2,7 @@
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
+#include "CharacterSystem/Interface/TargetableInterface.h"
 
 #include "GameFramework/Character.h"
 #include "EnhancedInputComponent.h"
@@ -105,9 +106,9 @@ void ABasePlayerController::PlayerTick(float DeltaTime)
 void ABasePlayerController::OnMoveStarted()
 {
 	bIsMousePressed = true;
-	//MoveToMouseCursor(); 태웅님 기존 코드
+	MoveToMouseCursor(); 
 	// [김현수 추가분] 아이템 판별 기능이 포함된 함수로 변경 호출
-	ProcessMouseInteraction();
+	// ProcessMouseInteraction();
 }
 
 void ABasePlayerController::OnMoveTriggered()
@@ -141,8 +142,64 @@ void ABasePlayerController::MoveToMouseCursor()
 	{
 		if (Hit.bBlockingHit)
 		{
-			ControlledBaseChar->MoveToLocation(Hit.Location);
+			AActor* HitActor = Hit.GetActor();
+			
+			// [디버깅] 클릭 대상 확인
+#if WITH_EDITOR
+			if (HitActor)
+			{
+				UE_LOG(LogTemp, Log, TEXT("Clicked Actor: %s"), *HitActor->GetName());
+			}
+#endif
+			
+			if (HitActor && HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
+			{
+				InteractionTarget = HitActor;
+			}
+			else
+			{
+				InteractionTarget = nullptr;
+			}
+			
+			if (ITargetableInterface* TargetObj = Cast<ITargetableInterface>(HitActor))
+			{
+				if (TargetObj->IsTargetable())
+				{
+					ETeamType MyTeam = ControlledBaseChar->GetTeamType();
+					ETeamType TargetTeam = TargetObj->GetTeamType();
+					
+					bool bIsEnemy = (MyTeam != TargetTeam) && 
+									(MyTeam != ETeamType::None) && 
+									(TargetTeam != ETeamType::None);
 
+					if (bIsEnemy)
+					{
+						/* === 공격 로직 === */
+						ControlledBaseChar->SetTarget(HitActor); // 타겟 지정
+#if WITH_EDITOR
+						UE_LOG(LogTemp, Warning, TEXT("[%s] Enemy Detected!! : %s"), 
+							*ControlledBaseChar->GetName(),
+							HitActor ? *HitActor->GetName() : TEXT("None"));
+						
+						UE_LOG(LogTemp, Warning, TEXT("[%s] Set Target Actor -> %s"),
+							*ControlledBaseChar->GetName() ,
+							HitActor ? *HitActor->GetName() : TEXT("None"));
+#endif
+						
+						// ControlledBaseChar->TryAutoAttack();
+						return; 
+					}
+				}
+			}
+			
+			if (Hit.bBlockingHit)
+			{
+				ControlledBaseChar->MoveToLocation(Hit.Location);
+            
+				// 이동할 때는 타겟을 풀어줘야 함 (공격 취소)
+				ControlledBaseChar->SetTarget(nullptr);
+			}
+			
 			// SpawnDestinationEffect(Hit.Location);
 		}
 	}

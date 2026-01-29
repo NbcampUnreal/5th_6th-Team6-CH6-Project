@@ -11,6 +11,7 @@ class UGameplayAbility;
 class UStateTreeComponent;
 class USphereComponent;
 class UMonsterRangeComponent;
+class UWidgetComponent;
 class ABaseCharacter;
 struct FOnAttributeChangeData;
 
@@ -32,6 +33,12 @@ public:
 
 	void SetTargetPlayer(AActor* Target);
 	AActor* GetTargetPlayer();
+
+	void SetbIsCombat(bool Target);
+	bool GetbIsCombat();
+
+	void SetbIsDead(bool Target);
+	bool GetbIsDead();
 
 protected:
 	virtual void BeginPlay() override;

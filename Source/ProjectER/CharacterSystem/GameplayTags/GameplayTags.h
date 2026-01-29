@@ -43,6 +43,7 @@ namespace ProjectER
 		// 공격
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(AttackPower); // 공격력
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(AttackSpeed); // 공격 속도
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(AttackRange); // 공격 사거리
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(SkillAmp); // 스킬 증폭
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(CritChance); // 치명타 확률
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(CritDamage); // 치명타 피해량

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "Engine/CanvasRenderTarget2D.h"// like the name, the canvas for compositing local RTs
+#include "LineOfSight/VisionChannelEnum.h"// enum
 #include "VisionSubsystem.generated.h"
 
 
@@ -12,17 +13,18 @@
 class ULineOfSightComponent;// the source of the texture
 
 USTRUCT()
-struct FRegisterdProviders
+struct FRegisteredProviders
 {
 	GENERATED_BODY()
 	
 	UPROPERTY()
-	TArray<ULineOfSightComponent*> RegisterdList;
+	TArray<ULineOfSightComponent*> RegisteredList;
 };
 
 /**
  *  this will be used for minimap. the main RT will be camera focused
  */
+
 //Log
 TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(VisionSubsystem, Log, All);
 
@@ -36,10 +38,11 @@ public:
 	virtual void Deinitialize() override;
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 
+	//Registration
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	bool RegisterProvider(ULineOfSightComponent* Provider, int32 InVisionChannel);
+	bool RegisterProvider(ULineOfSightComponent* Provider, EVisionChannel InVisionChannel);
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	void UnregisterProvider(ULineOfSightComponent* Provider, int32 InVisionChannel);
+	void UnregisterProvider(ULineOfSightComponent* Provider, EVisionChannel InVisionChannel);
 
 
 
@@ -48,23 +51,25 @@ public:
 	UCanvasRenderTarget2D* GetGlobalRenderTarget() const { return GlobalRenderTarget; }
 	
 	// getter of same team+shared vision
-	TArray<ULineOfSightComponent*> GetProvidersForTeam(int32 TeamChannel) const;
+	TArray<ULineOfSightComponent*> GetProvidersForTeam(EVisionChannel TeamChannel) const;
 	
 private:
 	// Draw callback for global canvas
 	//UFUNCTION()
 	//void DrawGlobalLOS(UCanvas* Canvas, int32 Width, int32 Height);
 	
-private:
-	// Global composited render target
+	// Global composited render target -> this will be used for the minimap RT
 	UPROPERTY()
 	UCanvasRenderTarget2D* GlobalRenderTarget = nullptr;
-
-	// Registered actor-local LOS providers
-	UPROPERTY()
-	TMap<int32, FRegisterdProviders> VisionMap;
-
 	// Resolution of global RT
 	UPROPERTY(EditAnywhere, Category="Vision")
 	int32 GlobalResolution = 1024;//default
+	
+	// Registered actor-local LOS providers
+	UPROPERTY()
+	TMap<EVisionChannel, FRegisteredProviders> VisionMap;
+
+
+
+
 };

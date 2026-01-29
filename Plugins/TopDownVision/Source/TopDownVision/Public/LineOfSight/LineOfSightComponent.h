@@ -1,18 +1,19 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
-#include "Engine/CanvasRenderTarget2D.h"// for layer composition
-#include "Materials/MaterialInterface.h"
-//#include "Materials/MaterialParameterCollection.h"// to update the location -> for dynamic number of the stamps, this is done by MID
-#include "Materials/MaterialInstanceDynamic.h"
+#include "Components/SceneComponent.h"
+#include "LineOfSight/VisionChannelEnum.h"// now as enum
 #include "LineOfSightComponent.generated.h"
 
+//forwardDeclare
+class UTextureRenderTarget2D;
+class UMaterialInterface;
+class UMaterialInstanceDynamic;
 
 //LOG
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOPDOWNVISION_API ULineOfSightComponent : public UActorComponent
+class TOPDOWNVISION_API ULineOfSightComponent : public USceneComponent//changed it into SceneComp for 2dSceneComp can be attached to
 {
     GENERATED_BODY()
 
@@ -31,40 +32,46 @@ public:
     //no need for the location
     
     //Getter for the RT
-    UCanvasRenderTarget2D* GetLocalLOSTexture() const { return CanvasRenderTarget; }
+    UTextureRenderTarget2D* GetLocalLOSTexture() const { return HeightRenderTarget; }
     //getter for the LOS_MID
+    UFUNCTION(BlueprintCallable, Category="LineOfSight")
     UMaterialInstanceDynamic* GetLOSMaterialMID() const { return LOSMaterialMID; }
 
     //Vision Getter, Setter
     float GetVisibleRange() const {return VisionRange;}
-    //Getter for MID Param Names
-    void GetMIDParamNames(FName& OutLocationParam, FName& OutVisibleRangeParam) const
-    {
-        OutLocationParam=LocationVectorValueName;
-        OutVisibleRangeParam=VisibleRangeScalarValueName;
-    }
+
     //Getter for Channel
     UFUNCTION(BlueprintCallable, Category="LineOfSight")
-    int32 GetVisionChannel()const {return VisionChannel;}
+    EVisionChannel GetVisionChannel()const {return VisionChannel;}
     UFUNCTION(BlueprintCallable, Category="LineOfSight")
-    void SetVisionChannel(int32 NewChannel) {VisionChannel = NewChannel;}
+    void SetVisionChannel(EVisionChannel NewChannel) {VisionChannel = NewChannel;}
     
     //Switch function for update
     void ToggleUpdate(bool bIsOn);
     bool IsUpdating() const{return ShouldUpdate;}
 
+    //Obstacle registeration
+    /** Manually add an actor to the visibility list */
+    UFUNCTION(BlueprintCallable, Category="LineOfSight")
+    void RegisterObstacle(AActor* Obstacle);
+
+    /** Scans the world for actors with a specific tag and adds them to the capture list */
+    UFUNCTION(BlueprintCallable, Category="LineOfSight")
+    void RefreshObstaclesByTag();
+
     
 protected:
-    /** Called by CanvasRenderTarget to draw material */
-    UFUNCTION()
-    void DrawLOS(UCanvas* Canvas, int32 Width, int32 Height);
-
-    void PrepareDynamics();// make CRT and MID
+    //prep
+    void CreateResources();// make CRT and MID
 
 protected:
+    //Debug for toggling activation
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    bool bDrawTextureRange = false;
+    
     //Vision Channel of this LOS stamp
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    int32 VisionChannel=INDEX_NONE;//not registered yet
+    EVisionChannel VisionChannel=EVisionChannel::None;//not registered yet
     /*
      *  0 for shared vision
      *  others are shared only by same channel
@@ -73,12 +80,22 @@ protected:
     /** Vision range (optional for material logic) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     float VisionRange = 800.f;
-
-    /** Local render target for this actor */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    UCanvasRenderTarget2D* CanvasRenderTarget;
+    float MaxVisionRange = 800.f;//<- this will be used for Fixed RenderTarget Size and OrthoWidth
+
+    //EyeSight (Local Z height value for eye sight)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    float EyeSightHeight = 200.f;//about 2m?
     
-    //Rendertarget value
+    //Depth Capture
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    USceneCaptureComponent2D* SceneCaptureComp = nullptr;
+    
+    // will be dynamically generated for the local LOS stamp, and be rendered by 2D Scene capture component
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="LineOfSight")
+    UTextureRenderTarget2D* HeightRenderTarget;// this is for capturing 
+    
+    //RenderTarget value
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     int32 PixelResolution=256;
     
@@ -88,19 +105,31 @@ protected:
 
     UPROPERTY(Transient)// mark as transient, causee it does not have to be serialized and saved. runtime only
     UMaterialInstanceDynamic* LOSMaterialMID = nullptr;
+
+    //MID Param
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    FName MIDTextureParam=NAME_None;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    FName MIDEyeSightHeightParam=NAME_None;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    FName MIDVisibleRangeParam=NAME_None;
     
     /*/** Material Parameter Collection for actor location #1#
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")//---> no more MPC
     UMaterialParameterCollection* VisionMPC;*/
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    
+    //no longer need MPC, it is done by LayerCompositing Comp, CameraVisionManager. just need the TextureParam name
+    /*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     FName LocationVectorValueName="VisionCenterLocation";
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    FName VisibleRangeScalarValueName="SightRange";
+    FName VisibleRangeScalarValueName="SightRange";*/
+
+    //Obstacle
+    /** The tag used to identify meshes that should block LOS (e.g., "LOS_Blocker") */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    FName BlockerTag = TEXT("LOS_Blocker");
 
 private:
-    /** Internal dirty flag to skip unnecessary updates */
-    bool bDirty = true;
-
     bool ShouldUpdate=false;// only update when the camera vision capturing it
 };

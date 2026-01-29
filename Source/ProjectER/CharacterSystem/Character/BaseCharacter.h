@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
+#include "CharacterSystem/Interface/TargetableInterface.h"
 #include "BaseCharacter.generated.h"
 
 class UCameraComponent;
@@ -13,7 +14,7 @@ class UGameplayEffect;
 class UCharacterData;
 
 UCLASS()
-class PROJECTER_API ABaseCharacter : public ACharacter,  public IAbilitySystemInterface
+class PROJECTER_API ABaseCharacter : public ACharacter,  public IAbilitySystemInterface, public ITargetableInterface
 {
 	GENERATED_BODY()
 
@@ -36,7 +37,7 @@ protected:
 #pragma region Debug
 public:
 	UPROPERTY(EditAnywhere, Category = "Debug")
-	bool bShowMovementDebug = true;
+	bool bShowDebug = true;
 	
 #pragma endregion
 	
@@ -65,7 +66,25 @@ protected:
 	
 #pragma endregion
 
-#pragma region Interface
+#pragma region TargetableInterface
+public:
+	// [인터페이스 구현] 팀 정보 반환
+	virtual ETeamType GetTeamType() const override;
+
+	// [인터페이스 구현] 타겟팅 가능 여부 반환
+	virtual bool IsTargetable() const override;
+    
+	// [인터페이스 구현] 하이라이트 (나중에 포스트 프로세스로 구현)
+	// virtual void HighlightActor(bool bIsHighlight) override;
+
+protected:
+	// 팀 변수
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Team")
+	ETeamType TeamID;
+	
+#pragma endregion
+	
+#pragma region AbilitySystemInterface
 public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	
@@ -78,6 +97,9 @@ protected:
 public:
 	UFUNCTION(BlueprintCallable, Category = "GAS")
 	float GetCharacterLevel() const;
+	
+	UFUNCTION(BlueprintCallable, Category = "GAS")
+	float GetAttackRange() const;
 	
 public:
 	UPROPERTY(ReplicatedUsing=OnRep_HeroData, EditAnywhere, BlueprintReadWrite, Category = "Data", meta = (ExposeOnSpawn = true))
@@ -123,9 +145,29 @@ private:
 	const float ArrivalDistanceSq = 2500.f; 
 	
 #pragma endregion
+	
+#pragma region Combat
+public:
+	// 타겟 설정 함수
+	void SetTarget(AActor* NewTarget);
+	
+	// 공격 가능 사거리 확인
+	void CheckCombatTarget();
+	
+protected:
+	// 현재 타겟 (적)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<AActor> TargetActor;
+#pragma endregion
 
 #pragma region UI
 public:
+	UFUNCTION()
 	void InitUI();
+
+protected:
+	// 미니맵용 씬 캡처 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI|Minimap")
+	class USceneCaptureComponent2D* MinimapCaptureComponent;
 #pragma endregion
 };
