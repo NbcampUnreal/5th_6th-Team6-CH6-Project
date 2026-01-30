@@ -44,20 +44,22 @@ void UMonsterRangeComponent::OnPlayerCountingBeginOverlap(UPrimitiveComponent* O
 {
 	if (OtherActor && OtherActor->IsA<APawn>())
 	{
-		PlayerCount++;
+		PlayerCount = FMath::Max(0, PlayerCount + 1);
 		UE_LOG(LogTemp, Warning, TEXT("PlayerCount: %d"), PlayerCount);
 
 		if (PlayerCount == 1)
 		{
-			// State 전환 이벤트
-			UStateTreeComponent* STComp = Cast<ABaseMonster>(GetOwner())->GetStateTreeComponent();
-			if (IsValid(STComp) == false)
+			// 현재 State 
+			ABaseMonster* Monster = Cast<ABaseMonster>(GetOwner());
+
+			UAbilitySystemComponent* ASC = Monster->GetAbilitySystemComponent();
+			if (IsValid(ASC) == false)
 			{
 				return;
 			}
-
-			FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("AI.Event.Awake"));
-			STComp->SendStateTreeEvent(FStateTreeEvent(EventTag));
+			UE_LOG(LogTemp, Warning, TEXT("MonsterState : Awake"));
+			ASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Awake")));
+			ASC->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Sleep")));			
 		}
 
 		if (Debug)
@@ -84,35 +86,19 @@ void UMonsterRangeComponent::OnPlayerCountingEndOverlap(UPrimitiveComponent* Ove
 		PlayerCount = FMath::Max(0, PlayerCount - 1);
 		UE_LOG(LogTemp, Warning, TEXT("PlayerCount: %d"), PlayerCount);
 
-		// State 전환 이벤트
-		ABaseMonster* Monster = Cast<ABaseMonster>(GetOwner());
-		if (IsValid(Monster) == false)
+		if (PlayerCount == 0)
 		{
-			return;
-		}
+			// 현재 State 
+			ABaseMonster* Monster = Cast<ABaseMonster>(GetOwner());
 
-		UStateTreeComponent* STComp = Monster->GetStateTreeComponent();
-		if (IsValid(STComp) == false)
-		{
-			return;
-		}
-
-		//TargetPlayer나가면 Return상태로 전환
-		if (OtherActor == Monster->GetTargetPlayer())
-		{
-			UE_LOG(LogTemp, Warning, TEXT("MonsterState : Return"));
-			FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("AI.Event.Return"));
-			STComp->SendStateTreeEvent(FStateTreeEvent(EventTag));
-			Monster->SetTargetPlayer(nullptr);
-			Monster->SetbIsCombat(false);
-		}
-
-		//TargetPlayer도 없고 근처에 아무도 없으면 Sleep 상태로 전환
-		else if (PlayerCount == 0)
-		{
+			UAbilitySystemComponent* ASC = Monster->GetAbilitySystemComponent();
+			if (IsValid(ASC) == false)
+			{
+				return;
+			}
 			UE_LOG(LogTemp, Warning, TEXT("MonsterState : Sleep"));
-			FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("AI.Event.Sleep"));
-			STComp->SendStateTreeEvent(FStateTreeEvent(EventTag));
+			ASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Sleep")));
+			ASC->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Awake")));
 		}
 
 		if (Debug)
