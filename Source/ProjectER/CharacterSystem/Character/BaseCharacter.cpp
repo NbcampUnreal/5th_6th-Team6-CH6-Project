@@ -3,6 +3,7 @@
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
 #include "CharacterSystem/Data/CharacterData.h"
+#include "CharacterSystem/Player/BasePlayerController.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -126,6 +127,12 @@ void ABaseCharacter::Tick(float DeltaTime)
 
 	// Tick 활성화 시 경로 탐색 (서버)
 	UpdatePathFollowing();
+	
+	// 타겟이 유효할 때 추적/공격 수행
+	if (TargetActor)
+	{
+		CheckCombatTarget(DeltaTime);
+	}
 
 }
 
@@ -262,8 +269,6 @@ void ABaseCharacter::InitAbilitySystem()
 
 		// Attribute Set 초기화
 		InitAttributes();
-
-		UE_LOG(LogTemp, Warning, TEXT("Initialize Attribute."));
 	}
 }
 
@@ -542,46 +547,90 @@ void ABaseCharacter::StopPathFollowing()
 void ABaseCharacter::SetTarget(AActor* NewTarget)
 {
 	TargetActor = NewTarget;
-
+	
+	// 타겟이 생길 시 -> Tick 켜기 -> 거리 체크 시작
+	// 타겟 소멸 시 -> Tick 끄기 (최적화)
+	SetActorTickEnabled(TargetActor != nullptr);
+	
+	// 경로 탐색 타이머 초기화
+	PathfindingTimer = 0.0f;
+	
 #if WITH_EDITOR
 	if (bShowDebug)
 	{
-		// NewTarget이 null일 경우 "None" 출력 (크래시 방지)
 		UE_LOG(LogTemp, Warning, TEXT("[%s] Set Target Actor -> %s"),
 			*GetName(),
 			NewTarget ? *NewTarget->GetName() : TEXT("None"));
 	}
 #endif
-
-	// 추가 예정
-	// 타겟이 생길 시 -> Tick 켜기 -> 거리 체크 시작
-	/*if (TargetActor)
-	{
-		// SetActorTickEnabled(true);
-	}
-	else
-	{
-		// SetActorTickEnabled(false);
-	}*/
-	// 타겟 소멸 시 -> Tick 끄기 등 최적화 실시
 }
 
-void ABaseCharacter::CheckCombatTarget()
+void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 {
-	if (!TargetActor) return;
+	if (!IsValid(TargetActor))
+	{
+		SetTarget(nullptr); // 타겟이 사망 혹은 소멸 시 지정 해제
+		return;
+	}
 
 	float Distance = GetDistanceTo(TargetActor);
-
-	if (Distance <= GetAttackRange())
+	float AttackRange = GetAttackRange();
+	
+	// 캡슐 크기에 의한 사거리 보정값
+	float AcceptanceRadius = 50.0f;
+	
+	if (Distance <= AttackRange)
 	{
-		// 사거리 내 진입 -> 정지 후 공격
+		// [사거리 내 진입] -> [정지 후 공격]
 		StopMove();
-		// Attack();
+        
+		// 회전 - 공격할 때는 적을 바라봐야 함
+		FVector Direction = TargetActor->GetActorLocation() - GetActorLocation();
+		Direction.Z = 0.0f; // 높이 무시
+		SetActorRotation(Direction.Rotation());
+		
+		ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
+		if (!PS) return;
+
+		UAbilitySystemComponent* ASC = PS->GetAbilitySystemComponent();
+		if (!ASC) return;
+
+		// ASC 캐싱 / Actor Info 설정
+		AbilitySystemComponent = ASC;
+		ASC->InitAbilityActorInfo(PS, this);
+		
+		// 공격 어빌리티 실행 (GAS)
+		if (AbilitySystemComponent.IsValid())
+		{
+			// "Input.Action.Attack" 태그를 가진 스킬(DA_AutoAttack) 실행
+			FGameplayTag AttackTag = FGameplayTag::RequestGameplayTag(FName("Input.Action.Attack"));
+			bool bWasActivated = AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(AttackTag));
+			
+#if WITH_EDITOR
+			if (bShowDebug)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[%s] Activate Ability Tag: %s / Success: %s"),
+							*GetName(),
+							*AttackTag.ToString(), 
+							bWasActivated ? TEXT("True") : TEXT("False"));
+			}
+#endif
+		}
+		return;
 	}
 	else
 	{
-		// 사거리 밖 -> 추격
-		MoveToLocation(TargetActor->GetActorLocation());
+		PathfindingTimer += DeltaTime;
+		if (PathfindingTimer > 0.25f)
+		{
+			PathfindingTimer = 0.0f;
+        
+			if (ABasePlayerController* PC = Cast<ABasePlayerController>(GetController()))
+			{
+				// 컨트롤러에게 이동 명령 위임
+				MoveToLocation(TargetActor->GetActorLocation());
+			}
+		}	
 	}
 }
 
