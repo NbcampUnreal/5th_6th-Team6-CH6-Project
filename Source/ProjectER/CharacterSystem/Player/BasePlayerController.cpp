@@ -1,4 +1,4 @@
-#include "CharacterSystem/Player/BasePlayerController.h"
+﻿#include "CharacterSystem/Player/BasePlayerController.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -9,7 +9,9 @@
 #include "EnhancedInputSubsystems.h"
 #include "Engine/World.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
+#include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
+#include "GameplayAbilitySpec.h"
 
 // [김현수 추가분] 상호작용 인터페이스 포함
 #include "ItemSystem/I_ItemInteractable.h"
@@ -68,7 +70,7 @@ void ABasePlayerController::SetupInputComponent()
 
 		EnhancedInputComponent->BindAction(InputConfig->StopMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnStopTriggered);
 
-		/*for (const FInputData& Action : InputConfig->AbilityInputAction)
+		for (const FInputData& Action : InputConfig->AbilityInputAction)
 		{
 			if (Action.InputAction && Action.InputTag.IsValid())
 			{
@@ -78,7 +80,7 @@ void ABasePlayerController::SetupInputComponent()
 				// Released 바인딩 (차징 스킬 등을 위해 필요)
 				EnhancedInputComponent->BindAction(Action.InputAction, ETriggerEvent::Completed, this, &ABasePlayerController::AbilityInputTagReleased, Action.InputTag);
 			}
-		}*/
+		}
 	}
 }
 
@@ -272,6 +274,28 @@ void ABasePlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
 	
 	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ControlledPawn);
 	if (!ASC) return;
+
+	for (FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
+	{
+		if (Spec.DynamicAbilityTags.HasTagExact(InputTag))
+		{
+			if (Spec.IsActive())
+			{
+				// [방법 2 핵심] 태그를 담은 이벤트를 어빌리티에 직접 쏩니다.
+				FGameplayEventData Payload;
+				Payload.EventTag = InputTag; // 전달할 태그
+				Payload.Instigator = this;   // 보낸 사람
+
+				// 활성화된 어빌리티에게 이벤트를 전달합니다.
+				ASC->HandleGameplayEvent(InputTag, &Payload);
+				UE_LOG(LogTemp, Log, TEXT("Gameplay Event Sent: %s"), *InputTag.ToString());
+			}
+			else
+			{
+				ASC->TryActivateAbility(Spec.Handle);
+			}
+		}
+	}
 
 	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan, FString::Printf(TEXT("Input Tag Pressed: %s"), *InputTag.ToString()));
 }
