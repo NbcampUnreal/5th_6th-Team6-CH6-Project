@@ -68,22 +68,12 @@ void UBaseMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 {
 	Super::PostGameplayEffectExecute(Data);
 
+	//GameplayEffect가 Execute로 속성을 변경했을 때
 	const FGameplayAttribute Attribute = Data.EvaluatedData.Attribute;
 
 	if (Attribute == GetInComingDamageAttribute())
 	{
-		// 공격 대상 설정
-		const FGameplayEffectContextHandle& Context =
-			Data.EffectSpec.GetEffectContext();
-		AActor* InstigatorActor = Context.GetOriginalInstigator();
-		ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActor());
-		
-		Monster->SetTargetPlayer(InstigatorActor);
-		Monster->SetbIsCombat(true);
-		UE_LOG(LogTemp, Warning, TEXT("Target : %s"), *InstigatorActor->GetName());
-
-
-		// 데미지 적용
+		// 데미지 적용, 임시 계산 방식
 		float Damage = FMath::Max(0.f, GetInComingDamage() - GetDefense());
 		UE_LOG(LogTemp, Warning, TEXT("%s : TakeDamage %f "), *GetName(), Damage);
 		if (Damage > 0.f)
@@ -93,35 +83,44 @@ void UBaseMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 			SetInComingDamage(0.f);
 		}
 
-		// State 전환용 hit 이벤트
-		UStateTreeComponent* STComp = Cast<ABaseMonster>(GetOwningActor())->GetStateTreeComponent();
-		if (IsValid(STComp) == false)
-		{
-			return;
-		}
-		FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("AI.Event.Hit"));
-		STComp->SendStateTreeEvent(FStateTreeEvent(EventTag));
-	}
-
-	// 사망 체크
-	if (GetHealth() <= 0.f) 
-	{ 
-		UE_LOG(LogTemp, Warning, TEXT("%s : Die "), *GetName());
+		// 공격 대상 설정
+		const FGameplayEffectContextHandle& Context =
+			Data.EffectSpec.GetEffectContext();
+		AActor* InstigatorActor = Context.GetOriginalInstigator();
 		ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActor());
-		if (IsValid(Monster) == false)
-		{
-			return;
-		}
-		Monster->SetbIsDead(true);
 
-		// State 전환용 hit 이벤트
-		UStateTreeComponent* STComp = Monster->GetStateTreeComponent();
-		if (IsValid(STComp) == false)
+		// 사망 체크
+		if (GetHealth() <= 0.f)
 		{
-			return;
+			Monster->SetTargetPlayer(nullptr);
+			Monster->SetbIsDead(true);
+			Monster->SetbIsCombat(false);
+
+			// Deaht 이벤트
+			UStateTreeComponent* STComp = Monster->GetStateTreeComponent();
+			if (IsValid(STComp) == false)
+			{
+				return;
+			}
+			FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.Death"));
+			STComp->SendStateTreeEvent(FStateTreeEvent(EventTag));
 		}
-		FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("AI.Event.Die"));
-		STComp->SendStateTreeEvent(FStateTreeEvent(EventTag));
+		else
+		{
+			Monster->SetTargetPlayer(InstigatorActor);
+			Monster->SetbIsDead(false);
+			Monster->SetbIsCombat(true);
+			UE_LOG(LogTemp, Warning, TEXT("Target : %s"), *InstigatorActor->GetName());
+
+			// hit 이벤트
+			UStateTreeComponent* STComp = Cast<ABaseMonster>(GetOwningActor())->GetStateTreeComponent();
+			if (IsValid(STComp) == false)
+			{
+				return;
+			}
+			FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.Hit"));
+			STComp->SendStateTreeEvent(FStateTreeEvent(EventTag));
+		}
 	}
 }
 

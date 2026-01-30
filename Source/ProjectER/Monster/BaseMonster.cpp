@@ -30,7 +30,10 @@ void ABaseMonster::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	//DOREPLIFETIME(ABaseMonster, );
+	//DOREPLIFETIME(ABaseMonster, TargetPlayer);
+	//DOREPLIFETIME(ABaseMonster, StartLocation);
+	//DOREPLIFETIME(ABaseMonster, bIsCombat);
+	//DOREPLIFETIME(ABaseMonster, bIsDead);
 }
 
 void ABaseMonster::BeginPlay()
@@ -38,7 +41,7 @@ void ABaseMonster::BeginPlay()
 	Super::BeginPlay();
 	
 	UE_LOG(LogTemp, Warning, TEXT("%s : BeginPlay"), *GetName());
-
+	StartLocation = GetActorLocation();
 
 
 }
@@ -49,8 +52,13 @@ void ABaseMonster::PossessedBy(AController* newController)
 
 	UE_LOG(LogTemp, Warning, TEXT("%s : PossessedBy"), *GetName());
 
-	InitAbilitySystem();
+	//if (HasAuthority())
+	//{
+		InitAbilitySystem();
 
+	//}
+	 
+	//UI 델리게이트
 	ASC->GetGameplayAttributeValueChangeDelegate(AttributeSet->GetHealthAttribute())
 		.AddUObject(this, &ABaseMonster::OnHealthChangedCallback);
 }
@@ -69,8 +77,6 @@ void ABaseMonster::InitAbilitySystem()
 
 void ABaseMonster::InitGiveAbilities()
 {
-	//if (!HasAuthority()) { return; }
-	
 	for (TSubclassOf<UGameplayAbility> Ability : DefaultAbilities)
 	{
 		ASC->GiveAbility(

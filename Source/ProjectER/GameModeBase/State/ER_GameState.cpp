@@ -1,6 +1,5 @@
 ﻿#include "ER_GameState.h"
 #include "GameModeBase/State/ER_PlayerState.h"
-#include "GameModeBase/ER_OutGamePlayerController.h"
 
 
 void AER_GameState::BuildTeamCache()

@@ -15,11 +15,6 @@ void AER_OutGamePlayerController::BeginPlay()
 	Super::BeginPlay();
 }
 
-void AER_OutGamePlayerController::OnRep_PlayerState()
-{
-	Super::OnRep_PlayerState();
-
-}
 
 void AER_OutGamePlayerController::ConnectToDedicatedServer(const FString& Ip, int32 Port, const FString& PlayerName)
 {
@@ -34,9 +29,14 @@ void AER_OutGamePlayerController::ConnectToDedicatedServer(const FString& Ip, in
 }
 
 
+
+
 void AER_OutGamePlayerController::ShowWinUI()
 {
 	if (!WinUIClass)
+		return;
+
+	if (IsValid(WinUIInstance))
 		return;
 
 	UE_LOG(LogTemp, Log, TEXT("[PC] : ShowWinUI"));
@@ -49,21 +49,40 @@ void AER_OutGamePlayerController::ShowLoseUI()
 	if (!LoseUIClass)
 		return;
 
-	UE_LOG(LogTemp, Log, TEXT("[PC] : HandleLoseChanged"));
+	if (IsValid(LoseUIInstance))
+		return;
+
+	UE_LOG(LogTemp, Log, TEXT("[PC] : ShowLoseUI"));
 	LoseUIInstance = CreateWidget<UUserWidget>(this, LoseUIClass);
 	LoseUIInstance->AddToViewport();
+}
+
+void AER_OutGamePlayerController::ShowRespawnTimerUI()
+{
+	if (!RespawnUIClass)
+		return;
+
+	if (IsValid(RespawnUIInstance))
+		return;
+
+	UE_LOG(LogTemp, Log, TEXT("[PC] : ShowRespawnUI"));
+	RespawnUIInstance = CreateWidget<UUserWidget>(this, RespawnUIClass);
+	RespawnUIInstance->AddToViewport();
+}
+
+void AER_OutGamePlayerController::HideRespawnTimerUI()
+{
+	if (IsValid(RespawnUIInstance))
+	{
+		RespawnUIInstance->RemoveFromParent();
+		RespawnUIInstance = nullptr;
+	}
 }
 
 void AER_OutGamePlayerController::Server_StartGame_Implementation()
 {
 	auto OutGameMode = Cast<AER_OutGameMode>(GetWorld()->GetAuthGameMode());
 	OutGameMode->StartGame();
-}
-
-void AER_OutGamePlayerController::Server_TEMP_OutGame_Implementation()
-{
-	auto OutGameMode = Cast<AER_OutGameMode>(GetWorld()->GetAuthGameMode());
-	OutGameMode->EndGame();
 }
 
 void AER_OutGamePlayerController::Server_DisConnectServer_Implementation()
@@ -91,4 +110,14 @@ void AER_OutGamePlayerController::Client_SetDead_Implementation()
 {
 	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
 	PS->bIsDead = true;
+}
+
+void AER_OutGamePlayerController::Client_StartRespawnTimer_Implementation()
+{
+	ShowRespawnTimerUI();
+}
+
+void AER_OutGamePlayerController::Client_StopRespawnTimer_Implementation()
+{
+	HideRespawnTimerUI();
 }
