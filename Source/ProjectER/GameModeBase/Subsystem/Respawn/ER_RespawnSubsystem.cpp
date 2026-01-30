@@ -70,13 +70,12 @@ void UER_RespawnSubsystem::StartRespawnTimer(AER_PlayerState& PS, AER_GameState&
 	if (!PS.bIsDead)
 		return;
 
-
-
 	const int32 PlayerId = PS.GetPlayerId();
 
 	// 리스폰 시간 계산 -> 추후에 페이즈, 레벨에 따라서 리스폰 시간 계산
-	int32 RespawnTime = 5;
+	float RespawnTime = 5.f;
 	PS.RespawnTime = GS.GetServerWorldTimeSeconds() + RespawnTime;
+	PS.ForceNetUpdate();
 
 	TWeakObjectPtr<AER_PlayerState> WeakPS(&PS);
 
@@ -96,6 +95,7 @@ void UER_RespawnSubsystem::StartRespawnTimer(AER_PlayerState& PS, AER_GameState&
 				AER_PlayerState* PS_ = WeakPS.Get();
 
 				PS_->bIsDead = false;
+				PS_->ForceNetUpdate();
 
 				UE_LOG(LogTemp, Log, TEXT("[RSS] : Player(%s) Respawned"), *PS_->GetPlayerName());
 			}),
@@ -104,9 +104,10 @@ void UER_RespawnSubsystem::StartRespawnTimer(AER_PlayerState& PS, AER_GameState&
 	);
 
 	// 리스폰 UI 출력
-	ABasePlayerController* PC = Cast<ABasePlayerController>(PS.GetOwner());
-
-	PC->Client_StartRespawnTimer();
+	if (ABasePlayerController* PC = Cast<ABasePlayerController>(PS.GetOwner()))
+	{
+		PC->Client_StartRespawnTimer();
+	}
 	
 }
 
