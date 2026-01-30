@@ -23,13 +23,12 @@ public:
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
 	virtual void OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
-	void Assign(USkillDataAsset* DataAsset);
 protected:
 	//virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	virtual void ExecuteSkill();
 	virtual void FinishSkill();
 	virtual void OnCancelAbility();
-	void Instant();
+	//void Instant();
 	/*void Targeted();
 	void OnTargetConfirmed(float ElapsedTime);*/
 	/*virtual void PointClick();
@@ -37,10 +36,14 @@ protected:
 	virtual void Holding();*/
 	void AddTagToOwner(FGameplayTag Tag);
 	void RemoveTagFromOwner(FGameplayTag Tag);
+
+	UFUNCTION()
 	void OnActiveTagAdded();
+
 	void PlayAnimMontage();
 	void SetWaitActiveTagTask();
 	void PrepareToActiveSkill();
+	FGameplayTag GetInputTag();
 //private:
 
 public:

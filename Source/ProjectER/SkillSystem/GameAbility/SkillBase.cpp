@@ -6,6 +6,7 @@
 #include "Abilities/Tasks/AbilityTask_WaitGameplayTag.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
+#include "SkillSystem/SkillDataAsset.h"
 
 USkillBase::USkillBase()
 {
@@ -64,14 +65,14 @@ void USkillBase::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const
 
 	if (Spec.SourceObject.IsValid())
 	{
-		ChacedConfig = Cast<UBaseSkillConfig>(Spec.SourceObject.Get());
+		USkillDataAsset* SkillDataAsset = Cast<USkillDataAsset>(Spec.SourceObject);
+		if (IsValid(SkillDataAsset))
+		{
+			ChacedConfig = SkillDataAsset->SkillConfig;
+		}
 	}
 }
 
-void USkillBase::Assign(USkillDataAsset* DataAsset)
-{
-	//SkillData = DataAsset->SkillData;
-}
 
 //void USkillBase::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 //{
@@ -120,12 +121,19 @@ void USkillBase::PrepareToActiveSkill()
 	{
 		AddTagToOwner(ActiveTag);
 	}
+
+	PlayAnimMontage();
 }
 
-void USkillBase::Instant()
+FGameplayTag USkillBase::GetInputTag()
 {
-	PrepareToActiveSkill();
+	return ChacedConfig->Data.InputKeyTag;
 }
+
+//void USkillBase::Instant()
+//{
+//	PrepareToActiveSkill();
+//}
 
 //void USkillBase::Targeted()
 //{
