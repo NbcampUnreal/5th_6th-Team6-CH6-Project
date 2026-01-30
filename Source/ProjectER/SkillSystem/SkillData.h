@@ -38,6 +38,9 @@ struct FSkillDefaultData {
 
     UPROPERTY(EditDefaultsOnly, Category = "Skill|Status")
     FScalableFloat BaseCoolTime;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Skill|InputKey", meta = (Categories = "Input.Action.Skill"))
+    FGameplayTag InputKeyTag;
 };
 
 //class PROJECTER_API SkillData
