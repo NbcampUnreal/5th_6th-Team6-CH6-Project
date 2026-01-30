@@ -7,7 +7,7 @@
 #include "Engine/CanvasRenderTarget2D.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstance.h"
-#include "LineOfSight/VisionChannelEnum.h"// now as enum
+#include "LineOfSight/VisionData.h"// now as enum
 #include "CameraVisionManager.generated.h"
 
 

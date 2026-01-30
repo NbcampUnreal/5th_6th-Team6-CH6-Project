@@ -4,16 +4,47 @@
 #include "LineOfSight/VisionSubsystem.h"
 #include "LineOfSight/LineOfSightComponent.h"
 
-
 //LOG
 DEFINE_LOG_CATEGORY(VisionSubsystem);
 
 void UVisionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	
-	UE_LOG(VisionSubsystem, Log,
-		TEXT("UVisionSubsystem::Initialize >> VisionSubsystem initialized"));
+
+	// assign the data asset by path
+	UObstacleTileData* TileData = LoadObject<UObstacleTileData>(nullptr, *AssetSavePath);
+
+	if (TileData)
+	{
+		UE_LOG(VisionSubsystem, Log,
+			TEXT("UVisionSubsystem::Initialize >> Loaded TileDataAsset: %s"),
+			*TileData->GetName());
+
+		//Log for checking if Editor-Registered Data is still there
+		UE_LOG(VisionSubsystem, Log,
+			TEXT("UVisionSubsystem::Initialize >> TileCount : %d"),
+			TileData->Tiles.Num());
+
+		for (int32 i = 0; i < TileData->Tiles.Num(); ++i)
+		{
+			const FObstacleMaskTile& Tile = TileData->Tiles[i];
+			UE_LOG(VisionSubsystem, Log,
+				TEXT("Tile %d: Mask=%s, Bounds Min=(%.1f, %.1f), Max=(%.1f, %.1f)"),
+				i,
+				Tile.Mask ? *Tile.Mask->GetName() : TEXT("None"),
+				Tile.WorldBounds.Min.X, Tile.WorldBounds.Min.Y,
+				Tile.WorldBounds.Max.X, Tile.WorldBounds.Max.Y);
+		}
+
+		// Initialize world tiles from the asset
+		InitializeTilesFromDataAsset(TileData);
+	}
+	else
+	{
+		UE_LOG(VisionSubsystem, Warning,
+			TEXT("UVisionSubsystem::Initialize >> Failed to load TileDataAsset at path: %s"),
+			*AssetSavePath);
+	}
 }
 
 void UVisionSubsystem::Deinitialize()
@@ -26,13 +57,12 @@ void UVisionSubsystem::Deinitialize()
 
 bool UVisionSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
-	// no editor previews. only in Game World
-	if (const UWorld* World = Cast<UWorld>(Outer))
+	const UWorld* World = Cast<UWorld>(Outer);
+	if (World)
 	{
-		return World->IsGameWorld();
+		// Create in game world AND editor world
+		return true;
 	}
-
-	//could not bring any valid world, so this is also false
 	return false;
 }
 
@@ -99,6 +129,106 @@ void UVisionSubsystem::UnregisterProvider(ULineOfSightComponent* Provider, EVisi
 		TEXT("UVisionSubsystem::UnregisterProvider >> Could not find Provider[%s] in channel:%d"),
 		*Provider->GetOwner()->GetName(),
 		InVisionChannel);
+}
+
+void UVisionSubsystem::RequestObstacleBake(EObstacleBakeRequest Request)
+{
+	if (OnObstacleBakeRequested.IsBound())
+	{
+		OnObstacleBakeRequested.Broadcast(Request);
+		UE_LOG(VisionSubsystem, Log,
+			TEXT(" UVisionSubsystem::RequestObstacleBake >> Broadcasted request %d"),
+			static_cast<int32>(Request));
+	}
+	else
+	{
+		UE_LOG(VisionSubsystem, Warning,
+			TEXT(" UVisionSubsystem::RequestObstacleBake >> No listeners bound to delegate"));
+	}
+}
+
+void UVisionSubsystem::RegisterObstacleTile(FObstacleMaskTile NewTile)
+{
+	if (!NewTile.Mask)
+	{
+		UE_LOG(VisionSubsystem, Warning,
+			TEXT("UVisionSubsystem::RegisterObstacleTile >> "
+		"Trying to register a tile without a valid mask"));
+		return;
+	}
+
+	// Add tile to array
+	WorldTiles.Add(NewTile);
+
+	UE_LOG(VisionSubsystem, Log,
+		TEXT("UVisionSubsystem::RegisterObstacleTile >> "
+	   "Registered tile at bounds Min=(%.1f, %.1f) Max=(%.1f, %.1f)"),
+		NewTile.WorldBounds.Min.X,
+		NewTile.WorldBounds.Min.Y,
+		NewTile.WorldBounds.Max.X,
+		NewTile.WorldBounds.Max.Y);
+}
+
+void UVisionSubsystem::ClearObstacleTiles()
+{
+	const int32 NumTiles = WorldTiles.Num();
+	WorldTiles.Reset();
+
+	UE_LOG(VisionSubsystem, Log,
+		TEXT("UVisionSubsystem::ClearObstacleTiles >> Cleared %d obstacle tiles"), NumTiles);
+}
+
+void UVisionSubsystem::InitializeTilesFromDataAsset(UObstacleTileData* TileData)
+{
+	if (!TileData)
+	{
+		UE_LOG(VisionSubsystem, Warning,
+			TEXT("UVisionSubsystem::InitializeTilesFromDataAsset >> No DataAsset provided"));
+		return;
+	}
+
+	WorldTiles.Reset();
+
+	for (const FObstacleMaskTile& Tile : TileData->Tiles)
+	{
+		WorldTiles.Add(Tile);
+		UE_LOG(VisionSubsystem, Log,
+			TEXT("UVisionSubsystem::InitializeTilesFromDataAsset >> Loaded tile at bounds Min=(%.1f, %.1f) Max=(%.1f, %.1f)"),
+			Tile.WorldBounds.Min.X, Tile.WorldBounds.Min.Y,
+			Tile.WorldBounds.Max.X, Tile.WorldBounds.Max.Y);
+	}
+}
+
+void UVisionSubsystem::RemoveTileByTexture(UTexture2D* Texture)
+{
+	if (!Texture) return;
+
+	for (int32 i = WorldTiles.Num() - 1; i >= 0; --i)
+	{
+		if (WorldTiles[i].Mask == Texture)
+		{
+			WorldTiles.RemoveAt(i);
+		}
+	}
+}
+
+
+void UVisionSubsystem::GetOverlappingTileIndices(const FBox2D& QueryBounds, TArray<int32>& OutIndices) const
+{
+	OutIndices.Reset();
+
+	if (!QueryBounds.bIsValid)
+	{
+		return;
+	}
+
+	for (int32 i = 0; i < WorldTiles.Num(); ++i)
+	{
+		if (WorldTiles[i].WorldBounds.Intersect(QueryBounds))
+		{
+			OutIndices.Add(i);
+		}
+	}
 }
 
 TArray<ULineOfSightComponent*> UVisionSubsystem::GetProvidersForTeam(EVisionChannel TeamChannel) const

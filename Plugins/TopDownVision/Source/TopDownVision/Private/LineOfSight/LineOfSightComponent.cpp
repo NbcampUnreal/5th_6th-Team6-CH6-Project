@@ -34,7 +34,7 @@ ULineOfSightComponent::ULineOfSightComponent()
     //-> TODO: this will be used when the Tag System is ready, but for now, just use Legacy Render
     
     SceneCaptureComp->PrimitiveRenderMode=ESceneCapturePrimitiveRenderMode::PRM_LegacySceneCapture;
-
+   // SceneCaptureComp->PrimitiveRenderMode=ESceneCapturePrimitiveRenderMode::PRM_RenderScenePrimitives;
     //Transform Setting -> rotation need to be absolute so that it does not rotate with the owner
     SceneCaptureComp->SetUsingAbsoluteRotation(true);
     SceneCaptureComp->SetWorldRotation(FRotator(0, -90, 0));
@@ -166,7 +166,10 @@ void ULineOfSightComponent::CreateResources()
         return;
     }
 
-    HeightRenderTarget->RenderTargetFormat = RTF_R32f;
+    //HeightRenderTarget->RenderTargetFormat = RTF_R32f;
+    HeightRenderTarget->RenderTargetFormat = RTF_R16f;
+    //HeightRenderTarget->RenderTargetFormat = RTF_R8;
+    
     HeightRenderTarget->InitAutoFormat(PixelResolution, PixelResolution);
     HeightRenderTarget->ClearColor = FLinearColor::Black;
     //HeightRenderTarget->UpdateResourceImmediate(true);

@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
-#include "LineOfSight/VisionChannelEnum.h"// now as enum
+#include "LineOfSight/VisionData.h"// now as enum
 #include "LineOfSightComponent.generated.h"
 
 //forwardDeclare
@@ -50,7 +50,9 @@ public:
     void ToggleUpdate(bool bIsOn);
     bool IsUpdating() const{return ShouldUpdate;}
 
-    //Obstacle registeration
+
+    // This will be used when Height map is captured locally, not sampling pre baked height
+    //Obstacle registration
     /** Manually add an actor to the visibility list */
     UFUNCTION(BlueprintCallable, Category="LineOfSight")
     void RegisterObstacle(AActor* Obstacle);

@@ -1,4 +1,4 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "LineOfSight/VisionChannelEnum.h"
+#include "LineOfSight/WorldObstacle/ObstacleTileData.h"

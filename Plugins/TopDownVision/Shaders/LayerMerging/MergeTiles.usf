@@ -1,0 +1,79 @@
+﻿#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/Common.ush"
+
+#ifndef MAX_TILES
+#define MAX_TILES 32
+#endif
+
+#ifndef THREADGROUP_SIZE
+#define THREADGROUP_SIZE 8
+#endif
+
+// Tile textures - array
+Texture2D TileTextures[MAX_TILES];
+SamplerState TileSampler;
+
+// Output
+RWTexture2D<float4> OutputTexture;
+
+// Tile data structure
+struct FTileInfo
+{
+    float2 TileWorldMin;
+    float2 TileWorldMax;
+    uint TextureIndex;
+    uint Padding[3];
+};
+
+StructuredBuffer<FTileInfo> TileInfoBuffer;
+
+// Uniforms
+float2 LocalWorldMin;
+float2 LocalWorldMax;
+uint TileCount;
+uint OutputResolution;
+
+[numthreads(THREADGROUP_SIZE, THREADGROUP_SIZE, 1)]
+void MergeTilesCS(uint3 DispatchThreadId : SV_DispatchThreadID)
+{
+    uint2 PixelCoord = DispatchThreadId.xy;
+    
+    // Bounds check
+    if (PixelCoord.x >= OutputResolution || PixelCoord.y >= OutputResolution)
+        return;
+    
+    // Convert pixel to world position
+    float2 UV = float2(PixelCoord) / float(OutputResolution);
+    float2 LocalSize = LocalWorldMax - LocalWorldMin;
+    float2 WorldPos = LocalWorldMin + UV * LocalSize;
+    
+    // Initialize result
+    float4 Result = float4(0, 0, 0, 0);
+    
+    // Check all tiles
+    for (uint i = 0; i < TileCount; ++i)
+    {
+        FTileInfo Tile = TileInfoBuffer[i];
+        
+        // AABB intersection test
+        if (WorldPos.x >= Tile.TileWorldMin.x && WorldPos.x <= Tile.TileWorldMax.x &&
+            WorldPos.y >= Tile.TileWorldMin.y && WorldPos.y <= Tile.TileWorldMax.y)
+        {
+            // Calculate UV within tile bounds
+            float2 TileSize = Tile.TileWorldMax - Tile.TileWorldMin;
+            float2 TileUV = (WorldPos - Tile.TileWorldMin) / TileSize;
+            
+            // Sample texture (bounds check on index)
+            if (Tile.TextureIndex < MAX_TILES)
+            {
+                float4 TileColor = TileTextures[Tile.TextureIndex].SampleLevel(TileSampler, TileUV, 0);
+                
+                // Blend - use max for obstacle masks
+                Result = max(Result, TileColor);
+            }
+        }
+    }
+    
+    // Write output
+    OutputTexture[PixelCoord] = Result;
+}

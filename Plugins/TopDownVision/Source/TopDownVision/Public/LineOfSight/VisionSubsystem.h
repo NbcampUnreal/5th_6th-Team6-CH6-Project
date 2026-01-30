@@ -4,8 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
-#include "Engine/CanvasRenderTarget2D.h"// like the name, the canvas for compositing local RTs
-#include "LineOfSight/VisionChannelEnum.h"// enum
+#include "LineOfSight/VisionData.h"// for enum, tag type
+#include "WorldObstacle/WorldObstacleData.h"
+#include "LineOfSight/WorldObstacle/ObstacleTileData.h"//FObstacleMaskTile
 #include "VisionSubsystem.generated.h"
 
 
@@ -21,9 +22,16 @@ struct FRegisteredProviders
 	TArray<ULineOfSightComponent*> RegisteredList;
 };
 
-/**
- *  this will be used for minimap. the main RT will be camera focused
- */
+
+//Delegates
+DECLARE_MULTICAST_DELEGATE_OneParam(
+	FOnObstacleBakeRequested,
+	EObstacleBakeRequest);// command enum
+// tried to use it in editor function, but binding only happens in the runtime. cannot work
+
+//--> use editor world iteration for the class itself. no need for binding.
+// but just in case, keep the delegate
+
 
 //Log
 TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(VisionSubsystem, Log, All);
@@ -37,6 +45,7 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
+	
 
 	//Registration
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
@@ -44,32 +53,50 @@ public:
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
 	void UnregisterProvider(ULineOfSightComponent* Provider, EVisionChannel InVisionChannel);
 
+	//World Obstacle Tiles
 
+	UFUNCTION(BlueprintCallable, Category="LineOfSight|Obstacle")//!!! this should be called in the editor function!
+	void RequestObstacleBake(EObstacleBakeRequest Request);
+	
+	void RegisterObstacleTile(FObstacleMaskTile NewTile);
+	void ClearObstacleTiles();//clear all
 
-	//void UpdateGlobalLOS();// update the layered RT
-	//Getter
-	UCanvasRenderTarget2D* GetGlobalRenderTarget() const { return GlobalRenderTarget; }
+	// Initialize tiles from DataAsset
+	UFUNCTION(BlueprintCallable, Category="LineOfSight|Obstacle")
+	void InitializeTilesFromDataAsset(UObstacleTileData* TileData);
+
+	// for deletion
+	void RemoveTileByTexture(UTexture2D* Texture);
+	
+	void GetOverlappingTileIndices(
+		const FBox2D& QueryBounds,
+		//out
+		TArray<int32>& OutIndices) const;
 	
 	// getter of same team+shared vision
 	TArray<ULineOfSightComponent*> GetProvidersForTeam(EVisionChannel TeamChannel) const;
+
+	//Getter for passing all tiles
+	const TArray<FObstacleMaskTile>& GetTiles() const{ return WorldTiles; }
+
+
+//Variables
+	//Delegate
+	FOnObstacleBakeRequested OnObstacleBakeRequested;// for the delegate from subsystem
 	
 private:
-	// Draw callback for global canvas
-	//UFUNCTION()
-	//void DrawGlobalLOS(UCanvas* Canvas, int32 Width, int32 Height);
-	
-	// Global composited render target -> this will be used for the minimap RT
-	UPROPERTY()
-	UCanvasRenderTarget2D* GlobalRenderTarget = nullptr;
-	// Resolution of global RT
-	UPROPERTY(EditAnywhere, Category="Vision")
-	int32 GlobalResolution = 1024;//default
-	
 	// Registered actor-local LOS providers
 	UPROPERTY()
 	TMap<EVisionChannel, FRegisteredProviders> VisionMap;
 
-
-
-
+	//Registered Tiles
+	UPROPERTY()
+	TArray<FObstacleMaskTile> WorldTiles;
+	
+	// Data asset reference to load baked tiles at runtime
+	UPROPERTY(EditDefaultsOnly, Category="LineOfSight|Obstacle")
+	UObstacleTileData* DefaultObstacleTileData;
+	// path to the data asset
+	const FString AssetSavePath=TEXT("/Game/PSM/WorldBaker/DA_WorldTileData.DA_WorldTileData");
+	
 };
