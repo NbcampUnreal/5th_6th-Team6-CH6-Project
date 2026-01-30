@@ -36,6 +36,6 @@ public:
     UPROPERTY(EditDefaultsOnly, Instanced)
     TObjectPtr<UBaseSkillConfig> SkillConfig;
 
-    UPROPERTY(EditDefaultsOnly, meta = (Categories = "Input.Action.Skill"))
+    UPROPERTY(EditDefaultsOnly, meta = (Categories = "Input"))
     FGameplayTag InputKeyTag;
 };

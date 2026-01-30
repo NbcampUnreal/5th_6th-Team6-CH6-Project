@@ -49,7 +49,7 @@ protected:
 	/*UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"), Category = "Skill|Data")
 	FSkillDefaultData SkillData;*/
 
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 	TObjectPtr<UBaseSkillConfig> ChacedConfig;
 
 	UPROPERTY(VisibleAnywhere, Category = "Skill|Tags")

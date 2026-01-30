@@ -589,9 +589,33 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 		Direction.Z = 0.0f; // 높이 무시
 		SetActorRotation(Direction.Rotation());
 		
-		// 공격 어빌리티 실행 (GAS)
-		// TryAutoAttack(); 
+		ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
+		if (!PS) return;
+
+		UAbilitySystemComponent* ASC = PS->GetAbilitySystemComponent();
+		if (!ASC) return;
+
+		// ASC 캐싱 / Actor Info 설정
+		AbilitySystemComponent = ASC;
+		ASC->InitAbilityActorInfo(PS, this);
 		
+		// 공격 어빌리티 실행 (GAS)
+		if (AbilitySystemComponent.IsValid())
+		{
+			// "Input.Action.Attack" 태그를 가진 스킬(DA_AutoAttack) 실행
+			FGameplayTag AttackTag = FGameplayTag::RequestGameplayTag(FName("Input.Action.Attack"));
+			bool bWasActivated = AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(AttackTag));
+			
+#if WITH_EDITOR
+			if (bShowDebug)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[%s] Activate Ability Tag: %s / Success: %s"),
+							*GetName(),
+							*AttackTag.ToString(), 
+							bWasActivated ? TEXT("True") : TEXT("False"));
+			}
+#endif
+		}
 		return;
 	}
 	else
