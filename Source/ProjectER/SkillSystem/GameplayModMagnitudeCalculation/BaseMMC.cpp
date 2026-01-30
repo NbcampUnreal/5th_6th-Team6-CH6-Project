@@ -2,6 +2,7 @@
 
 
 #include "SkillSystem/GameplayModMagnitudeCalculation/BaseMMC.h"
+#include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 
 UBaseMMC::UBaseMMC()
 {
@@ -10,7 +11,12 @@ UBaseMMC::UBaseMMC()
 float UBaseMMC::CalculateBaseMagnitude_Implementation(const FGameplayEffectSpec& Spec) const
 {
     FGameplayEffectContextHandle ContextHandle = Spec.GetContext();
-    //ContextHandle.GetSourceObject();
+    ContextHandle.GetSourceObject();
+
+    USkillEffectDataAsset* SkillEffectDataAsset = Cast<USkillEffectDataAsset>(ContextHandle.GetSourceObject());
+    if (!SkillEffectDataAsset) UE_LOG(LogTemp, Log, TEXT("UBaseMMC:: SkillEffectDataAsset is Null"));
+
+    //SkillEffectDataAsset->Data
 
 
     // 1. GA가 'Data.IncomingStat'이라는 이름표로 보낸 수치를 꺼냅니다.

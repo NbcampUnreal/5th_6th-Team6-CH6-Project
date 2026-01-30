@@ -20,7 +20,9 @@ public:
 protected:
 	virtual void ExecuteSkill() override;
 	void Targeted();
-	void OnTargetConfirmed(float ElapsedTime);
+
+	UFUNCTION()
+	void OnTargetConfirmed(FGameplayEventData Payload);
 private:
 
 public:
