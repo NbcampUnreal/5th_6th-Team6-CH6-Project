@@ -97,6 +97,9 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag ReturnAbilityTag;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	FGameplayTag SleepAbilityTag;
+
 #pragma endregion
 
 #pragma region State
