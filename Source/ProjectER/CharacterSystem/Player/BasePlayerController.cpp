@@ -183,15 +183,10 @@ void ABasePlayerController::MoveToMouseCursor()
 						/* === 공격 로직 === */
 						ControlledBaseChar->SetTarget(HitActor); // 타겟 지정
 #if WITH_EDITOR
-						UE_LOG(LogTemp, Warning, TEXT("[%s] Enemy Detected!! : %s"), 
-							*ControlledBaseChar->GetName(),
-							HitActor ? *HitActor->GetName() : TEXT("None"));
-						
 						UE_LOG(LogTemp, Warning, TEXT("[%s] Set Target Actor -> %s"),
 							*ControlledBaseChar->GetName() ,
 							HitActor ? *HitActor->GetName() : TEXT("None"));
 #endif
-						
 						// ControlledBaseChar->TryAutoAttack();
 						return; 
 					}
