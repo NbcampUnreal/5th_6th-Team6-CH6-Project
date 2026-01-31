@@ -224,7 +224,7 @@ void UUI_MainHUD::OnSkill01Hovered()
 
 void UUI_MainHUD::OnSkill02Hovered()
 {
-    ShowTooltip(skill_02, TEX_TempIcon, FText::FromString(TEXT("파이어볼파이어볼파이어볼파이어볼")), FText::FromString(TEXT("기분 좋은 해피 슈퍼 사연발 파이어볼을 해피하게 슈퍼메가 해피합니다. 울트라 해피.")), FText::FromString(TEXT("대미지: 100\n마나 소모: 50")), true);
+    ShowTooltip(skill_02, TEX_TempIcon, FText::FromString(TEXT("파이어볼파이어볼파이어볼파이어볼")), FText::FromString(TEXT("기분 좋은 해피 슈퍼 사연발 파이어볼을 해피하게 슈퍼메가 해피합니다. 울트라 해피.")), FText::FromString(TEXT("대미지: 100\n마나 소모: 50")), false);
 }
 
 void UUI_MainHUD::OnSkill03Hovered()
@@ -252,22 +252,54 @@ void UUI_MainHUD::ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Nam
     // 버튼의 왼쪽 상단 0, 0의 절대 좌표 가져오기
     USlateBlueprintLibrary::LocalToViewport(GetWorld(), WidgetGeom, FVector2D(0, 0), PixelPos, ViewportPos);
 
-
-    // DPI 스케일 가져오기 <- 일단 안 씀
-    float ViewportScale = UWidgetLayoutLibrary::GetViewportScale(GetWorld());
-    FVector2D ViewportSize = UWidgetLayoutLibrary::GetViewportSize(GetWorld()) / ViewportScale; // 스케일이 적용된 실제 UI 공간 크기
-
     // 툴 팁 크기
     TooltipInstance->ForceLayoutPrepass();
-    FVector2D TooltipSize = TooltipInstance->GetDesiredSize();
+    FVector2D DesiredSize = TooltipInstance->GetDesiredSize();
+    
+    /// 가변 해상도를 고려한 크기 계산을 위해 반드시 DPI 스케일을 곱해줘야 한다!!!!!!!!!!!!!!!!!!!
+    float DPIScale = UWidgetLayoutLibrary::GetViewportScale(TooltipInstance);
+    FVector2D ActualSize = DesiredSize * DPIScale;
 
-    UE_LOG(LogTemp, Error, TEXT("PixelPos : %f, %f"), PixelPos.X, PixelPos.Y);
-    UE_LOG(LogTemp, Error, TEXT("ViewportPos : %f, %f"), ViewportPos.X, ViewportPos.Y);
-    UE_LOG(LogTemp, Error, TEXT("TooltipSize Size : %f, %f"), TooltipSize.X, TooltipSize.Y);
+    //UE_LOG(LogTemp, Error, TEXT("PixelPos : %f, %f"), PixelPos.X, PixelPos.Y);
+    //UE_LOG(LogTemp, Error, TEXT("ViewportPos : %f, %f"), ViewportPos.X, ViewportPos.Y);
+    //UE_LOG(LogTemp, Error, TEXT("ActualSize Size : %f, %f"), ActualSize.X, ActualSize.Y);
+    //UE_LOG(LogTemp, Error, TEXT("ButtonSize Size : %f, %f"), ButtonSize.X, ButtonSize.Y);
+    
+    FinalPos.X = PixelPos.X - (ActualSize.X / 2) + (ButtonSize.X / 2);
+    if(showUpper)
+        FinalPos.Y = PixelPos.Y - ActualSize.Y;
+    else
+		FinalPos.Y = PixelPos.Y + (ButtonSize.Y * 2);
 
-    FinalPos.X = PixelPos.X - (ButtonSize.X / 2) - (TooltipSize.X / 4);
-    // FinalPos.Y = PixelPos.Y + ButtonSize.Y - (TooltipSize.Y / 2);
-    FinalPos.Y = PixelPos.Y - (ButtonSize.Y * 2) - (TooltipSize.Y / 2);
+    /// 툴팁이 밖으로 나갈 경우 안으로 들여보내기
+    FVector2D ViewportSize;
+    GEngine->GameViewport->GetViewportSize(ViewportSize);
+    // 좌측 보정
+    if (FinalPos.X + ActualSize.X > ViewportSize.X)
+    {
+        FinalPos.X = ViewportSize.X - ActualSize.X;
+    }
+    // 우측 보정
+    if (FinalPos.X < 0.f)
+    {
+        FinalPos.X = 0.f;
+    }
+
+    // 상단 보정
+    if (FinalPos.Y < 0.f)
+    {
+        // FinalPos.Y = 0.f;
+        FinalPos.Y = PixelPos.Y + (ButtonSize.Y * 2);
+    }
+    // 하단 보정
+    if (FinalPos.Y + ActualSize.Y > ViewportSize.Y)
+    {
+        // FinalPos.Y = ViewportSize.Y - ActualSize.Y;
+        FinalPos.Y = PixelPos.Y - ActualSize.Y;
+    }
+    // 상단 하단의 경우 넘어서면 그냥 upper / lower를 토글하는 방식으로 처리하는게 이쁜것 갓다??
+    // 주석 코드는 단순히 툴팁 크기만큼만 안 빠져 나가게 한다.
+
     TooltipInstance->SetPositionInViewport(FinalPos);
 }
 
