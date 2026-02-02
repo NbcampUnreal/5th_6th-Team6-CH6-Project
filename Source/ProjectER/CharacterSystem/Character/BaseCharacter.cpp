@@ -247,13 +247,12 @@ void ABaseCharacter::InitAbilitySystem()
 			}
 		}
 
-		/* // Ability 부여
+		// Ability 부여
 		for (const auto& AbilityPair : HeroData->Abilities)
 		{
 			FGameplayTag InputTag = AbilityPair.Key;
 			TSoftClassPtr<UGameplayAbility> AbilityPtr = AbilityPair.Value;
-
-			// SoftClassPtr 동기 로드 (게임 시작 시점이므로 즉시 로드)
+			
 			if (UClass* AbilityClass = AbilityPtr.LoadSynchronous())
 			{
 				// Spec 생성 (레벨 1, InputID는 태그의 해시값 등을 사용하거나 별도 매핑 필요)
@@ -265,7 +264,7 @@ void ABaseCharacter::InitAbilitySystem()
 
 				ASC->GiveAbility(Spec);
 			}
-		}*/
+		}
 
 		// Attribute Set 초기화
 		InitAttributes();
@@ -604,15 +603,29 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 		{
 			// "Input.Action.Attack" 태그를 가진 스킬(DA_AutoAttack) 실행
 			FGameplayTag AttackTag = FGameplayTag::RequestGameplayTag(FName("Input.Action.Attack"));
-			bool bWasActivated = AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(AttackTag));
+			
+			// 1. 해당 태그를 가진 어빌리티 스펙이 존재하는지 먼저 확인
+			TArray<FGameplayAbilitySpec*> Specs;
+			AbilitySystemComponent->GetActivatableGameplayAbilitySpecsByAllMatchingTags(FGameplayTagContainer(AttackTag), Specs);
+
+			bool bHasAbility = (Specs.Num() > 0);
+			bool bWasActivated = false;
+			
+			if (bHasAbility)
+			{
+				// 2. 있다면 실행 시도
+				bWasActivated = AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(AttackTag));
+			}
 			
 #if WITH_EDITOR
 			if (bShowDebug)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("[%s] Activate Ability Tag: %s / Success: %s"),
-							*GetName(),
-							*AttackTag.ToString(), 
-							bWasActivated ? TEXT("True") : TEXT("False"));
+				UE_LOG(LogTemp, Warning, TEXT("[%s] Tag: %s / Found Ability: %s / Activated: %s"),
+					*GetName(),
+					*AttackTag.ToString(),
+					bHasAbility ? TEXT("YES") : TEXT("NO (Check DataAsset!)"), // 여기가 NO라면 1번(데이터에셋) 문제
+					bWasActivated ? TEXT("True") : TEXT("False (Check Cooldown/Cost/State)") // 여기가 False라면 3번(조건) 문제
+		);
 			}
 #endif
 		}
