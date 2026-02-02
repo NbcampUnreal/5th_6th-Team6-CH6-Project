@@ -13,6 +13,8 @@
 //GAMEPLAYATTRIBUTE_VALUE_SETTER(PropertyName)\
 //GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChanged, float, OldValue, float, NewValue);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTakeDamage, AActor*, Target);
 
 UCLASS()
 class PROJECTER_API UBaseMonsterAttributeSet : public UAttributeSet
@@ -118,7 +120,23 @@ public:
 	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, InComingDamage);
 #pragma endregion
 
+	UPROPERTY()
+	FOnAttributeChanged OnMaxHealthChanged;
 
+	UPROPERTY()
+	FOnAttributeChanged OnHealthChanged;
+
+	UPROPERTY()
+	FOnAttributeChanged OnAttackSpeedChanged;
+
+	UPROPERTY()
+	FOnAttributeChanged OnMoveSpeedChanged;
+
+	UPROPERTY()
+	FOnTakeDamage OnMonsterHit;
+
+	UPROPERTY()
+	FOnTakeDamage OnMonsterDeath;
 protected:
 
 

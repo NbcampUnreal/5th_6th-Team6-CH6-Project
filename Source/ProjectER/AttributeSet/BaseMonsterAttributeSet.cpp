@@ -73,53 +73,26 @@ void UBaseMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 
 	if (Attribute == GetInComingDamageAttribute())
 	{
-		// 데미지 적용, 임시 계산 방식
-		float Damage = FMath::Max(0.f, GetInComingDamage() - GetDefense());
-		UE_LOG(LogTemp, Warning, TEXT("%s : TakeDamage %f "), *GetName(), Damage);
-		if (Damage > 0.f)
-		{
-			float NewHealth = FMath::Clamp(GetHealth() - Damage, 0.f, GetMaxHealth());
-			SetHealth(NewHealth);
-			SetInComingDamage(0.f);
-		}
-
 		// 공격 대상 설정
 		const FGameplayEffectContextHandle& Context =
 			Data.EffectSpec.GetEffectContext();
 		AActor* InstigatorActor = Context.GetOriginalInstigator();
 		ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActor());
 
-		// 사망 체크
+		// 데미지 계산 임시
+		float Damage = FMath::Max(0.f, GetInComingDamage() - GetDefense());
+		SetInComingDamage(0.f);
+		UE_LOG(LogTemp, Warning, TEXT("%s : Hp -%f "), *Monster->GetName(), Damage);
+
+		float NewHealth = FMath::Clamp(GetHealth() - Damage, 0.f, GetMaxHealth());
+		SetHealth(NewHealth);
+		UE_LOG(LogTemp, Warning, TEXT("%s : Hp %f / %f "), *Monster->GetName(), GetHealth(), GetMaxHealth());
+		
+		OnMonsterHit.Broadcast(InstigatorActor);
+		
 		if (GetHealth() <= 0.f)
 		{
-			Monster->SetTargetPlayer(nullptr);
-			Monster->SetbIsDead(true);
-			Monster->SetbIsCombat(false);
-
-			// Deaht 이벤트
-			UStateTreeComponent* STComp = Monster->GetStateTreeComponent();
-			if (IsValid(STComp) == false)
-			{
-				return;
-			}
-			FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.Death"));
-			STComp->SendStateTreeEvent(FStateTreeEvent(EventTag));
-		}
-		else
-		{
-			Monster->SetTargetPlayer(InstigatorActor);
-			Monster->SetbIsDead(false);
-			Monster->SetbIsCombat(true);
-			UE_LOG(LogTemp, Warning, TEXT("Target : %s"), *InstigatorActor->GetName());
-
-			// hit 이벤트
-			UStateTreeComponent* STComp = Cast<ABaseMonster>(GetOwningActor())->GetStateTreeComponent();
-			if (IsValid(STComp) == false)
-			{
-				return;
-			}
-			FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.Hit"));
-			STComp->SendStateTreeEvent(FStateTreeEvent(EventTag));
+			OnMonsterDeath.Broadcast(InstigatorActor);
 		}
 	}
 }
@@ -129,6 +102,22 @@ void UBaseMonsterAttributeSet::PostAttributeChange(const FGameplayAttribute& Att
 	Super::PostAttributeChange(Attribute, OldValue, NewValue);
 
 	// Attribute 변경된 후
+	if (Attribute == GetMaxHealthAttribute())
+	{
+		OnMaxHealthChanged.Broadcast(OldValue, NewValue);
+	}
+	else if (Attribute == GetHealthAttribute())
+	{
+		OnHealthChanged.Broadcast(OldValue, NewValue);
+	}
+	else if (Attribute == GetAttackSpeedAttribute())
+	{
+		OnAttackSpeedChanged.Broadcast(OldValue, NewValue);
+	}
+	else if (Attribute == GetMoveSpeedAttribute())
+	{
+		OnMoveSpeedChanged.Broadcast(OldValue, NewValue);
+	}
 }
 
 

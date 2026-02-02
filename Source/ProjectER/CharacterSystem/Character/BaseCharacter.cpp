@@ -158,6 +158,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABaseCharacter, HeroData);
+	DOREPLIFETIME(ABaseCharacter, TargetActor);
 }
 
 ETeamType ABaseCharacter::GetTeamType() const
@@ -247,13 +248,12 @@ void ABaseCharacter::InitAbilitySystem()
 			}
 		}
 
-		/* // Ability 부여
+		// Ability 부여
 		for (const auto& AbilityPair : HeroData->Abilities)
 		{
 			FGameplayTag InputTag = AbilityPair.Key;
 			TSoftClassPtr<UGameplayAbility> AbilityPtr = AbilityPair.Value;
-
-			// SoftClassPtr 동기 로드 (게임 시작 시점이므로 즉시 로드)
+			
 			if (UClass* AbilityClass = AbilityPtr.LoadSynchronous())
 			{
 				// Spec 생성 (레벨 1, InputID는 태그의 해시값 등을 사용하거나 별도 매핑 필요)
@@ -265,7 +265,7 @@ void ABaseCharacter::InitAbilitySystem()
 
 				ASC->GiveAbility(Spec);
 			}
-		}*/
+		}
 
 		// Attribute Set 초기화
 		InitAttributes();
@@ -546,23 +546,23 @@ void ABaseCharacter::StopPathFollowing()
 
 void ABaseCharacter::SetTarget(AActor* NewTarget)
 {
-	TargetActor = NewTarget;
+	if (TargetActor == NewTarget) return;
 	
-	// 타겟이 생길 시 -> Tick 켜기 -> 거리 체크 시작
-	// 타겟 소멸 시 -> Tick 끄기 (최적화)
-	SetActorTickEnabled(TargetActor != nullptr);
-	
-	// 경로 탐색 타이머 초기화
-	PathfindingTimer = 0.0f;
-	
-#if WITH_EDITOR
-	if (bShowDebug)
+	// 서버에서 설정
+	if (HasAuthority())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[%s] Set Target Actor -> %s"),
-			*GetName(),
-			NewTarget ? *NewTarget->GetName() : TEXT("None"));
+		TargetActor = NewTarget;
+		OnRep_TargetActor(); // 서버 OnRep 수동 호출
 	}
-#endif
+	else
+	{
+		// 클라이언트에서도 반영(Prediction) 후 서버 요청
+		TargetActor = NewTarget;
+		OnRep_TargetActor(); 
+		
+		// 클라이언트에서 서버에 동기화 요청
+		Server_SetTarget(NewTarget);
+	}
 }
 
 void ABaseCharacter::CheckCombatTarget(float DeltaTime)
@@ -578,6 +578,21 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 	
 	// 캡슐 크기에 의한 사거리 보정값
 	float AcceptanceRadius = 50.0f;
+	
+	// [디버깅용 로그 추가] 현재 거리와 사거리 비교
+#if WITH_EDITOR
+	if (bShowDebug)
+	{
+		static float LogTimer = 0.0f;
+		LogTimer += DeltaTime;
+		if (LogTimer > 0.5f)
+		{
+			LogTimer = 0.0f;
+			UE_LOG(LogTemp, Warning, TEXT("[%s] Dist: %.2f / Range: %.2f"), 
+				*GetName(), Distance, GetAttackRange());
+		}
+	}
+#endif
 	
 	if (Distance <= AttackRange)
 	{
@@ -602,17 +617,28 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 		// 공격 어빌리티 실행 (GAS)
 		if (AbilitySystemComponent.IsValid())
 		{
-			// "Input.Action.Attack" 태그를 가진 스킬(DA_AutoAttack) 실행
-			FGameplayTag AttackTag = FGameplayTag::RequestGameplayTag(FName("Input.Action.Attack"));
-			bool bWasActivated = AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(AttackTag));
+			FGameplayTag AttackTag = FGameplayTag::RequestGameplayTag(FName("Ability.Action.AutoAttack"));
+			
+			TArray<FGameplayAbilitySpec*> Specs;
+			AbilitySystemComponent->GetActivatableGameplayAbilitySpecsByAllMatchingTags(FGameplayTagContainer(AttackTag), Specs);
+
+			bool bHasAbility = (Specs.Num() > 0);
+			bool bWasActivated = false;
+			
+			if (bHasAbility)
+			{
+				bWasActivated = AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(AttackTag));
+			}
 			
 #if WITH_EDITOR
 			if (bShowDebug)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("[%s] Activate Ability Tag: %s / Success: %s"),
-							*GetName(),
-							*AttackTag.ToString(), 
-							bWasActivated ? TEXT("True") : TEXT("False"));
+				UE_LOG(LogTemp, Warning, TEXT("[%s] Tag: %s / Found Ability: %s / Activated: %s"),
+					*GetName(),
+					*AttackTag.ToString(),
+					bHasAbility ? TEXT("YES") : TEXT("NO (Check DataAsset!)"), // 여기가 NO라면 데이터에셋)문제
+					bWasActivated ? TEXT("True") : TEXT("False (Check Cooldown/Cost/State)") // 여기가 False라면 조건 문제
+		);
 			}
 #endif
 		}
@@ -634,6 +660,32 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 	}
 }
 
+void ABaseCharacter::OnRep_TargetActor()
+{
+	// 타겟 유무에 따라 Tick 활성화/비활성화
+	SetActorTickEnabled(TargetActor != nullptr);
+    
+	// 경로 탐색 타이머 초기화 
+	if (TargetActor)
+	{
+		PathfindingTimer = 0.0f;
+	}
+
+#if WITH_EDITOR
+	if (bShowDebug)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[%s] Set Target Actor -> %s"),
+			*GetName(),
+			TargetActor ? *TargetActor->GetName() : TEXT("None"));
+	}
+#endif
+}
+
+void ABaseCharacter::Server_SetTarget_Implementation(AActor* NewTarget)
+{
+	SetTarget(NewTarget);
+}
+
 void ABaseCharacter::InitUI()
 {
 	APlayerController* PC = Cast<APlayerController>(GetController());
@@ -650,6 +702,8 @@ void ABaseCharacter::InitUI()
 		{
 			HUD->InitOverlay(PC, GetPlayerState(), GetAbilitySystemComponent(), GetPlayerState<ABasePlayerState>()->GetAttributeSet());
 			HUD->InitMinimapComponent(MinimapCaptureComponent);
+			HUD->InitHeroDataFactory(HeroData);
+			HUD->InitASCFactory(GetAbilitySystemComponent());
 			UE_LOG(LogTemp, Warning, TEXT("HUD InitOverlay Success!"));
 		}
 		else
