@@ -10,7 +10,8 @@
 #include "Blueprint/SlateBlueprintLibrary.h" // 툴팁용
 #include "Blueprint/WidgetLayoutLibrary.h" // 툴팁용
 #include "UI/UI_ToolTip.h" // 툴팁용
-
+#include "SkillSystem/SkillDataAsset.h" // 스킬용
+#include "AbilitySystemComponent.h" // 스킬용
 void UUI_MainHUD::Update_LV(float CurrentLV)
 {
     if(IsValid(stat_LV))
@@ -150,6 +151,16 @@ void UUI_MainHUD::setStat(ECharacterStat stat, int32 value)
 void UUI_MainHUD::InitMinimapCompo(USceneCaptureComponent2D* SceneCapture2D)
 {
     MinimapCaptureComponent = SceneCapture2D;
+}
+
+void UUI_MainHUD::InitHeroDataHUD(UCharacterData* _HeroData)
+{
+    HeroData = _HeroData;
+}
+
+void UUI_MainHUD::InitASCHud(UAbilitySystemComponent* _ASC)
+{
+    ASC = _ASC;
 }
 
 void UUI_MainHUD::NativeConstruct()

@@ -4,6 +4,8 @@
 #include "UI/UI_HUDFactory.h"
 #include "Blueprint/UserWidget.h"
 #include "UI/UI_HUDController.h"
+#include "SkillSystem/SkillDataAsset.h"
+#include "AbilitySystemComponent.h" // 스킬용
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 
 void AUI_HUDFactory::BeginPlay()
@@ -69,5 +71,21 @@ void AUI_HUDFactory::InitMinimapComponent(USceneCaptureComponent2D* SceneCapture
     if (IsValid(MainWidget))
     {
         MainWidget->InitMinimapCompo(SceneCapture2D);
+    }
+}
+
+void AUI_HUDFactory::InitHeroDataFactory(UCharacterData* HeroData)
+{
+    if (HeroData)
+    {
+        MainWidget->InitHeroDataHUD(HeroData);
+    }
+}
+
+void AUI_HUDFactory::InitASCFactory(UAbilitySystemComponent* _ASC)
+{
+    if (_ASC)
+    {
+        MainWidget->InitASCHud(_ASC);
     }
 }

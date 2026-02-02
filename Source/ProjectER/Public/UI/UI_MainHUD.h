@@ -11,6 +11,8 @@ class UButton;
 class UProgressBar;
 class UImage;
 class UUI_ToolTip;
+class UCharacterData;
+class UAbilitySystemComponent;
 
 UENUM(BlueprintType)
 enum class ECharacterStat : uint8
@@ -48,6 +50,10 @@ public:
 	
 	UFUNCTION()
 	void InitMinimapCompo(USceneCaptureComponent2D* SceneCapture2D);
+	UFUNCTION()
+	void InitHeroDataHUD(UCharacterData* HeroData);
+	UFUNCTION()
+	void InitASCHud(UAbilitySystemComponent* _ASC);
 
 protected:
 	// 마우스 우클릭 확인용
@@ -77,6 +83,8 @@ protected:
 private:
 	void HandleMinimapClicked(const FPointerEvent& InMouseEvent);
 	class USceneCaptureComponent2D* MinimapCaptureComponent;
+	class UCharacterData* HeroData;
+	class UAbilitySystemComponent* ASC;
 
 protected:
 	UPROPERTY(meta = (BindWidget))
