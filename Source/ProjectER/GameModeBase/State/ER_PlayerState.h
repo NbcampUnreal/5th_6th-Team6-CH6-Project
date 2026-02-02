@@ -3,6 +3,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
+#include "AbilitySystemInterface.h"
 #include "ER_PlayerState.generated.h"
 
 UENUM(BlueprintType)
@@ -16,11 +17,11 @@ enum class ETeam : uint8
 
 };
 
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnLoseChanged, bool);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnWinChanged, bool);
+class UAbilitySystemComponent;
+class UBaseAttributeSet;
 
 UCLASS()
-class PROJECTER_API AER_PlayerState : public APlayerState
+class PROJECTER_API AER_PlayerState : public APlayerState, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 	AER_PlayerState();
@@ -28,13 +29,9 @@ class PROJECTER_API AER_PlayerState : public APlayerState
 public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void CopyProperties(class APlayerState* PlayerState) override;
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
-	UFUNCTION()
-	void OnRep_IsLose();
-
-	UFUNCTION()
-	void OnRep_IsWin();
-
+	UBaseAttributeSet* GetAttributeSet() const { return AttributeSet; }
 
 	// Getter
 	UFUNCTION(BlueprintCallable)
@@ -51,9 +48,6 @@ public:
 	void SetbIsReady() { bIsReady = !bIsReady; }
 
 
-
-
-
 public:
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FString PlayerStateName;
@@ -67,16 +61,20 @@ public:
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsDead = false;
 
-
-	UPROPERTY(ReplicatedUsing = OnRep_IsLose, BlueprintReadOnly)
+	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsLose = false;
 
-	UPROPERTY(ReplicatedUsing = OnRep_IsWin, BlueprintReadOnly)
+	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsWin = false;
 
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	float RespawnTime = 5.f;
 
-	FOnLoseChanged OnLoseChanged;
-	FOnWinChanged OnWinChanged;
+private:
+	UPROPERTY(VisibleAnywhere, Category = "GAS")
+	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 
-	
+	UPROPERTY(VisibleAnywhere, Category = "GAS")
+	TObjectPtr<UBaseAttributeSet> AttributeSet;
+
 };

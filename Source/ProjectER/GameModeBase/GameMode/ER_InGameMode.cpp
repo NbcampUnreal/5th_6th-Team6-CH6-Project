@@ -2,16 +2,34 @@
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
+#include "GameModeBase/Subsystem/NeutralSpawn/ER_NeutralSpawnSubsystem.h"
 
 #include "GameFramework/Character.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/GameSession.h"
 
+// 임시
+#include "GameModeBase/TEMPNeutral.h"
+
 
 void AER_InGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (UKismetSystemLibrary::IsDedicatedServer(GetWorld()))
+	{
+		return;
+	}
+
+	// 로컬에서만 실행
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	if (IsValid(PC))
+	{
+		FInputModeUIOnly InputMode;
+		PC->SetInputMode(InputMode);
+		PC->bShowMouseCursor = true;
+	}
 }
 
 void AER_InGameMode::PostSeamlessTravel()
@@ -63,6 +81,8 @@ void AER_InGameMode::HandleStartingNewPlayer_Implementation(APlayerController* N
 				{
 					ERGS->BuildTeamCache();
 				});
+			NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
+			NeutralSS->InitializeSpawnPoints(NeutralClass);
 		}
 	}
 }
@@ -93,9 +113,14 @@ void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter, AActor* Death
 		if (RespawnSS->EvaluateTeamElimination(*ERPS, *ERGS))
 		{
 			UE_LOG(LogTemp, Warning, TEXT("[GM] : NotifyPlayerDied , EvaluateTeamElimination = true"));
-			// 전멸 판정 true일 시
-			// 해당 유저의 팀 사출 실행
+
+			// 전멸 판정 true -> 해당 유저의 팀 사출 실행
 			const int32 TeamIdx = static_cast<int32>(ERPS->Team);
+
+			// 해당 팀의 리스폰 타이머 정지
+			RespawnSS->StopResapwnTimer(*ERGS, TeamIdx);
+
+			// 해당 팀 패배 처리
 			RespawnSS->SetTeamLose(*ERGS, TeamIdx);
 
 			// 승리 팀 체크
@@ -104,15 +129,28 @@ void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter, AActor* Death
 			{
 				RespawnSS->SetTeamWin(*ERGS, LastTeamIdx);
 			}
-	
 		}
 		else
 		{
 			UE_LOG(LogTemp, Warning, TEXT("[GM] : NotifyPlayerDied , EvaluateTeamElimination = false"));
-			// 전멸 판정 false일 시
-			// 리스폰 함수 실행
+
+			// 전멸 판정 false -> 리스폰 함수 실행
+			RespawnSS->StartRespawnTimer(*ERPS, *ERGS);
 		}
 	}
+}
+
+void AER_InGameMode::NotifyNeutralDied(ACharacter* VictimCharacter)
+{
+	if (!HasAuthority() || !VictimCharacter)
+		return;
+
+	//임시니까 일단 캐릭터의 변수를 이용
+	UE_LOG(LogTemp, Log, TEXT("[GM] : NotifyNeutralDied Start"));
+
+	ATEMPNeutral* NC = Cast<ATEMPNeutral>(VictimCharacter);
+	int32 SpawnPoint = NC->GetSpawnPoint();
+	NeutralSS->StartRespawnNeutral(SpawnPoint);
 }
 
 void AER_InGameMode::DisConnectClient(APlayerController* PC)
@@ -121,4 +159,14 @@ void AER_InGameMode::DisConnectClient(APlayerController* PC)
 	{
 		GameSession->KickPlayer(PC, FText::FromString(TEXT("Defeated")));
 	}
+}
+
+void AER_InGameMode::TEMP_SpawnNeutrals()
+{
+	NeutralSS->TEMP_SpawnNeutrals();
+}
+
+void AER_InGameMode::TEMP_DespawnNeutrals()
+{
+	NeutralSS->TEMP_NeutralsALLDespawn();
 }
