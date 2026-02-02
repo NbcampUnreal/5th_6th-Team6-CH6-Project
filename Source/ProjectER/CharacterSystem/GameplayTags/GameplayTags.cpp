@@ -1,39 +1,164 @@
-#include "CharacterSystem/GameplayTags/GameplayTags.h"
+﻿#include "CharacterSystem/GameplayTags/GameplayTags.h"
 
 namespace ProjectER
 {
-	namespace Data
+	namespace Ability
 	{
-		namespace Damage
+		namespace Action
 		{
-			namespace Type
-			{
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Physical, "Data.Damage.Type.Physical", "Physical Damage");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Skill, "Data.Damage.Type.Skill", "Skill (Magic) Damage");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(True, "Data.Damage.Type.True", "True Damage (Ignores Armor)");
-			}
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "Ability.Action.AutoAttack", "Attack Ability");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "Ability.Action.Death", "Death Ability");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Move, "Ability.Action.Move", "Move Ability");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Sit, "Ability.Action.Sit", "Sit Ability");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction, "Ability.Action.Interaction", "Interaction Ability");
 		}
 
-		namespace Amount
+		namespace Input
+		{
+			namespace Item
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_1, "Ability.Input.Item.Slot_1", "Item Slot 1 Input");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_2, "Ability.Input.Item.Slot_2", "Item Slot 2 Input");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_3, "Ability.Input.Item.Slot_3", "Item Slot 3 Input");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_4, "Ability.Input.Item.Slot_4", "Item Slot 4 Input");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_5, "Ability.Input.Item.Slot_5", "Item Slot 5 Input");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_6, "Ability.Input.Item.Slot_6", "Item Slot 6 Input");
+
+			}
+
+			namespace Skill
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Passive, "Ability.Input.Skill.Passive", "Passive Skill Input");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Q, "Ability.Input.Skill.Q", "Q Skill Input");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(W, "Ability.Input.Skill.W", "W Skill Input");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(E, "Ability.Input.Skill.E", "E Skill Input");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(R, "Ability.Input.Skill.R", "Ultimate Skill Input");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(D, "Ability.Input.Skill.D", "Weapon Skill Input");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(F, "Ability.Input.Skill.F", "");
+			}
+		}
+	}
+
+	namespace Cooldown // [Fixed] Consistency: CoolDown -> Cooldown
+	{
+		UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "Cooldown.AutoAttack", "Auto Attack Cooldown");
+		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Global, "Cooldown.Global", "Global Cooldown");
+
+		namespace Item
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Use, "Cooldown.Item.Use", "Using Item Cooldown");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Set, "Cooldown.Item.Set", "Setting Item Cooldown");
+
+		}
+
+		namespace Skill
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Passive, "Cooldown.Skill.Passive", "Passive Skill Cooldown");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Q, "Cooldown.Skill.Q", "Q Skill Cooldown");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(W, "Cooldown.Skill.W", "W Skill Cooldown");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(E, "Cooldown.Skill.E", "E Skill Cooldown");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(R, "Cooldown.Skill.R", "Ultimate Skill Cooldown");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(D, "Cooldown.Skill.D", "Weapon Skill Cooldown");
+		}
+	}
+
+	namespace Data
+	{
+		namespace DamageType
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Physical, "Data.DamageType.Physical", "Physical Damage");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Skill, "Data.DamageType.Skill", "Skill (Magic) Damage");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(True, "Data.DamageType.True", "True Damage (Ignores Armor)");
+		}
+
+		/*namespace Amount
 		{
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Health, "Data.Amount.Heal", "Heal Amount");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage, "Data.Amount.Damage", "Damage Amount");
-		}
+		} */
 	}
 
-	namespace Ability
-	{
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "Ability.Attack", "Attack Ability");
-	}
+
 	
 	namespace Event
 	{
+		namespace Action
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Hit, "Event.Action.Hit", "Event for Hit");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "Event.Action.Attack", "Event for Attack");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Move, "Event.Action.Move", "Event for Move");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction, "Event.Action.Interaction", "Event for Interaction");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "Event.Action.Death", "Event for Death");
+		}
+
 		namespace Montage
 		{
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(AttackHit, "Event.Montage.AttackHit", "Event for Attack Hit");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(AttackHit, "Event.Montage.AttackHit", "Montage Event for Attack Hit");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Active, "Event.Montage.Active", "Montage Event for Active");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Casting, "Event.Montage.Casting", "Montage Event for Casting");
+		}
+
+		namespace System
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Test, "Event.System.Test", "");
+		}
+
+		namespace UI
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Test, "Event.UI.Test", "");
 		}
 	}
+
+	namespace GameplayCue
+	{
+
+	}
 	
+	namespace State
+	{
+		namespace Action
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction, "State.Action.Interaction", "Interaction State");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Casting, "State.Action.Casting", "Casting State");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Combat, "State.Action.Combat", "Combat State");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Sit, "State.Action.Sit", "Sit State");
+		}
+
+		namespace Buff
+		{
+			namespace Immune
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(CC, "State.Buff.Immune.CC", "Immune to CC effects State");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage, "State.Buff.Immune.Damage", "Immune to Damage (Invulnerable) State");
+			}
+		}
+
+		namespace Debuff
+		{
+			namespace Soft
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slow, "State.Debuff.Soft.Slow", "Movement Speed Slow");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Root, "State.Debuff.Soft.Root", "Cannot Move");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Silence, "State.Debuff.Soft.Silence", "Cannot use Skills");
+			}
+			namespace Hard
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Stun, "State.Debuff.Hard.Stun", "Cannot Move or Act");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Airborne, "State.Debuff.Hard.Airborne", "Knocked Up (Airborne)");
+			}
+
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(BlockRegen, "State.Debuff.BlockRegen", "Cannot Regenerate Health");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(ReduceHealing, "State.Debuff.ReduceHealing", "Healing effectiveness reduced");
+		}
+
+		namespace Life
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "State.Life.Death", "Death State");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Down, "State.Life.Down", "Groggy State");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Alive, "State.Life.Alive", "Alive State");
+		}
+	}
+
 	namespace Status
 	{
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Level, "Status.Level", "Current Level");
@@ -60,95 +185,6 @@ namespace ProjectER
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Tenacity, "Status.Tenacity", "Crowd Control Reduction %");
 	}
 	
-	namespace Input
-	{
-		namespace Action
-		{
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Move, "Input.Action.Move", "Move Command");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Stop, "Input.Action.Stop", "Stop Command");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "Input.Action.Attack", "Attack Command");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction, "Input.Action.Interaction", "Interaction Command");
-
-			namespace Skill
-			{
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Passive, "Input.Action.Skill.Passive", "Passive Skill Input");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Q, "Input.Action.Skill.Q", "Q Skill Input");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(W, "Input.Action.Skill.W", "W Skill Input");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(E, "Input.Action.Skill.E", "E Skill Input");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(R, "Input.Action.Skill.R", "Ultimate Skill Input");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(D, "Input.Action.Skill.D", "Weapon Skill Input");
-			}
-
-			namespace Item
-			{
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_1, "Input.Action.Item.Slot_1", "Item Slot 1 Input");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_2, "Input.Action.Item.Slot_2", "Item Slot 2 Input");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_3, "Input.Action.Item.Slot_3", "Item Slot 3 Input");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_4, "Input.Action.Item.Slot_4", "Item Slot 4 Input");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_5, "Input.Action.Item.Slot_5", "Item Slot 5 Input");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_6, "Input.Action.Item.Slot_6", "Item Slot 6 Input");
-			}
-		}
-	}
-	
-	namespace Cooldown // [Fixed] Consistency: CoolDown -> Cooldown
-	{
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "Cooldown.AutoAttack", "Auto Attack Cooldown");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Global, "Cooldown.Global", "Global Cooldown");
-
-		namespace Skill
-		{
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Passive, "Cooldown.Skill.Passive", "Passive Skill Cooldown");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Q, "Cooldown.Skill.Q", "Q Skill Cooldown");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(W, "Cooldown.Skill.W", "W Skill Cooldown");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(E, "Cooldown.Skill.E", "E Skill Cooldown");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(R, "Cooldown.Skill.R", "Ultimate Skill Cooldown");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(D, "Cooldown.Skill.D", "Weapon Skill Cooldown");
-		}
-	}
-	
-	namespace State
-	{
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Dead, "State.Dead", "Unit is Dead");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Stealth, "State.Stealth", "Unit is Stealth/Invisible");
-
-		namespace Combat
-		{
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(None, "State.Combat.None", "Out of Combat");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(InCombat, "State.Combat.InCombat", "In Combat");
-		}
-		
-		namespace Buff 
-		{
-			namespace Immune 
-			{
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(CC, "State.Buff.Immune.CC", "Immune to CC effects");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage, "State.Buff.Immune.Damage", "Immune to Damage (Invulnerable)");
-			}
-		}
-		
-		namespace Debuff 
-		{
-			namespace CC 
-			{
-				namespace Soft 
-				{
-					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slow, "State.Debuff.CC.Soft.Slow", "Movement Speed Slow");
-					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Root, "State.Debuff.CC.Soft.Root", "Cannot Move");
-					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Silence, "State.Debuff.CC.Soft.Silence", "Cannot use Skills");
-				}
-				namespace Hard 
-				{
-					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Stun, "State.Debuff.CC.Hard.Stun", "Cannot Move or Act");
-					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Airborne, "State.Debuff.CC.Hard.Airborne", "Knocked Up (Airborne)");
-				}
-				
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(BlockRegen, "State.Debuff.BlockRegen", "Cannot Regenerate Health");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(ReduceHealing, "State.Debuff.ReduceHealing", "Healing effectiveness reduced");
-			}
-		}
-	}
-	
 	namespace Team
 	{
 		namespace Relation
@@ -162,6 +198,12 @@ namespace ProjectER
 	
 	namespace Unit 
 	{
+		namespace AttackType
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Melee, "Unit.AttackType.Melee", "Melee Attack Range");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ranged, "Unit.AttackType.Ranged", "Ranged Attack Range");
+		}
+
 		namespace Type 
 		{
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Player, "Unit.Type.Player", "Unit is a Player Character");
@@ -177,10 +219,6 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Object, "Unit.Type.Object", "Interactable Objects");
 		}
 		
-		namespace AttackType 
-		{
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Melee, "Unit.AttackType.Melee", "Melee Attack Range");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ranged, "Unit.AttackType.Ranged", "Ranged Attack Range");
-		}
+
 	}
 }
