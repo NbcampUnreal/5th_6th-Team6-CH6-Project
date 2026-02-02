@@ -9,6 +9,8 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "Ability.Action.AutoAttack", "Attack Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "Ability.Action.Death", "Death Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Move, "Ability.Action.Move", "Move Ability");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Chase, "Ability.Action.Chase", "Chase Ability");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "Ability.Action.Return", "Return Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Sit, "Ability.Action.Sit", "Sit Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction, "Ability.Action.Interaction", "Interaction Ability");
 		}
@@ -86,7 +88,9 @@ namespace ProjectER
 		{
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Hit, "Event.Action.Hit", "Event for Hit");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "Event.Action.Attack", "Event for Attack");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Move, "Event.Action.Move", "Event for Move");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(BeginSearch, "Event.Action.BeginSearch", "Monster BeginSearch");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(TargetOn, "Event.Action.TargetOn", "Event for TargetOn");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(TargetOff, "Event.Action.TargetOff", "Event for TargetOff");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction, "Event.Action.Interaction", "Event for Interaction");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "Event.Action.Death", "Event for Death");
 		}
