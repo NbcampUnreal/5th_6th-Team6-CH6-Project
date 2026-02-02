@@ -68,7 +68,7 @@ void USkillBase::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const
 		USkillDataAsset* SkillDataAsset = Cast<USkillDataAsset>(Spec.SourceObject);
 		if (IsValid(SkillDataAsset))
 		{
-			ChacedConfig = SkillDataAsset->SkillConfig;
+			CachedConfig = SkillDataAsset->SkillConfig;
 		}
 	}
 }
@@ -86,7 +86,7 @@ void USkillBase::ExecuteSkill()
 
 void USkillBase::OnActiveTagAdded()
 {
-	if (ChacedConfig->Data.bIsUseCasting)
+	if (CachedConfig->Data.bIsUseCasting)
 	{
 		if (GetAbilitySystemComponentFromActorInfo()->HasMatchingGameplayTag(CastingTag))
 		{
@@ -101,7 +101,7 @@ void USkillBase::OnActiveTagAdded()
 
 void USkillBase::PlayAnimMontage()
 {
-	UAbilityTask_PlayMontageAndWait* PlayTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, TEXT("SkillAnimation"), ChacedConfig->Data.AnimMontage);
+	UAbilityTask_PlayMontageAndWait* PlayTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, TEXT("SkillAnimation"), CachedConfig->Data.AnimMontage);
 	PlayTask->ReadyForActivation();
 }
 
@@ -115,19 +115,17 @@ void USkillBase::SetWaitActiveTagTask()
 void USkillBase::PrepareToActiveSkill()
 {
 	SetWaitActiveTagTask();
-
+	PlayAnimMontage();
 	//캐스팅이 없는 스킬이면 Active 태그를 바로 붙여서 즉시 발동
-	if (ChacedConfig->Data.bIsUseCasting == false)
+	if (CachedConfig->Data.bIsUseCasting == false)
 	{
 		AddTagToOwner(ActiveTag);
 	}
-
-	PlayAnimMontage();
 }
 
 FGameplayTag USkillBase::GetInputTag()
 {
-	return ChacedConfig->Data.InputKeyTag;
+	return CachedConfig->Data.InputKeyTag;
 }
 
 //void USkillBase::Instant()
