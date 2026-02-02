@@ -29,10 +29,7 @@ void UMouseTargetSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 void UMouseTargetSkill::ExecuteSkill()
 {
 	UMouseTargetSkillConfig* Config = Cast<UMouseTargetSkillConfig>(CachedConfig);
-	if (!Config || AffectedActors.Num() == 0) return;
-
-	UAbilitySystemComponent* InstigatorASC = GetAbilitySystemComponentFromActorInfo();
-	const TArray<TObjectPtr<USkillEffectDataAsset>>& EffectDataAssets = Config->GetEffectDataAssets();
+	if (!Config || AffectedActors.Num() == 0) return;	
 
 	FGameplayAbilityTargetDataHandle TargetDataHandle;
 	FGameplayAbilityTargetData_ActorArray* NewData = new FGameplayAbilityTargetData_ActorArray();
@@ -44,6 +41,9 @@ void UMouseTargetSkill::ExecuteSkill()
 			NewData->TargetActorArray.Add(Target);
 		}
 	}
+
+	UAbilitySystemComponent* InstigatorASC = GetAbilitySystemComponentFromActorInfo();
+	const TArray<TObjectPtr<USkillEffectDataAsset>>& EffectDataAssets = Config->GetEffectDataAssets();
 
 	TargetDataHandle.Add(NewData);
 	for (USkillEffectDataAsset* EffectData : EffectDataAssets)
