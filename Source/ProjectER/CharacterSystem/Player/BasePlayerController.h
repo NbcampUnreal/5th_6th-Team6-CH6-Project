@@ -123,6 +123,12 @@ private:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_DisConnectServer();
 
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_TEMP_SpawnNeutrals();
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_TEMP_DespawnNeutrals();
+
 
 private:
 	// UI 클래스
