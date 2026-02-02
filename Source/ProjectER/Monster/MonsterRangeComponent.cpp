@@ -42,24 +42,14 @@ int32 UMonsterRangeComponent::GetPlayerCount()
 }
 void UMonsterRangeComponent::OnPlayerCountingBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (OtherActor && OtherActor->IsA<APawn>())
+	if (OtherActor && OtherActor->IsA<ABaseCharacter>())
 	{
 		PlayerCount = FMath::Max(0, PlayerCount + 1);
 		UE_LOG(LogTemp, Warning, TEXT("PlayerCount: %d"), PlayerCount);
 
 		if (PlayerCount == 1)
 		{
-			// 현재 State 
-			ABaseMonster* Monster = Cast<ABaseMonster>(GetOwner());
-
-			UAbilitySystemComponent* ASC = Monster->GetAbilitySystemComponent();
-			if (IsValid(ASC) == false)
-			{
-				return;
-			}
-			UE_LOG(LogTemp, Warning, TEXT("MonsterState : Awake"));
-			ASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Awake")));
-			ASC->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Sleep")));			
+			OnPlayerCountOne.Broadcast();	
 		}
 
 		if (Debug)
@@ -81,24 +71,14 @@ void UMonsterRangeComponent::OnPlayerCountingBeginOverlap(UPrimitiveComponent* O
 
 void UMonsterRangeComponent::OnPlayerCountingEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	if (OtherActor && OtherActor->IsA<APawn>())
+	if (OtherActor && OtherActor->IsA<ABaseCharacter>())
 	{
 		PlayerCount = FMath::Max(0, PlayerCount - 1);
 		UE_LOG(LogTemp, Warning, TEXT("PlayerCount: %d"), PlayerCount);
 
 		if (PlayerCount == 0)
 		{
-			// 현재 State 
-			ABaseMonster* Monster = Cast<ABaseMonster>(GetOwner());
-
-			UAbilitySystemComponent* ASC = Monster->GetAbilitySystemComponent();
-			if (IsValid(ASC) == false)
-			{
-				return;
-			}
-			UE_LOG(LogTemp, Warning, TEXT("MonsterState : Sleep"));
-			ASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Sleep")));
-			ASC->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Awake")));
+			OnPlayerCountZero.Broadcast();
 		}
 
 		if (Debug)

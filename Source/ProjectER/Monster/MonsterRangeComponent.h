@@ -6,6 +6,9 @@
 
 class USphereComponent;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerCountChanged);
+
+
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class PROJECTER_API UMonsterRangeComponent : public UActorComponent
 {
@@ -31,6 +34,14 @@ private:
 	void OnPlayerCountingEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
+
+public:
+
+	UPROPERTY()
+	FOnPlayerCountChanged OnPlayerCountOne;
+
+	UPROPERTY()
+	FOnPlayerCountChanged OnPlayerCountZero;
 
 private:
 

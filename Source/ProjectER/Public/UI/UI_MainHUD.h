@@ -10,6 +10,7 @@ class UTextBlock;
 class UButton;
 class UProgressBar;
 class UImage;
+class UUI_ToolTip;
 
 UENUM(BlueprintType)
 enum class ECharacterStat : uint8
@@ -50,7 +51,29 @@ public:
 
 protected:
 	// 마우스 우클릭 확인용
+	virtual void NativeConstruct() override; // 생성자
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
+	// 툴팁 클래스 (에디터에서 할당)
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TSubclassOf<UUserWidget> TooltipClass;
+
+	// 툴팁 인스턴스
+	UPROPERTY()
+	UUI_ToolTip* TooltipInstance;
+
+	// --- 마우스 오버 이벤트 핸들러 ---
+	// 버튼용
+	UFUNCTION() void OnSkill01Hovered();
+	UFUNCTION() void OnSkill02Hovered();
+	UFUNCTION() void OnSkill03Hovered();
+	UFUNCTION() void OnSkill04Hovered();
+	// .............
+
+	void ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, bool showUpper);
+	UFUNCTION()
+	void HideTooltip();
+
 private:
 	void HandleMinimapClicked(const FPointerEvent& InMouseEvent);
 	class USceneCaptureComponent2D* MinimapCaptureComponent;
@@ -125,4 +148,7 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UImage* TEX_Minimap;
+
+	UPROPERTY()
+	UTexture2D* TEX_TempIcon;
 };
