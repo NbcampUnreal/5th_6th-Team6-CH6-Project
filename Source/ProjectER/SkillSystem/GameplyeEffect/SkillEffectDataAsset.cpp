@@ -33,10 +33,17 @@ TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySyste
 			// Spec 생성
 			FGameplayEffectSpecHandle SpecHandle = InstigatorASC->MakeOutgoingSpec(SkillEffectDefinition.SkillEffectClass, Level, ContextHandle);
 			FGameplayEffectSpec* Spec = SpecHandle.Data.Get();
-
 			if (Spec)
 			{
-				Spec->AddModifiedAttribute(Data.TargetAttribute);
+				//FGameplayModifierInfo NewModInfo;
+				//NewModInfo.Attribute = UMyAttributeSet::GetDefenseAttribute();
+				//NewModInfo.ModifierOp = EGameplayModOp::Additive;
+				//NewModInfo.ModifierMagnitude = FGameplayEffectModifierMagnitude(FScalableFloat(-10.f));
+
+				//// Spec의 Modifiers 배열에 강제로 삽입
+				//// 단, Modifiers는 FModifierSpec 배열이므로 포맷을 맞춰야 합니다.
+				//FModifierSpec NewModSpec(NewModInfo);
+				//Spec->Modifiers.Add(NewModSpec);
 				//ModifiedAttributes
 				/*for (FGameplayEffectModifiedAttribute& ModSpec : Spec->ModifiedAttributes)
 				{
