@@ -362,6 +362,19 @@ void ABasePlayerController::Server_DisConnectServer_Implementation()
 	InGameMode->DisConnectClient(this);
 }
 
+void ABasePlayerController::Server_TEMP_SpawnNeutrals_Implementation()
+{
+	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
+	InGameMode->TEMP_SpawnNeutrals();
+}
+
+void ABasePlayerController::Server_TEMP_DespawnNeutrals_Implementation()
+{
+	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
+	InGameMode->TEMP_DespawnNeutrals();
+}
+
+
 void ABasePlayerController::ShowWinUI()
 {
 	if (!WinUIClass)
@@ -409,5 +422,6 @@ void ABasePlayerController::HideRespawnTimerUI()
 		RespawnUIInstance = nullptr;
 	}
 }
+
 
 
