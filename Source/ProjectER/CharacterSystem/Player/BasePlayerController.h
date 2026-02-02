@@ -35,6 +35,10 @@ protected:
 	void OnMoveReleased();
 	void MoveToMouseCursor();
 	void OnStopTriggered();
+
+	//좌클릭 결정/취소
+	void OnConfirm();
+	void OnCanceled();
 	
 	// 키 입력 시, 어빌리티 호출
 	void AbilityInputTagPressed(FGameplayTag InputTag);
