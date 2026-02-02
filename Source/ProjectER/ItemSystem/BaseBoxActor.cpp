@@ -1,4 +1,5 @@
 ﻿#include "ItemSystem/BaseBoxActor.h"
+#include "Net/UnrealNetwork.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "GameplayAbilitySpec.h"
@@ -7,18 +8,21 @@ ABaseBoxActor::ABaseBoxActor()
 {
     BoxMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BoxMesh"));
     SetRootComponent(BoxMesh);
-
-    // 마우스 클릭이 인식되도록 콜리전 설정
     BoxMesh->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 
     bReplicates = true;
+}
+
+void ABaseBoxActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(ABaseBoxActor, CurrentLoot);
 }
 
 void ABaseBoxActor::BeginPlay()
 {
     Super::BeginPlay();
 
-    // 서버에서만 아이템을 미리 생성
     if (HasAuthority() && ItemPool.Num() > 0)
     {
         int32 LootCount = FMath::RandRange(MinLootCount, MaxLootCount);
@@ -30,28 +34,26 @@ void ABaseBoxActor::BeginPlay()
     }
 }
 
+void ABaseBoxActor::RemoveItemFromBox(UBaseItemData* ItemToRemove)
+{
+    // 서버에서만 실행
+    if (!HasAuthority()) return;
+
+    if (ItemToRemove && CurrentLoot.Contains(ItemToRemove))
+    {
+        CurrentLoot.Remove(ItemToRemove);
+        // 서버 배열에서 삭제되면 클라이언트로 자동 복제됨
+    }
+}
+
 void ABaseBoxActor::PickupItem(APawn* InHandler)
 {
-    if (!InHandler) return;
-
-    if (!HasAuthority()) return;
+    if (!InHandler || !HasAuthority()) return;
 
     UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(InHandler);
     if (ASC && OpenAbilityClass)
     {
-        // 테스트용 임시 능력 부여 및 실행 ( 테스트용으로 추후에 캐릭터에 ASC 추가 필요 )
         FGameplayAbilitySpec Spec(OpenAbilityClass, 1);
-
         ASC->GiveAbilityAndActivateOnce(Spec);
-
-        UE_LOG(LogTemp, Warning, TEXT("상자: 능력 부여 및 즉시 실행"));
-    }
-}
-
-void ABaseBoxActor::RemoveItemFromBox(UBaseItemData* ItemToRemove)
-{
-    if (ItemToRemove && CurrentLoot.Contains(ItemToRemove))
-    {
-        CurrentLoot.Remove(ItemToRemove);
     }
 }

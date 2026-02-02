@@ -2,11 +2,10 @@
 #include "ItemSystem/BaseItemData.h"
 #include "ItemSystem/BaseBoxActor.h"
 #include "BaseInventoryComponent.h"
-#include "GameFramework/PlayerController.h"
 #include "Components/UniformGridPanel.h"
 #include "Components/UniformGridSlot.h"
 #include "Components/Image.h"
-#include "Blueprint/UserWidget.h"
+#include "Components/Button.h"
 
 void UW_LootingPopup::InitPopup(AActor* InTargetBox, float InMaxDistance)
 {
@@ -21,22 +20,24 @@ void UW_LootingPopup::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	if (TargetBox)
 	{
 		APawn* OwningPawn = GetOwningPlayerPawn();
-		if (OwningPawn)
+		if (OwningPawn && OwningPawn->GetDistanceTo(TargetBox) > MaxDistance)
 		{
-			float CurrentDistance = OwningPawn->GetDistanceTo(TargetBox);
-			if (CurrentDistance > MaxDistance)
-			{
-				RemoveFromParent();
-			}
+			RemoveFromParent();
 		}
 	}
 }
 
 void UW_LootingPopup::UpdateLootingSlots(const TArray<UBaseItemData*>& Items)
 {
-	if (!ItemGridPanel || !SlotWidgetClass) return;
+	if (!ItemGridPanel) return;
+	if (!SlotWidgetClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("W_LootingPopup: SlotWidgetClass가 할당되지 않았습니다!"));
+		return;
+	}
 
 	ItemGridPanel->ClearChildren();
+	SlotItemMap.Empty();
 
 	const int32 TotalSlots = 10;
 	const int32 ColumnCount = 5;
@@ -46,49 +47,62 @@ void UW_LootingPopup::UpdateLootingSlots(const TArray<UBaseItemData*>& Items)
 		UUserWidget* NewSlot = CreateWidget<UUserWidget>(GetOwningPlayer(), SlotWidgetClass);
 		if (NewSlot)
 		{
-			// 해당 인덱스에 아이템이 있는지 확인
 			bool bHasItem = Items.IsValidIndex(i) && Items[i] != nullptr;
+			UBaseItemData* CurrentItem = bHasItem ? Items[i] : nullptr;
 
-			// 데이터 주입 (아이템이 있을 때만)
-			if (bHasItem)
-			{
-				FProperty* Property = NewSlot->GetClass()->FindPropertyByName(TEXT("ItemData"));
-				if (Property)
-				{
-					if (FObjectProperty* ObjProp = CastField<FObjectProperty>(Property))
-					{
-						ObjProp->SetObjectPropertyValue(Property->ContainerPtrToValuePtr<void>(NewSlot), Items[i]);
-					}
-				}
-			}
-
-			// 아이콘 세팅 (아이템이 있으면 아이콘, 없으면 투명/숨김)
 			UImage* TargetImage = Cast<UImage>(NewSlot->GetWidgetFromName(TEXT("ItemIconImage")));
 			if (TargetImage)
 			{
-				if (bHasItem && Items[i]->ItemIcon.IsValid())
+				if (bHasItem && CurrentItem && CurrentItem->ItemIcon.IsValid())
 				{
-					UTexture2D* LoadedTexture = Items[i]->ItemIcon.LoadSynchronous();
+					UTexture2D* LoadedTexture = Cast<UTexture2D>(CurrentItem->ItemIcon.LoadSynchronous());
 					if (LoadedTexture)
 					{
 						TargetImage->SetBrushFromTexture(LoadedTexture);
-						TargetImage->SetVisibility(ESlateVisibility::Visible);
+						TargetImage->SetVisibility(ESlateVisibility::HitTestInvisible); // 클릭 통과
 					}
 				}
 				else
 				{
-					// 빈 슬롯은 아이콘을 숨김
 					TargetImage->SetVisibility(ESlateVisibility::Hidden);
 				}
 			}
 
-			// 그리드 배치 (5열 기준)
+			UButton* SlotButton = Cast<UButton>(NewSlot->GetWidgetFromName(TEXT("SlotButton")));
+			if (SlotButton)
+			{
+				if (bHasItem)
+				{
+					SlotItemMap.Add(SlotButton, CurrentItem);
+					SlotButton->OnClicked.RemoveAll(this);
+					SlotButton->OnClicked.AddDynamic(this, &UW_LootingPopup::OnSlotButtonClicked);
+					SlotButton->SetIsEnabled(true);
+				}
+				else
+				{
+					SlotButton->SetIsEnabled(false);
+				}
+			}
+
 			UUniformGridSlot* GridSlot = ItemGridPanel->AddChildToUniformGrid(NewSlot);
 			if (GridSlot)
 			{
 				GridSlot->SetRow(i / ColumnCount);
 				GridSlot->SetColumn(i % ColumnCount);
 			}
+		}
+	}
+}
+
+void UW_LootingPopup::OnSlotButtonClicked()
+{
+	for (auto& Elem : SlotItemMap)
+	{
+		UButton* Btn = Elem.Key;
+		if (Btn && (Btn->IsPressed() || Btn->IsHovered()))
+		{
+			TryLootItem(Elem.Value);
+			return;
 		}
 	}
 }
@@ -107,6 +121,7 @@ void UW_LootingPopup::TryLootItem(UBaseItemData* TargetItem)
 		{
 			Box->RemoveItemFromBox(TargetItem);
 
+			// 즉시 남은 아이템으로 UI 갱신
 			UpdateLootingSlots(Box->GetCurrentLoot());
 
 			if (Box->GetCurrentLoot().Num() == 0)
