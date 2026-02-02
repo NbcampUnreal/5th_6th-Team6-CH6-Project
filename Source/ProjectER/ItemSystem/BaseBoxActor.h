@@ -18,6 +18,8 @@ public:
     // 아이템 목록 호출용
     const TArray<TObjectPtr<UBaseItemData>>& GetCurrentLoot() const { return CurrentLoot; }
 
+    void RemoveItemFromBox(UBaseItemData* ItemToRemove);
+
 protected:
     virtual void BeginPlay() override;
 

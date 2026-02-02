@@ -47,3 +47,11 @@ void ABaseBoxActor::PickupItem(APawn* InHandler)
         UE_LOG(LogTemp, Warning, TEXT("상자: 능력 부여 및 즉시 실행"));
     }
 }
+
+void ABaseBoxActor::RemoveItemFromBox(UBaseItemData* ItemToRemove)
+{
+    if (ItemToRemove && CurrentLoot.Contains(ItemToRemove))
+    {
+        CurrentLoot.Remove(ItemToRemove);
+    }
+}
