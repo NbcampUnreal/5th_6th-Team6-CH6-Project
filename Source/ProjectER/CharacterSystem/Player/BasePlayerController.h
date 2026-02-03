@@ -29,6 +29,8 @@ protected:
 	virtual void SetupInputComponent() override;
 	virtual void PlayerTick(float DeltaTime) override;
 	
+	virtual void OnRep_Pawn() override;
+	
 	// 우클릭 이동 / 공격
 	void OnMoveStarted();
 	void OnMoveTriggered();

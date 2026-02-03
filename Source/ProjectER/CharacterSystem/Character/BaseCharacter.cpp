@@ -125,15 +125,19 @@ void ABaseCharacter::Tick(float DeltaTime)
 	//	}
 	//}
 
-	// Tick 활성화 시 경로 탐색 (서버)
-	UpdatePathFollowing();
-	
-	// 타겟이 유효할 때 추적/공격 수행
-	if (TargetActor)
+	// [수정] 내 캐릭터이거나(Local), 서버(Authority)일 때만 로직 수행
+	// 남의 캐릭터(Simulated Proxy)는 이 로직을 돌리면 안 됨 (RPC 권한 없음)
+	if (IsLocallyControlled() || HasAuthority())
 	{
-		CheckCombatTarget(DeltaTime);
-	}
-
+		// Tick 활성화 시 경로 탐색 (서버)
+		UpdatePathFollowing();
+	
+		// 타겟이 유효할 때 추적/공격 수행
+		if (TargetActor)
+		{
+			CheckCombatTarget(DeltaTime);
+		}
+	}	
 }
 
 void ABaseCharacter::PossessedBy(AController* NewController)
@@ -383,7 +387,11 @@ void ABaseCharacter::Server_MoveToLocation_Implementation(FVector TargetLocation
 	else
 	{
 		// 경로 탐색 실패 시 중지
-		StopPathFollowing();
+		// but, 타겟이 있을 경우 정지 X
+		if (TargetActor == nullptr) 
+		{
+			StopPathFollowing();
+		}
 	}
 }
 
@@ -413,7 +421,11 @@ void ABaseCharacter::MoveToLocation(FVector TargetLocation)
 	else
 	{
 		// 경로 탐색 실패 시 중지
-		StopPathFollowing();
+		// but, 타겟이 있을 경우 정지 X
+		if (TargetActor == nullptr) 
+		{
+			StopPathFollowing();
+		}
 	}
 
 	if (!HasAuthority())
@@ -424,10 +436,20 @@ void ABaseCharacter::MoveToLocation(FVector TargetLocation)
 
 void ABaseCharacter::StopMove()
 {
+	// 이동 정지
 	StopPathFollowing();
-
 	GetCharacterMovement()->StopMovementImmediately();
-
+	
+	if (AbilitySystemComponent.IsValid())
+	{
+		// 일반 공격 정지
+		FGameplayTagContainer CancelTags;
+		CancelTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Action.AutoAttack")));
+		
+		AbilitySystemComponent->CancelAbilities(&CancelTags);
+	}
+	
+	// 서버 동기화
 	if (!HasAuthority())
 	{
 		Server_StopMove();
@@ -600,25 +622,16 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 	}
 #endif
 	
-	if (Distance <= AttackRange)
+	if (Distance <= AttackRange) // 사거리 내 진입 시
 	{
-		// [사거리 내 진입] -> [정지 후 공격]
-		StopMove();
+		// 이동 정지
+		StopPathFollowing();
+		GetCharacterMovement()->StopMovementImmediately();
         
 		// 회전 - 공격할 때는 적을 바라봐야 함
 		FVector Direction = TargetActor->GetActorLocation() - GetActorLocation();
 		Direction.Z = 0.0f; // 높이 무시
 		SetActorRotation(Direction.Rotation());
-		
-		ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
-		if (!PS) return;
-
-		UAbilitySystemComponent* ASC = PS->GetAbilitySystemComponent();
-		if (!ASC) return;
-
-		// ASC 캐싱 / Actor Info 설정
-		AbilitySystemComponent = ASC;
-		ASC->InitAbilityActorInfo(PS, this);
 		
 		// 공격 어빌리티 실행 (GAS) : 서버 판정 우선
 		if (HasAuthority() && AbilitySystemComponent.IsValid())
@@ -653,17 +666,13 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 		}
 		return;
 	}
-	else
+	else // 사거리 밖일 시
 	{
 		PathfindingTimer += DeltaTime;
-		if (PathfindingTimer > 0.25f)
+		if (PathfindingTimer > 0.1f)
 		{
 			PathfindingTimer = 0.0f;
-        
-			if (ABasePlayerController* PC = Cast<ABasePlayerController>(GetController()))
-			{
-				MoveToLocation(TargetActor->GetActorLocation());
-			}
+			MoveToLocation(TargetActor->GetActorLocation());
 		}	
 	}
 }
