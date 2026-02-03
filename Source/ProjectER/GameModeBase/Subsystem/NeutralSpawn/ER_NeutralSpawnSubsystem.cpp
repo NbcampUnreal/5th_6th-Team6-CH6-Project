@@ -5,6 +5,7 @@
 #include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "EngineUtils.h"
 #include "GameModeBase/TEMPNeutral.h"
+#include "Monster/BaseMonster.h"
 
 void UER_NeutralSpawnSubsystem::InitializeSpawnPoints(TMap<FName, FNeutralClassConfig>& NeutralClass)
 {
@@ -86,13 +87,13 @@ void UER_NeutralSpawnSubsystem::StartRespawnNeutral(const int32 SpawnPointIdx)
                 Params.SpawnCollisionHandlingOverride =
                     ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-                ATEMPNeutral* Spawned = GetWorld()->SpawnActor<ATEMPNeutral>(
+                ABaseMonster* Spawned = GetWorld()->SpawnActor<ABaseMonster>(
                     Info->NeutralActorClass,
                     Info->SpawnPoint->GetActorTransform(),
                     Params
                 );
 
-                Spawned->SetSpawnpoint(SpawnPointIdx);
+                Spawned->SetSpawnPoint(SpawnPointIdx);
 
                 Info->SpawnedActor = Spawned;
             }),
@@ -120,13 +121,13 @@ void UER_NeutralSpawnSubsystem::TEMP_SpawnNeutrals()
         Params.SpawnCollisionHandlingOverride =
             ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-        ATEMPNeutral* Spawned = World->SpawnActor<ATEMPNeutral>(
+        ABaseMonster* Spawned = World->SpawnActor<ABaseMonster>(
             Info.NeutralActorClass,
             Info.SpawnPoint->GetActorTransform(),
             Params
         );
 
-        Spawned->SetSpawnpoint(Pair.Key);
+        Spawned->SetSpawnPoint(Pair.Key);
 
         if (!Spawned)
             continue;
@@ -151,7 +152,7 @@ void UER_NeutralSpawnSubsystem::TEMP_NeutralsALLDespawn()
     for (auto& it : NeutralSpawnMap)
     {
         FNeutralInfo& Info = it.Value;
-        if (ATEMPNeutral* N = Cast<ATEMPNeutral>(Info.SpawnedActor.Get()))
+        if (ABaseMonster* N = Cast<ABaseMonster>(Info.SpawnedActor.Get()))
         {
             N->Death();
         }

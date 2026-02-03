@@ -7,7 +7,8 @@
 #include "ER_NeutralSpawnSubsystem.generated.h"
 
 class AActor;
-class ATEMPNeutral;
+class ACharacter;
+class ABaseMonster;
 struct FNeutralClassConfig;
 
 USTRUCT(BlueprintType)
@@ -20,9 +21,9 @@ public:
 
 	// 추후 몬스터 클래스로 수정
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSubclassOf<AActor> NeutralActorClass;
+	TSubclassOf<ACharacter> NeutralActorClass;
 
-	TWeakObjectPtr<ATEMPNeutral> SpawnedActor;
+	TWeakObjectPtr<ABaseMonster> SpawnedActor;
 
 	FTimerHandle RespawnTimer;
 
