@@ -23,6 +23,11 @@ class PROJECTER_API ABasePlayerController : public APlayerController
 public:
 	ABasePlayerController();
 	
+	// UI 로직 내 호출을 위해 protected -> public 변경
+	// 키 입력 시, 어빌리티 호출
+	void AbilityInputTagPressed(FGameplayTag InputTag);
+	void AbilityInputTagReleased(FGameplayTag InputTag);
+	
 protected:
 	virtual void BeginPlay() override;
 	virtual void OnPossess(APawn* InPawn) override;
@@ -41,10 +46,6 @@ protected:
 	//좌클릭 결정/취소
 	void OnConfirm();
 	void OnCanceled();
-	
-	// 키 입력 시, 어빌리티 호출
-	void AbilityInputTagPressed(FGameplayTag InputTag);
-	void AbilityInputTagReleased(FGameplayTag InputTag);
 	
 protected:
 	// 입력 매핑 컨텍스트 (IMC)
