@@ -6,7 +6,9 @@
 #include "LineOfSightComponent.generated.h"
 
 //forwardDeclare
-class UTextureRenderTarget2D;
+class UTextureRenderTarget2D;// for locally capturing the environment data
+class ULocalTextureSampler;// for sampling pre-baked texture into local RT
+
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
 
@@ -32,7 +34,7 @@ public:
     //no need for the location
     
     //Getter for the RT
-    UTextureRenderTarget2D* GetLocalLOSTexture() const { return HeightRenderTarget; }
+    UTextureRenderTarget2D* GetLocalLOSTexture() const { return LOSRenderTarget; }
     //getter for the LOS_MID
     UFUNCTION(BlueprintCallable, Category="LineOfSight")
     UMaterialInstanceDynamic* GetLOSMaterialMID() const { return LOSMaterialMID; }
@@ -57,16 +59,17 @@ public:
     UFUNCTION(BlueprintCallable, Category="LineOfSight")
     void RegisterObstacle(AActor* Obstacle);
 
-    /** Scans the world for actors with a specific tag and adds them to the capture list */
-    UFUNCTION(BlueprintCallable, Category="LineOfSight")
-    void RefreshObstaclesByTag();
-
     
 protected:
     //prep
     void CreateResources();// make CRT and MID
 
 protected:
+
+    //switch for source of world environment texture (2d scene capture comp. or Local texture sampler)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    bool bUseSceneCapture = true;
+    
     //Debug for toggling activation
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     bool bDrawTextureRange = false;
@@ -89,13 +92,17 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     float EyeSightHeight = 200.f;//about 2m?
     
-    //Depth Capture
+    //WorldEnvironmentCapturing
+    //2DSceneCapture
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     USceneCaptureComponent2D* SceneCaptureComp = nullptr;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    ULocalTextureSampler* LocalTextureSampler = nullptr;
     
     // will be dynamically generated for the local LOS stamp, and be rendered by 2D Scene capture component
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="LineOfSight")
-    UTextureRenderTarget2D* HeightRenderTarget;// this is for capturing 
+    UTextureRenderTarget2D* LOSRenderTarget;// this is for capturing 
     
     //RenderTarget value
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
@@ -111,8 +118,6 @@ protected:
     //MID Param
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     FName MIDTextureParam=NAME_None;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    FName MIDEyeSightHeightParam=NAME_None;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     FName MIDVisibleRangeParam=NAME_None;
     

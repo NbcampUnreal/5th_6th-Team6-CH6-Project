@@ -1,17 +1,16 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "TopDownVision/Public/LineOfSight/WorldObstacle/LocalTextureSampler.h"
+#include "LineOfSight/WorldObstacle/LocalTextureSampler.h"
 
 #include "Engine/TextureRenderTarget2D.h"
-#include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/Canvas.h"
 #include "Kismet/KismetRenderingLibrary.h"
 
 #include "Engine/World.h"
 #include "LineOfSight/VisionSubsystem.h"
 #include "TopDownVisionLogCategories.h"//log
-#include "LineOfSight/GPU/TileMergeComputeShader.h"
+//#include "LineOfSight/GPU/TileMergeComputeShader.h"
 
 ULocalTextureSampler::ULocalTextureSampler()
 {
@@ -36,19 +35,19 @@ void ULocalTextureSampler::TickComponent(float DeltaTime, ELevelTick TickType, F
 
 void ULocalTextureSampler::UpdateLocalTexture()
 {
-	if (!LocalMaskRT || !ProjectionMID || !ObstacleSubsystem)
+	if (!LocalMaskRT || !ObstacleSubsystem)
 	{
-		UE_LOG(LOSVision, Warning,
-			TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing RT, MID, or Subsystem"));
+		/*UE_LOG(LOSVision, Warning,
+			TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing RT, MID, or Subsystem"));*/
 		return;
 	}
 
 	const FVector WorldCenter = GetComponentLocation();
 	LastSampleCenter = WorldCenter;
 
-	UE_LOG(LOSVision, Log,
+	/*UE_LOG(LOSVision, Log,
 		TEXT("ULocalTextureSampler::UpdateLocalTexture >> WorldCenter: %s"),
-		*WorldCenter.ToString());
+		*WorldCenter.ToString());*/
 
 	
 	RebuildLocalBounds(WorldCenter);
@@ -69,22 +68,30 @@ void ULocalTextureSampler::SetWorldSampleRadius(float NewRadius)
 	}
 }
 
-void ULocalTextureSampler::PrepareSetups()
+void ULocalTextureSampler::SetLocalRenderTarget(UTextureRenderTarget2D* InRT)
 {
-	//MID
-	if (TileProjectionMaterial)
+	if (LocalMaskRT == InRT)
 	{
-		ProjectionMID = UMaterialInstanceDynamic::Create(TileProjectionMaterial, this);
-		if (!ProjectionMID)
-		{
-			UE_LOG(LOSVision, Error, TEXT("ULocalTextureSampler::Setup >> Failed to create MID"));
-		}
-	}
-	else
-	{
-		UE_LOG(LOSVision, Warning, TEXT("ULocalTextureSampler::Setup >> BaseMaterial is null"));
+		UE_LOG(LOSVision, Warning,
+			TEXT("ULocalTextureSampler::SetLocalRenderTarget >> Already using same RT"));
+		return;
 	}
 
+	LocalMaskRT = InRT;//set
+
+	if (!InRT)
+	{
+		UE_LOG(LOSVision, Warning,
+			TEXT("ULocalTextureSampler::SetLocalRenderTarget >> RT is null"));
+		return;
+	}
+
+	//force rebuild when RT is assigned
+	UpdateLocalTexture();
+}
+
+void ULocalTextureSampler::PrepareSetups()
+{
 	// Grab the VisionSubsystem
 	ObstacleSubsystem = GetWorld() ? GetWorld()->GetSubsystem<UVisionSubsystem>() : nullptr;
 	if (!ObstacleSubsystem)
@@ -103,9 +110,10 @@ void ULocalTextureSampler::RebuildLocalBounds(const FVector& WorldCenter)
 		Center2D + FVector2D(R, R)
 	);
 	
+	/*
 	UE_LOG(LOSVision, Log,
 		TEXT("ULocalTextureSampler::RebuildLocalBounds >> Min: %s, Max: %s"),
-		*LocalWorldBounds.Min.ToString(), *LocalWorldBounds.Max.ToString());
+		*LocalWorldBounds.Min.ToString(), *LocalWorldBounds.Max.ToString());*/
 }
 
 void ULocalTextureSampler::UpdateOverlappingTiles()
@@ -113,15 +121,15 @@ void ULocalTextureSampler::UpdateOverlappingTiles()
 	ActiveTileIndices.Reset();
 
 	const TArray<FObstacleMaskTile>& Tiles = ObstacleSubsystem->GetTiles();
-	UE_LOG(LOSVision, Log,
+	/*UE_LOG(LOSVision, Log,
 		TEXT("ULocalTextureSampler::UpdateOverlappingTiles >> %d tiles in subsystem"),
-		Tiles.Num());
+		Tiles.Num());*/
 
 	for (int32 i = 0; i < Tiles.Num(); ++i)
 	{
 		bool bOverlap = Tiles[i].WorldBounds.Intersect(LocalWorldBounds);
 		
-		UE_LOG(LOSVision, Log,
+		/*UE_LOG(LOSVision, Log,
 			TEXT("ULocalTextureSampler::UpdateOverlappingTiles >> Tile %d bounds [%s-%s], LocalBounds [%s-%s], Overlap=%d"),
 			i,
 			*Tiles[i].WorldBounds.Min.ToString(),
@@ -129,7 +137,7 @@ void ULocalTextureSampler::UpdateOverlappingTiles()
 			*LocalWorldBounds.Min.ToString(),
 			*LocalWorldBounds.Max.ToString(),
 			bOverlap
-		);
+		);*/
 
 		if (bOverlap)
 		{
@@ -137,133 +145,58 @@ void ULocalTextureSampler::UpdateOverlappingTiles()
 		}
 	}
 
-	UE_LOG(LOSVision, Log,
+	/*UE_LOG(LOSVision, Log,
 		TEXT("ULocalTextureSampler::UpdateOverlappingTiles >> %d tiles in local area"),
-		ActiveTileIndices.Num());
+		ActiveTileIndices.Num());*/
 }
 
 void ULocalTextureSampler::DrawTilesIntoLocalRT()
 {
-    if (!LocalMaskRT || !ProjectionMID || !ObstacleSubsystem)
+    if (!LocalMaskRT || !ObstacleSubsystem)
     {
-    	UE_LOG(LOSVision, Warning,
-    		TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Missing RT, MID, or Subsystem"));
+    	/*UE_LOG(LOSVision, Warning,
+    		TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Missing RT, MID, or Subsystem"));*/
     	return;
     }
 
-	if (bUseCPU)
-	{
-		// Clear RT
-		UKismetRenderingLibrary::ClearRenderTarget2D(
-			this,
-			LocalMaskRT,
-			FLinearColor::Black
-		);
+	UKismetRenderingLibrary::ClearRenderTarget2D(
+		this,
+		LocalMaskRT,
+		FLinearColor::Black);
 
-		if (ActiveTileIndices.IsEmpty())
-		{
-			UE_LOG(LOSVision, Log,
-				TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> No active tiles to draw"));
-			return;
-		}
-
-		const FVector2D LocalMin = LocalWorldBounds.Min;
-		const FVector2D LocalSize = LocalWorldBounds.GetSize();
-
-		for (int32 TileIndex : ActiveTileIndices)
-		{
-			const FObstacleMaskTile& Tile = ObstacleSubsystem->GetTiles()[TileIndex];
-			if (!Tile.Mask)
-				continue;
-
-			// Calculate overlap
-			FBox2D Overlap = Tile.WorldBounds;
-			if (!Overlap.Intersect(LocalWorldBounds))
-				continue;
-
-			// Set material parameters
-			ProjectionMID->SetTextureParameterValue(MIDParam_TextureObj, Tile.Mask);
-        
-			// Pass world bounds for shader calculation
-			ProjectionMID->SetVectorParameterValue(MIDParam_TileWorldMin, 
-				FVector(Tile.WorldBounds.Min, 0.f));
-			ProjectionMID->SetVectorParameterValue(MIDParam_TileWorldMax, 
-				FVector(Tile.WorldBounds.Max, 0.f));
-			ProjectionMID->SetVectorParameterValue(MIDParam_LocalWorldMin, 
-				FVector(LocalWorldBounds.Min, 0.f));
-			ProjectionMID->SetVectorParameterValue(MIDParam_LocalWorldMax, 
-				FVector(LocalWorldBounds.Max, 0.f));
-
-			// FAST: Direct draw to render target
-			UKismetRenderingLibrary::DrawMaterialToRenderTarget(
-				this,
-				LocalMaskRT,
-				ProjectionMID
-			);
-		}
-	
-		UE_LOG(LOSVision, Log,
-			TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Completed drawing tiles"));
-		
+	if (ActiveTileIndices.IsEmpty())
 		return;
-	}
-	else
-	{
-		// Prepare tile data
-		TArray<FTileGPUData> TileData;
-		TArray<FTexture2DRHIRef> TileTextureRHIs;
+
+	// Initialize Canvas tools
+	FCanvas Canvas(
+		LocalMaskRT->GameThread_GetRenderTargetResource(),
+		nullptr,
+		GetWorld(),
+		GMaxRHIFeatureLevel);
     
-		for (int32 TileIndex : ActiveTileIndices)
-		{
-			const FObstacleMaskTile& Tile = ObstacleSubsystem->GetTiles()[TileIndex];
+	const FVector2D LocalSize = LocalWorldBounds.GetSize();
+
+	for (int32 TileIndex : ActiveTileIndices)
+	{
+		const FObstacleMaskTile& Tile = ObstacleSubsystem->GetTiles()[TileIndex];
+		if (!Tile.Mask) continue;
+
+		// Calculate tile position relative to the RenderTarget (0.0 to 1.0 range or Pixel range)
+		// You'll need to map Tile.WorldBounds to the LocalMaskRT's pixel space
+		FVector2D TilePosInRT = (
+			Tile.WorldBounds.Min - LocalWorldBounds.Min) / LocalSize * FVector2D(LocalMaskRT->SizeX,
+			LocalMaskRT->SizeY);
+		
+		FVector2D TileSizeInRT = Tile.WorldBounds.GetSize() / LocalSize * FVector2D(LocalMaskRT->SizeX, LocalMaskRT->SizeY);
+
+		// Create a Tile Item faster method, not requiring material
+		FCanvasTileItem TileItem(TilePosInRT, Tile.Mask->GetResource(), TileSizeInRT, FLinearColor::White);
+		TileItem.BlendMode = SE_BLEND_Additive; // Or AlphaBlend depending on your LOS logic
         
-			if (!Tile.Mask || !Tile.Mask->GetResource())
-				continue;
-
-			FTileGPUData Data;
-			Data.TileWorldMin = FVector2f(Tile.WorldBounds.Min);
-			Data.TileWorldMax = FVector2f(Tile.WorldBounds.Max);
-			Data.TextureIndex = TileData.Num();
-			Data.Padding[0] = Data.Padding[1] = Data.Padding[2] = 0;
-        
-			TileData.Add(Data);
-			TileTextureRHIs.Add(Tile.Mask->GetResource()->TextureRHI->GetTexture2D());
-		}
-
-		if (TileData.IsEmpty())
-			return;
-
-		// Get render target resource
-		FTextureRenderTargetResource* RTResource = LocalMaskRT->GameThread_GetRenderTargetResource();
-		if (!RTResource)
-			return;
-
-		// Dispatch to render thread
-		const FVector2f LocalMin = FVector2f(LocalWorldBounds.Min);
-		const FVector2f LocalMax = FVector2f(LocalWorldBounds.Max);
-		const uint32 Resolution = LocalResolution;
-
-		ENQUEUE_RENDER_COMMAND(MergeTilesCompute)(
-			[
-				RTResource,
-				TileData,
-				TileTextureRHIs,
-				LocalMin,
-				LocalMax,
-				Resolution
-				](FRHICommandListImmediate& RHICmdList)
-			{
-				TileMergeCS::Execute_RenderThread(
-					RHICmdList,
-					TileData,
-					TileTextureRHIs,
-					RTResource->GetRenderTargetTexture(),
-					LocalMin,
-					LocalMax,
-					Resolution
-				);
-			}
-		);
+		// Queue the draw command
+		Canvas.DrawItem(TileItem);
 	}
-  
+
+	//  Tell the GPU to execute all queued draws at once!!!!
+	Canvas.Flush_GameThread();
 }

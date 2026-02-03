@@ -49,38 +49,38 @@ public:
 	void UpdateLocalTexture();
 
 	
-
 	/** Change sampling radius (will trigger re-sample) */
 	UFUNCTION(BlueprintCallable, Category="LocalSampler")
 	void SetWorldSampleRadius(float NewRadius);
 
-	/** Get local RT for materials (LOS, fog, foliage, etc.) */
+	//local RenderTarget setter and getter
+	UFUNCTION(BlueprintCallable, Category="LocalSampler")
+	void SetLocalRenderTarget(UTextureRenderTarget2D* InRT);
+	
 	UFUNCTION(BlueprintCallable, Category="LocalSampler")
 	UTextureRenderTarget2D* GetLocalRenderTarget() const { return LocalMaskRT; }
-
-	UFUNCTION(BlueprintCallable, Category="LocalSampler")
-	UMaterialInstanceDynamic* GetMID() const {return ProjectionMID;}
 
 private:
 	void PrepareSetups();
 	
 protected:
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
-	bool bUseCPU=true;
+	bool TurnOffTheLog=true;
+
 
 	/** Local merged obstacle/height mask */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
 	TObjectPtr<UTextureRenderTarget2D> LocalMaskRT;
 
-	/** Material used to project baked tiles into the local RT */
+	/*/** Material used to project baked tiles into the local RT #1#
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
 	TObjectPtr<UMaterialInterface> TileProjectionMaterial;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UMaterialInstanceDynamic> ProjectionMID;
+	TObjectPtr<UMaterialInstanceDynamic> ProjectionMID;*/
 
-	//MID Param names
+	/*//MID Param names
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
 	FName MIDParam_TextureObj =NAME_None;
 
@@ -92,8 +92,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
 	FName MIDParam_LocalWorldMin =NAME_None;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
-	FName MIDParam_LocalWorldMax =NAME_None;
-
+	FName MIDParam_LocalWorldMax =NAME_None;*/
+	
+	// no longer needed. can merge rt without material
 	
 	// Sampling Settings
 

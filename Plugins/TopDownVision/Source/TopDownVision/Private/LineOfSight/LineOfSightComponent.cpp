@@ -5,10 +5,15 @@
 #include "Engine/World.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "TopDownVisionLogCategories.h"// log
+
+//environment texture source
 #include "Components/SceneCaptureComponent2D.h"
+#include "LineOfSight/WorldObstacle/LocalTextureSampler.h"
+
 #include "DrawDebugHelpers.h"//debug for visualizing the activation
 #include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/GameplayStatics.h"
+
 
 ULineOfSightComponent::ULineOfSightComponent()
 {
@@ -44,7 +49,7 @@ void ULineOfSightComponent::BeginPlay()
 {
     Super::BeginPlay();
 
-    CreateResources();// make CRT and MID
+    CreateResources();// make RT and MID
 
     RefreshObstaclesByTag();// find and register the obstacles
 }
@@ -53,27 +58,42 @@ void ULineOfSightComponent::UpdateLocalLOS()
 {
     if (!ShouldUpdate)
     {
-        UE_LOG(LOSVision, Log,
-            TEXT("ULineOfSightComponent::UpdateLocalLOS >> Skipped, ShouldUpdate is false"));
+        /*UE_LOG(LOSVision, Log,
+            TEXT("ULineOfSightComponent::UpdateLocalLOS >> Skipped, ShouldUpdate is false"));*/
         return;
     }
-
-    if (!SceneCaptureComp)
-    {
-        UE_LOG(LOSVision, Error,
-            TEXT("ULineOfSightComponent::UpdateLocalLOS >> Invalid SceneCaptureComp"));
-        return;
-    }
-    
-    if (!HeightRenderTarget)
+    if (!LOSRenderTarget)
     {
         UE_LOG(LOSVision, Warning,
             TEXT("ULineOfSightComponent::UpdateLocalLOS >> Invalid HeightRenderTarget"));
         return;
     }
-    
-    SceneCaptureComp->CaptureScene();// Capture the scene
 
+    if (bUseSceneCapture)// scene capture mode
+    {
+        // SceneCapture mode
+        if (!SceneCaptureComp)
+        {
+            UE_LOG(LOSVision, Error,
+                TEXT("ULineOfSightComponent::UpdateLocalLOS >> Invalid SceneCaptureComp"));
+            return;
+        }
+
+        SceneCaptureComp->CaptureScene();
+    }
+    else //local sampler mode
+    {
+        if (!LocalTextureSampler)
+        {
+            UE_LOG(LOSVision, Error,
+                TEXT("ULineOfSightComponent::UpdateLocalLOS >> LocalTextureSampler missing"));
+            return;
+        }
+
+        LocalTextureSampler->UpdateLocalTexture();
+    }
+
+    //Debug
     if (bDrawTextureRange)//draw debug box for LOS stamp area
     {
         const FVector Center = GetOwner()->GetActorLocation();
@@ -91,17 +111,17 @@ void ULineOfSightComponent::UpdateLocalLOS()
             2.f );
     }
     
-    UE_LOG(LOSVision, Log,
-        TEXT("ULineOfSightComponent::UpdateLocalLOS >> UpdateResource called"));
+    /*UE_LOG(LOSVision, Log,
+        TEXT("ULineOfSightComponent::UpdateLocalLOS >> UpdateResource called"));*/
 }
 
 void ULineOfSightComponent::UpdateVisibleRange(float NewRange)
 {
     VisionRange = FMath::Max(0.f, NewRange); // clamp to non-negative
 
-    UE_LOG(LOSVision, Log,
+    /*UE_LOG(LOSVision, Log,
         TEXT("ULineOfSightComponent::UpdateVisibleRange >> VisionRange set to %f"),
-        VisionRange);
+        VisionRange);*/
 }
 
 
@@ -109,17 +129,18 @@ void ULineOfSightComponent::ToggleUpdate(bool bIsOn)
 {
     if (ShouldUpdate==bIsOn)
     {
-        UE_LOG(LOSVision, Log,
+        /*UE_LOG(LOSVision, Log,
             TEXT("ULineOfSightComponent::ToggleUpdate >> Already set to %s"),
-            ShouldUpdate ? TEXT("true") : TEXT("false"));
+            ShouldUpdate ? TEXT("true") : TEXT("false"));*/
         return;
     }
     
     ShouldUpdate = bIsOn;
 
+    /*
     UE_LOG(LOSVision, Log,
         TEXT("ULineOfSightComponent::ToggleUpdate >> ShouldUpdate set to %s"),
-        ShouldUpdate ? TEXT("true") : TEXT("false"));
+        ShouldUpdate ? TEXT("true") : TEXT("false"));*/
 }
 
 void ULineOfSightComponent::RegisterObstacle(AActor* Obstacle)
@@ -131,85 +152,67 @@ void ULineOfSightComponent::RegisterObstacle(AActor* Obstacle)
     }
 }
 
-void ULineOfSightComponent::RefreshObstaclesByTag()//should this be in the subsystem?
-{
-    if (!GetWorld() || BlockerTag.IsNone()) return;
-
-    //Catchers
-    TArray<AActor*> FoundActors;
-    UGameplayStatics::GetAllActorsWithTag(
-        GetWorld(),
-        BlockerTag,
-        FoundActors);
-
-    for (AActor* Actor : FoundActors)
-    {
-        RegisterObstacle(Actor);
-    }
-
-    UE_LOG(LOSVision, Log,
-        TEXT("ULineOfSightComponent::RefreshObstaclesByTag >> Registered %d obstacles with tag: %s"),
-        FoundActors.Num(), *BlockerTag.ToString());
-}
 
 
 void ULineOfSightComponent::CreateResources()
 {
-    if (!GetWorld() || !SceneCaptureComp)
+    if (!GetWorld())
         return;
 
-    HeightRenderTarget = NewObject<UTextureRenderTarget2D>(this);
-    if (!HeightRenderTarget)
+    //make RT
+    if (!LOSRenderTarget)
     {
-        UE_LOG(LOSVision, Error,
-            TEXT("Failed to allocate HeightRenderTarget"));
-        return;
+        LOSRenderTarget = NewObject<UTextureRenderTarget2D>(this);
+        LOSRenderTarget->InitAutoFormat(PixelResolution, PixelResolution);
+        LOSRenderTarget->ClearColor = FLinearColor::Black;
     }
 
-    //HeightRenderTarget->RenderTargetFormat = RTF_R32f;
-    HeightRenderTarget->RenderTargetFormat = RTF_R16f;
-    //HeightRenderTarget->RenderTargetFormat = RTF_R8;
-    
-    HeightRenderTarget->InitAutoFormat(PixelResolution, PixelResolution);
-    HeightRenderTarget->ClearColor = FLinearColor::Black;
-    //HeightRenderTarget->UpdateResourceImmediate(true);
-
-    SceneCaptureComp->TextureTarget = HeightRenderTarget;
-
-    UE_LOG(LOSVision, Log,
-        TEXT("HeightRenderTarget created (%dx%d)"),
-        PixelResolution, PixelResolution);
-
-    if (!LOSMaterial)
+    if (bUseSceneCapture)
     {
-        UE_LOG(LOSVision, Warning,
-            TEXT("LOSMaterial is null"));
-        return;
+        if (!SceneCaptureComp)
+        {
+            UE_LOG(LOSVision, Error,
+                TEXT("ULineOfSightComponent::CreateResources >> SceneCaptureComp missing"));
+            return;
+        }
+
+        LOSRenderTarget->RenderTargetFormat = RTF_R16f;
+        SceneCaptureComp->TextureTarget = LOSRenderTarget;
+    }
+    else // LocalTextureSampler Mode
+    {
+        if (!LocalTextureSampler)
+        {
+            LocalTextureSampler = NewObject<ULocalTextureSampler>(
+                this,
+                ULocalTextureSampler::StaticClass(),
+                TEXT("LOS_LocalSampler"));
+            
+            if (!LocalTextureSampler)
+            {
+                UE_LOG(LOSVision, Error,
+                    TEXT("ULineOfSightComponent::CreateResources >> Failed to create LocalTextureSampler"));
+                return;
+            }
+
+            LocalTextureSampler->RegisterComponent();
+            LocalTextureSampler->AttachToComponent(this, FAttachmentTransformRules::KeepRelativeTransform);
+        }
+
+        LOSRenderTarget->RenderTargetFormat = RTF_R8; // only R/G needed
+        LocalTextureSampler->SetLocalRenderTarget(LOSRenderTarget);
     }
 
-    LOSMaterialMID = UMaterialInstanceDynamic::Create(LOSMaterial, this);
-    if (!LOSMaterialMID)
+    // Create MID
+    if (LOSMaterial)
     {
-        UE_LOG(LOSVision, Error,
-            TEXT("Failed to create LOSMaterialMID"));
-        return;
+        LOSMaterialMID = UMaterialInstanceDynamic::Create(LOSMaterial, this);
+        if (LOSMaterialMID && LOSRenderTarget)
+        {
+            LOSMaterialMID->SetTextureParameterValue(MIDTextureParam, LOSRenderTarget);
+            LOSMaterialMID->SetScalarParameterValue(MIDVisibleRangeParam, VisionRange / MaxVisionRange / 2.f);
+        }
     }
-
-    LOSMaterialMID->SetTextureParameterValue(// set Texture Param
-        MIDTextureParam,
-        HeightRenderTarget);
-
-    LOSMaterialMID->SetScalarParameterValue(//Set Vision Radius Param
-        MIDVisibleRangeParam,
-        VisionRange/MaxVisionRange/2);// normalized/2 for half radius
-    
-    LOSMaterialMID->SetScalarParameterValue(//Set EyeSight Param
-        MIDEyeSightHeightParam,
-        EyeSightHeight);
-    
-
-    UE_LOG(LOSVision, Log,
-        TEXT("LOSMaterialMID initialized"));
 }
 
 

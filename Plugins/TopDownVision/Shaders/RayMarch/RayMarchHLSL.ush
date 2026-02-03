@@ -249,19 +249,19 @@ float CalculateLineOfSight_V4(
 // LOS calculation using only pre-sampled R and G mask values
 // R = normal obstacle (casts shadow)
 // G = low obstacle (no shadow cast, still blocks vision)
-float CalculateLineOfSight_V5_PreSampled(
-	float2 PixelUV,//texture coord here
-	float2 PawnUV,// usually center (0.5, 0.5)
-	float  NormalObstacle,// R-> cast shadow
-	float LowObstacle,// G->does not cast shadow
-	float Radius,
-	float MaxSteps,
+float CalculateLineOfSight_V5(
+	Texture2D MaskTex,       // Combined R/G mask texture
+	SamplerState MaskSampler, 
+	float2 UV,// pixel UV
+	float2 PawnUV,// usually center (0.5,0.5)
+	float Radius,// radial vision mask
+	float MaxSteps, 
 	float MinSteps
 )
 {
-	// Compute radial mask (inside circle = 1, outside = 0)
-	float2 Radial = LOS_RadialMask(PixelUV, PawnUV, Radius);
-    
+	// Radial Mask
+	float2 Radial = LOS_RadialMask(UV, PawnUV, Radius);
+
 	// Outside vision radius → early exit
 	if (Radial.x == 0.0)
 		return 0.0;
@@ -269,30 +269,36 @@ float CalculateLineOfSight_V5_PreSampled(
 	float DistanceFraction = Radial.y;
 
 	// Ray direction
-	float2 RayDir = PixelUV - PawnUV;
+	float2 RayDir = UV - PawnUV;
 	float Visibility = 1.0;
 
-	// Determine step count based on distance fraction
+	// Distance-based step count
 	float StepsF = lerp(MinSteps, MaxSteps, DistanceFraction);
 	int StepsI = max(1, (int)StepsF);
 
-	// Since we already pre-sampled, just check the single value along the ray
+	// Ray march along the line -> ShadowCast Obstacle -> ray march
 	[loop]
 	for (int i = 1; i <= StepsI; i++)
 	{
-		// Normal obstacles block vision completely
+		float Progress = (float)i / (float)StepsI;
+		float2 SampleUV = PawnUV + RayDir * Progress;
+
+		// Sample mask texture
+		float NormalObstacle = MaskTex.SampleLevel(MaskSampler, SampleUV, 0).r;
+
+		// NormalObstacle → casts shadow
 		if (NormalObstacle > 0.0)
 		{
 			Visibility = 0.0;
-			break;
+			break; // stop shadow ray
 		}
+	}
 
-		// Low obstacles mask the pixel, but do not stop shadowing
-		if (LowObstacle > 0.0)
-		{
-			Visibility = 0.0;
-			// continue ray march (no break)
-		}
+	// mask out the area -> Low Obstacle type
+	float LowObstacle = MaskTex.SampleLevel(MaskSampler, UV, 0).g;
+	if (LowObstacle > 0.0)
+	{
+		Visibility = 0.0;
 	}
 
 	return Visibility;

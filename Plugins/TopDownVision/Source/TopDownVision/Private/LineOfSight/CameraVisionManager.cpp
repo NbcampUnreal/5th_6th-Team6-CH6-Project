@@ -112,8 +112,8 @@ static bool RectOverlapsWorld(
 
 void UCameraVisionManager::UpdateCameraLOS()
 {
-	UE_LOG(LOSVision, Log,
-		TEXT("UCameraVisionManager::UpdateCameraLOS >> Called"));
+	/*UE_LOG(LOSVision, Log,
+		TEXT("UCameraVisionManager::UpdateCameraLOS >> Called"));*/
 
 	if (!CameraLocalRT)
 	{
@@ -151,8 +151,8 @@ void UCameraVisionManager::UpdateCameraLOS()
 	{
 		// Draw all providers to the RT
 		CameraLocalRT->UpdateResource();
-		UE_LOG(LOSVision, Log,
-			TEXT("UCameraVisionManager::UpdateCameraLOS >> CameraLocalRT UpdateResource called"));
+		/*UE_LOG(LOSVision, Log,
+			TEXT("UCameraVisionManager::UpdateCameraLOS >> CameraLocalRT UpdateResource called"));*/
 	}
 	else //GPU
 	{
@@ -183,9 +183,9 @@ void UCameraVisionManager::UpdateCameraLOS()
 			MPCLocationParam,
 			FLinearColor(WorldLocation.X, WorldLocation.Y, WorldLocation.Z));
 
-		UE_LOG(LOSVision, Log,
+		/*UE_LOG(LOSVision, Log,
 			TEXT("UCameraVisionManager::UpdateCameraLOS >> CenterLocation=%s, VisibleRange=%f"),
-			*WorldLocation.ToString(), CameraVisionRange);
+			*WorldLocation.ToString(), CameraVisionRange);*/
 	}
 	else
 	{
@@ -193,8 +193,8 @@ void UCameraVisionManager::UpdateCameraLOS()
 			TEXT("UCameraVisionManager::UpdateCameraLOS >> PostProcessMPC instance not found!"));
 	}
 
-	UE_LOG(LOSVision, Log,
-		TEXT("UCameraVisionManager::UpdateCameraLOS >> Update finished"));
+	/*UE_LOG(LOSVision, Log,
+		TEXT("UCameraVisionManager::UpdateCameraLOS >> Update finished"));*/
 }
 
 void UCameraVisionManager::SetActiveCamera(APlayerCameraManager* InCamera)
@@ -298,9 +298,9 @@ void UCameraVisionManager::RenderLOS_GPU(FRDGBuilder& GraphBuilder, FRDGTextureR
 
 void UCameraVisionManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Height)
 {
-	UE_LOG(LOSVision, Log,
+	/*UE_LOG(LOSVision, Log,
 		TEXT("UCameraVisionManager::DrawLOS >> Canvas=%s, Width=%d, Height=%d"),
-		*GetNameSafe(Canvas), Width, Height);
+		*GetNameSafe(Canvas), Width, Height);*/
 
 	if (!Canvas || !CameraLocalRT)
 	{
@@ -322,8 +322,8 @@ void UCameraVisionManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Heigh
 	TArray<ULineOfSightComponent*> ActiveProviders;//catchers
 	if (!GetVisibleProviders(ActiveProviders))
 	{
-		UE_LOG(LOSVision, Error,
-			TEXT("UCameraVisionManager::DrawLOS >> Failed to bring VisibleProviders"));
+		/*UE_LOG(LOSVision, Error,
+			TEXT("UCameraVisionManager::DrawLOS >> Failed to bring VisibleProviders"));*/
 		return;
 	}
 	int32 CompositedCount = 0;
@@ -375,9 +375,9 @@ void UCameraVisionManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Heigh
 			2.f );
 	}
 
-	UE_LOG(LOSVision, Log,
+	/*UE_LOG(LOSVision, Log,
 		TEXT("UCameraVisionManager::DrawLOS >> Composited %d providers"),
-		CompositedCount);
+		CompositedCount);*/
 }
 
 bool UCameraVisionManager::ConvertWorldToRT(
@@ -409,15 +409,15 @@ bool UCameraVisionManager::GetVisibleProviders(TArray<ULineOfSightComponent*>& O
 {
 	if (VisionChannel==EVisionChannel::None)
 	{
-		UE_LOG(LOSVision, Error,
-			TEXT("UCameraVisionManager::GetVisibleProviders >> Invalid VisionChannel"));
+		/*UE_LOG(LOSVision, Error,
+			TEXT("UCameraVisionManager::GetVisibleProviders >> Invalid VisionChannel"));*/
 		return false;
 	}
 	UVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<UVisionSubsystem>();
 	if (!Subsystem)
 	{
-		UE_LOG(LOSVision, Error,
-			TEXT("UCameraVisionManager::GetVisibleProviders >> VisionSubsystem not found"));
+		/*UE_LOG(LOSVision, Error,
+			TEXT("UCameraVisionManager::GetVisibleProviders >> VisionSubsystem not found"));*/
 		return false;
 	}
 	//Get the Teams
