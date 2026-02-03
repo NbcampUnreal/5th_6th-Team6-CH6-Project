@@ -25,10 +25,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Visual")
 	TSoftClassPtr<UAnimInstance> AnimClass;
 	
-	//// GAS 스킬 (Q, W, E, R, Passive)
-	//UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	//TMap<FGameplayTag, TSoftClassPtr<UGameplayAbility>> Abilities;
-
+	// 기본 스킬 (일반 공격 : Auto Attack)
+	UPROPERTY(EditDefaultsOnly, Category = "AutoAttack")
+	TMap<FGameplayTag, TSoftClassPtr<UGameplayAbility>> Abilities;
+	
+	// 특수 스킬 (Q, W, E, R)
 	UPROPERTY(EditDefaultsOnly, Category = "SkillDataAsset")
 	TArray<TSoftObjectPtr<USkillDataAsset>> SkillDataAsset;
 	

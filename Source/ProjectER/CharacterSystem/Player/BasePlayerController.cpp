@@ -1,4 +1,4 @@
-#include "CharacterSystem/Player/BasePlayerController.h"
+﻿#include "CharacterSystem/Player/BasePlayerController.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -9,10 +9,18 @@
 #include "EnhancedInputSubsystems.h"
 #include "Engine/World.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
+#include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
+#include "GameplayAbilitySpec.h"
 
 // [김현수 추가분] 상호작용 인터페이스 포함
 #include "ItemSystem/I_ItemInteractable.h"
+
+
+#include "GameModeBase/State/ER_PlayerState.h"
+#include "GameModeBase/GameMode/ER_OutGameMode.h"
+#include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "Blueprint/UserWidget.h"
 
 ABasePlayerController::ABasePlayerController()
 {
@@ -68,7 +76,10 @@ void ABasePlayerController::SetupInputComponent()
 
 		EnhancedInputComponent->BindAction(InputConfig->StopMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnStopTriggered);
 
-		/*for (const FInputData& Action : InputConfig->AbilityInputAction)
+		EnhancedInputComponent->BindAction(InputConfig->InputConfirm, ETriggerEvent::Started, this, &ABasePlayerController::OnConfirm);
+		EnhancedInputComponent->BindAction(InputConfig->InputCancel, ETriggerEvent::Started, this, &ABasePlayerController::OnCanceled);
+
+		for (const FInputData& Action : InputConfig->AbilityInputAction)
 		{
 			if (Action.InputAction && Action.InputTag.IsValid())
 			{
@@ -78,7 +89,7 @@ void ABasePlayerController::SetupInputComponent()
 				// Released 바인딩 (차징 스킬 등을 위해 필요)
 				EnhancedInputComponent->BindAction(Action.InputAction, ETriggerEvent::Completed, this, &ABasePlayerController::AbilityInputTagReleased, Action.InputTag);
 			}
-		}*/
+		}
 	}
 }
 
@@ -101,6 +112,13 @@ void ABasePlayerController::PlayerTick(float DeltaTime)
 			LastRPCUpdateTime = GetWorld()->GetTimeSeconds();
 		}
 	}
+}
+
+void ABasePlayerController::OnRep_Pawn()
+{
+	Super::OnRep_Pawn();
+	
+	ControlledBaseChar = Cast<ABaseCharacter>(GetPawn());
 }
 
 void ABasePlayerController::OnMoveStarted()
@@ -133,7 +151,6 @@ void ABasePlayerController::MoveToMouseCursor()
 
 	if (!IsValid(ControlledBaseChar))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("MoveToMouseCursor: ControlledBaseChar is Null!"));
 		return;
 	}
 
@@ -177,27 +194,28 @@ void ABasePlayerController::MoveToMouseCursor()
 						/* === 공격 로직 === */
 						ControlledBaseChar->SetTarget(HitActor); // 타겟 지정
 #if WITH_EDITOR
-						UE_LOG(LogTemp, Warning, TEXT("[%s] Enemy Detected!! : %s"), 
-							*ControlledBaseChar->GetName(),
-							HitActor ? *HitActor->GetName() : TEXT("None"));
-						
 						UE_LOG(LogTemp, Warning, TEXT("[%s] Set Target Actor -> %s"),
 							*ControlledBaseChar->GetName() ,
 							HitActor ? *HitActor->GetName() : TEXT("None"));
 #endif
-						
-						// ControlledBaseChar->TryAutoAttack();
 						return; 
 					}
 				}
 			}
 			
-			if (Hit.bBlockingHit)
+			if (Hit.bBlockingHit) // 바닥(또는 아군) 클릭 시 이동
 			{
-				ControlledBaseChar->MoveToLocation(Hit.Location);
-            
-				// 이동할 때는 타겟을 풀어줘야 함 (공격 취소)
+				// 일반 공격 중일 시 공격 취소 후 이동
+				UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ControlledBaseChar);
+				if (IsValid(ASC))
+				{
+					FGameplayTagContainer CancelTags;
+					CancelTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Action.AutoAttack")));
+					ASC->CancelAbilities(&CancelTags);
+				}
+				
 				ControlledBaseChar->SetTarget(nullptr);
+				ControlledBaseChar->MoveToLocation(Hit.Location);
 			}
 			
 			// SpawnDestinationEffect(Hit.Location);
@@ -252,6 +270,28 @@ void ABasePlayerController::CheckInteractionDistance()
 	}
 }
 
+void ABasePlayerController::OnConfirm() {
+	APawn* ControlledPawn = GetPawn();
+	if (!ControlledPawn) return;
+
+	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ControlledPawn);
+	if (IsValid(ASC)) {
+		UE_LOG(LogTemp, Log, TEXT("OnConfirm"));
+		ASC->LocalInputConfirm();
+	}
+}
+
+void ABasePlayerController::OnCanceled() {
+	APawn* ControlledPawn = GetPawn();
+	if (!ControlledPawn) return;
+
+	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ControlledPawn);
+	if (IsValid(ASC)) {
+		//UE_LOG(LogTemp, Log, TEXT("OnCanceled"));
+		ASC->LocalInputCancel();
+	}
+}
+
 void ABasePlayerController::OnStopTriggered()
 {
 	bIsMousePressed = false;
@@ -261,6 +301,7 @@ void ABasePlayerController::OnStopTriggered()
 
 	if (ControlledBaseChar)
 	{
+		ControlledBaseChar->SetTarget(nullptr);
 		ControlledBaseChar->StopMove();
 	}
 }
@@ -273,9 +314,151 @@ void ABasePlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
 	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ControlledPawn);
 	if (!ASC) return;
 
+	for (FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
+	{
+		if (Spec.DynamicAbilityTags.HasTagExact(InputTag))
+		{
+			if (Spec.IsActive())
+			{
+				// [방법 2 핵심] 태그를 담은 이벤트를 어빌리티에 직접 쏩니다.
+				FGameplayEventData Payload;
+				Payload.EventTag = InputTag; // 전달할 태그
+				Payload.Instigator = this;   // 보낸 사람
+
+				// 활성화된 어빌리티에게 이벤트를 전달합니다.
+				ASC->HandleGameplayEvent(InputTag, &Payload);
+				UE_LOG(LogTemp, Log, TEXT("Gameplay Event Sent: %s"), *InputTag.ToString());
+			}
+			else
+			{
+				ASC->TryActivateAbility(Spec.Handle);
+			}
+		}
+	}
+
 	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan, FString::Printf(TEXT("Input Tag Pressed: %s"), *InputTag.ToString()));
 }
 
 void ABasePlayerController::AbilityInputTagReleased(FGameplayTag InputTag)
 {
 }
+
+// ------------------------------------------------------------
+// [전민성 추가분]
+void ABasePlayerController::ConnectToDedicatedServer(const FString& Ip, int32 Port, const FString& PlayerName)
+{
+	if (!IsLocalController())
+		return;
+
+	const FString Address = FString::Printf(TEXT("%s:%d?PlayerName=%s"), *Ip, Port, *PlayerName);
+
+	UE_LOG(LogTemp, Log, TEXT("[PC] Connecting to server: %s"), *Address);
+
+	ClientTravel(Address, TRAVEL_Absolute);
+}
+
+void ABasePlayerController::Client_SetLose_Implementation()
+{
+	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
+	PS->bIsLose = true;
+	ShowLoseUI();
+}
+
+void ABasePlayerController::Client_SetWin_Implementation()
+{
+	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
+	PS->bIsWin = true;
+	ShowWinUI();
+}
+
+void ABasePlayerController::Client_SetDead_Implementation()
+{
+	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
+	PS->bIsDead = true;
+}
+
+void ABasePlayerController::Client_StartRespawnTimer_Implementation()
+{
+	ShowRespawnTimerUI();
+}
+
+void ABasePlayerController::Client_StopRespawnTimer_Implementation()
+{
+	HideRespawnTimerUI();
+}
+
+void ABasePlayerController::Server_StartGame_Implementation()
+{
+	auto OutGameMode = Cast<AER_OutGameMode>(GetWorld()->GetAuthGameMode());
+	OutGameMode->StartGame();
+}
+
+void ABasePlayerController::Server_DisConnectServer_Implementation()
+{
+	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
+
+	InGameMode->DisConnectClient(this);
+}
+
+void ABasePlayerController::Server_TEMP_SpawnNeutrals_Implementation()
+{
+	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
+	InGameMode->TEMP_SpawnNeutrals();
+}
+
+void ABasePlayerController::Server_TEMP_DespawnNeutrals_Implementation()
+{
+	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
+	InGameMode->TEMP_DespawnNeutrals();
+}
+
+void ABasePlayerController::ShowWinUI()
+{
+	if (!WinUIClass)
+		return;
+
+	if (IsValid(WinUIInstance))
+		return;
+
+	UE_LOG(LogTemp, Log, TEXT("[PC] : ShowWinUI"));
+	WinUIInstance = CreateWidget<UUserWidget>(this, WinUIClass);
+	WinUIInstance->AddToViewport();
+}
+
+void ABasePlayerController::ShowLoseUI()
+{
+	if (!LoseUIClass)
+		return;
+
+	if (IsValid(LoseUIInstance))
+		return;
+
+	UE_LOG(LogTemp, Log, TEXT("[PC] : ShowLoseUI"));
+	LoseUIInstance = CreateWidget<UUserWidget>(this, LoseUIClass);
+	LoseUIInstance->AddToViewport();
+}
+
+void ABasePlayerController::ShowRespawnTimerUI()
+{
+	if (!RespawnUIClass)
+		return;
+
+	if (IsValid(RespawnUIInstance))
+		return;
+
+	UE_LOG(LogTemp, Log, TEXT("[PC] : ShowRespawnUI"));
+	RespawnUIInstance = CreateWidget<UUserWidget>(this, RespawnUIClass);
+	RespawnUIInstance->AddToViewport();
+}
+
+void ABasePlayerController::HideRespawnTimerUI()
+{
+	if (IsValid(RespawnUIInstance))
+	{
+		RespawnUIInstance->RemoveFromParent();
+		RespawnUIInstance = nullptr;
+	}
+}
+
+
+

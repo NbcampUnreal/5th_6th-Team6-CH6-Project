@@ -3,6 +3,7 @@
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
 #include "CharacterSystem/Data/CharacterData.h"
+#include "CharacterSystem/Player/BasePlayerController.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -22,7 +23,13 @@
 #include "DrawDebugHelpers.h"
 
 #include "UI/UI_HUDFactory.h" // UI시스템 관리자
+
+#include "SkillSystem/SkillDataAsset.h"
+
 #include "Components/SceneCaptureComponent2D.h" // 미니맵용
+
+#include "GameModeBase/State/ER_PlayerState.h"
+
 ABaseCharacter::ABaseCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -120,9 +127,19 @@ void ABaseCharacter::Tick(float DeltaTime)
 	//	}
 	//}
 
-	// Tick 활성화 시 경로 탐색 (서버)
-	UpdatePathFollowing();
-
+	// [수정] 내 캐릭터이거나(Local), 서버(Authority)일 때만 로직 수행
+	// 남의 캐릭터(Simulated Proxy)는 이 로직을 돌리면 안 됨 (RPC 권한 없음)
+	if (IsLocallyControlled() || HasAuthority())
+	{
+		// Tick 활성화 시 경로 탐색 (서버)
+		UpdatePathFollowing();
+	
+		// 타겟이 유효할 때 추적/공격 수행
+		if (TargetActor)
+		{
+			CheckCombatTarget(DeltaTime);
+		}
+	}	
 }
 
 void ABaseCharacter::PossessedBy(AController* NewController)
@@ -147,6 +164,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABaseCharacter, HeroData);
+	DOREPLIFETIME(ABaseCharacter, TargetActor);
 }
 
 ETeamType ABaseCharacter::GetTeamType() const
@@ -183,10 +201,22 @@ float ABaseCharacter::GetCharacterLevel() const
 
 	if (const ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
 	{
-		if (const UBaseAttributeSet* AS = PS->GetAttributeSet())
+		// [전민성] - MVP 병합 시 else문 삭제 필요
+		if (const AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS))
 		{
-			return AS->GetLevel();
+			if (const UBaseAttributeSet* AS = ERPS->GetAttributeSet())
+			{
+				return AS->GetLevel();
+			}
 		}
+		else
+		{
+			if (const UBaseAttributeSet* AS = PS->GetAttributeSet())
+			{
+				return AS->GetLevel();
+			}
+		}
+
 	}
 
 	// 기본값(1레벨 시작) 반환
@@ -197,9 +227,20 @@ float ABaseCharacter::GetAttackRange() const
 {
 	if (const ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
 	{
-		if (const UBaseAttributeSet* AS = PS->GetAttributeSet())
+		// [전민성] - MVP 병합 시 else문 삭제 필요
+		if (const AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS))
 		{
-			return AS->GetAttackRange();
+			if (const UBaseAttributeSet* AS = ERPS->GetAttributeSet())
+			{
+				return AS->GetAttackRange();
+			}
+		}
+		else
+		{
+			if (const UBaseAttributeSet* AS = PS->GetAttributeSet())
+			{
+				return AS->GetAttackRange();
+			}
 		}
 	}
 
@@ -215,25 +256,56 @@ void ABaseCharacter::OnRep_HeroData()
 
 void ABaseCharacter::InitAbilitySystem()
 {
+	// [전민성] - 원본 코드
+	//ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
+	//if (!PS) return;
+	// 
+	//UAbilitySystemComponent* ASC = PS->GetAbilitySystemComponent();
+	//if (!ASC) return;
+	// 
+	//// ASC 캐싱 / Actor Info 설정
+	//AbilitySystemComponent = ASC;
+	//ASC->InitAbilityActorInfo(PS, this);
+
+	// [전민성] - MVP 병합 시 ERPS로 통합 필요
 	ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
-	if (!PS) return;
 
-	UAbilitySystemComponent* ASC = PS->GetAbilitySystemComponent();
-	if (!ASC) return;
+	AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>();
 
-	// ASC 캐싱 / Actor Info 설정
-	AbilitySystemComponent = ASC;
-	ASC->InitAbilityActorInfo(PS, this);
+	if (!PS && !ERPS) return;
+
+	UAbilitySystemComponent* ASC;
+	if (!PS)
+	{
+		ASC = ERPS->GetAbilitySystemComponent();
+		AbilitySystemComponent = ASC;
+		ASC->InitAbilityActorInfo(ERPS, this);
+	}
+	else
+	{
+		ASC = PS->GetAbilitySystemComponent();
+		AbilitySystemComponent = ASC;
+		ASC->InitAbilityActorInfo(PS, this);
+	}
+
 
 	if (HasAuthority() && HeroData)
 	{
-		/* // Ability 부여
+		for (TSoftObjectPtr<USkillDataAsset> SkillDataAsset : HeroData->SkillDataAsset)
+		{
+			if (SkillDataAsset.LoadSynchronous())
+			{
+				FGameplayAbilitySpec Spec = SkillDataAsset->MakeSpec();
+				ASC->GiveAbility(Spec);
+			}
+		}
+
+		// Ability 부여
 		for (const auto& AbilityPair : HeroData->Abilities)
 		{
 			FGameplayTag InputTag = AbilityPair.Key;
 			TSoftClassPtr<UGameplayAbility> AbilityPtr = AbilityPair.Value;
-
-			// SoftClassPtr 동기 로드 (게임 시작 시점이므로 즉시 로드)
+			
 			if (UClass* AbilityClass = AbilityPtr.LoadSynchronous())
 			{
 				// Spec 생성 (레벨 1, InputID는 태그의 해시값 등을 사용하거나 별도 매핑 필요)
@@ -245,12 +317,10 @@ void ABaseCharacter::InitAbilitySystem()
 
 				ASC->GiveAbility(Spec);
 			}
-		}*/
+		}
 
 		// Attribute Set 초기화
 		InitAttributes();
-
-		UE_LOG(LogTemp, Warning, TEXT("Initialize Attribute."));
 	}
 }
 
@@ -365,7 +435,11 @@ void ABaseCharacter::Server_MoveToLocation_Implementation(FVector TargetLocation
 	else
 	{
 		// 경로 탐색 실패 시 중지
-		StopPathFollowing();
+		// but, 타겟이 있을 경우 정지 X
+		if (TargetActor == nullptr) 
+		{
+			StopPathFollowing();
+		}
 	}
 }
 
@@ -395,7 +469,11 @@ void ABaseCharacter::MoveToLocation(FVector TargetLocation)
 	else
 	{
 		// 경로 탐색 실패 시 중지
-		StopPathFollowing();
+		// but, 타겟이 있을 경우 정지 X
+		if (TargetActor == nullptr) 
+		{
+			StopPathFollowing();
+		}
 	}
 
 	if (!HasAuthority())
@@ -406,10 +484,20 @@ void ABaseCharacter::MoveToLocation(FVector TargetLocation)
 
 void ABaseCharacter::StopMove()
 {
+	// 이동 정지
 	StopPathFollowing();
-
 	GetCharacterMovement()->StopMovementImmediately();
-
+	
+	if (AbilitySystemComponent.IsValid())
+	{
+		// 일반 공격 정지
+		FGameplayTagContainer CancelTags;
+		CancelTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Action.AutoAttack")));
+		
+		AbilitySystemComponent->CancelAbilities(&CancelTags);
+	}
+	
+	// 서버 동기화
 	if (!HasAuthority())
 	{
 		Server_StopMove();
@@ -523,53 +611,144 @@ void ABaseCharacter::StopPathFollowing()
 {
 	PathPoints.Empty();
 	CurrentPathIndex = INDEX_NONE;
-	SetActorTickEnabled(false);
+	
+	// 타겟이 있을 시 이동 및 공격을 위해 Tick 유지
+	// CheckCombatTarget() 유지 용도
+	if (TargetActor == nullptr)
+	{
+		SetActorTickEnabled(false);
+	}
 }
 
 void ABaseCharacter::SetTarget(AActor* NewTarget)
 {
-	TargetActor = NewTarget;
+	if (TargetActor == NewTarget) return;
+	
+	// 서버에서 설정
+	if (HasAuthority())
+	{
+		TargetActor = NewTarget;
+		OnRep_TargetActor(); // 서버 OnRep 수동 호출
+	}
+	else
+	{
+		// 클라이언트에서도 반영(Prediction) 후 서버 요청
+		TargetActor = NewTarget;
+		OnRep_TargetActor(); 
+		
+		// 클라이언트에서 서버에 동기화 요청
+		Server_SetTarget(NewTarget);
+	}
+}
+
+void ABaseCharacter::CheckCombatTarget(float DeltaTime)
+{
+	if (!IsValid(TargetActor))
+	{
+		SetTarget(nullptr); // 타겟이 사망 혹은 소멸 시 지정 해제
+		return;
+	}
+
+	float Distance = GetDistanceTo(TargetActor);
+	float AttackRange = GetAttackRange();
+	
+	float Tolerance = 20.0f; // 사거리 보정 값 유사 시 사용
+	float CheckRange = HasAuthority() ? (AttackRange + Tolerance) : (AttackRange - Tolerance); // 보정된 사거리
+	
+	// [디버깅용 로그 추가] 현재 거리와 사거리 비교
+#if WITH_EDITOR
+	if (bShowDebug)
+	{
+		static float LogTimer = 0.0f;
+		LogTimer += DeltaTime;
+		if (LogTimer > 0.5f)
+		{
+			LogTimer = 0.0f;
+			UE_LOG(LogTemp, Warning, TEXT("[%s] Dist: %.2f / Range: %.2f"), 
+				*GetName(), Distance, GetAttackRange());
+		}
+	}
+#endif
+	
+	if (Distance <= AttackRange) // 사거리 내 진입 시
+	{
+		// 이동 정지
+		StopPathFollowing();
+		GetCharacterMovement()->StopMovementImmediately();
+        
+		// 회전 - 공격할 때는 적을 바라봐야 함
+		FVector Direction = TargetActor->GetActorLocation() - GetActorLocation();
+		Direction.Z = 0.0f; // 높이 무시
+		SetActorRotation(Direction.Rotation());
+		
+		// 공격 어빌리티 실행 (GAS) : 서버 판정 우선
+		if (HasAuthority() && AbilitySystemComponent.IsValid())
+		{
+			FGameplayTag AttackTag = FGameplayTag::RequestGameplayTag(FName("Ability.Action.AutoAttack"));
+			
+			TArray<FGameplayAbilitySpec*> Specs;
+			AbilitySystemComponent->GetActivatableGameplayAbilitySpecsByAllMatchingTags(FGameplayTagContainer(AttackTag), Specs);
+
+			bool bHasAbility = (Specs.Num() > 0);
+			bool bWasActivated = false;
+			
+			if (bHasAbility)
+			{
+				bWasActivated = AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(AttackTag));
+			}
+			
+			if (bWasActivated)
+			{
+#if WITH_EDITOR
+				if (bShowDebug)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("[%s] Tag: %s / Found Ability: %s / Activated: %s"),
+							*GetName(),
+							*AttackTag.ToString(),
+							bHasAbility ? TEXT("YES") : TEXT("NO (Check DataAsset!)"), // 여기가 NO라면 데이터에셋)문제
+							bWasActivated ? TEXT("True") : TEXT("False (Check Cooldown/Cost/State)") // 여기가 False라면 조건 문제
+							);
+				}
+#endif	
+			}
+		}
+		return;
+	}
+	else // 사거리 밖일 시
+	{
+		PathfindingTimer += DeltaTime;
+		if (PathfindingTimer > 0.1f)
+		{
+			PathfindingTimer = 0.0f;
+			MoveToLocation(TargetActor->GetActorLocation());
+		}	
+	}
+}
+
+void ABaseCharacter::OnRep_TargetActor()
+{
+	// 타겟 유무에 따라 Tick 활성화/비활성화
+	SetActorTickEnabled(TargetActor != nullptr);
+    
+	// 경로 탐색 타이머 초기화 
+	if (TargetActor)
+	{
+		PathfindingTimer = 0.0f;
+	}
 
 #if WITH_EDITOR
 	if (bShowDebug)
 	{
-		// NewTarget이 null일 경우 "None" 출력 (크래시 방지)
 		UE_LOG(LogTemp, Warning, TEXT("[%s] Set Target Actor -> %s"),
 			*GetName(),
-			NewTarget ? *NewTarget->GetName() : TEXT("None"));
+			TargetActor ? *TargetActor->GetName() : TEXT("None"));
 	}
 #endif
-
-	// 추가 예정
-	// 타겟이 생길 시 -> Tick 켜기 -> 거리 체크 시작
-	/*if (TargetActor)
-	{
-		// SetActorTickEnabled(true);
-	}
-	else
-	{
-		// SetActorTickEnabled(false);
-	}*/
-	// 타겟 소멸 시 -> Tick 끄기 등 최적화 실시
 }
 
-void ABaseCharacter::CheckCombatTarget()
+void ABaseCharacter::Server_SetTarget_Implementation(AActor* NewTarget)
 {
-	if (!TargetActor) return;
-
-	float Distance = GetDistanceTo(TargetActor);
-
-	if (Distance <= GetAttackRange())
-	{
-		// 사거리 내 진입 -> 정지 후 공격
-		StopMove();
-		// Attack();
-	}
-	else
-	{
-		// 사거리 밖 -> 추격
-		MoveToLocation(TargetActor->GetActorLocation());
-	}
+	SetTarget(NewTarget);
 }
 
 void ABaseCharacter::InitUI()
@@ -584,10 +763,20 @@ void ABaseCharacter::InitUI()
 			return;
 		}
 
+		// [전민성] - MVP 병합 시 else문 삭제 필요
 		if (AUI_HUDFactory* HUD = Cast<AUI_HUDFactory>(GenericHUD))
 		{
-			HUD->InitOverlay(PC, GetPlayerState(), GetAbilitySystemComponent(), GetPlayerState<ABasePlayerState>()->GetAttributeSet());
+			if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
+			{
+				HUD->InitOverlay(PC, GetPlayerState(), GetAbilitySystemComponent(), ERPS->GetAttributeSet());
+			}
+			else
+			{
+				HUD->InitOverlay(PC, GetPlayerState(), GetAbilitySystemComponent(), GetPlayerState<ABasePlayerState>()->GetAttributeSet());
+			}
 			HUD->InitMinimapComponent(MinimapCaptureComponent);
+			HUD->InitHeroDataFactory(HeroData);
+			HUD->InitASCFactory(GetAbilitySystemComponent());
 			UE_LOG(LogTemp, Warning, TEXT("HUD InitOverlay Success!"));
 		}
 		else

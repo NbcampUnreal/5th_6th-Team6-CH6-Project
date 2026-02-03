@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "ItemSystem/I_ItemInteractable.h" // [김현수 추가분]
 
@@ -23,11 +23,18 @@ class PROJECTER_API ABasePlayerController : public APlayerController
 public:
 	ABasePlayerController();
 	
+	// UI 로직 내 호출을 위해 protected -> public 변경
+	// 키 입력 시, 어빌리티 호출
+	void AbilityInputTagPressed(FGameplayTag InputTag);
+	void AbilityInputTagReleased(FGameplayTag InputTag);
+	
 protected:
 	virtual void BeginPlay() override;
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void SetupInputComponent() override;
 	virtual void PlayerTick(float DeltaTime) override;
+	
+	virtual void OnRep_Pawn() override;
 	
 	// 우클릭 이동 / 공격
 	void OnMoveStarted();
@@ -35,10 +42,10 @@ protected:
 	void OnMoveReleased();
 	void MoveToMouseCursor();
 	void OnStopTriggered();
-	
-	// 키 입력 시, 어빌리티 호출
-	void AbilityInputTagPressed(FGameplayTag InputTag);
-	void AbilityInputTagReleased(FGameplayTag InputTag);
+
+	//좌클릭 결정/취소
+	void OnConfirm();
+	void OnCanceled();
 	
 protected:
 	// 입력 매핑 컨텍스트 (IMC)
@@ -82,4 +89,71 @@ protected:
 	// 기존 Move 함수를 확장하여 상호작용 판정 포함
 	void ProcessMouseInteraction();
 /// [김현수 추가분] - 끝
+
+//-----------------------------------------------------------
+
+/// [전민성 추가분] - 시작
+public:
+	UFUNCTION(BlueprintCallable, Category = "Network")
+	void ConnectToDedicatedServer(const FString& Ip, int32 Port, const FString& PlayerName);
+
+	// Clinet RPC
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_SetLose();
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_SetWin();
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_SetDead();
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_StartRespawnTimer();
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_StopRespawnTimer();
+
+private:
+	// UI 출력
+	void ShowWinUI();
+
+	void ShowLoseUI();
+
+	void ShowRespawnTimerUI();
+
+	void HideRespawnTimerUI();
+
+	// Server RPC
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_StartGame();
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_DisConnectServer();
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_TEMP_SpawnNeutrals();
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_TEMP_DespawnNeutrals();
+
+
+private:
+	// UI 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> LoseUIClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> LoseUIInstance;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> WinUIClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> WinUIInstance;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> RespawnUIClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> RespawnUIInstance;
 };

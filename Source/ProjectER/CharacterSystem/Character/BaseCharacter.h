@@ -52,26 +52,14 @@ protected:
 	UPROPERTY()
 	TWeakObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 	
-	// [Inventory] 아이템 데이터 관리 (재사용 가능)
-	// UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	// TObjectPtr<UMOBAInventoryComponent> InventoryComponent;
-
-	// [Equipment] 무기/방어구 외형 부착 관리
-	// UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	// TObjectPtr<UMOBAEquipmentComponent> EquipmentComponent;
-
-	// [Camera] 탑뷰 카메라 제어 로직 분리
-	// UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	// TObjectPtr<UMOBACameraComponent> MobaCameraComponent;
-	
 #pragma endregion
 
 #pragma region TargetableInterface
 public:
-	// [인터페이스 구현] 팀 정보 반환
+	// 팀 정보 반환
 	virtual ETeamType GetTeamType() const override;
 
-	// [인터페이스 구현] 타겟팅 가능 여부 반환
+	// 타겟팅 가능 여부 반환
 	virtual bool IsTargetable() const override;
     
 	// [인터페이스 구현] 하이라이트 (나중에 포스트 프로세스로 구현)
@@ -132,7 +120,7 @@ public:
 protected:
 	void UpdatePathFollowing();
 	void StopPathFollowing();
-	
+
 private:
 	// 현재 추적 중인 경로 포인트들
 	UPROPERTY()
@@ -144,6 +132,9 @@ private:
 	// 도착 판정 임계값 (제곱)
 	const float ArrivalDistanceSq = 2500.f; 
 	
+	// 갱신 타이머
+	float PathfindingTimer = 0.0f;
+	
 #pragma endregion
 	
 #pragma region Combat
@@ -152,11 +143,18 @@ public:
 	void SetTarget(AActor* NewTarget);
 	
 	// 공격 가능 사거리 확인
-	void CheckCombatTarget();
+	void CheckCombatTarget(float DeltaTime);
+	
+protected:
+	UFUNCTION()
+	void OnRep_TargetActor();
+	
+	UFUNCTION(Server, Reliable)
+	void Server_SetTarget(AActor* NewTarget);
 	
 protected:
 	// 현재 타겟 (적)
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	UPROPERTY(ReplicatedUsing = OnRep_TargetActor, VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<AActor> TargetActor;
 #pragma endregion
 

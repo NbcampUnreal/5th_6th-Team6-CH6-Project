@@ -10,6 +10,9 @@ class UTextBlock;
 class UButton;
 class UProgressBar;
 class UImage;
+class UUI_ToolTip;
+class UCharacterData;
+class UAbilitySystemComponent;
 
 UENUM(BlueprintType)
 enum class ECharacterStat : uint8
@@ -22,6 +25,14 @@ enum class ECharacterStat : uint8
 	SPD			UMETA(DisplayName = "Speed")
 };
 
+UENUM(BlueprintType)
+enum class ESkillKey : uint8
+{
+	Q			UMETA(DisplayName = "Q Skill"),
+	W			UMETA(DisplayName = "W Skill"),
+	E			UMETA(DisplayName = "E Skill"),
+	R			UMETA(DisplayName = "R Skill")
+};
 /**
  * 
  */
@@ -47,13 +58,41 @@ public:
 	
 	UFUNCTION()
 	void InitMinimapCompo(USceneCaptureComponent2D* SceneCapture2D);
+	UFUNCTION()
+	void InitHeroDataHUD(UCharacterData* HeroData);
+	UFUNCTION()
+	void InitASCHud(UAbilitySystemComponent* _ASC);
 
 protected:
 	// 마우스 우클릭 확인용
+	virtual void NativeConstruct() override; // 생성자
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
+	// 툴팁 클래스 (에디터에서 할당)
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TSubclassOf<UUserWidget> TooltipClass;
+
+	// 툴팁 인스턴스
+	UPROPERTY()
+	UUI_ToolTip* TooltipInstance;
+
+	// --- 마우스 오버 이벤트 핸들러 ---
+	// 버튼용
+	UFUNCTION() void OnSkill01Hovered();
+	UFUNCTION() void OnSkill02Hovered();
+	UFUNCTION() void OnSkill03Hovered();
+	UFUNCTION() void OnSkill04Hovered();
+	// .............
+
+	void ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, bool showUpper);
+	UFUNCTION()
+	void HideTooltip();
+
 private:
 	void HandleMinimapClicked(const FPointerEvent& InMouseEvent);
 	class USceneCaptureComponent2D* MinimapCaptureComponent;
+	class UCharacterData* HeroData;
+	class UAbilitySystemComponent* ASC;
 
 protected:
 	UPROPERTY(meta = (BindWidget))
@@ -125,4 +164,29 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UImage* TEX_Minimap;
+
+	UPROPERTY()
+	UTexture2D* TEX_TempIcon;
+
+	UFUNCTION()
+	void OnSkillClicked_Q();
+	UFUNCTION()
+	void OnSkillReleased_Q();
+	UFUNCTION()
+	void OnSkillClicked_W();
+	UFUNCTION()
+	void OnSkillReleased_W();
+	UFUNCTION()
+	void OnSkillClicked_E();
+	UFUNCTION()
+	void OnSkillReleased_E();
+	UFUNCTION()
+	void OnSkillClicked_R();
+	UFUNCTION()
+	void OnSkillReleased_R();
+	UFUNCTION()
+	void SkillFirePressed(ESkillKey index);
+	UFUNCTION()
+	void SkillFireReleased(ESkillKey index);
+
 };
