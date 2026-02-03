@@ -159,4 +159,17 @@ protected:
 
 	UPROPERTY()
 	UTexture2D* TEX_TempIcon;
+
+	UFUNCTION()
+	void OnSkillClicked_Q();
+	UFUNCTION()
+	void OnSkillClicked_W();
+	UFUNCTION()
+	void OnSkillClicked_E();
+	UFUNCTION()
+	void OnSkillClicked_R();
+
+	UFUNCTION()
+	void SkillFire(int32 index);
+
 };

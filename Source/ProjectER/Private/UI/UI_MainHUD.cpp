@@ -12,6 +12,12 @@
 #include "UI/UI_ToolTip.h" // 툴팁용
 #include "SkillSystem/SkillDataAsset.h" // 스킬용
 #include "AbilitySystemComponent.h" // 스킬용
+#include "CharacterSystem/Data/CharacterData.h" // 스킬용
+#include "SkillSystem/SkillDataAsset.h"
+#include "SkillSystem/SkillConfig/BaseSkillConfig.h"
+#include "Kismet/KismetMathLibrary.h" // 반올림용
+#include "CharacterSystem/Player/BasePlayerController.h"
+
 void UUI_MainHUD::Update_LV(float CurrentLV)
 {
     if(IsValid(stat_LV))
@@ -175,26 +181,31 @@ void UUI_MainHUD::NativeConstruct()
         TooltipInstance->AddToViewport(10); // UI 가시성 우선순위 위로
     }
 
-    // 툴팁 바인딩
+    // 툴팁, 클릭 이벤트 바인딩
     if (skill_01)
     {
         skill_01->OnHovered.AddDynamic(this, &UUI_MainHUD::OnSkill01Hovered);
         skill_01->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
+        skill_01->OnClicked.AddDynamic(this, &UUI_MainHUD::OnSkillClicked_Q);
+
     }
     if (skill_02)
     {
         skill_02->OnHovered.AddDynamic(this, &UUI_MainHUD::OnSkill02Hovered);
         skill_02->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
+        skill_02->OnClicked.AddDynamic(this, &UUI_MainHUD::OnSkillClicked_W);
     }
     if (skill_03)
     {
         skill_03->OnHovered.AddDynamic(this, &UUI_MainHUD::OnSkill03Hovered);
         skill_03->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
+        skill_03->OnClicked.AddDynamic(this, &UUI_MainHUD::OnSkillClicked_E);
     }
     if (skill_04)
     {
         skill_04->OnHovered.AddDynamic(this, &UUI_MainHUD::OnSkill04Hovered);
         skill_04->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
+        skill_04->OnClicked.AddDynamic(this, &UUI_MainHUD::OnSkillClicked_R);
     }
     // skil
 }
@@ -355,4 +366,78 @@ void UUI_MainHUD::HandleMinimapClicked(const FPointerEvent& InMouseEvent)
         // 이동 명령
         // MoveToLocation(TargetWorldPos);
     }
+}
+
+void UUI_MainHUD::OnSkillClicked_Q()
+{
+    SkillFire(0);
+}
+
+void UUI_MainHUD::OnSkillClicked_W()
+{
+    SkillFire(1);
+}
+
+void UUI_MainHUD::OnSkillClicked_E()
+{
+    SkillFire(2);
+}
+
+void UUI_MainHUD::OnSkillClicked_R()
+{
+    SkillFire(3);
+}
+
+void UUI_MainHUD::SkillFire(int32 Index)
+{
+    if (!ASC) return;
+
+    if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
+    {
+        USkillDataAsset* SkillAsset = HeroData->SkillDataAsset[Index].LoadSynchronous();
+
+        if (SkillAsset && SkillAsset->SkillConfig)
+        {
+            FGameplayTag InputTag = SkillAsset->SkillConfig->Data.InputKeyTag;
+
+            // ASC를 통한 스킬 실행??
+            if (ASC)
+            {
+                FGameplayTagContainer TagContainer;
+                TagContainer.AddTag(InputTag);
+                ASC->TryActivateAbilitiesByTag(TagContainer);
+                UE_LOG(LogTemp, Error, TEXT("%d_Skill, TAG : %s)"), 0, *InputTag.ToString());
+            }
+
+            //      for (FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
+            //      {
+            //          if (Spec.DynamicAbilityTags.HasTagExact(InputTag))
+            //          {
+            //              if (Spec.IsActive())
+            //              {
+            //                  // [방법 2 핵심] 태그를 담은 이벤트를 어빌리티에 직접 쏩니다.
+            //                  FGameplayEventData Payload;
+            //                  Payload.EventTag = InputTag; // 전달할 태그
+                              //ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
+            //                  Payload.Instigator = PC;
+
+            //                  // 활성화된 어빌리티에게 이벤트를 전달합니다.
+            //                  ASC->HandleGameplayEvent(InputTag, &Payload);
+            //                  UE_LOG(LogTemp, Log, TEXT("Gameplay Event Sent: %s"), *InputTag.ToString());
+            //              }
+            //              else
+            //              {
+            //                  ASC->TryActivateAbility(Spec.Handle);
+            //              }
+            //          }
+            //      }
+        }
+    }
+    else
+    {
+		UE_LOG(LogTemp, Warning, TEXT("Invalid SkillDataAsset or index out of range"));
+    }
+
+
+    ///
 }
