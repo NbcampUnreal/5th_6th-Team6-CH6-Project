@@ -9,8 +9,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/GameSession.h"
 
-// 임시
-#include "GameModeBase/TEMPNeutral.h"
+#include "Monster/BaseMonster.h"
 
 
 void AER_InGameMode::BeginPlay()
@@ -148,7 +147,8 @@ void AER_InGameMode::NotifyNeutralDied(ACharacter* VictimCharacter)
 	//임시니까 일단 캐릭터의 변수를 이용
 	UE_LOG(LogTemp, Log, TEXT("[GM] : NotifyNeutralDied Start"));
 
-	ATEMPNeutral* NC = Cast<ATEMPNeutral>(VictimCharacter);
+	ABaseMonster* NC = Cast<ABaseMonster>(VictimCharacter);
+	NC->GetSpawnPoint();
 	int32 SpawnPoint = NC->GetSpawnPoint();
 	NeutralSS->StartRespawnNeutral(SpawnPoint);
 }

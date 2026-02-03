@@ -28,6 +28,8 @@
 
 #include "Components/SceneCaptureComponent2D.h" // 미니맵용
 
+#include "GameModeBase/State/ER_PlayerState.h"
+
 ABaseCharacter::ABaseCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -199,10 +201,22 @@ float ABaseCharacter::GetCharacterLevel() const
 
 	if (const ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
 	{
-		if (const UBaseAttributeSet* AS = PS->GetAttributeSet())
+		// [전민성] - MVP 병합 시 else문 삭제 필요
+		if (const AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS))
 		{
-			return AS->GetLevel();
+			if (const UBaseAttributeSet* AS = ERPS->GetAttributeSet())
+			{
+				return AS->GetLevel();
+			}
 		}
+		else
+		{
+			if (const UBaseAttributeSet* AS = PS->GetAttributeSet())
+			{
+				return AS->GetLevel();
+			}
+		}
+
 	}
 
 	// 기본값(1레벨 시작) 반환
@@ -213,9 +227,20 @@ float ABaseCharacter::GetAttackRange() const
 {
 	if (const ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
 	{
-		if (const UBaseAttributeSet* AS = PS->GetAttributeSet())
+		// [전민성] - MVP 병합 시 else문 삭제 필요
+		if (const AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS))
 		{
-			return AS->GetAttackRange();
+			if (const UBaseAttributeSet* AS = ERPS->GetAttributeSet())
+			{
+				return AS->GetAttackRange();
+			}
+		}
+		else
+		{
+			if (const UBaseAttributeSet* AS = PS->GetAttributeSet())
+			{
+				return AS->GetAttackRange();
+			}
 		}
 	}
 
@@ -231,15 +256,38 @@ void ABaseCharacter::OnRep_HeroData()
 
 void ABaseCharacter::InitAbilitySystem()
 {
+	// [전민성] - 원본 코드
+	//ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
+	//if (!PS) return;
+	// 
+	//UAbilitySystemComponent* ASC = PS->GetAbilitySystemComponent();
+	//if (!ASC) return;
+	// 
+	//// ASC 캐싱 / Actor Info 설정
+	//AbilitySystemComponent = ASC;
+	//ASC->InitAbilityActorInfo(PS, this);
+
+	// [전민성] - MVP 병합 시 ERPS로 통합 필요
 	ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
-	if (!PS) return;
 
-	UAbilitySystemComponent* ASC = PS->GetAbilitySystemComponent();
-	if (!ASC) return;
+	AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>();
 
-	// ASC 캐싱 / Actor Info 설정
-	AbilitySystemComponent = ASC;
-	ASC->InitAbilityActorInfo(PS, this);
+	if (!PS && !ERPS) return;
+
+	UAbilitySystemComponent* ASC;
+	if (!PS)
+	{
+		ASC = ERPS->GetAbilitySystemComponent();
+		AbilitySystemComponent = ASC;
+		ASC->InitAbilityActorInfo(ERPS, this);
+	}
+	else
+	{
+		ASC = PS->GetAbilitySystemComponent();
+		AbilitySystemComponent = ASC;
+		ASC->InitAbilityActorInfo(PS, this);
+	}
+
 
 	if (HasAuthority() && HeroData)
 	{
@@ -715,9 +763,17 @@ void ABaseCharacter::InitUI()
 			return;
 		}
 
+		// [전민성] - MVP 병합 시 else문 삭제 필요
 		if (AUI_HUDFactory* HUD = Cast<AUI_HUDFactory>(GenericHUD))
 		{
-			HUD->InitOverlay(PC, GetPlayerState(), GetAbilitySystemComponent(), GetPlayerState<ABasePlayerState>()->GetAttributeSet());
+			if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
+			{
+				HUD->InitOverlay(PC, GetPlayerState(), GetAbilitySystemComponent(), ERPS->GetAttributeSet());
+			}
+			else
+			{
+				HUD->InitOverlay(PC, GetPlayerState(), GetAbilitySystemComponent(), GetPlayerState<ABasePlayerState>()->GetAttributeSet());
+			}
 			HUD->InitMinimapComponent(MinimapCaptureComponent);
 			HUD->InitHeroDataFactory(HeroData);
 			HUD->InitASCFactory(GetAbilitySystemComponent());
