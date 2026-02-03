@@ -53,7 +53,7 @@ protected:
 	FSkillDefaultData SkillData;*/
 
 	UPROPERTY(BlueprintReadOnly)
-	TObjectPtr<UBaseSkillConfig> ChacedConfig;
+	TObjectPtr<UBaseSkillConfig> CachedConfig;
 
 	UPROPERTY(VisibleAnywhere, Category = "Skill|Tags")
 	FGameplayTag CastingTag;

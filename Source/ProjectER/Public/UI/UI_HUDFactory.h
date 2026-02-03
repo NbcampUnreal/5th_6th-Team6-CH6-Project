@@ -11,6 +11,8 @@
 class UUserWidget;
 class UUI_HUDController;
 class UUI_MainHUD;
+class UCharacterData;
+class UAbilitySystemComponent;
 struct FWidgetControllerParams;
 
 UCLASS()
@@ -30,6 +32,11 @@ public:
     void InitOverlay(APlayerController* PC, APlayerState* PS, UAbilitySystemComponent* ASC, UAttributeSet* AS);
     UFUNCTION()
     void InitMinimapComponent(class USceneCaptureComponent2D* SceneCapture2D);
+    UFUNCTION()
+    void InitHeroDataFactory(UCharacterData* HeroData);
+    UFUNCTION()
+    void InitASCFactory(UAbilitySystemComponent* _ASC);
+
 
 private:
     // 1. 위젯 클래스를 담을 변수 (에디터에서 선택 가능하게)

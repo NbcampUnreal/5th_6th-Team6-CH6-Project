@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
@@ -30,6 +30,14 @@ public:
 	// 마우스 우클릭 (이동/공격)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MouseClick")
 	TObjectPtr<UInputAction> InputMove;
+
+	//마우스 오른쪽클릭(임시)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MouseClick")
+	TObjectPtr<UInputAction> InputCancel;
+
+	//마우스 왼쪽클릭
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MouseClick")
+	TObjectPtr<UInputAction> InputConfirm;
 	
 	// 이동 정지 명령
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Command")

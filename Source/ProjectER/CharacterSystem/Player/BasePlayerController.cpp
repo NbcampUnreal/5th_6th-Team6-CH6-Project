@@ -76,6 +76,9 @@ void ABasePlayerController::SetupInputComponent()
 
 		EnhancedInputComponent->BindAction(InputConfig->StopMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnStopTriggered);
 
+		EnhancedInputComponent->BindAction(InputConfig->InputConfirm, ETriggerEvent::Started, this, &ABasePlayerController::OnConfirm);
+		EnhancedInputComponent->BindAction(InputConfig->InputCancel, ETriggerEvent::Started, this, &ABasePlayerController::OnCanceled);
+
 		for (const FInputData& Action : InputConfig->AbilityInputAction)
 		{
 			if (Action.InputAction && Action.InputTag.IsValid())
@@ -255,6 +258,29 @@ void ABasePlayerController::CheckInteractionDistance()
 	}
 }
 
+void ABasePlayerController::OnConfirm() {
+	APawn* ControlledPawn = GetPawn();
+	if (!ControlledPawn) return;
+
+	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ControlledPawn);
+	if (IsValid(ASC)) {
+		UE_LOG(LogTemp, Log, TEXT("OnConfirm"));
+		ASC->LocalInputConfirm();
+	}
+}
+
+
+void ABasePlayerController::OnCanceled() {
+	APawn* ControlledPawn = GetPawn();
+	if (!ControlledPawn) return;
+
+	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ControlledPawn);
+	if (IsValid(ASC)) {
+		//UE_LOG(LogTemp, Log, TEXT("OnCanceled"));
+		ASC->LocalInputCancel();
+	}
+}
+
 void ABasePlayerController::OnStopTriggered()
 {
 	bIsMousePressed = false;
@@ -362,6 +388,19 @@ void ABasePlayerController::Server_DisConnectServer_Implementation()
 	InGameMode->DisConnectClient(this);
 }
 
+void ABasePlayerController::Server_TEMP_SpawnNeutrals_Implementation()
+{
+	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
+	InGameMode->TEMP_SpawnNeutrals();
+}
+
+void ABasePlayerController::Server_TEMP_DespawnNeutrals_Implementation()
+{
+	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
+	InGameMode->TEMP_DespawnNeutrals();
+}
+
+
 void ABasePlayerController::ShowWinUI()
 {
 	if (!WinUIClass)
@@ -409,5 +448,6 @@ void ABasePlayerController::HideRespawnTimerUI()
 		RespawnUIInstance = nullptr;
 	}
 }
+
 
 

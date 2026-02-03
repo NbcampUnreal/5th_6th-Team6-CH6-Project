@@ -710,6 +710,8 @@ void ABaseCharacter::InitUI()
 		{
 			HUD->InitOverlay(PC, GetPlayerState(), GetAbilitySystemComponent(), GetPlayerState<ABasePlayerState>()->GetAttributeSet());
 			HUD->InitMinimapComponent(MinimapCaptureComponent);
+			HUD->InitHeroDataFactory(HeroData);
+			HUD->InitASCFactory(GetAbilitySystemComponent());
 			UE_LOG(LogTemp, Warning, TEXT("HUD InitOverlay Success!"));
 		}
 		else

@@ -2,11 +2,15 @@
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
+#include "GameModeBase/Subsystem/NeutralSpawn/ER_NeutralSpawnSubsystem.h"
 
 #include "GameFramework/Character.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/GameSession.h"
+
+// 임시
+#include "GameModeBase/TEMPNeutral.h"
 
 
 void AER_InGameMode::BeginPlay()
@@ -77,6 +81,8 @@ void AER_InGameMode::HandleStartingNewPlayer_Implementation(APlayerController* N
 				{
 					ERGS->BuildTeamCache();
 				});
+			NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
+			NeutralSS->InitializeSpawnPoints(NeutralClass);
 		}
 	}
 }
@@ -134,10 +140,33 @@ void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter, AActor* Death
 	}
 }
 
+void AER_InGameMode::NotifyNeutralDied(ACharacter* VictimCharacter)
+{
+	if (!HasAuthority() || !VictimCharacter)
+		return;
+
+	//임시니까 일단 캐릭터의 변수를 이용
+	UE_LOG(LogTemp, Log, TEXT("[GM] : NotifyNeutralDied Start"));
+
+	ATEMPNeutral* NC = Cast<ATEMPNeutral>(VictimCharacter);
+	int32 SpawnPoint = NC->GetSpawnPoint();
+	NeutralSS->StartRespawnNeutral(SpawnPoint);
+}
+
 void AER_InGameMode::DisConnectClient(APlayerController* PC)
 {
 	if (GameSession)
 	{
 		GameSession->KickPlayer(PC, FText::FromString(TEXT("Defeated")));
 	}
+}
+
+void AER_InGameMode::TEMP_SpawnNeutrals()
+{
+	NeutralSS->TEMP_SpawnNeutrals();
+}
+
+void AER_InGameMode::TEMP_DespawnNeutrals()
+{
+	NeutralSS->TEMP_NeutralsALLDespawn();
 }

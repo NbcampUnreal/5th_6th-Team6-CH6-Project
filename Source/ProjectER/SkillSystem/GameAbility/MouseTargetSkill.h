@@ -19,10 +19,14 @@ public:
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 protected:
 	virtual void ExecuteSkill() override;
-	void Targeted();
+	virtual void FinishSkill() override;
+	void SetWaitTargetTask();
+	bool CastInstantly();
 
 	UFUNCTION()
-	void OnTargetConfirmed(FGameplayEventData Payload);
+	void OnTargetDataReady(const FGameplayAbilityTargetDataHandle& DataHandle);
+	UFUNCTION()
+	void OnTargetCancelled(const FGameplayAbilityTargetDataHandle& DataHandle);
 private:
 
 public:
