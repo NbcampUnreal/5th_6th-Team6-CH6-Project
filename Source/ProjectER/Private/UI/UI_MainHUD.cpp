@@ -408,10 +408,6 @@ void UUI_MainHUD::OnSkillReleased_R()
     SkillFireReleased(ESkillKey::R);
 }
 
-void UUI_MainHUD::SkillFireReleased(ESkillKey index)
-{
-}
-
 void UUI_MainHUD::SkillFirePressed(ESkillKey _Index)
 {
     if (!ASC) return;
@@ -425,38 +421,44 @@ void UUI_MainHUD::SkillFirePressed(ESkillKey _Index)
         if (SkillAsset && SkillAsset->SkillConfig)
         {
             FGameplayTag InputTag = SkillAsset->SkillConfig->Data.InputKeyTag;
+            ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
 
-            // ASC를 통한 스킬 실행??
-            if (ASC)
+            if (IsValid(PC))
             {
-                FGameplayTagContainer TagContainer;
-                TagContainer.AddTag(InputTag);
-                ASC->TryActivateAbilitiesByTag(TagContainer);
-                UE_LOG(LogTemp, Error, TEXT("%d_Skill, TAG : %s)"), 0, *InputTag.ToString());
+				PC->AbilityInputTagPressed(InputTag);
             }
 
-            //      for (FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
-            //      {
-            //          if (Spec.DynamicAbilityTags.HasTagExact(InputTag))
-            //          {
-            //              if (Spec.IsActive())
-            //              {
-            //                  // [방법 2 핵심] 태그를 담은 이벤트를 어빌리티에 직접 쏩니다.
-            //                  FGameplayEventData Payload;
-            //                  Payload.EventTag = InputTag; // 전달할 태그
-                              //ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
-            //                  Payload.Instigator = PC;
+            //// ASC를 통한 스킬 실행?? <- 자체제작, PC에서 가져오는걸로 퉁치는게 조을것같음.
+            //if (ASC)
+            //{
+            //    FGameplayTagContainer TagContainer;
+            //    TagContainer.AddTag(InputTag);
+            //    ASC->TryActivateAbilitiesByTag(TagContainer);
+            //    UE_LOG(LogTemp, Error, TEXT("%d_Skill, TAG : %s)"), 0, *InputTag.ToString());
+            //}
 
-            //                  // 활성화된 어빌리티에게 이벤트를 전달합니다.
-            //                  ASC->HandleGameplayEvent(InputTag, &Payload);
-            //                  UE_LOG(LogTemp, Log, TEXT("Gameplay Event Sent: %s"), *InputTag.ToString());
-            //              }
-            //              else
-            //              {
-            //                  ASC->TryActivateAbility(Spec.Handle);
-            //              }
-            //          }
-            //      }
+            //////////      for (FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
+            //////////      {
+            //////////          if (Spec.DynamicAbilityTags.HasTagExact(InputTag))
+            //////////          {
+            //////////              if (Spec.IsActive())
+            //////////              {
+            //////////                  // [방법 2 핵심] 태그를 담은 이벤트를 어빌리티에 직접 쏩니다.
+            //////////                  FGameplayEventData Payload;
+            //////////                  Payload.EventTag = InputTag; // 전달할 태그
+            ////////                  //ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
+            //////////                  Payload.Instigator = PC;
+
+            //////////                  // 활성화된 어빌리티에게 이벤트를 전달합니다.
+            //////////                  ASC->HandleGameplayEvent(InputTag, &Payload);
+            //////////                  UE_LOG(LogTemp, Log, TEXT("Gameplay Event Sent: %s"), *InputTag.ToString());
+            //////////              }
+            //////////              else
+            //////////              {
+            //////////                  ASC->TryActivateAbility(Spec.Handle);
+            //////////              }
+            //////////          }
+            //////////      }
         }
     }
     else
@@ -464,6 +466,33 @@ void UUI_MainHUD::SkillFirePressed(ESkillKey _Index)
 		UE_LOG(LogTemp, Warning, TEXT("Invalid SkillDataAsset or index out of range"));
     }
 
-
     ///
+}
+
+void UUI_MainHUD::SkillFireReleased(ESkillKey _Index)
+{
+    if (!ASC) return;
+
+    int32 Index = static_cast<int32>(_Index);
+
+    if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
+    {
+        USkillDataAsset* SkillAsset = HeroData->SkillDataAsset[Index].LoadSynchronous();
+
+        if (SkillAsset && SkillAsset->SkillConfig)
+        {
+            FGameplayTag InputTag = SkillAsset->SkillConfig->Data.InputKeyTag;
+            ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
+
+            if (IsValid(PC))
+            {
+                PC->AbilityInputTagReleased(InputTag);
+            }
+
+        }
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Invalid SkillDataAsset or index out of range"));
+    }
 }
