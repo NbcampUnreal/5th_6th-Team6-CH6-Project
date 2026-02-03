@@ -181,29 +181,36 @@ void AObstacleMaskBaker::BakeObstacleMask()
 		TEXT("AObstacleMaskBaker::BakeObstacleMask >> Resolution %dx%d"),
 		PixelResolution, PixelResolution);
 
-	// PASS R
 	TArray<AActor*> ShadowActors;
-	if (!GetObstacleActors(EObstacleType::ShadowCastable, ShadowActors))
-		return;
-
-	UTextureRenderTarget2D* RT_R = CaptureObstaclePass(ShadowActors);
-
-	// PASS G
+	if (!GetObstacleActors(EObstacleType::ShadowCastable, ShadowActors)) return;
 	TArray<AActor*> LowActors;
-	if (!GetObstacleActors(EObstacleType::None_ShadowCastable, LowActors))
-		return;
+	if (!GetObstacleActors(EObstacleType::None_ShadowCastable, LowActors)) return;
 
-	UTextureRenderTarget2D* RT_G = CaptureObstaclePass(LowActors);
+	//merge ShadowActors and LowActors here!!!
+	TArray<AActor*> AllObstacleActors = ShadowActors;
+	AllObstacleActors.Append(LowActors);
+	
+	// World Scene depth(for comparison, in there, no obstacles captured. only world to be compared)
+	UTextureRenderTarget2D* SceneDepthRT = CaptureSceneDepthRT(AllObstacleActors);
+	
+	// R Mask (Shadow-Castable Obstacle)
+	UTextureRenderTarget2D* ShadowDepthRT = CaptureObstacleDepthRT(ShadowActors);
+	UTextureRenderTarget2D* ShadowMaskRT = MakeBinaryMaskRT(SceneDepthRT, ShadowDepthRT);
 
-	// MERGE
+	// G Mask (LowObstacle/ no shadow)
+	UTextureRenderTarget2D* LowDepthRT = CaptureObstacleDepthRT(LowActors);
+	UTextureRenderTarget2D* LowMaskRT = MakeBinaryMaskRT(SceneDepthRT, LowDepthRT);
+	
+	// merge all
 	UTextureRenderTarget2D* FinalRT = NewObject<UTextureRenderTarget2D>(this);
 	FinalRT->RenderTargetFormat = RTF_RGBA8;
 	FinalRT->ClearColor = FLinearColor::Black;
 	FinalRT->InitAutoFormat(PixelResolution, PixelResolution);
 	FinalRT->UpdateResourceImmediate(true);
 
-	MergeRTs_To_RG(RT_R, RT_G, FinalRT);
-
+	//MergeRTs_To_RG(ShadowMaskRT, LowMaskRT, FinalRT);//--> loop in cpu
+	MergeRTs_WithMaterial(ShadowMaskRT, LowMaskRT, FinalRT);// merge using ush by MID
+	
 	// SAVE
 	const FString AssetName =
 		FString::Printf(TEXT("ObstacleMask_%s"), *GetName());
@@ -369,6 +376,116 @@ void AObstacleMaskBaker::OnBakeRequested(EObstacleBakeRequest Request)
 				TEXT("AObstacleMaskBaker::OnBakeRequested >> Invalid Request"));
 		break;
 	}
+}
+
+UTextureRenderTarget2D* AObstacleMaskBaker::CaptureSceneDepthRT(const TArray<AActor*>& ObstacleActors)
+{
+	UTextureRenderTarget2D* SceneDepthRT = NewObject<UTextureRenderTarget2D>(this);
+	SceneDepthRT->RenderTargetFormat = RTF_R32f;// use 32bit for world unit depth distance
+	SceneDepthRT->ClearColor = FLinearColor::Black;
+	SceneDepthRT->InitAutoFormat(PixelResolution, PixelResolution);
+	SceneDepthRT->UpdateResourceImmediate(true);
+	
+	SceneCaptureComp->TextureTarget = SceneDepthRT;//set rt
+
+	//change the capture mode from show only to capture all
+	ESceneCapturePrimitiveRenderMode OriginalMode = SceneCaptureComp->PrimitiveRenderMode;
+	SceneCaptureComp->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_LegacySceneCapture;
+	
+	SceneCaptureComp->ClearShowOnlyComponents();//clear all show only comps
+	SceneCaptureComp->ShowOnlyActors.Empty();//clear the actors
+	SceneCaptureComp->HiddenActors=ObstacleActors;// hide the obstacles
+	
+	SceneCaptureComp->CaptureScene();//take a picture!!!
+
+	//restore the original mode
+	SceneCaptureComp->PrimitiveRenderMode = OriginalMode;
+	SceneCaptureComp->HiddenActors.Empty();
+
+	return SceneDepthRT;
+}
+
+UTextureRenderTarget2D* AObstacleMaskBaker::CaptureObstacleDepthRT(const TArray<AActor*>& ObstacleActors)
+{
+	UTextureRenderTarget2D* ObstacleRT = NewObject<UTextureRenderTarget2D>(this);
+	ObstacleRT->RenderTargetFormat = RTF_R32f;//same, use 32bit for world unit depth distance
+	ObstacleRT->ClearColor = FLinearColor::Black;
+	ObstacleRT->InitAutoFormat(PixelResolution, PixelResolution);
+	ObstacleRT->UpdateResourceImmediate(true);
+
+	SceneCaptureComp->TextureTarget = ObstacleRT;
+
+	// make it sure that it use the show only list mode
+	SceneCaptureComp->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
+    
+	SceneCaptureComp->ClearShowOnlyComponents();
+	SceneCaptureComp->ShowOnlyActors = ObstacleActors;
+	
+	SceneCaptureComp->CaptureScene();
+
+	return ObstacleRT;
+}
+
+UTextureRenderTarget2D* AObstacleMaskBaker::MakeBinaryMaskRT(UTextureRenderTarget2D* SceneDepthRT,
+	UTextureRenderTarget2D* ObstacleDepthRT)
+{
+	if (!SceneDepthRT || !ObstacleDepthRT)
+	{
+		UE_LOG(LOSWorldBaker, Error, TEXT("MakeBinaryMaskRT >> Invalid input RTs"));
+		return nullptr;
+	}
+	if (!BinaryMaskMaterial)
+	{
+		UE_LOG(LOSWorldBaker, Warning, TEXT("MakeBinaryMaskRT >> MergeMaskMaterial missing"));
+		return nullptr;
+	}
+	
+	UTextureRenderTarget2D* MaskRT = NewObject<UTextureRenderTarget2D>(this);
+	MaskRT->RenderTargetFormat = RTF_R8;
+	MaskRT->ClearColor = FLinearColor::Black;
+	MaskRT->InitAutoFormat(PixelResolution, PixelResolution);
+	MaskRT->UpdateResourceImmediate(true);
+
+	UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(BinaryMaskMaterial, this);
+	MID->SetTextureParameterValue(MIDParam_SceneDepthTex, SceneDepthRT);
+	MID->SetTextureParameterValue(MIDParam_ObstacleDepthTex, ObstacleDepthRT);
+
+	UKismetRenderingLibrary::DrawMaterialToRenderTarget(this, MaskRT, MID);
+
+	//Debug
+	DebugMaskMID=MID;
+	
+	return MaskRT;
+}
+
+void AObstacleMaskBaker::MergeRTs_WithMaterial(UTextureRenderTarget2D* RT_Shadow, UTextureRenderTarget2D* RT_Low,
+	UTextureRenderTarget2D* OutRT)
+{
+	if (!RT_Shadow || !RT_Low || !OutRT)
+	{
+		UE_LOG(LOSWorldBaker, Error,
+			TEXT("MergeRTs >> Invalid render target input"));
+		return;
+	}
+
+	if (!MergeMaskMaterial)
+	{
+		UE_LOG(LOSWorldBaker, Error,
+			TEXT("MergeRTs >> MergeMaskMaterial is null! Cannot merge."));
+		return;
+	}
+
+	// Create a transient MID for the merge operation
+	UMaterialInstanceDynamic* MergeMID = UMaterialInstanceDynamic::Create(MergeMaskMaterial, this);
+
+	// Bind the individual masks to the material parameters
+	MergeMID->SetTextureParameterValue(MIDParam_RMask, RT_Shadow);
+	MergeMID->SetTextureParameterValue(MIDParam_GMask, RT_Low);
+
+	// Draw the material to the output RT
+	UKismetRenderingLibrary::DrawMaterialToRenderTarget(this, OutRT, MergeMID);
+
+	UE_LOG(LOSWorldBaker, Log, TEXT("MergeRTs >> GPU Merge complete using Material logic"));
 }
 
 void AObstacleMaskBaker::ClearLocalData()

@@ -297,7 +297,7 @@ float CalculateLineOfSight_V5(
 		}
 	}
 
-	// mask out the area -> Low Obstacle type
+	// mask out the area -> Low Obstacle type, no RayMarch for shadow casting
 	float LowObstacle = MaskTex.SampleLevel(MaskSampler, UV, 0).g;
 	if (LowObstacle > 0.0)
 	{

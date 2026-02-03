@@ -51,7 +51,8 @@ public:
 	void RebuildTextureToAllBakers() { CommandToAllBakers(EObstacleBakeRequest::Rebuild); }
 	UFUNCTION(CallInEditor, Category="Obstacle Mask")
 	void ClearTextureToAllBakers() { CommandToAllBakers(EObstacleBakeRequest::Clear); }
-	
+
+private:
 	// internal helper
 
 	bool GetObstacleActors( // for getting the actors to only render them
@@ -66,6 +67,18 @@ public:
 	void OnBakeRequested(EObstacleBakeRequest Request);// delegate trigger when command is given
 	//!!!! --> wont work in the editor. but keep it just in case !!!
 
+	UTextureRenderTarget2D* CaptureSceneDepthRT(const TArray<AActor*>& ObstacleActors);
+
+	UTextureRenderTarget2D* CaptureObstacleDepthRT(const TArray<AActor*>& ObstacleActors);
+
+	UTextureRenderTarget2D* MakeBinaryMaskRT(
+		UTextureRenderTarget2D* SceneDepthRT,
+		UTextureRenderTarget2D* ObstacleDepthRT);
+
+	void MergeRTs_WithMaterial(
+		UTextureRenderTarget2D* RT_Shadow,
+		UTextureRenderTarget2D* RT_Low,
+		UTextureRenderTarget2D* OutRT);
 	
 #endif
 
@@ -74,6 +87,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ObstacleMask")
 	UTexture2D* GetBakedObstacleMask() const;
 
+	//Debug for checking if the mask was made correctly
+	UFUNCTION(BlueprintCallable, Category="ObstacleMask")
+	UMaterialInstanceDynamic* GetDebugMID() const {return DebugMaskMID;}
 	
 protected:
 
@@ -97,6 +113,28 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WorldObstacles")
 	float WorldUnitToPixelRatio=1.f;
 
+	//For making binary Mask texture
+	UPROPERTY(EditAnywhere, Category="ObstacleMask|Materials")
+	UMaterialInterface* BinaryMaskMaterial;
+	//params
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WorldObstacles")
+	FName MIDParam_SceneDepthTex=NAME_None;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WorldObstacles")
+	FName MIDParam_ObstacleDepthTex=NAME_None;
+
+	//For merging the texture
+	UPROPERTY(EditAnywhere, Category="ObstacleMask|Materials")
+	UMaterialInterface* MergeMaskMaterial;
+	//params
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WorldObstacles")
+	FName MIDParam_RMask=NAME_None;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WorldObstacles")
+	FName MIDParam_GMask=NAME_None;
+
+	//Debug for checking if the R and G binary mask texture is captured correclty
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WorldObstacles|Debug")
+	UMaterialInstanceDynamic* DebugMaskMID = nullptr;
+	
 	/** Volumes that define the obstacle area */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ObstacleMask|Settings")
 	UBoxComponent* BoxVolume;
