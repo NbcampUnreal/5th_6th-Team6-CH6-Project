@@ -11,6 +11,9 @@
 #include "Monster/MonsterRangeComponent.h"
 #include "Components/WidgetComponent.h"
 
+
+#include "GameModeBase/GameMode/ER_InGameMode.h"
+
 ABaseMonster::ABaseMonster()
 	:TargetPlayer(nullptr),
 	StartLocation(FVector::ZeroVector),
@@ -201,6 +204,9 @@ void ABaseMonster::OnMonterDeathHandle(AActor* Target)
 	}
 	STComp->SendStateTreeEvent(FStateTreeEvent(DeathEventTag));
 
+	// [전민성] - 사망 시 gamemode에 알림 추가
+	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
+	InGameMode->NotifyNeutralDied(this);
 	// Target에게 보상 지급
 
 	//
@@ -265,3 +271,16 @@ bool ABaseMonster::GetbIsDead()
 	return bIsDead;
 }
 
+
+
+/// [전민성 추가분]
+void ABaseMonster::Death()
+{
+	if (!HasAuthority())
+		return;
+
+	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
+	InGameMode->NotifyNeutralDied(this);
+
+	SetLifeSpan(0.1f);
+}
