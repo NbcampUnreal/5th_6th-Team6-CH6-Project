@@ -15,12 +15,11 @@ ABaseMonster::ABaseMonster()
 	:TargetPlayer(nullptr),
 	StartLocation(FVector::ZeroVector),
 	bIsCombat(false),
-	bIsDead(false),
-	bIsReturn(false)
+	bIsDead(false)
 {
-	//액터 복제
+	//액터 복제, UPROPERTY(Replicated)멤버 동기화
 	SetReplicates(true);
-	//위치 / 회전 / 속도 복제
+	//위치 / 회전 / 속도 동기화
 	SetReplicateMovement(true);
 
 	//Tick 설정
@@ -36,16 +35,16 @@ ABaseMonster::ABaseMonster()
 	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	ASC->SetIsReplicated(true);
 	ASC->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
-
-	// AttributeSet는 ASC가 복제될 때 같이 복제
+	
 	AttributeSet = CreateDefaultSubobject<UBaseMonsterAttributeSet>(TEXT("AttributeSet"));
 	
-	// StateTree은 각 클라에서 돌아가면서 동기화되는 데이터를 가지고 상태를 변경하는듯
+	// StateTree은 각 클라에서 실행
 	StateTreeComp = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTree"));
-	StateTreeComp->SetAutoActivate(false);
+	StateTreeComp->SetStartLogicAutomatically(false);
 
 	// 주변 플레이어 감지용 컴포넌트
 	MonsterRangeComp = CreateDefaultSubobject<UMonsterRangeComponent>(TEXT("MonsterRangeComponent"));	
+	MonsterRangeComp->SetIsReplicated(true);
 
 	//이동속도 조절필요
 	GetMovementComponent();
@@ -82,26 +81,24 @@ void ABaseMonster::PossessedBy(AController* newController)
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::PossessedBy : Not AttributeSet"), *GetName());
 		return;
 	}
-	if (IsValid(StateTreeComp) == false)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::PossessedBy : Not StateTreeComp"), *GetName());
-		return;
-	}
 
 	ASC->InitAbilityActorInfo(this, this);
-	// UI 변경
-	AttributeSet->OnHealthChanged.AddDynamic(this, &ABaseMonster::OnHealthChangedHandle);
 
 	if (HasAuthority())
 	{
 		InitGiveAbilities();
 
-		ASC->AddLooseGameplayTag(AliveStateTag);
+		//ASC->AddLooseGameplayTag(AliveStateTag);
 
 		AttributeSet->OnMonsterHit.AddDynamic(this, &ABaseMonster::OnMonterHitHandle);
 		AttributeSet->OnMonsterDeath.AddDynamic(this, &ABaseMonster::OnMonterDeathHandle);
 		MonsterRangeComp->OnPlayerCountOne.AddDynamic(this, &ABaseMonster::OnPlayerCountOneHandle);
 		MonsterRangeComp->OnPlayerCountZero.AddDynamic(this, &ABaseMonster::OnPlayerCountZeroHandle);
+	}
+	else if (!HasAuthority())
+	{
+		// UI 변경
+		AttributeSet->OnHealthChanged.AddDynamic(this, &ABaseMonster::OnHealthChangedHandle);
 	}
 }
 
@@ -110,11 +107,11 @@ void ABaseMonster::BeginPlay()
 	Super::BeginPlay();
 	
 	UE_LOG(LogTemp, Warning, TEXT("%s : BeginPlay"), *GetName());
-	
+
 	if (HasAuthority())
 	{
 		StartLocation = GetActorLocation();
-		//StateTreeComp->StartLogic();
+		StateTreeComp->StartLogic();
 	}
 }
 
@@ -156,11 +153,8 @@ void ABaseMonster::OnMonterHitHandle(AActor* Target)
 {
 	SetTargetPlayer(Target);
 	SetbIsCombat(true);
-	UE_LOG(LogTemp, Warning, TEXT("%s : Target On ( %s )"), *GetName(), *Target->GetName());
-	
-	// hit 이벤트
-	UStateTreeComponent* STComp = GetStateTreeComponent();
-	if (IsValid(STComp) == false)
+
+	if (IsValid(StateTreeComp) == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnMonterHitHandle : Not StateTree"));
 		return;
@@ -171,7 +165,7 @@ void ABaseMonster::OnMonterHitHandle(AActor* Target)
 		return;
 	}
 
-	STComp->SendStateTreeEvent(FStateTreeEvent(HitEventTag));
+	StateTreeComp->SendStateTreeEvent(FStateTreeEvent(HitEventTag));
 }
 
 void ABaseMonster::OnMonterDeathHandle(AActor* Target)
@@ -179,17 +173,8 @@ void ABaseMonster::OnMonterDeathHandle(AActor* Target)
 	SetbIsDead(true);
 	SetTargetPlayer(nullptr);
 	SetbIsCombat(false);
-	UE_LOG(LogTemp, Warning, TEXT("%s : Die"), *GetName());
 
-	if (DeathStateTag.IsValid() == false)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnMonterDeathHandle : Not DeathStateTag"));
-		return;
-	}
-
-	// Deaht 이벤트
-	UStateTreeComponent* STComp = GetStateTreeComponent();
-	if (IsValid(STComp) == false)
+	if (IsValid(StateTreeComp) == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnMonterDeathHandle : Not StateTree"));
 		return;
@@ -199,7 +184,7 @@ void ABaseMonster::OnMonterDeathHandle(AActor* Target)
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnMonterDeathHandle : Not DeathEventTag"));
 		return;
 	}
-	STComp->SendStateTreeEvent(FStateTreeEvent(DeathEventTag));
+	StateTreeComp->SendStateTreeEvent(FStateTreeEvent(DeathEventTag));
 
 	// Target에게 보상 지급
 
@@ -216,7 +201,8 @@ void ABaseMonster::OnPlayerCountOneHandle()
 	UE_LOG(LogTemp, Warning, TEXT("%s : Awake"), *GetName());
 	FGameplayEventData* Payload = new FGameplayEventData();
 	ASC->HandleGameplayEvent(FGameplayTag(BeginSearchEventTag), Payload);
-}
+	StateTreeComp->SendStateTreeEvent(FStateTreeEvent(BeginSearchEventTag));
+}  
 
 void ABaseMonster::OnPlayerCountZeroHandle()
 {
@@ -225,10 +211,43 @@ void ABaseMonster::OnPlayerCountZeroHandle()
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnPlayerCountZeroHandle : Not ASC"));
 		return;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("%s : Sit"), *GetName());
+
+	if (bIsCombat == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s : Sit"), *GetName());
+		FGameplayEventData* Payload = new FGameplayEventData();
+		ASC->HandleGameplayEvent(FGameplayTag(EndSearchEventTag), Payload);
+		StateTreeComp->SendStateTreeEvent(FStateTreeEvent(EndSearchEventTag));
+	}
 }
 
+void ABaseMonster::SendAttackRangeEvent(float AttackRange)
+{
+	const float Distance = 
+		FVector::DistSquared(
+			TargetPlayer->GetActorLocation(), 
+			GetActorLocation()
+		);
 
+	if (Distance <= AttackRange * AttackRange)
+	{
+		// 공격가능
+		UE_LOG(LogTemp, Warning, TEXT("Can Attack"));
+		StateTreeComp->SendStateTreeEvent(FGameplayTag(TargetOnEventTag));
+	}
+	else
+	{
+		// 공격불가능
+		UE_LOG(LogTemp, Warning, TEXT("Can't Attack"));
+		StateTreeComp->SendStateTreeEvent(FGameplayTag(TargetOffEventTag));
+	}
+}
+
+void ABaseMonster::SendReturnSuccessEvent()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Return Success"));
+	StateTreeComp->SendStateTreeEvent(FGameplayTag(ReturnEventTag));
+}
 
 UStateTreeComponent* ABaseMonster::GetStateTreeComponent()
 {
