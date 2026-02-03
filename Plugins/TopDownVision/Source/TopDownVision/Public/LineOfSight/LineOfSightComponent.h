@@ -62,7 +62,7 @@ public:
     
 protected:
     //prep
-    void CreateResources();// make CRT and MID
+    void CreateResources();// make RT and MID
 
 protected:
 

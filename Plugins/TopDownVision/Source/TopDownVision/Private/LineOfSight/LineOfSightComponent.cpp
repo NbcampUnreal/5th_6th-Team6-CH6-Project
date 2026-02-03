@@ -51,7 +51,6 @@ void ULineOfSightComponent::BeginPlay()
 
     CreateResources();// make RT and MID
 
-    RefreshObstaclesByTag();// find and register the obstacles
 }
 
 void ULineOfSightComponent::UpdateLocalLOS()

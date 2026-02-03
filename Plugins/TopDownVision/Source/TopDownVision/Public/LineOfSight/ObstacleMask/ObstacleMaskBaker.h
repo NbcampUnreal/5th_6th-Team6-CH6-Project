@@ -75,6 +75,11 @@ public:
 
 	
 protected:
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WorldObstacles")
+	FRotator SceneCaptureWorldRotation=FRotator(-90.f, 90.f, 0.f);
+
+	
 	/** Size of the tile in world units (orthographic width/height) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ObstacleMask|Settings")
 	float TileSize = 500.f;
@@ -109,4 +114,10 @@ protected:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ObstacleMask|EditorWorldLink")
 	TObjectPtr<UObstacleTileData> TileDataAsset;
+
+	// Obstacle Type Tag
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ObstacleMask")
+	FName ObjectType_ShadowCastable=TEXT("LOS_Shadow");
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ObstacleMask")
+	FName ObjectType_LowObject=TEXT("LOS_Low");
 };

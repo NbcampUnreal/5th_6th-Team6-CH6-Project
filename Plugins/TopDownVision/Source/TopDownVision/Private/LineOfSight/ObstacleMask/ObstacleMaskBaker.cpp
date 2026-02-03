@@ -42,7 +42,7 @@ AObstacleMaskBaker::AObstacleMaskBaker()
 	SceneCaptureComp->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
 
 	// make it look down
-	SceneCaptureComp->SetWorldRotation(FRotator(-90.f, 0.f, 0.f));
+	SceneCaptureComp->SetWorldRotation(SceneCaptureWorldRotation);// add yaw rotation to match forward direction
 
 	//default ortho width based on box size
 	SceneCaptureComp->OrthoWidth = BoxVolume->GetScaledBoxExtent().X * 2.f;
@@ -173,7 +173,7 @@ void AObstacleMaskBaker::BakeObstacleMask()
 		FVector(0, 0, CameraHeightOffset));
 	
 	// Locks the look_down rotation
-	SceneCaptureComp->SetRelativeRotation(FRotator(-90.f, 0.f, 0.f));//always look down
+	SceneCaptureComp->SetRelativeRotation(SceneCaptureWorldRotation);//always look down
 
 	UE_LOG(LOSWorldBaker, Log,
 		TEXT("AObstacleMaskBaker::BakeObstacleMask >> Resolution %dx%d"),
@@ -266,10 +266,10 @@ bool AObstacleMaskBaker::GetObstacleActors(
 	switch (ObstacleType)
 	{
 	case EObstacleType::ShadowCastable:
-		RequiredTag = TEXT("LOS_Shadow");
+		RequiredTag = ObjectType_ShadowCastable;
 		break;
 	case EObstacleType::None_ShadowCastable:
-		RequiredTag = TEXT("LOS_Low");
+		RequiredTag = ObjectType_LowObject;
 		break;
 		
 	case EObstacleType::None:

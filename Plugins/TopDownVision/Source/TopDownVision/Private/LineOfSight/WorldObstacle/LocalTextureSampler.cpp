@@ -192,7 +192,11 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
 		// Create a Tile Item faster method, not requiring material
 		FCanvasTileItem TileItem(TilePosInRT, Tile.Mask->GetResource(), TileSizeInRT, FLinearColor::White);
 		TileItem.BlendMode = SE_BLEND_Additive; // Or AlphaBlend depending on your LOS logic
-        
+
+		/*//!!! Rotation Fix
+		TileItem.PivotPoint = FVector2D(0.5f, 0.5f); // set pivot
+		TileItem.Rotation = FRotator(0.f, 0.f, 90.f);// correct rotaion*/
+		
 		// Queue the draw command
 		Canvas.DrawItem(TileItem);
 	}
