@@ -370,27 +370,53 @@ void UUI_MainHUD::HandleMinimapClicked(const FPointerEvent& InMouseEvent)
 
 void UUI_MainHUD::OnSkillClicked_Q()
 {
-    SkillFire(0);
+    SkillFirePressed(ESkillKey::Q);
+}
+
+void UUI_MainHUD::OnSkillReleased_Q()
+{
+    SkillFireReleased(ESkillKey::Q);
 }
 
 void UUI_MainHUD::OnSkillClicked_W()
 {
-    SkillFire(1);
+    SkillFirePressed(ESkillKey::W);
+}
+
+void UUI_MainHUD::OnSkillReleased_W()
+{
+    SkillFireReleased(ESkillKey::W);
 }
 
 void UUI_MainHUD::OnSkillClicked_E()
 {
-    SkillFire(2);
+    SkillFirePressed(ESkillKey::E);
+}
+
+void UUI_MainHUD::OnSkillReleased_E()
+{
+    SkillFireReleased(ESkillKey::E);
 }
 
 void UUI_MainHUD::OnSkillClicked_R()
 {
-    SkillFire(3);
+    SkillFirePressed(ESkillKey::R);
 }
 
-void UUI_MainHUD::SkillFire(int32 Index)
+void UUI_MainHUD::OnSkillReleased_R()
+{
+    SkillFireReleased(ESkillKey::R);
+}
+
+void UUI_MainHUD::SkillFireReleased(ESkillKey index)
+{
+}
+
+void UUI_MainHUD::SkillFirePressed(ESkillKey _Index)
 {
     if (!ASC) return;
+
+    int32 Index = static_cast<int32>(_Index);
 
     if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
     {
