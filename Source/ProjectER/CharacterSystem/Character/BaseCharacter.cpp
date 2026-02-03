@@ -541,7 +541,13 @@ void ABaseCharacter::StopPathFollowing()
 {
 	PathPoints.Empty();
 	CurrentPathIndex = INDEX_NONE;
-	SetActorTickEnabled(false);
+	
+	// 타겟이 있을 시 이동 및 공격을 위해 Tick 유지
+	// CheckCombatTarget() 유지 용도
+	if (TargetActor == nullptr)
+	{
+		SetActorTickEnabled(false);
+	}
 }
 
 void ABaseCharacter::SetTarget(AActor* NewTarget)
@@ -576,8 +582,8 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 	float Distance = GetDistanceTo(TargetActor);
 	float AttackRange = GetAttackRange();
 	
-	// 캡슐 크기에 의한 사거리 보정값
-	float AcceptanceRadius = 50.0f;
+	float Tolerance = 20.0f; // 사거리 보정 값 유사 시 사용
+	float CheckRange = HasAuthority() ? (AttackRange + Tolerance) : (AttackRange - Tolerance); // 보정된 사거리
 	
 	// [디버깅용 로그 추가] 현재 거리와 사거리 비교
 #if WITH_EDITOR
@@ -614,8 +620,8 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 		AbilitySystemComponent = ASC;
 		ASC->InitAbilityActorInfo(PS, this);
 		
-		// 공격 어빌리티 실행 (GAS)
-		if (AbilitySystemComponent.IsValid())
+		// 공격 어빌리티 실행 (GAS) : 서버 판정 우선
+		if (HasAuthority() && AbilitySystemComponent.IsValid())
 		{
 			FGameplayTag AttackTag = FGameplayTag::RequestGameplayTag(FName("Ability.Action.AutoAttack"));
 			
@@ -630,17 +636,20 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 				bWasActivated = AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(AttackTag));
 			}
 			
-#if WITH_EDITOR
-			if (bShowDebug)
+			if (bWasActivated)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("[%s] Tag: %s / Found Ability: %s / Activated: %s"),
-					*GetName(),
-					*AttackTag.ToString(),
-					bHasAbility ? TEXT("YES") : TEXT("NO (Check DataAsset!)"), // 여기가 NO라면 데이터에셋)문제
-					bWasActivated ? TEXT("True") : TEXT("False (Check Cooldown/Cost/State)") // 여기가 False라면 조건 문제
-		);
+#if WITH_EDITOR
+				if (bShowDebug)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("[%s] Tag: %s / Found Ability: %s / Activated: %s"),
+							*GetName(),
+							*AttackTag.ToString(),
+							bHasAbility ? TEXT("YES") : TEXT("NO (Check DataAsset!)"), // 여기가 NO라면 데이터에셋)문제
+							bWasActivated ? TEXT("True") : TEXT("False (Check Cooldown/Cost/State)") // 여기가 False라면 조건 문제
+							);
+				}
+#endif	
 			}
-#endif
 		}
 		return;
 	}
@@ -653,7 +662,6 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
         
 			if (ABasePlayerController* PC = Cast<ABasePlayerController>(GetController()))
 			{
-				// 컨트롤러에게 이동 명령 위임
 				MoveToLocation(TargetActor->GetActorLocation());
 			}
 		}	
