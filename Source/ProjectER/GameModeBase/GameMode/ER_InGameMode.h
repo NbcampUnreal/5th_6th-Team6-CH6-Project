@@ -14,7 +14,7 @@ struct FNeutralClassConfig
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSubclassOf<AActor> Class;
+	TSubclassOf<ACharacter> Class;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float RespawnDelay = 5.f;
