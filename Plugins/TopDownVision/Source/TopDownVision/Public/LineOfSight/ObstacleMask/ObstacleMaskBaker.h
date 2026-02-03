@@ -34,6 +34,7 @@ public:
 	//Editor command 
 	UFUNCTION(CallInEditor, Category="ObstacleMask|Editor")
 	void BakeObstacleMask();
+	
 	void RegisterTile();//inside the Bake function
 	
 	UFUNCTION(CallInEditor, Category="ObstacleMask|Editor")

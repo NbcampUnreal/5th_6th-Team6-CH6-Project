@@ -9,6 +9,7 @@ float Test()
 	return 1.0f;
 }
 
+/*
 //======= BigChange!!! -> No more Device Depth for the height.
 //--> Scene Depth has actual distance value, so no more de_normalizing the distance, the texture has the value
 
@@ -111,25 +112,7 @@ float CalculateLineOfSight_V2(
 	return Visibility;
 }
 
-//Internal function for radial mask
-float2 LOS_RadialMask(
-	float2 UV,
-	float2 CenterUV,
-	float Radius)// normalized distance (VisionRange/MaxVisionRange/2)
-{
-	float2 Delta = UV - CenterUV;
-	float Distance = length(Delta);
 
-	// Outside radius
-	if (Distance > Radius)
-	{
-		return float2(0.0, 0.0);
-	}
-
-	// Normalize distance within radius
-	float DistanceFrac = saturate(Distance / Radius);
-	return float2(1.0, DistanceFrac);
-}
 
 //This one is for SceneDepth. no need for De normalizing distance. just compare
 float CalculateLineOfSight_V3(
@@ -242,7 +225,27 @@ float CalculateLineOfSight_V4(
 
 	return Visibility;
 }
+*/
 
+//Internal function for radial mask
+float2 LOS_RadialMask(
+	float2 UV,
+	float2 CenterUV,
+	float Radius)// normalized distance (VisionRange/MaxVisionRange/2)
+{
+	float2 Delta = UV - CenterUV;
+	float Distance = length(Delta);
+
+	// Outside radius
+	if (Distance > Radius)
+	{
+		return float2(0.0, 0.0);
+	}
+
+	// Normalize distance within radius
+	float DistanceFrac = saturate(Distance / Radius);
+	return float2(1.0, DistanceFrac);
+}
 
 //Final. this wont use Depth, but only masks. R for obstacle which can cast shadow, and G for no shadow casting
 
@@ -302,151 +305,4 @@ float CalculateLineOfSight_V5(
 	}
 
 	return Visibility;
-}
-
-
-//This only works without curve world shader. to solve this, 
-
-// This function is identical to your "working" code, just wrapped for USH
-float USH_Verification_Test(
-	Texture2D InTex, 
-	SamplerState InSampler, 
-	float2 InUV, 
-	float2 InPawnUV, 
-	float InMaxSteps, 
-	float InBias
-)
-{
-	float2 RayDir = InUV - InPawnUV; 
-	float Visibility = 1.0;
-
-	// Use the explicit Sampler provided by the Custom Node
-	float FloorAtPawn = InTex.SampleLevel(InSampler, InPawnUV, 0).g;
-	float FloorAtTarget = InTex.SampleLevel(InSampler, InUV, 0).g;
-
-	// Hardcoded 0.1 for the eye level to match your "fully working" snippet
-	float EyeLevel = FloorAtPawn - 0.1; 
-
-	[loop]
-	for (int i = 1; i <= (int)InMaxSteps; i++)
-	{
-		float Progress = (float)i / (float)InMaxSteps;
-		float2 SampleUV = InPawnUV + (RayDir * lerp(0.02, 1.0, Progress));
-		float SampleHeight = InTex.SampleLevel(InSampler, SampleUV, 0).g;
-
-		float VisionLine = lerp(EyeLevel, FloorAtTarget, Progress);
-
-		if (SampleHeight < VisionLine - InBias)
-		{
-			Visibility = 0.0;
-			break; 
-		}
-	}
-	return Visibility;
-}
-
-float USH_Verification_Test_DistanceScaled(
-	Texture2D InTex, 
-	SamplerState InSampler, 
-	float2 InUV, 
-	float2 InPawnUV, 
-	float MinSteps,// minimum steps for close pixels
-	float MaxSteps,// maximum steps for far pixels
-	float InBias
-)
-{
-	float2 RayDir = InUV - InPawnUV; 
-	float Distance = length(RayDir); // distance from the center
-	float Visibility = 1.0;
-
-	// Sample floor values
-	float FloorAtPawn = InTex.SampleLevel(InSampler, InPawnUV, 0).g;
-	float FloorAtTarget = InTex.SampleLevel(InSampler, InUV, 0).g;
-
-	// Hardcoded eye level as before
-	float EyeLevel = FloorAtPawn - 0.1; 
-
-	// Compute distance-dependent step count
-	float DistanceFraction = saturate(Distance);                  // normalize 0..1
-	float StepsF = lerp(MinSteps, MaxSteps, DistanceFraction);   // interpolate steps
-	int StepsI = max(1, (int)StepsF);                             // at least 1 step
-
-	// Ray march loop
-	[loop]
-	for (int i = 1; i <= StepsI; i++)
-	{
-		float Progress = (float)i / StepsF;// progress along ray
-		float2 SampleUV = InPawnUV + RayDir * lerp(0.02, 1.0, Progress);
-
-		// Sample height
-		float SampleHeight = InTex.SampleLevel(InSampler, SampleUV, 0).g;
-
-		// Compute vision line
-		float VisionLine = lerp(EyeLevel, FloorAtTarget, Progress);
-
-		// Early exit if blocked
-		if (SampleHeight < VisionLine - InBias)
-		{
-			Visibility = 0.0;
-			break; 
-		}
-	}
-
-	return Visibility;
-}
-
-
-
-
-// Ray Marching for LOS
-
-
-// Inputs:
-//   float2 UV         - UV of the pixel being evaluated
-//   Texture2D ObsTex  - obstacle mask texture (G channel = Z/depth)
-//   SamplerState ObsSampler
-//   float2 CenterUV   - pawn center UV (usually 0.5,0.5)
-//   float MaxRadius   - vision radius in UV space
-//   int Steps         - number of ray march steps
-//   float ZThreshold  - obstacle detection threshold
-//
-// Output:
-//   float            - 1.0 = visible, 0.0 = blocked
-
-
-// RayMarchHLSL.ush
-float RayMarchLOS(
-	Texture2D ObstacleTexture, 
-	SamplerState ObstacleSampler,
-	float2 UV,
-	float2 CenterUV,
-	float MaxRadius,
-	float Steps,
-	float ZThreshold
-)
-{
-	float2 RayVector = UV - CenterUV;
-	float Distance = length(RayVector);
-
-	if (Distance > MaxRadius) return 0.0f;
-	if (Distance < 0.001f)   return 1.0f;
-
-	float2 StepDelta = RayVector / Steps;
-	float2 CurrentPos = CenterUV;
-
-	for (int i = 0; i < 128; i++) 
-	{
-		if (i >= (int)Steps) break;
-
-		CurrentPos += StepDelta;
-
-		// Use the passed-in Sampler
-		float ObstacleZ = ObstacleTexture.SampleLevel(ObstacleSampler, CurrentPos, 0).g;
-
-		if (ObstacleZ > ZThreshold)
-		{
-			return 0.0f;
-		}
-	}
-	return 1.0f;
 }

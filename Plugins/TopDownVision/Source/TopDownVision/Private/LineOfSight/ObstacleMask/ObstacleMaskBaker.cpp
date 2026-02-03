@@ -36,7 +36,7 @@ AObstacleMaskBaker::AObstacleMaskBaker()
 
 	// SceneCapture settings
 	SceneCaptureComp->ProjectionType = ECameraProjectionMode::Orthographic;
-	SceneCaptureComp->CaptureSource = ESceneCaptureSource::SCS_BaseColor;// only mask
+	SceneCaptureComp->CaptureSource = ESceneCaptureSource::SCS_SceneDepth;// use scene depth for maks texture
 	SceneCaptureComp->bCaptureEveryFrame = false;
 	SceneCaptureComp->bCaptureOnMovement = false;
 	SceneCaptureComp->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
@@ -151,17 +151,6 @@ void AObstacleMaskBaker::BakeObstacleMask()
 			TEXT("AObstacleMaskBaker::BakeObstacleMask >> Missing components"));
 		return;
 	}
-
-	const FVector BoxExtent = BoxVolume->GetScaledBoxExtent();
-	const float WorldSize = FMath::Max(BoxExtent.X, BoxExtent.Y) * 2.f;
-
-	PixelResolution = FMath::Clamp(
-		FMath::RoundToInt(WorldSize * WorldUnitToPixelRatio),
-		MinResolution,
-		MaxResolution
-	);
-
-	SceneCaptureComp->OrthoWidth = WorldSize;
 	
 	//Locks the center position
 	const float CameraHeightOffset =
@@ -174,6 +163,19 @@ void AObstacleMaskBaker::BakeObstacleMask()
 	
 	// Locks the look_down rotation
 	SceneCaptureComp->SetRelativeRotation(SceneCaptureWorldRotation);//always look down
+
+
+	//RT prep
+	const FVector BoxExtent = BoxVolume->GetScaledBoxExtent();
+	const float WorldSize = FMath::Max(BoxExtent.X, BoxExtent.Y) * 2.f;
+
+	PixelResolution = FMath::Clamp(
+		FMath::RoundToInt(WorldSize * WorldUnitToPixelRatio),
+		MinResolution,
+		MaxResolution
+	);
+
+	SceneCaptureComp->OrthoWidth = WorldSize;
 
 	UE_LOG(LOSWorldBaker, Log,
 		TEXT("AObstacleMaskBaker::BakeObstacleMask >> Resolution %dx%d"),
@@ -304,7 +306,7 @@ UTextureRenderTarget2D* AObstacleMaskBaker::CaptureObstaclePass(
 	const TArray<AActor*>& ShowOnlyActors)
 {
 	UTextureRenderTarget2D* RT = NewObject<UTextureRenderTarget2D>(this);
-	RT->RenderTargetFormat = RTF_RGBA8;
+	RT->RenderTargetFormat = RTF_R32f;
 	RT->ClearColor = FLinearColor::Black;
 	RT->InitAutoFormat(PixelResolution, PixelResolution);
 	RT->UpdateResourceImmediate(true);
@@ -317,7 +319,7 @@ UTextureRenderTarget2D* AObstacleMaskBaker::CaptureObstaclePass(
 	{
 		SceneCaptureComp->ShowOnlyActors.Add(Actor);
 	}
-
+	
 	SceneCaptureComp->CaptureScene();
 
 	UE_LOG(LOSWorldBaker, Log,

@@ -1,0 +1,47 @@
+﻿#pragma once
+
+// path:   /Plugin/TopDownVision/ObstacleMasking/ObstacleMasking.ush 
+
+float LOS_CompareDepth(
+	float SceneDepth,
+	float ObstacleDepth,
+	float Bias
+)
+{
+	// Invalid obstacle pixel → no obstacle
+	if (ObstacleDepth <= 0.00001f)
+	{
+		return 0.0f;
+	}
+
+	// Obstacle must be front-most surface
+	return step(ObstacleDepth, SceneDepth + Bias);
+}
+
+
+float LOS_SampleDepth(
+	Texture2D DepthTex,
+	SamplerState DepthSampler,
+	float2 UV
+)
+{
+	return DepthTex.Sample(DepthSampler, UV).r;
+}
+
+//Main function
+float LOS_BuildObstacleMask(
+	Texture2D SceneDepthTex,
+	SamplerState SceneSampler,   
+
+	Texture2D ObstacleDepthTex,
+	SamplerState ObstacleSampler,
+
+	float2 UV,
+	float DepthBias
+)
+{
+	float SceneD = LOS_SampleDepth(SceneDepthTex, SceneSampler, UV);
+	float ObstacleD = LOS_SampleDepth(ObstacleDepthTex, ObstacleSampler, UV);
+
+	return LOS_CompareDepth(SceneD, ObstacleD, DepthBias);
+}
