@@ -25,6 +25,14 @@ enum class ECharacterStat : uint8
 	SPD			UMETA(DisplayName = "Speed")
 };
 
+UENUM(BlueprintType)
+enum class ESkillKey : uint8
+{
+	Q			UMETA(DisplayName = "Q Skill"),
+	W			UMETA(DisplayName = "W Skill"),
+	E			UMETA(DisplayName = "E Skill"),
+	R			UMETA(DisplayName = "R Skill")
+};
 /**
  * 
  */
@@ -159,4 +167,26 @@ protected:
 
 	UPROPERTY()
 	UTexture2D* TEX_TempIcon;
+
+	UFUNCTION()
+	void OnSkillClicked_Q();
+	UFUNCTION()
+	void OnSkillReleased_Q();
+	UFUNCTION()
+	void OnSkillClicked_W();
+	UFUNCTION()
+	void OnSkillReleased_W();
+	UFUNCTION()
+	void OnSkillClicked_E();
+	UFUNCTION()
+	void OnSkillReleased_E();
+	UFUNCTION()
+	void OnSkillClicked_R();
+	UFUNCTION()
+	void OnSkillReleased_R();
+	UFUNCTION()
+	void SkillFirePressed(ESkillKey index);
+	UFUNCTION()
+	void SkillFireReleased(ESkillKey index);
+
 };
