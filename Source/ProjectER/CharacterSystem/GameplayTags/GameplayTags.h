@@ -77,11 +77,11 @@ namespace ProjectER
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(True);     // 고정 피해 (방어력 무시)
 		}
 
-		//namespace Amount // 수치
-		//{
+		namespace Amount // 수치
+		{
 		//	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Heal);   // 치유량 (HP or MP)
-		//	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Damage); // 피해량
-		//}
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Damage); // 피해량
+		}
 	}
 	
 	

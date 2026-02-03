@@ -43,7 +43,7 @@ namespace ProjectER
 		}
 	}
 
-	namespace Cooldown // [Fixed] Consistency: CoolDown -> Cooldown
+	namespace Cooldown 
 	{
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "Cooldown.AutoAttack", "Auto Attack Cooldown");
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Global, "Cooldown.Global", "Global Cooldown");
@@ -75,11 +75,11 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(True, "Data.DamageType.True", "True Damage (Ignores Armor)");
 		}
 
-		/*namespace Amount
+		namespace Amount
 		{
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Health, "Data.Amount.Heal", "Heal Amount");
+			// UE_DEFINE_GAMEPLAY_TAG_COMMENT(Health, "Data.Amount.Heal", "Heal Amount");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage, "Data.Amount.Damage", "Damage Amount");
-		} */
+		} 
 	}
 
 

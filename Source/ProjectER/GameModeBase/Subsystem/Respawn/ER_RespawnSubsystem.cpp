@@ -91,7 +91,6 @@ void UER_RespawnSubsystem::StartRespawnTimer(AER_PlayerState& PS, AER_GameState&
 				if (!WeakPS.IsValid())
 					return;
 
-				// 여기서 바로 리스폰 처리 로직을 작성
 				AER_PlayerState* PS_ = WeakPS.Get();
 
 				PS_->bIsDead = false;

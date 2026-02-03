@@ -76,6 +76,9 @@ void ABasePlayerController::SetupInputComponent()
 
 		EnhancedInputComponent->BindAction(InputConfig->StopMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnStopTriggered);
 
+		EnhancedInputComponent->BindAction(InputConfig->InputConfirm, ETriggerEvent::Started, this, &ABasePlayerController::OnConfirm);
+		EnhancedInputComponent->BindAction(InputConfig->InputCancel, ETriggerEvent::Started, this, &ABasePlayerController::OnCanceled);
+
 		for (const FInputData& Action : InputConfig->AbilityInputAction)
 		{
 			if (Action.InputAction && Action.InputTag.IsValid())
@@ -111,6 +114,13 @@ void ABasePlayerController::PlayerTick(float DeltaTime)
 	}
 }
 
+void ABasePlayerController::OnRep_Pawn()
+{
+	Super::OnRep_Pawn();
+	
+	ControlledBaseChar = Cast<ABaseCharacter>(GetPawn());
+}
+
 void ABasePlayerController::OnMoveStarted()
 {
 	bIsMousePressed = true;
@@ -141,7 +151,6 @@ void ABasePlayerController::MoveToMouseCursor()
 
 	if (!IsValid(ControlledBaseChar))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("MoveToMouseCursor: ControlledBaseChar is Null!"));
 		return;
 	}
 
@@ -189,18 +198,24 @@ void ABasePlayerController::MoveToMouseCursor()
 							*ControlledBaseChar->GetName() ,
 							HitActor ? *HitActor->GetName() : TEXT("None"));
 #endif
-						// ControlledBaseChar->TryAutoAttack();
 						return; 
 					}
 				}
 			}
 			
-			if (Hit.bBlockingHit)
+			if (Hit.bBlockingHit) // 바닥(또는 아군) 클릭 시 이동
 			{
-				ControlledBaseChar->MoveToLocation(Hit.Location);
-            
-				// 이동할 때는 타겟을 풀어줘야 함 (공격 취소)
+				// 일반 공격 중일 시 공격 취소 후 이동
+				UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ControlledBaseChar);
+				if (IsValid(ASC))
+				{
+					FGameplayTagContainer CancelTags;
+					CancelTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Action.AutoAttack")));
+					ASC->CancelAbilities(&CancelTags);
+				}
+				
 				ControlledBaseChar->SetTarget(nullptr);
+				ControlledBaseChar->MoveToLocation(Hit.Location);
 			}
 			
 			// SpawnDestinationEffect(Hit.Location);
@@ -255,6 +270,28 @@ void ABasePlayerController::CheckInteractionDistance()
 	}
 }
 
+void ABasePlayerController::OnConfirm() {
+	APawn* ControlledPawn = GetPawn();
+	if (!ControlledPawn) return;
+
+	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ControlledPawn);
+	if (IsValid(ASC)) {
+		UE_LOG(LogTemp, Log, TEXT("OnConfirm"));
+		ASC->LocalInputConfirm();
+	}
+}
+
+void ABasePlayerController::OnCanceled() {
+	APawn* ControlledPawn = GetPawn();
+	if (!ControlledPawn) return;
+
+	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ControlledPawn);
+	if (IsValid(ASC)) {
+		//UE_LOG(LogTemp, Log, TEXT("OnCanceled"));
+		ASC->LocalInputCancel();
+	}
+}
+
 void ABasePlayerController::OnStopTriggered()
 {
 	bIsMousePressed = false;
@@ -264,6 +301,7 @@ void ABasePlayerController::OnStopTriggered()
 
 	if (ControlledBaseChar)
 	{
+		ControlledBaseChar->SetTarget(nullptr);
 		ControlledBaseChar->StopMove();
 	}
 }
@@ -362,6 +400,18 @@ void ABasePlayerController::Server_DisConnectServer_Implementation()
 	InGameMode->DisConnectClient(this);
 }
 
+void ABasePlayerController::Server_TEMP_SpawnNeutrals_Implementation()
+{
+	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
+	InGameMode->TEMP_SpawnNeutrals();
+}
+
+void ABasePlayerController::Server_TEMP_DespawnNeutrals_Implementation()
+{
+	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
+	InGameMode->TEMP_DespawnNeutrals();
+}
+
 void ABasePlayerController::ShowWinUI()
 {
 	if (!WinUIClass)
@@ -409,5 +459,6 @@ void ABasePlayerController::HideRespawnTimerUI()
 		RespawnUIInstance = nullptr;
 	}
 }
+
 
 

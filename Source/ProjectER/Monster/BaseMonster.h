@@ -199,6 +199,22 @@ private:
 
 
 #pragma endregion
+
+	/// [전민성 추가분]
+
+private:
+	int32 SpawnPoint = 0;
+
+public:
+	// 임시로 사용할 사망 함수, 이후 맞는 위치로 이동 예정 
+	void Death();
+
+	void SetSpawnPoint(int32 point) { SpawnPoint = point; }
+	
+	int32 GetSpawnPoint() { return SpawnPoint; }
+
+
+
 };
 
 

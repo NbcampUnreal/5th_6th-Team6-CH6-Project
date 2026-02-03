@@ -5,6 +5,21 @@
 #include "ER_InGameMode.generated.h"
 
 
+class UER_NeutralSpawnSubsystem;
+
+USTRUCT(BlueprintType)
+struct FNeutralClassConfig
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<ACharacter> Class;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float RespawnDelay = 5.f;
+};
+
 UCLASS()
 class PROJECTER_API AER_InGameMode : public AGameModeBase
 {
@@ -23,10 +38,24 @@ public:
 	void NotifyPlayerDied(ACharacter* VictimCharacter, AActor* DeathCauser);
 
 	UFUNCTION(BlueprintCallable)
+	void NotifyNeutralDied(ACharacter* VictimCharacter);
+
+	UFUNCTION(BlueprintCallable)
 	void DisConnectClient(APlayerController* PC);
 
+
+	UFUNCTION(BlueprintCallable)
+	void TEMP_SpawnNeutrals();
+
+	UFUNCTION(BlueprintCallable)
+	void TEMP_DespawnNeutrals();
 
 private:
 	int32 PlayersInitialized = 0;
 	int32 ExpectedPlayers = 0;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Subsystem|NeutralSpawn")
+	TMap<FName, FNeutralClassConfig> NeutralClass;
+
+	UER_NeutralSpawnSubsystem* NeutralSS;
 };
