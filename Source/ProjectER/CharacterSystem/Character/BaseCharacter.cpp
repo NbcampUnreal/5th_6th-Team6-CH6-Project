@@ -165,6 +165,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 
 	DOREPLIFETIME(ABaseCharacter, HeroData);
 	DOREPLIFETIME(ABaseCharacter, TargetActor);
+	DOREPLIFETIME(ABaseCharacter, TeamID);
 }
 
 ETeamType ABaseCharacter::GetTeamType() const
@@ -175,6 +176,28 @@ ETeamType ABaseCharacter::GetTeamType() const
 bool ABaseCharacter::IsTargetable() const
 {
 	return true;
+}
+
+void ABaseCharacter::OnRep_TeamID()
+{
+	FString Team = (TeamID == ETeamType::Team_A) ? TEXT("Team_A") : 
+						(TeamID == ETeamType::Team_B) ? TEXT("Team_B") : 
+							(TeamID == ETeamType::Team_C) ? TEXT("Team_C") : TEXT("None");
+	
+	FString Message = FString::Printf(TEXT("[%s] Team Changed to: %s"), *GetName(), *Team);
+	
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, Message);
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *Message);
+}
+
+void ABaseCharacter::Server_SetTeamID_Implementation(ETeamType NewTeamID)
+{
+	TeamID = NewTeamID;
+	OnRep_TeamID();
 }
 
 UAbilitySystemComponent* ABaseCharacter::GetAbilitySystemComponent() const

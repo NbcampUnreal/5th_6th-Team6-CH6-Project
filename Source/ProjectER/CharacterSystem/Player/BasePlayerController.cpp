@@ -68,7 +68,11 @@ void ABasePlayerController::SetupInputComponent()
 	{
 		UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(InputComponent);
 		if (!EnhancedInputComponent || !InputConfig) return;
-
+		
+		// [테스트용] 숫자키 1, 2번에 팀 변경 기능 강제 연결 (디버깅용)
+		InputComponent->BindKey(EKeys::One, IE_Pressed, this, &ABasePlayerController::Test_ChangeTeamToA);
+		InputComponent->BindKey(EKeys::Two, IE_Pressed, this, &ABasePlayerController::Test_ChangeTeamToB);
+		
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Started, this, &ABasePlayerController::OnMoveStarted);
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnMoveTriggered);
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Completed, this, &ABasePlayerController::OnMoveReleased);
@@ -289,6 +293,24 @@ void ABasePlayerController::OnCanceled() {
 	if (IsValid(ASC)) {
 		//UE_LOG(LogTemp, Log, TEXT("OnCanceled"));
 		ASC->LocalInputCancel();
+	}
+}
+
+void ABasePlayerController::Test_ChangeTeamToA()
+{
+	if (ControlledBaseChar)
+	{
+		ControlledBaseChar->Server_SetTeamID(ETeamType::Team_A);
+		UE_LOG(LogTemp, Log, TEXT("Request Change Team to A"));
+	}
+}
+
+void ABasePlayerController::Test_ChangeTeamToB()
+{
+	if (ControlledBaseChar)
+	{
+		ControlledBaseChar->Server_SetTeamID(ETeamType::Team_B);
+		UE_LOG(LogTemp, Log, TEXT("Request Change Team to B"));
 	}
 }
 
