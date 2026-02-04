@@ -10,41 +10,11 @@ DEFINE_LOG_CATEGORY(VisionSubsystem);
 void UVisionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+	
+	UE_LOG(VisionSubsystem, Log, TEXT("UVisionSubsystem::Initialize >> Vision Subsystem Initialized"));
 
-	// assign the data asset by path
-	UObstacleTileData* TileData = LoadObject<UObstacleTileData>(nullptr, *AssetSavePath);
-
-	if (TileData)
-	{
-		UE_LOG(VisionSubsystem, Log,
-			TEXT("UVisionSubsystem::Initialize >> Loaded TileDataAsset: %s"),
-			*TileData->GetName());
-
-		//Log for checking if Editor-Registered Data is still there
-		UE_LOG(VisionSubsystem, Log,
-			TEXT("UVisionSubsystem::Initialize >> TileCount : %d"),
-			TileData->Tiles.Num());
-
-		for (int32 i = 0; i < TileData->Tiles.Num(); ++i)
-		{
-			const FObstacleMaskTile& Tile = TileData->Tiles[i];
-			UE_LOG(VisionSubsystem, Log,
-				TEXT("Tile %d: Mask=%s, Bounds Min=(%.1f, %.1f), Max=(%.1f, %.1f)"),
-				i,
-				Tile.Mask ? *Tile.Mask->GetName() : TEXT("None"),
-				Tile.WorldBounds.Min.X, Tile.WorldBounds.Min.Y,
-				Tile.WorldBounds.Max.X, Tile.WorldBounds.Max.Y);
-		}
-
-		// Initialize world tiles from the asset
-		InitializeTilesFromDataAsset(TileData);
-	}
-	else
-	{
-		UE_LOG(VisionSubsystem, Warning,
-			TEXT("UVisionSubsystem::Initialize >> Failed to load TileDataAsset at path: %s"),
-			*AssetSavePath);
-	}
+	//load from level data asset hub
+	LoadAndInitializeTiles();
 }
 
 void UVisionSubsystem::Deinitialize()
@@ -178,20 +148,21 @@ void UVisionSubsystem::ClearObstacleTiles()
 		TEXT("UVisionSubsystem::ClearObstacleTiles >> Cleared %d obstacle tiles"), NumTiles);
 }
 
-void UVisionSubsystem::InitializeTilesFromDataAsset(UObstacleTileData* TileData)
+void UVisionSubsystem::InitializeTilesFromDataAsset(ULevelObstacleData* TileDataForWorld)
 {
-	if (!TileData)
+	if (!TileDataForWorld)
 	{
 		UE_LOG(VisionSubsystem, Warning,
-			TEXT("UVisionSubsystem::InitializeTilesFromDataAsset >> No DataAsset provided"));
+			TEXT("UVisionSubsystem::InitializeTilesFromDataAsset >> No TileData provided"));
 		return;
 	}
 
 	WorldTiles.Reset();
 
-	for (const FObstacleMaskTile& Tile : TileData->Tiles)
+	for (const FObstacleMaskTile& Tile : TileDataForWorld->Tiles)
 	{
 		WorldTiles.Add(Tile);
+
 		UE_LOG(VisionSubsystem, Log,
 			TEXT("UVisionSubsystem::InitializeTilesFromDataAsset >> Loaded tile at bounds Min=(%.1f, %.1f) Max=(%.1f, %.1f)"),
 			Tile.WorldBounds.Min.X, Tile.WorldBounds.Min.Y,
@@ -259,4 +230,69 @@ TArray<ULineOfSightComponent*> UVisionSubsystem::GetProvidersForTeam(EVisionChan
 	}
 
 	return OutProviders;
+}
+
+
+
+void UVisionSubsystem::LoadAndInitializeTiles()
+{
+	if (!LevelObstacleDataPath.IsValid())
+	{
+		UE_LOG(VisionSubsystem, Warning,
+			TEXT("UVisionSubsystem::LoadAndInitializeTiles >> LevelObstacleDataPath is invalid"));
+		return;
+	}
+
+	UObject* LoadedObj = LevelObstacleDataPath.TryLoad();
+	if (!LoadedObj)
+	{
+		UE_LOG(VisionSubsystem, Warning,
+			TEXT("UVisionSubsystem::LoadAndInitializeTiles >> Failed to load asset at path: %s"),
+			*LevelObstacleDataPath.ToString());
+		return;
+	}
+
+	UWorldRequirementList* WorldReqList = Cast<UWorldRequirementList>(LoadedObj);
+	if (!WorldReqList)
+	{
+		UE_LOG(VisionSubsystem, Warning,
+			TEXT("UVisionSubsystem::LoadAndInitializeTiles >> Loaded object is not a UWorldRequirementList"));
+		return;
+	}
+
+	if (!GetWorld())
+	{
+		UE_LOG(VisionSubsystem, Warning,
+			TEXT("UVisionSubsystem::LoadAndInitializeTiles >> GetWorld() returned null"));
+		return;
+	}
+
+	// built-in function for shortening the name
+	FString MapPackageLongName = GetWorld()->GetMapName();
+	MapPackageLongName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);//get the prevbi
+	//FString MapPackageShortName = FPackageName::GetShortName(MapPackageLongName);
+
+	if (TObjectPtr<ULevelObstacleData>* TileDataPtr = WorldReqList->WorldRequirements.Find(MapPackageLongName))
+	{
+		if (*TileDataPtr)
+		{
+			UE_LOG(VisionSubsystem, Log,
+				TEXT("UVisionSubsystem::LoadAndInitializeTiles >> Initializing tiles for world: %s"),
+				*MapPackageLongName);
+
+			InitializeTilesFromDataAsset(*TileDataPtr);
+		}
+		else
+		{
+			UE_LOG(VisionSubsystem, Warning,
+				TEXT("UVisionSubsystem::LoadAndInitializeTiles >> TileData is null for world: %s"),
+				*MapPackageLongName);
+		}
+	}
+	else
+	{
+		UE_LOG(VisionSubsystem, Warning,
+			TEXT("UVisionSubsystem::LoadAndInitializeTiles >> No tile data found for world: %s"),
+			*MapPackageLongName);
+	}
 }

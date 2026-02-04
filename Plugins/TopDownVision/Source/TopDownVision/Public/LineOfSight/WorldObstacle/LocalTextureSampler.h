@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
-#include "LineOfSight/WorldObstacle/WorldObstacleData.h" //Tile
+
 #include "LocalTextureSampler.generated.h"
 
 /*

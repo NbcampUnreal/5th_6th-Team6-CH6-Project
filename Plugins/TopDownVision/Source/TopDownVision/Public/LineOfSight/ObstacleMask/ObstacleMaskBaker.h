@@ -5,8 +5,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "LineOfSight/VisionData.h"// enum for obstacle types
-#include "LineOfSight/WorldObstacle/WorldObstacleData.h"// Obstacle data, enum for command
-#include "LineOfSight/WorldObstacle/ObstacleTileData.h"// the linker data asset for editor world and runtime world
+#include "LineOfSight/WorldObstacle/ObstacleData.h"// Obstacle data, enum for command
+#include "LineOfSight/WorldObstacle/LevelObstacleTileData.h"// the linker data asset for editor world and runtime world
 #include "ObstacleMaskBaker.generated.h"
 
 
@@ -152,7 +152,7 @@ protected:
 	TObjectPtr<UTexture2D> LastBakedTexture;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ObstacleMask|EditorWorldLink")
-	TObjectPtr<UObstacleTileData> TileDataAsset;
+	TObjectPtr<ULevelObstacleData> TileDataAsset;
 
 	// Obstacle Type Tag
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ObstacleMask")

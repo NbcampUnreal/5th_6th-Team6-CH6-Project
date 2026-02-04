@@ -5,8 +5,8 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "LineOfSight/VisionData.h"// for enum, tag type
-#include "WorldObstacle/WorldObstacleData.h"
-#include "LineOfSight/WorldObstacle/ObstacleTileData.h"//FObstacleMaskTile
+
+#include "LineOfSight/WorldObstacle/LevelObstacleTileData.h"//FObstacleMaskTile
 #include "VisionSubsystem.generated.h"
 
 
@@ -63,7 +63,7 @@ public:
 
 	// Initialize tiles from DataAsset
 	UFUNCTION(BlueprintCallable, Category="LineOfSight|Obstacle")
-	void InitializeTilesFromDataAsset(UObstacleTileData* TileData);
+	void InitializeTilesFromDataAsset(ULevelObstacleData* TileData);
 
 	// for deletion
 	void RemoveTileByTexture(UTexture2D* Texture);
@@ -79,8 +79,12 @@ public:
 	//Getter for passing all tiles
 	const TArray<FObstacleMaskTile>& GetTiles() const{ return WorldTiles; }
 
-
-//Variables
+private:
+	//internal functions
+	void LoadAndInitializeTiles();
+	
+	//Variables
+public:
 	//Delegate
 	FOnObstacleBakeRequested OnObstacleBakeRequested;// for the delegate from subsystem
 	
@@ -92,11 +96,10 @@ private:
 	//Registered Tiles
 	UPROPERTY()
 	TArray<FObstacleMaskTile> WorldTiles;
-	
-	// Data asset reference to load baked tiles at runtime
+
+	// Path to the plugin-owned obstacle tile data asset
 	UPROPERTY(EditDefaultsOnly, Category="LineOfSight|Obstacle")
-	UObstacleTileData* DefaultObstacleTileData;
-	// path to the data asset
-	const FString AssetSavePath=TEXT("/Game/PSM/WorldBaker/DA_WorldTileData.DA_WorldTileData");
-	
+	FSoftObjectPath LevelObstacleDataPath =
+		FSoftObjectPath(TEXT("/Game/Level/LevelData/DA_LevelRequirementsData.DA_LevelRequirementsData"));
+	//object pathname here
 };

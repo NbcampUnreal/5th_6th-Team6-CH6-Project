@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "WorldObstacleData.generated.h"
+#include "ObstacleData.generated.h"
 /**
  * 
  */
@@ -35,4 +35,24 @@ enum class EObstacleBakeRequest : uint8
 	Clear UMETA(DisplayName = "Clear"),
 	Bake UMETA(DisplayName = "Bake"),
 	Rebuild UMETA(DisplayName ="Rebuild"),// Clear + Bake
+};
+
+
+/**
+ *  This is for linking the Editor world baked data to the runtime world
+ *  Obstacle maks data will be transferred by this data asset
+ */
+UCLASS(Blueprintable)
+class TOPDOWNVISION_API ULevelObstacleData : public UDataAsset
+{
+	GENERATED_BODY()
+
+public:
+	
+	// All baked tiles
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Obstacle Tiles")
+	TArray<FObstacleMaskTile> Tiles;
+
+
+	// other required data in here
 };

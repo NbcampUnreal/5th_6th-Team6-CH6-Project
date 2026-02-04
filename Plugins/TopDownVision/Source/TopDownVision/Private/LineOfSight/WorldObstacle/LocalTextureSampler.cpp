@@ -37,17 +37,17 @@ void ULocalTextureSampler::UpdateLocalTexture()
 {
 	if (!LocalMaskRT || !ObstacleSubsystem)
 	{
-		/*UE_LOG(LOSVision, Warning,
-			TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing RT, MID, or Subsystem"));*/
+		UE_LOG(LOSVision, Verbose,
+			TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing RT, MID, or Subsystem"));
 		return;
 	}
 
 	const FVector WorldCenter = GetComponentLocation();
 	LastSampleCenter = WorldCenter;
 
-	/*UE_LOG(LOSVision, Log,
+	UE_LOG(LOSVision, Verbose,
 		TEXT("ULocalTextureSampler::UpdateLocalTexture >> WorldCenter: %s"),
-		*WorldCenter.ToString());*/
+		*WorldCenter.ToString());
 
 	
 	RebuildLocalBounds(WorldCenter);
@@ -110,10 +110,10 @@ void ULocalTextureSampler::RebuildLocalBounds(const FVector& WorldCenter)
 		Center2D + FVector2D(R, R)
 	);
 	
-	/*
-	UE_LOG(LOSVision, Log,
+	
+	UE_LOG(LOSVision, VeryVerbose,
 		TEXT("ULocalTextureSampler::RebuildLocalBounds >> Min: %s, Max: %s"),
-		*LocalWorldBounds.Min.ToString(), *LocalWorldBounds.Max.ToString());*/
+		*LocalWorldBounds.Min.ToString(), *LocalWorldBounds.Max.ToString());
 }
 
 void ULocalTextureSampler::UpdateOverlappingTiles()
@@ -121,15 +121,15 @@ void ULocalTextureSampler::UpdateOverlappingTiles()
 	ActiveTileIndices.Reset();
 
 	const TArray<FObstacleMaskTile>& Tiles = ObstacleSubsystem->GetTiles();
-	/*UE_LOG(LOSVision, Log,
+	UE_LOG(LOSVision, Verbose,
 		TEXT("ULocalTextureSampler::UpdateOverlappingTiles >> %d tiles in subsystem"),
-		Tiles.Num());*/
+		Tiles.Num());
 
 	for (int32 i = 0; i < Tiles.Num(); ++i)
 	{
 		bool bOverlap = Tiles[i].WorldBounds.Intersect(LocalWorldBounds);
 		
-		/*UE_LOG(LOSVision, Log,
+		UE_LOG(LOSVision, VeryVerbose,
 			TEXT("ULocalTextureSampler::UpdateOverlappingTiles >> Tile %d bounds [%s-%s], LocalBounds [%s-%s], Overlap=%d"),
 			i,
 			*Tiles[i].WorldBounds.Min.ToString(),
@@ -137,7 +137,7 @@ void ULocalTextureSampler::UpdateOverlappingTiles()
 			*LocalWorldBounds.Min.ToString(),
 			*LocalWorldBounds.Max.ToString(),
 			bOverlap
-		);*/
+		);
 
 		if (bOverlap)
 		{
@@ -145,17 +145,17 @@ void ULocalTextureSampler::UpdateOverlappingTiles()
 		}
 	}
 
-	/*UE_LOG(LOSVision, Log,
+	UE_LOG(LOSVision, Verbose,
 		TEXT("ULocalTextureSampler::UpdateOverlappingTiles >> %d tiles in local area"),
-		ActiveTileIndices.Num());*/
+		ActiveTileIndices.Num());
 }
 
 void ULocalTextureSampler::DrawTilesIntoLocalRT()
 {
     if (!LocalMaskRT || !ObstacleSubsystem)
     {
-    	/*UE_LOG(LOSVision, Warning,
-    		TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Missing RT, MID, or Subsystem"));*/
+    	UE_LOG(LOSVision, Verbose,
+    		TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Missing RT, MID, or Subsystem"));
     	return;
     }
 

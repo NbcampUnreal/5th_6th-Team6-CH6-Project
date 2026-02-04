@@ -151,7 +151,7 @@ void AObstacleMaskBaker::BakeObstacleMask()
 			TEXT("AObstacleMaskBaker::BakeObstacleMask >> Missing components"));
 		return;
 	}
-	
+
 	//Locks the center position
 	const float CameraHeightOffset =
 		SceneCaptureComp->GetComponentLocation().Z -
@@ -210,12 +210,14 @@ void AObstacleMaskBaker::BakeObstacleMask()
 
 	//MergeRTs_To_RG(ShadowMaskRT, LowMaskRT, FinalRT);//--> loop in cpu
 	MergeRTs_WithMaterial(ShadowMaskRT, LowMaskRT, FinalRT);// merge using ush by MID
+
 	
 	// SAVE
 	const FString AssetName =
 		FString::Printf(TEXT("ObstacleMask_%s"), *GetName());
 
 	const FString PackagePath = AssetSavePath / AssetName;
+	// shouldnt the path name be set in here by vision subsystem?
 
 	UTexture2D* FinalTex =
 		UKismetRenderingLibrary::RenderTargetCreateStaticTexture2DEditorOnly(
@@ -252,7 +254,7 @@ void AObstacleMaskBaker::BakeObstacleMask()
 	UE_LOG(LOSWorldBaker, Log,
 		TEXT("AObstacleMaskBaker::BakeObstacleMask >> Baked %s"),
 		*FinalTex->GetName());
-
+	
 	RegisterTile();// register on subsystem
 }
 
@@ -504,6 +506,33 @@ void AObstacleMaskBaker::ClearLocalData()
 			Vision->RemoveTileByTexture(LastBakedTexture);
 		}
 	}
+	//TODO: subsystem only transcribe the saved data when initialized.
+	//why not make other actors to not use subsystem, but udata asset for tile info?
+	// should i remove it?
+	
+	//Remove from the DataAsset
+	if (TileDataAsset)
+	{
+		// Find and remove tiles that reference this texture
+		int32 RemovedCount = TileDataAsset->Tiles.RemoveAll(
+			[this](const FObstacleMaskTile& Tile)
+			{
+				return Tile.Mask == LastBakedTexture;
+			}
+		);
+
+		if (RemovedCount > 0)
+		{
+			TileDataAsset->MarkPackageDirty();
+			FAssetRegistryModule::AssetCreated(TileDataAsset); // Refresh registry
+			
+			UE_LOG(LOSWorldBaker, Log,
+				TEXT("ClearLocalData >> Removed %d tile(s) from DataAsset %s"),
+				RemovedCount,
+				*TileDataAsset->GetName());
+		}
+	}
+	
 #endif
 	
 	// Null  reference
