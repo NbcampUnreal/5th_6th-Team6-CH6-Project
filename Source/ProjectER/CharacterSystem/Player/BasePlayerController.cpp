@@ -4,6 +4,8 @@
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
 
+#include "Kismet/GameplayStatics.h"
+
 #include "GameFramework/Character.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -385,6 +387,27 @@ void ABasePlayerController::Client_StartRespawnTimer_Implementation()
 void ABasePlayerController::Client_StopRespawnTimer_Implementation()
 {
 	HideRespawnTimerUI();
+}
+void ABasePlayerController::Client_OutGameInputMode_Implementation()
+{
+	FInputModeUIOnly InputMode;
+    SetInputMode(InputMode);
+    bShowMouseCursor = true;
+}
+
+void ABasePlayerController::Client_InGameInputMode_Implementation()
+{
+	FInputModeGameAndUI InputMode;
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	InputMode.SetHideCursorDuringCapture(false);
+	SetInputMode(InputMode);
+	bShowMouseCursor = true;
+}
+
+void ABasePlayerController::Client_ReturnToMainMenu_Implementation(const FString& Reason)
+{
+	UE_LOG(LogTemp, Warning, TEXT("ReturnToMainMenu: %s"), *Reason);
+	UGameplayStatics::OpenLevel(this, FName(TEXT("/Game/Level/Level_MainMenu")));
 }
 
 void ABasePlayerController::Server_StartGame_Implementation()
