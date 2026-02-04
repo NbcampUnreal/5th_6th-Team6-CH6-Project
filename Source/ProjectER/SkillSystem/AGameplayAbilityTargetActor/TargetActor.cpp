@@ -3,6 +3,7 @@
 
 #include "SkillSystem/AGameplayAbilityTargetActor/TargetActor.h"
 #include "GameFramework/Actor.h"
+#include "SkillSystem/GameAbility/MouseTargetSkill.h"
 #include "AbilitySystemBlueprintLibrary.h"
 
 ATargetActor::ATargetActor()
@@ -18,35 +19,60 @@ void ATargetActor::BeginPlay()
 void ATargetActor::StartTargeting(UGameplayAbility* Ability)
 {
 	Super::StartTargeting(Ability);
+
+    if (ShouldProduceTargetData())
+    {
+        /*UMouseTargetSkill* MouseSkill = Cast<UMouseTargetSkill>(OwningAbility);
+        checkf(IsValid(MouseSkill), TEXT("ATargetActor::ConfirmTargetingAndContinue - MouseSkill Is Not Valid"));
+
+        if (AActor* ValidTarget = MouseSkill->GetTargetUnderCursorInRange())
+        {
+            FGameplayAbilityTargetDataHandle Handle = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(ValidTarget);
+            TargetDataReadyDelegate.Broadcast(Handle);
+        }
+        else
+        {
+            FGameplayAbilityTargetDataHandle CancelHandle;
+            CanceledDelegate.Broadcast(CancelHandle);
+        }*/
+    }
 }
 
 void ATargetActor::ConfirmTargetingAndContinue()
 {
-    if (!IsValid(PrimaryPC))
+    UMouseTargetSkill* MouseSkill = Cast<UMouseTargetSkill>(OwningAbility);
+    checkf(IsValid(MouseSkill), TEXT("ATargetActor::ConfirmTargetingAndContinue - MouseSkill Is Not Valid"));
+
+    if (TryConfirmMouseTarget() == false)
     {
-        return;
+        FGameplayAbilityTargetDataHandle CancelHandle;
+        CanceledDelegate.Broadcast(CancelHandle);
     }
 
-    FHitResult HitResult;
-    if (PrimaryPC->GetHitResultUnderCursor(ECC_Pawn, false, HitResult))
+    //// 사거리 내에 유효한 타겟이 찍혔는가?
+    //if (AActor* ValidTarget = MouseSkill->GetTargetUnderCursorInRange())
+    //{
+    //    FGameplayAbilityTargetDataHandle Handle = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(ValidTarget);
+    //    TargetDataReadyDelegate.Broadcast(Handle);
+    //}
+    //else
+    //{
+    //    FGameplayAbilityTargetDataHandle CancelHandle;
+    //    CanceledDelegate.Broadcast(CancelHandle);
+    //}
+}
+
+bool ATargetActor::TryConfirmMouseTarget()
+{
+    UMouseTargetSkill* MouseSkill = Cast<UMouseTargetSkill>(OwningAbility);
+    checkf(IsValid(MouseSkill), TEXT("ATargetActor::ConfirmTargetingAndContinue - MouseSkill Is Not Valid"));
+    UE_LOG(LogTemp, Warning, TEXT("A"));
+    if (AActor* ValidTarget = MouseSkill->GetTargetUnderCursorInRange())
     {
-        AActor* HitActor = HitResult.GetActor();
-
-        if (IsValid(HitActor))
-        {
-            UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(HitActor);
-
-            if (TargetASC)
-            {
-                UE_LOG(LogTemp, Log, TEXT("TargetActor: ASC를 가진 유효한 타겟 발견! (%s)"), *HitActor->GetName());
-
-                FGameplayAbilityTargetDataHandle Handle = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(HitActor);
-                TargetDataReadyDelegate.Broadcast(Handle);
-                return;
-            }
-        }
+        FGameplayAbilityTargetDataHandle Handle = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(ValidTarget);
+        TargetDataReadyDelegate.Broadcast(Handle);
+        return true;
     }
 
-    FGameplayAbilityTargetDataHandle CancelHandle;
-    CanceledDelegate.Broadcast(CancelHandle);
+    return false;
 }
