@@ -5,3 +5,5 @@
 #include "CoreMinimal.h"
 
 TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(LOSVision, Log, All);
+
+TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(LOSWorldBaker, Log, All);// for editor function

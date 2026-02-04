@@ -1,6 +1,9 @@
 #include "CharacterSystem/Animation/BaseCharacterAnimInstance.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
+#include "CharacterSystem/GameplayTags/GameplayTags.h" 
 
+#include "AbilitySystemComponent.h" 
+#include "AbilitySystemGlobals.h" 
 #include "GameFramework/CharacterMovementComponent.h"
 
 UBaseCharacterAnimInstance::UBaseCharacterAnimInstance()
@@ -44,4 +47,14 @@ void UBaseCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	// 공중에 뜸 판별
 	bIsFalling = MovementComponent->IsFalling();
+	
+	// 사망 태그(State.Life.Death)가 있는지 확인
+	if (IAbilitySystemInterface* ASCInterface = Cast<IAbilitySystemInterface>(Character))
+	{
+		if (UAbilitySystemComponent* ASC = ASCInterface->GetAbilitySystemComponent())
+		{
+			FGameplayTag DeathTag = ProjectER::State::Life::Death;
+			bIsDead = ASC->HasMatchingGameplayTag(DeathTag);
+		}
+	}
 }

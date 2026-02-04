@@ -64,10 +64,17 @@ public:
     
 	// [인터페이스 구현] 하이라이트 (나중에 포스트 프로세스로 구현)
 	// virtual void HighlightActor(bool bIsHighlight) override;
-
+	
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_SetTeamID(ETeamType NewTeamID);
+	
+protected:
+	UFUNCTION()
+	void OnRep_TeamID();
+	
 protected:
 	// 팀 변수
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Team")
+	UPROPERTY(ReplicatedUsing = OnRep_TeamID, EditAnywhere, BlueprintReadWrite, Category = "Team")
 	ETeamType TeamID;
 	
 #pragma endregion
@@ -158,6 +165,23 @@ protected:
 	TObjectPtr<AActor> TargetActor;
 #pragma endregion
 
+#pragma region Death
+public:
+	// 사망 처리 호출
+	virtual void HandleDeath();
+	
+protected:
+	// 사망 연출 실행 RPC : 모든 클라이언트에 사망 사실 전파
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_Death();
+	
+protected:
+	// 사망 모션 몽타주 : 내부 캐싱용
+	UPROPERTY()
+	TObjectPtr<UAnimMontage> DeadAnimMontage;
+	
+#pragma endregion
+	
 #pragma region UI
 public:
 	UFUNCTION()

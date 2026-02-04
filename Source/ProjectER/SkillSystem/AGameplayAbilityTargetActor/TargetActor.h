@@ -18,4 +18,7 @@ public:
 	virtual void BeginPlay() override;
 	virtual void StartTargeting(UGameplayAbility* Ability) override;
 	virtual void ConfirmTargetingAndContinue() override;
+	bool TryConfirmMouseTarget();
+private:
+	
 };

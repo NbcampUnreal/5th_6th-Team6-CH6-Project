@@ -36,4 +36,8 @@ protected:
 	// 공중에 뜸 여부 (에어본 CC기 등)
 	UPROPERTY(BlueprintReadOnly, Category = "State")
 	uint8 bIsFalling : 1;
+	
+	// 사망 상태 확인용 변수
+	UPROPERTY(BlueprintReadOnly, Category = "State")
+	uint8 bIsDead : 1;
 };

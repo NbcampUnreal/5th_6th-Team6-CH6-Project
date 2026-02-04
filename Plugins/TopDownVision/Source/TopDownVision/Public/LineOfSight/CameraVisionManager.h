@@ -7,7 +7,7 @@
 #include "Engine/CanvasRenderTarget2D.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstance.h"
-#include "LineOfSight/VisionChannelEnum.h"// now as enum
+#include "LineOfSight/VisionData.h"// now as enum
 #include "CameraVisionManager.generated.h"
 
 
@@ -140,6 +140,11 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	FName LayeredLOSTextureParam = NAME_None;
+
+
+	//Gpu method requirement
+	UPROPERTY(EditAnywhere, Category="Vision")
+	uint32 CameraViewChannelMask = 0xFFFFFFFF;
 	
 	/*
 	/** Resolution of the camera-local RT #1#

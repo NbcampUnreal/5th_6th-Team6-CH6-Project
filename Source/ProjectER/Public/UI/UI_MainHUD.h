@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Abilities/GameplayAbilityTypes.h"
 #include "UI_MainHUD.generated.h"
 
 class UTextBlock;
@@ -22,7 +23,8 @@ enum class ECharacterStat : uint8
 	AS			UMETA(DisplayName = "Attack Speed"),
 	DEF			UMETA(DisplayName = "Defence"),
 	ADEF		UMETA(DisplayName = "Ability Defence"),
-	SPD			UMETA(DisplayName = "Speed")
+	SPD			UMETA(DisplayName = "Speed"),
+	COOL		UMETA(DisplayName = "CoolDown")
 };
 
 UENUM(BlueprintType)
@@ -62,6 +64,7 @@ public:
 	void InitHeroDataHUD(UCharacterData* HeroData);
 	UFUNCTION()
 	void InitASCHud(UAbilitySystemComponent* _ASC);
+
 
 protected:
 	// 마우스 우클릭 확인용
@@ -121,6 +124,9 @@ protected:
 	UTextBlock* stat_06;
 
 	UPROPERTY(meta = (BindWidget))
+	UTextBlock* stat_07;
+
+	UPROPERTY(meta = (BindWidget))
 	UButton* skill_01;
 
 	UPROPERTY(meta = (BindWidget))
@@ -131,6 +137,18 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* skill_04;
+	
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* skill_cool_01;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* skill_cool_02;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* skill_cool_03;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* skill_cool_04;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* skill_up_01;
@@ -188,5 +206,22 @@ protected:
 	void SkillFirePressed(ESkillKey index);
 	UFUNCTION()
 	void SkillFireReleased(ESkillKey index);
+
+	UFUNCTION()
+	void OnAbilityActivated(class UGameplayAbility* ActivatedAbility);
+
+	UFUNCTION()
+	void OnActivateSkillCoolTime(ESkillKey Skill_Index);
+
+	// cool down 관리
+protected:
+	FTimerHandle SkillTimerHandles[4];
+	float RemainingTimes[4];
+	UPROPERTY()
+	UTextBlock* SkillCoolTexts[4];
+	void UpdateSkillCoolDown(int32 SkillIndex);
+
+private:
+	float nowSkillCoolReduc = 0.f;
 
 };

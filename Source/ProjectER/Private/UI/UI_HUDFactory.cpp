@@ -63,6 +63,7 @@ void AUI_HUDFactory::InitOverlay(APlayerController* PC, APlayerState* PS, UAbili
         WidgetController->BroadcastCCChanges(BaseAS->GetCriticalChance());
         WidgetController->BroadcastDEFChanges(BaseAS->GetDefense());
         WidgetController->BroadcastSpeedChanges(BaseAS->GetMoveSpeed());
+		WidgetController->BroadcastCooldownReduction(BaseAS->GetCooldownReduction());
     }
 }
 
