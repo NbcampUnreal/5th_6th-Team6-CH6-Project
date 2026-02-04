@@ -126,9 +126,13 @@ void ABaseCharacter::Tick(float DeltaTime)
 	//			AS ? TEXT("OK") : TEXT("NULL"));
 	//	}
 	//}
-
-	// [수정] 내 캐릭터이거나(Local), 서버(Authority)일 때만 로직 수행
-	// 남의 캐릭터(Simulated Proxy)는 이 로직을 돌리면 안 됨 (RPC 권한 없음)
+	
+	// 사망 상태일 시, Tick 관련 이동 및 공격 실행 중지
+	if (AbilitySystemComponent.IsValid() && AbilitySystemComponent->HasMatchingGameplayTag(ProjectER::State::Life::Death))
+	{
+		return; // 죽었으면 아무것도 안 함
+	}
+	
 	if (IsLocallyControlled() || HasAuthority())
 	{
 		// Tick 활성화 시 경로 탐색 (서버)
@@ -439,6 +443,12 @@ void ABaseCharacter::InitVisuals()
 		{
 			GetMesh()->SetAnimInstanceClass(LoadedAnimClass);
 		}
+	}
+	
+	if (!HeroData->DeathMontage.IsNull())
+	{
+		// 동기 로드 (LoadSynchronous)하여 변수에 저장
+		DeadAnimMontage = HeroData->DeathMontage.LoadSynchronous();
 	}
 }
 
@@ -767,6 +777,68 @@ void ABaseCharacter::OnRep_TargetActor()
 			TargetActor ? *TargetActor->GetName() : TEXT("None"));
 	}
 #endif
+}
+
+void ABaseCharacter::HandleDeath()
+{
+	if (HasAuthority())
+	{
+		if (AbilitySystemComponent.IsValid()) // 중복 사망 방지
+		{
+			FGameplayTag DeathTag = ProjectER::State::Life::Death;
+			if (AbilitySystemComponent->HasMatchingGameplayTag(DeathTag))
+			{
+				return;
+			}
+			
+			AbilitySystemComponent->AddLooseGameplayTag(DeathTag);
+			AbilitySystemComponent->CancelAllAbilities();
+		}
+
+		// 타겟 지정 해제 (나를 노리는 적들에게 "나 죽었어" 알림)
+		// (이 부분은 AI나 타겟팅 시스템에 따라 추가 구현 필요)
+		SetTarget(nullptr);
+		
+		// 모든 클라이언트에게 연출 실행 명령
+		Multicast_Death();
+	}
+}
+
+void ABaseCharacter::Multicast_Death_Implementation()
+{
+	// 사망 애니메이션 몽타주 재생
+	if (DeadAnimMontage && GetMesh() && GetMesh()->GetAnimInstance())
+	{
+		PlayAnimMontage(DeadAnimMontage);
+	}
+
+	// Capsule 비활성화 
+	if (GetCapsuleComponent())
+	{
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	// 이동 정지 및 기능 비활성화
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->StopMovementImmediately();
+		GetCharacterMovement()->DisableMovement();
+	}
+
+	/* // 입력 차단 
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		PC->DisableInput(PC);
+        
+		// (선택) UI 띄우기 호출
+		// if (ABasePlayerController* BasePC = Cast<ABasePlayerController>(PC))
+		// {
+		//     BasePC->Client_SetDead(); 
+		// }
+	} */
+    
+	// 5. 틱 비활성화 (불필요한 연산 방지)
+	SetActorTickEnabled(false);
 }
 
 void ABaseCharacter::Server_SetTarget_Implementation(AActor* NewTarget)
