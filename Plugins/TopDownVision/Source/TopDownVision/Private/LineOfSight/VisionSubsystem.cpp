@@ -266,11 +266,9 @@ void UVisionSubsystem::LoadAndInitializeTiles()
 			TEXT("UVisionSubsystem::LoadAndInitializeTiles >> GetWorld() returned null"));
 		return;
 	}
-
-	// built-in function for shortening the name
+	
 	FString MapPackageLongName = GetWorld()->GetMapName();
-	MapPackageLongName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);//get the prevbi
-	//FString MapPackageShortName = FPackageName::GetShortName(MapPackageLongName);
+	MapPackageLongName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);//get remove prefix
 
 	if (TObjectPtr<ULevelObstacleData>* TileDataPtr = WorldReqList->WorldRequirements.Find(MapPackageLongName))
 	{

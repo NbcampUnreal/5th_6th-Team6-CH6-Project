@@ -13,17 +13,26 @@ struct FObstacleMaskTile
 {
 	GENERATED_BODY()
 	
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, Category="WorldObject")
 	UTexture2D* Mask;
 	
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, Category="WorldObject")
 	FBox2D WorldBounds;
 	
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, Category="WorldObject")
 	FVector2D WorldSize;
 	
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, Category="WorldObject")
 	FMatrix WorldToUV;// pre computed value for Local RT merging
+
+	//Rotation problem
+	//Store the tile's world rotation (Z-axis rotation for top-down)
+	UPROPERTY(VisibleAnywhere, Category="WorldObject")
+	float WorldRotationYaw = 0.f;  // Actor's yaw rotation in world
+    
+	// Store the actual center position (not just bounds)
+	UPROPERTY(VisibleAnywhere, Category="WorldObject")
+	FVector2D WorldCenter;
 };
 
 //Tile Texture baking command

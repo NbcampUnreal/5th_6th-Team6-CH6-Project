@@ -41,7 +41,8 @@ public:
 
     //Vision Getter, Setter
     float GetVisibleRange() const {return VisionRange;}
-
+    float GetMaxVisibleRange() const {return MaxVisionRange;}
+    
     //Getter for Channel
     UFUNCTION(BlueprintCallable, Category="LineOfSight")
     EVisionChannel GetVisionChannel()const {return VisionChannel;}

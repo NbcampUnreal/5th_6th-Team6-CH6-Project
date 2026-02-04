@@ -175,30 +175,60 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
 		GMaxRHIFeatureLevel);
     
 	const FVector2D LocalSize = LocalWorldBounds.GetSize();
-
+	
+	const float CameraYawOffset = 90.f;// the world rotation of the scene capture camera is (0,-90,-90)
+	//--> apply this rotation offset to the canvas rotation
+	
 	for (int32 TileIndex : ActiveTileIndices)
 	{
 		const FObstacleMaskTile& Tile = ObstacleSubsystem->GetTiles()[TileIndex];
-		if (!Tile.Mask) continue;
+        if (!Tile.Mask) continue;
 
-		// Calculate tile position relative to the RenderTarget (0.0 to 1.0 range or Pixel range)
-		// You'll need to map Tile.WorldBounds to the LocalMaskRT's pixel space
-		FVector2D TilePosInRT = (
-			Tile.WorldBounds.Min - LocalWorldBounds.Min) / LocalSize * FVector2D(LocalMaskRT->SizeX,
-			LocalMaskRT->SizeY);
-		
-		FVector2D TileSizeInRT = Tile.WorldBounds.GetSize() / LocalSize * FVector2D(LocalMaskRT->SizeX, LocalMaskRT->SizeY);
+        // World position of tile center
+        FVector2D TileCenterWorld = Tile.WorldCenter;
+        
+        // Transform to local space (relative to LocalWorldBounds)
+        FVector2D LocalRelative = TileCenterWorld - LocalWorldBounds.Min;
+        
+        // Apply camera rotation transformation
+        // Camera Yaw=90 means: World +X maps to RT +Y, World +Y maps to RT -X
+        FVector2D RotatedLocal;
+        RotatedLocal.X = LocalRelative.Y;  // World Y becomes RT X
+        RotatedLocal.Y = LocalSize.X - LocalRelative.X;  // World X becomes RT Y (flipped)
+        
+        // Convert to RT pixel coordinates
+        FVector2D TileCenterInRT;
+        TileCenterInRT.X = (RotatedLocal.X / LocalSize.Y) * LocalMaskRT->SizeX;
+        TileCenterInRT.Y = (RotatedLocal.Y / LocalSize.X) * LocalMaskRT->SizeY;
+        
+        // Calculate tile size (swap X/Y due to 90-degree rotation)
+        FVector2D TileSizeInRT;
+        TileSizeInRT.X = (Tile.WorldSize.Y / LocalSize.Y) * LocalMaskRT->SizeX;
+        TileSizeInRT.Y = (Tile.WorldSize.X / LocalSize.X) * LocalMaskRT->SizeY;
 
-		// Create a Tile Item faster method, not requiring material
-		FCanvasTileItem TileItem(TilePosInRT, Tile.Mask->GetResource(), TileSizeInRT, FLinearColor::White);
-		TileItem.BlendMode = SE_BLEND_Additive; // Or AlphaBlend depending on your LOS logic
+        // Calculate top-left position (Canvas draws from top-left)
+        FVector2D TilePosInRT = TileCenterInRT - (TileSizeInRT * 0.5f);
 
-		/*//!!! Rotation Fix
-		TileItem.PivotPoint = FVector2D(0.5f, 0.5f); // set pivot
-		TileItem.Rotation = FRotator(0.f, 0.f, 90.f);// correct rotaion*/
-		
-		// Queue the draw command
-		Canvas.DrawItem(TileItem);
+        UE_LOG(LOSVision, VeryVerbose,
+            TEXT("DrawTilesIntoLocalRT >> "
+				 "Tile %d: WorldCenter=(%.1f, %.1f), RTCenter=(%.1f, %.1f), Pos=(%.1f, %.1f), Size=(%.1f, %.1f), TileRot=%.1f, FinalRot=%.1f"),
+            TileIndex,
+            TileCenterWorld.X, TileCenterWorld.Y,
+            TileCenterInRT.X, TileCenterInRT.Y,
+            TilePosInRT.X, TilePosInRT.Y,
+            TileSizeInRT.X, TileSizeInRT.Y,
+            Tile.WorldRotationYaw,
+            Tile.WorldRotationYaw - CameraYawOffset);
+
+        // Create tile item
+        FCanvasTileItem TileItem(TilePosInRT, Tile.Mask->GetResource(), TileSizeInRT, FLinearColor::White);
+        TileItem.BlendMode = SE_BLEND_Additive;
+        
+        // Apply rotation: compensate for camera yaw + apply tile's world rotation
+        TileItem.PivotPoint = FVector2D(0.5f, 0.5f);
+        TileItem.Rotation = FRotator(0.f, Tile.WorldRotationYaw - CameraYawOffset, 0.f);
+        
+        Canvas.DrawItem(TileItem);
 	}
 
 	//  Tell the GPU to execute all queued draws at once!!!!
