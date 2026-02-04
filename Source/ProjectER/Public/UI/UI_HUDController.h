@@ -49,6 +49,7 @@ public:
     void BroadcastCCChanges(float CurrentCC); // 크리티컬 찬스 = CC
     void BroadcastDEFChanges(float CurrentDEF);
     void BroadcastSpeedChanges(float CurrentSpeed);
+    void BroadcastCooldownReduction(float Cooldown);
 
 
 

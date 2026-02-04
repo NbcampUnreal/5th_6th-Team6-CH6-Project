@@ -118,6 +118,13 @@ void UUI_HUDController::BindCallbacksToDependencies()
                 BroadcastSpeedChanges(Data.NewValue);
             }
         );
+    // Cool 변경 감지 람다
+    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+        BaseAS->GetCooldownReductionAttribute()).AddLambda([this](const FOnAttributeChangeData& Data)
+            {
+                BroadcastCooldownReduction(Data.NewValue);
+            }
+        );
     // 차후 위 람다식을 모든 스탯에 대해 반복 해야함~
 }
 
@@ -228,6 +235,17 @@ void UUI_HUDController::BroadcastSpeedChanges(float CurrentSpeed)
     if (IsValid(MainHUDWidget))
     {
         MainHUDWidget->setStat(ECharacterStat::SPD, CurrentSpeed);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+    }
+}
+void UUI_HUDController::BroadcastCooldownReduction(float Cooldown)
+{
+    if (IsValid(MainHUDWidget))
+    {
+        MainHUDWidget->setStat(ECharacterStat::COOL, Cooldown);
     }
     else
     {

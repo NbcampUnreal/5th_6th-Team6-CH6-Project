@@ -17,6 +17,7 @@
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 #include "Kismet/KismetMathLibrary.h" // 반올림용
 #include "CharacterSystem/Player/BasePlayerController.h"
+#include "Abilities/GameplayAbilityTypes.h" // 쿨타임용
 
 void UUI_MainHUD::Update_LV(float CurrentLV)
 {
@@ -152,6 +153,14 @@ void UUI_MainHUD::setStat(ECharacterStat stat, int32 value)
             stat_06->SetText(FText::AsNumber(value));
         }
     }
+    else if (stat == ECharacterStat::COOL)
+    {
+        if (IsValid(stat_07))
+        {
+            stat_07->SetText(FText::AsNumber(value));
+            nowSkillCoolReduc = value;
+        }
+    }
 }
 
 void UUI_MainHUD::InitMinimapCompo(USceneCaptureComponent2D* SceneCapture2D)
@@ -167,6 +176,10 @@ void UUI_MainHUD::InitHeroDataHUD(UCharacterData* _HeroData)
 void UUI_MainHUD::InitASCHud(UAbilitySystemComponent* _ASC)
 {
     ASC = _ASC;
+    if (IsValid(ASC))
+    {
+        ASC->AbilityActivatedCallbacks.AddUObject(this, &UUI_MainHUD::OnAbilityActivated);
+    }
 }
 
 void UUI_MainHUD::NativeConstruct()
@@ -208,6 +221,18 @@ void UUI_MainHUD::NativeConstruct()
         skill_04->OnClicked.AddDynamic(this, &UUI_MainHUD::OnSkillClicked_R);
     }
     // skil
+
+    // cool
+    SkillCoolTexts[0] = skill_cool_01;
+    SkillCoolTexts[1] = skill_cool_02;
+    SkillCoolTexts[2] = skill_cool_03;
+    SkillCoolTexts[3] = skill_cool_04;
+    
+    // 남은 시간 초기화
+    for (int32 i = 0; i < 4; i++)
+    {
+        RemainingTimes[i] = 0.f;
+    }
 }
 
 /// 마우스 이벤트!
@@ -426,7 +451,12 @@ void UUI_MainHUD::SkillFirePressed(ESkillKey _Index)
             if (IsValid(PC))
             {
 				PC->AbilityInputTagPressed(InputTag);
+				float CoolTime = SkillAsset->SkillConfig->Data.BaseCoolTime.GetValueAtLevel(1);
+				UE_LOG(LogTemp, Error, TEXT("%d_Skill, TAG : %s, CoolTime : %f"), 0, *InputTag.ToString(), CoolTime);
+
             }
+
+
 
             //// ASC를 통한 스킬 실행?? <- 자체제작, PC에서 가져오는걸로 퉁치는게 조을것같음.
             //if (ASC)
@@ -488,11 +518,105 @@ void UUI_MainHUD::SkillFireReleased(ESkillKey _Index)
             {
                 PC->AbilityInputTagReleased(InputTag);
             }
-
         }
     }
     else
     {
         UE_LOG(LogTemp, Warning, TEXT("Invalid SkillDataAsset or index out of range"));
+    }
+}
+
+void UUI_MainHUD::OnAbilityActivated(UGameplayAbility* ActivatedAbility)
+{
+    if (!ActivatedAbility) return;
+
+    // 현재 실행 중인 어빌리티의 Handle을 통해 Spec을 찾아오기
+    FGameplayAbilitySpec* Spec = ASC->FindAbilitySpecFromHandle(ActivatedAbility->GetCurrentAbilitySpecHandle());
+    if (Spec)
+    {
+        for (const FGameplayTag& Tag : Spec->DynamicAbilityTags)
+        {
+            // UE_LOG(LogTemp, Log, TEXT("Spec 보유 태그: %s"), *Tag.ToString());
+            
+            // 좀 더 스마트한 방법이 없을지 더 찾아보자...
+            if (Tag.ToString() == "Input.Action.Skill.Q")
+            {
+                OnActivateSkillCoolTime(ESkillKey::Q);
+            }
+            else if (Tag.ToString() == "Input.Action.Skill.W")
+            {
+                OnActivateSkillCoolTime(ESkillKey::W);
+            }
+            else if (Tag.ToString() == "Input.Action.Skill.E")
+            {
+                OnActivateSkillCoolTime(ESkillKey::E);
+            }
+            else if (Tag.ToString() == "Input.Action.Skill.R")
+            {
+                OnActivateSkillCoolTime(ESkillKey::R);
+            }
+        }
+    }
+}
+
+void UUI_MainHUD::OnActivateSkillCoolTime(ESkillKey Skill_Index)
+{
+    int32 Index = static_cast<int32>(Skill_Index);
+
+    // 인덱스 범위 체크 (Q~R)
+    if (!SkillCoolTexts[Index] || Index < 0 || Index >= 4) return;
+
+    if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
+    {
+        USkillDataAsset* SkillAsset = HeroData->SkillDataAsset[Index].LoadSynchronous();
+        if (SkillAsset && SkillAsset->SkillConfig)
+        {
+            // ************************************************************************
+            // 스킬 레벨을 알아올 방법을 몰라서 일단 스킬레벨 1로 처리 차후 수정해야 함
+            // ************************************************************************
+            float baseCool = SkillAsset->SkillConfig->Data.BaseCoolTime.GetValueAtLevel(1);
+            float finalCool = baseCool * (1.0f + (nowSkillCoolReduc / 100.0f));
+
+            // 최종 쿨
+            RemainingTimes[Index] = finalCool;
+
+            // 타이머 시작
+            GetWorld()->GetTimerManager().ClearTimer(SkillTimerHandles[Index]);
+            GetWorld()->GetTimerManager().SetTimer(
+                SkillTimerHandles[Index],
+                [this, Index]() { UpdateSkillCoolDown(Index); },
+                0.1f,
+                true
+            );
+
+            // UE_LOG(LogTemp, Log, TEXT("Skill %d Timer Started: %f"), Index, finalCool);
+        }
+    }
+}
+
+void UUI_MainHUD::UpdateSkillCoolDown(int32 SkillIndex)
+{
+    RemainingTimes[SkillIndex] -= 0.1f;
+    
+    // 종료 처리
+    if (RemainingTimes[SkillIndex] <= 0.0f)
+    {
+        
+        GetWorld()->GetTimerManager().ClearTimer(SkillTimerHandles[SkillIndex]);
+        if (SkillCoolTexts[SkillIndex])
+        {
+            SkillCoolTexts[SkillIndex]->SetText(FText::GetEmpty());
+        }
+    }
+    else
+    {
+        if (SkillCoolTexts[SkillIndex])
+        {
+            FNumberFormattingOptions Opts;
+            Opts.MinimumFractionalDigits = 1;
+            Opts.MaximumFractionalDigits = 1;
+
+            SkillCoolTexts[SkillIndex]->SetText(FText::AsNumber(RemainingTimes[SkillIndex], &Opts));
+        }
     }
 }
