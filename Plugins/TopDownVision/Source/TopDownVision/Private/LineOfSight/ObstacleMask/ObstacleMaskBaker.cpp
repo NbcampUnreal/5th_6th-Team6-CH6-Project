@@ -581,6 +581,9 @@ void AObstacleMaskBaker::RegisterTile()
 		return;
 	}
 	
+	// Get the actor's rotation (yaw only for top-down)
+	const float ActorYaw = GetActorRotation().Yaw;
+	
 	const FVector Center = BoxVolume->GetComponentLocation();
 	const FVector Extent = BoxVolume->GetScaledBoxExtent();
 
@@ -593,6 +596,9 @@ void AObstacleMaskBaker::RegisterTile()
 	Tile.WorldBounds = Bounds;
 	Tile.WorldSize = Bounds.GetSize();
 	Tile.WorldToUV = BuildWorldToUV(Bounds);
+
+	Tile.WorldRotationYaw = ActorYaw;  // !!! Store rotation
+	Tile.WorldCenter = FVector2D(Center.X, Center.Y);  // !!! Store center
 
 	Vision->RegisterObstacleTile(Tile);
 	

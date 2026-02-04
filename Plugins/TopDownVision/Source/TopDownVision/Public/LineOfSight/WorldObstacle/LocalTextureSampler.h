@@ -60,6 +60,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category="LocalSampler")
 	UTextureRenderTarget2D* GetLocalRenderTarget() const { return LocalMaskRT; }
 
+	// Debug RT functions
+	UFUNCTION(BlueprintCallable, Category="LocalSampler|Debug")
+	void UpdateDebugRT();
+	
+	UFUNCTION(BlueprintCallable, Category="LocalSampler|Debug")
+	UTextureRenderTarget2D* GetDebugRT() const { return DebugRT; }
+
 private:
 	void PrepareSetups();
 	
@@ -72,6 +79,14 @@ protected:
 	/** Local merged obstacle/height mask */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
 	TObjectPtr<UTextureRenderTarget2D> LocalMaskRT;
+
+	/** Debug render target - persistent RT that can be viewed in content browser */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Debug")
+	TObjectPtr<UTextureRenderTarget2D> DebugRT;
+
+	/** Auto-update debug RT when local texture updates */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Debug")
+	bool bAutoUpdateDebugRT = false;
 
 	/*/** Material used to project baked tiles into the local RT #1#
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")

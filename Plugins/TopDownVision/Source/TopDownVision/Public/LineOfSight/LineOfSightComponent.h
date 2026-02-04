@@ -41,7 +41,8 @@ public:
 
     //Vision Getter, Setter
     float GetVisibleRange() const {return VisionRange;}
-
+    float GetMaxVisibleRange() const {return MaxVisionRange;}
+    
     //Getter for Channel
     UFUNCTION(BlueprintCallable, Category="LineOfSight")
     EVisionChannel GetVisionChannel()const {return VisionChannel;}
@@ -53,22 +54,12 @@ public:
     bool IsUpdating() const{return ShouldUpdate;}
 
 
-    // This will be used when Height map is captured locally, not sampling pre baked height
-    //Obstacle registration
-    /** Manually add an actor to the visibility list */
-    UFUNCTION(BlueprintCallable, Category="LineOfSight")
-    void RegisterObstacle(AActor* Obstacle);
-
     
 protected:
     //prep
     void CreateResources();// make RT and MID
 
 protected:
-
-    //switch for source of world environment texture (2d scene capture comp. or Local texture sampler)
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    bool bUseSceneCapture = true;
     
     //Debug for toggling activation
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
@@ -87,16 +78,8 @@ protected:
     float VisionRange = 800.f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     float MaxVisionRange = 800.f;//<- this will be used for Fixed RenderTarget Size and OrthoWidth
-
-    //EyeSight (Local Z height value for eye sight)
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    float EyeSightHeight = 200.f;//about 2m?
     
     //WorldEnvironmentCapturing
-    //2DSceneCapture
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    USceneCaptureComponent2D* SceneCaptureComp = nullptr;
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     ULocalTextureSampler* LocalTextureSampler = nullptr;
     
@@ -120,22 +103,6 @@ protected:
     FName MIDTextureParam=NAME_None;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     FName MIDVisibleRangeParam=NAME_None;
-    
-    /*/** Material Parameter Collection for actor location #1#
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")//---> no more MPC
-    UMaterialParameterCollection* VisionMPC;*/
-
-    
-    //no longer need MPC, it is done by LayerCompositing Comp, CameraVisionManager. just need the TextureParam name
-    /*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    FName LocationVectorValueName="VisionCenterLocation";
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    FName VisibleRangeScalarValueName="SightRange";*/
-
-    //Obstacle
-    /** The tag used to identify meshes that should block LOS (e.g., "LOS_Blocker") */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    FName BlockerTag = TEXT("LOS_Blocker");
 
 private:
     bool ShouldUpdate=false;// only update when the camera vision capturing it
