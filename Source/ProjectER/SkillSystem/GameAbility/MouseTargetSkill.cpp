@@ -38,10 +38,12 @@ void UMouseTargetSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 void UMouseTargetSkill::ExecuteSkill()
 {
 	Super::ExecuteSkill();
-
+	UE_LOG(LogTemp, Log, TEXT("UMouseTargetSkill::ExecuteSkill"));
 	UMouseTargetSkillConfig* Config = Cast<UMouseTargetSkillConfig>(CachedConfig);
 	if (!Config || AffectedActors.Num() <= 0) return;
 	const TArray<TObjectPtr<USkillEffectDataAsset>>& EffectDataAssets = Config->GetEffectsToApply();
+
+	UE_LOG(LogTemp, Log, TEXT("UMouseTargetSkill::!Config || AffectedActors.Num() <= 0 is false"));
 
 	ApplyEffectsToActors(AffectedActors, EffectDataAssets);
 	RotateToTarget(AffectedActors.begin()->Get());
@@ -76,30 +78,17 @@ void UMouseTargetSkill::SetWaitTargetTask()
 			MyTargetActor->PrimaryPC = Cast<APlayerController>(GetActorInfo().PlayerController);
 			WaitTargetTask->FinishSpawningActor(this, SpawnedActor);
 		}
-		else {
-			UE_LOG(LogTemp, Warning, TEXT("MyTargetActor is null"));
-		}
-	}
-	else {
-		UE_LOG(LogTemp, Warning, TEXT("BeginSpawningActor return null"));
 	}
 
 	WaitTargetTask->ReadyForActivation();
 
-	if (IsValid(MyTargetActor)) MyTargetActor->TryConfirmMouseTarget();
-}
-
-bool UMouseTargetSkill::CastInstantly()
-{
-	AActor* HitActor = GetTargetUnderCursorInRange();
-	if (IsValid(HitActor))
+	if (IsLocallyControlled())
 	{
-		AffectedActors.Add(HitActor);
-		PrepareToActiveSkill();
-		return true;
+		if (IsValid(MyTargetActor)) {
+			MyTargetActor->TryConfirmMouseTarget();
+			UE_LOG(LogTemp, Log, TEXT("IsValid(MyTargetActor)"));
+		}
 	}
-
-	return false;
 }
 
 void UMouseTargetSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle& DataHandle)
@@ -107,7 +96,11 @@ void UMouseTargetSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle
 	UE_LOG(LogTemp, Log, TEXT("OnTargetDataReady"));
 	TArray<AActor*> TargetActors = UAbilitySystemBlueprintLibrary::GetActorsFromTargetData(DataHandle, 0);
 
-	if (TargetActors.Num() <= 0) return;
+	if (TargetActors.Num() <= 0)
+	{
+		UE_LOG(LogTemp, Log, TEXT("TargetActors.Num() <= 0"));
+		return;
+	}
 
 	for (AActor* Actor : TargetActors)
 	{

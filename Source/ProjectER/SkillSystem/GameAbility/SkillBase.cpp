@@ -89,6 +89,7 @@ void USkillBase::ExecuteSkill()
 
 void USkillBase::OnActiveTagAdded()
 {
+	UE_LOG(LogTemp, Warning, TEXT("USkillBase::OnActiveTagAdded"));
 	if (CachedConfig->Data.bIsUseCasting)
 	{
 		if (GetAbilitySystemComponentFromActorInfo()->HasMatchingGameplayTag(CastingTag))
@@ -97,20 +98,25 @@ void USkillBase::OnActiveTagAdded()
 			ExecuteSkill();
 		}
 		else {
+			UE_LOG(LogTemp, Warning, TEXT("USkillBase::GetAbilitySystemComponentFromActorInfo()->HasMatchingGameplayTag(CastingTag) is false"));
 			EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 		}
+	}
+	else {
+		UE_LOG(LogTemp, Warning, TEXT("USkillBase::CachedConfig->Data.bIsUseCasting is false"));
 	}
 }
 
 void USkillBase::PlayAnimMontage()
 {
-	UE_LOG(LogTemp, Warning, TEXT("PlayAnimMontage"));
+	UE_LOG(LogTemp, Warning, TEXT("USkillBase::PlayAnimMontage"));
 	UAbilityTask_PlayMontageAndWait* PlayTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, TEXT("SkillAnimation"), CachedConfig->Data.AnimMontage);
 	PlayTask->ReadyForActivation();
 }
 
 void USkillBase::SetWaitActiveTagTask()
 {
+	UE_LOG(LogTemp, Warning, TEXT("USkillBase::SetWaitActiveTagTask"));
 	UAbilityTask_WaitGameplayTagAdded* WaitTagAdd = UAbilityTask_WaitGameplayTagAdded::WaitGameplayTagAdd(this, ActiveTag);
 	WaitTagAdd->Added.AddDynamic(this, &USkillBase::OnActiveTagAdded);
 	WaitTagAdd->ReadyForActivation();
@@ -118,11 +124,24 @@ void USkillBase::SetWaitActiveTagTask()
 
 void USkillBase::PrepareToActiveSkill()
 {
-	SetWaitActiveTagTask();
+	//SetWaitActiveTagTask();
+	//PlayAnimMontage();
+	////캐스팅이 없는 스킬이면 Active 태그를 바로 붙여서 즉시 발동
+	//if (CachedConfig->Data.bIsUseCasting == false)
+	//{
+	//	ExecuteSkill();
+	//	AddTagToOwner(ActiveTag);
+	//}
+
 	PlayAnimMontage();
-	//캐스팅이 없는 스킬이면 Active 태그를 바로 붙여서 즉시 발동
-	if (CachedConfig->Data.bIsUseCasting == false)
+
+	if (CachedConfig->Data.bIsUseCasting)
 	{
+		SetWaitActiveTagTask();
+	}
+	else
+	{
+		ExecuteSkill();
 		AddTagToOwner(ActiveTag);
 	}
 }

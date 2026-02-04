@@ -22,7 +22,6 @@ protected:
 	virtual void ExecuteSkill() override;
 	virtual void FinishSkill() override;
 	void SetWaitTargetTask();
-	bool CastInstantly();
 	AActor* GetTargetUnderCursor();
 	bool IsInRange(AActor* Actor);
 	void RotateToTarget(AActor* Actor);
