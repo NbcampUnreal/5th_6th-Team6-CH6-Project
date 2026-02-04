@@ -10,7 +10,6 @@
 #include "Engine/World.h"
 #include "LineOfSight/VisionSubsystem.h"
 #include "TopDownVisionLogCategories.h"//log
-//#include "LineOfSight/GPU/TileMergeComputeShader.h"
 
 ULocalTextureSampler::ULocalTextureSampler()
 {
@@ -38,7 +37,7 @@ void ULocalTextureSampler::UpdateLocalTexture()
 	if (!LocalMaskRT || !ObstacleSubsystem)
 	{
 		UE_LOG(LOSVision, Verbose,
-			TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing RT, MID, or Subsystem"));
+			TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing RT or Subsystem"));
 		return;
 	}
 
@@ -53,6 +52,12 @@ void ULocalTextureSampler::UpdateLocalTexture()
 	RebuildLocalBounds(WorldCenter);
 	UpdateOverlappingTiles();
 	DrawTilesIntoLocalRT();
+
+	// Auto-update debug RT if enabled
+	if (bAutoUpdateDebugRT && DebugRT)
+	{
+		UpdateDebugRT();
+	}
 }
 
 void ULocalTextureSampler::SetWorldSampleRadius(float NewRadius)
@@ -90,13 +95,79 @@ void ULocalTextureSampler::SetLocalRenderTarget(UTextureRenderTarget2D* InRT)
 	UpdateLocalTexture();
 }
 
+void ULocalTextureSampler::UpdateDebugRT()
+{
+	if (!LocalMaskRT)
+	{
+		UE_LOG(LOSVision, Warning,
+			TEXT("ULocalTextureSampler::UpdateDebugRT >> LocalMaskRT is null"));
+		return;
+	}
+
+	if (!DebugRT)
+	{
+		UE_LOG(LOSVision, Warning,
+			TEXT("ULocalTextureSampler::UpdateDebugRT >> DebugRT is null, please assign a debug render target"));
+		return;
+	}
+
+	// Make sure DebugRT has the same size as LocalMaskRT
+	if (DebugRT->SizeX != LocalMaskRT->SizeX || DebugRT->SizeY != LocalMaskRT->SizeY)
+	{
+		UE_LOG(LOSVision, Log,
+			TEXT("ULocalTextureSampler::UpdateDebugRT >> Resizing DebugRT to match LocalMaskRT: %dx%d"),
+			LocalMaskRT->SizeX, LocalMaskRT->SizeY);
+		
+		DebugRT->ResizeTarget(LocalMaskRT->SizeX, LocalMaskRT->SizeY);
+	}
+
+	// Copy LocalMaskRT to DebugRT
+	FTextureRenderTargetResource* SrcResource = LocalMaskRT->GameThread_GetRenderTargetResource();
+	FTextureRenderTargetResource* DstResource = DebugRT->GameThread_GetRenderTargetResource();
+
+	if (!SrcResource || !DstResource)
+	{
+		UE_LOG(LOSVision, Error,
+			TEXT("ULocalTextureSampler::UpdateDebugRT >> Failed to get render target resources"));
+		return;
+	}
+
+	// Read pixels from source
+	TArray<FColor> Pixels;
+	SrcResource->ReadPixels(Pixels);
+
+	// Write pixels to destination
+	ENQUEUE_RENDER_COMMAND(CopyLocalMaskToDebug)(
+		[DstResource, Pixels](FRHICommandListImmediate& RHICmdList)
+		{
+			FUpdateTextureRegion2D Region(
+				0, 0, 0, 0,
+				DstResource->GetSizeX(),
+				DstResource->GetSizeY()
+			);
+
+			RHIUpdateTexture2D(
+				DstResource->GetRenderTargetTexture(),
+				0,
+				Region,
+				DstResource->GetSizeX() * 4,
+				reinterpret_cast<const uint8*>(Pixels.GetData())
+			);
+		}
+	);
+
+	UE_LOG(LOSVision, Verbose,
+		TEXT("ULocalTextureSampler::UpdateDebugRT >> Updated debug RT with %d pixels"),
+		Pixels.Num());
+}
+
 void ULocalTextureSampler::PrepareSetups()
 {
 	// Grab the VisionSubsystem
 	ObstacleSubsystem = GetWorld() ? GetWorld()->GetSubsystem<UVisionSubsystem>() : nullptr;
 	if (!ObstacleSubsystem)
 	{
-		UE_LOG(LOSVision, Warning, TEXT("ULocalTextureSampler::Setup >> Failed to get VisionSubsystem"));
+		UE_LOG(LOSVision, Warning, TEXT("ULocalTextureSampler::PrepareSetups >> Failed to get VisionSubsystem"));
 	}
 }
 
@@ -155,7 +226,7 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
     if (!LocalMaskRT || !ObstacleSubsystem)
     {
     	UE_LOG(LOSVision, Verbose,
-    		TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Missing RT, MID, or Subsystem"));
+    		TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Missing RT or Subsystem"));
     	return;
     }
 
@@ -165,7 +236,11 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
 		FLinearColor::Black);
 
 	if (ActiveTileIndices.IsEmpty())
+	{
+		UE_LOG(LOSVision, Verbose,
+			TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> No active tiles"));
 		return;
+	}
 
 	// Initialize Canvas tools
 	FCanvas Canvas(
@@ -176,61 +251,75 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
     
 	const FVector2D LocalSize = LocalWorldBounds.GetSize();
 	
-	const float CameraYawOffset = 90.f;// the world rotation of the scene capture camera is (0,-90,-90)
-	//--> apply this rotation offset to the canvas rotation
-	
+	// Scene capture camera rotation constant
+	// Camera is at Rotation(-90, 90, 0) which creates a 90-degree transformation
+	const float CameraYawOffset = 90.f;
+
+	UE_LOG(LOSVision, Verbose,
+		TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Drawing %d tiles"),
+		ActiveTileIndices.Num());
+
 	for (int32 TileIndex : ActiveTileIndices)
 	{
 		const FObstacleMaskTile& Tile = ObstacleSubsystem->GetTiles()[TileIndex];
-        if (!Tile.Mask) continue;
+		if (!Tile.Mask)
+		{
+			UE_LOG(LOSVision, VeryVerbose,
+				TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Tile %d has no mask, skipping"),
+				TileIndex);
+			continue;
+		}
 
-        // World position of tile center
-        FVector2D TileCenterWorld = Tile.WorldCenter;
-        
-        // Transform to local space (relative to LocalWorldBounds)
-        FVector2D LocalRelative = TileCenterWorld - LocalWorldBounds.Min;
-        
-        // Apply camera rotation transformation
-        // Camera Yaw=90 means: World +X maps to RT +Y, World +Y maps to RT -X
-        FVector2D RotatedLocal;
-        RotatedLocal.X = LocalRelative.Y;  // World Y becomes RT X
-        RotatedLocal.Y = LocalSize.X - LocalRelative.X;  // World X becomes RT Y (flipped)
-        
-        // Convert to RT pixel coordinates
-        FVector2D TileCenterInRT;
-        TileCenterInRT.X = (RotatedLocal.X / LocalSize.Y) * LocalMaskRT->SizeX;
-        TileCenterInRT.Y = (RotatedLocal.Y / LocalSize.X) * LocalMaskRT->SizeY;
-        
-        // Calculate tile size (swap X/Y due to 90-degree rotation)
-        FVector2D TileSizeInRT;
-        TileSizeInRT.X = (Tile.WorldSize.Y / LocalSize.Y) * LocalMaskRT->SizeX;
-        TileSizeInRT.Y = (Tile.WorldSize.X / LocalSize.X) * LocalMaskRT->SizeY;
+		// World position of tile center
+		FVector2D TileCenterWorld = Tile.WorldCenter;
+		
+		// Transform to local space (relative to LocalWorldBounds)
+		FVector2D LocalRelative = TileCenterWorld - LocalWorldBounds.Min;
+		
+		// Apply camera rotation transformation
+		// Camera Yaw=90 means: World +X maps to RT +Y, World +Y maps to RT -X
+		FVector2D RotatedLocal;
+		RotatedLocal.X = LocalRelative.Y;  // World Y becomes RT X
+		RotatedLocal.Y = LocalSize.X - LocalRelative.X;  // World X becomes RT Y (flipped)
+		
+		// Convert to RT pixel coordinates
+		FVector2D TileCenterInRT;
+		TileCenterInRT.X = (RotatedLocal.X / LocalSize.Y) * LocalMaskRT->SizeX;
+		TileCenterInRT.Y = (RotatedLocal.Y / LocalSize.X) * LocalMaskRT->SizeY;
+		
+		// Calculate tile size (swap X/Y due to 90-degree rotation)
+		FVector2D TileSizeInRT;
+		TileSizeInRT.X = (Tile.WorldSize.Y / LocalSize.Y) * LocalMaskRT->SizeX;
+		TileSizeInRT.Y = (Tile.WorldSize.X / LocalSize.X) * LocalMaskRT->SizeY;
 
-        // Calculate top-left position (Canvas draws from top-left)
-        FVector2D TilePosInRT = TileCenterInRT - (TileSizeInRT * 0.5f);
+		// Calculate top-left position (Canvas draws from top-left)
+		FVector2D TilePosInRT = TileCenterInRT - (TileSizeInRT * 0.5f);
 
-        UE_LOG(LOSVision, VeryVerbose,
-            TEXT("DrawTilesIntoLocalRT >> "
-				 "Tile %d: WorldCenter=(%.1f, %.1f), RTCenter=(%.1f, %.1f), Pos=(%.1f, %.1f), Size=(%.1f, %.1f), TileRot=%.1f, FinalRot=%.1f"),
-            TileIndex,
-            TileCenterWorld.X, TileCenterWorld.Y,
-            TileCenterInRT.X, TileCenterInRT.Y,
-            TilePosInRT.X, TilePosInRT.Y,
-            TileSizeInRT.X, TileSizeInRT.Y,
-            Tile.WorldRotationYaw,
-            Tile.WorldRotationYaw - CameraYawOffset);
+		UE_LOG(LOSVision, VeryVerbose,
+			TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> "
+		"Tile %d: WorldCenter=(%.1f, %.1f), RTCenter=(%.1f, %.1f), Pos=(%.1f, %.1f), Size=(%.1f, %.1f), TileRot=%.1f, FinalRot=%.1f"),
+			TileIndex,
+			TileCenterWorld.X, TileCenterWorld.Y,
+			TileCenterInRT.X, TileCenterInRT.Y,
+			TilePosInRT.X, TilePosInRT.Y,
+			TileSizeInRT.X, TileSizeInRT.Y,
+			Tile.WorldRotationYaw,
+			Tile.WorldRotationYaw - CameraYawOffset);
 
-        // Create tile item
-        FCanvasTileItem TileItem(TilePosInRT, Tile.Mask->GetResource(), TileSizeInRT, FLinearColor::White);
-        TileItem.BlendMode = SE_BLEND_Additive;
-        
-        // Apply rotation: compensate for camera yaw + apply tile's world rotation
-        TileItem.PivotPoint = FVector2D(0.5f, 0.5f);
-        TileItem.Rotation = FRotator(0.f, Tile.WorldRotationYaw - CameraYawOffset, 0.f);
-        
-        Canvas.DrawItem(TileItem);
+		// Create tile item
+		FCanvasTileItem TileItem(TilePosInRT, Tile.Mask->GetResource(), TileSizeInRT, FLinearColor::White);
+		TileItem.BlendMode = SE_BLEND_Additive;
+		
+		// Apply rotation: compensate for camera yaw + apply tile's world rotation
+		TileItem.PivotPoint = FVector2D(0.5f, 0.5f);
+		TileItem.Rotation = FRotator(0.f, Tile.WorldRotationYaw - CameraYawOffset, 0.f);
+		
+		Canvas.DrawItem(TileItem);
 	}
 
 	//  Tell the GPU to execute all queued draws at once!!!!
 	Canvas.Flush_GameThread();
+
+	UE_LOG(LOSVision, Verbose,
+		TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Finished drawing tiles"));
 }
