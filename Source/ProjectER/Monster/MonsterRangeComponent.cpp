@@ -54,9 +54,7 @@ void UMonsterRangeComponent::OnPlayerCountingBeginOverlap(UPrimitiveComponent* O
 {
 	if (OtherActor && OtherActor->IsA<ABaseCharacter>())
 	{
-
 		PlayerCount = FMath::Max(0, PlayerCount + 1);
-		UE_LOG(LogTemp, Warning, TEXT("PlayerCount: %d"), PlayerCount);
 
 		if (PlayerCount == 1)
 		{
@@ -85,7 +83,6 @@ void UMonsterRangeComponent::OnPlayerCountingEndOverlap(UPrimitiveComponent* Ove
 	if (OtherActor && OtherActor->IsA<ABaseCharacter>())
 	{
 		PlayerCount = FMath::Max(0, PlayerCount - 1);
-		UE_LOG(LogTemp, Warning, TEXT("PlayerCount: %d"), PlayerCount);
 
 		if (PlayerCount == 0)
 		{
