@@ -38,12 +38,9 @@ void UMouseTargetSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 void UMouseTargetSkill::ExecuteSkill()
 {
 	Super::ExecuteSkill();
-	UE_LOG(LogTemp, Log, TEXT("UMouseTargetSkill::ExecuteSkill"));
 	UMouseTargetSkillConfig* Config = Cast<UMouseTargetSkillConfig>(CachedConfig);
 	if (!Config || AffectedActors.Num() <= 0) return;
 	const TArray<TObjectPtr<USkillEffectDataAsset>>& EffectDataAssets = Config->GetEffectsToApply();
-
-	UE_LOG(LogTemp, Log, TEXT("UMouseTargetSkill::!Config || AffectedActors.Num() <= 0 is false"));
 
 	ApplyEffectsToActors(AffectedActors, EffectDataAssets);
 	RotateToTarget(AffectedActors.begin()->Get());
@@ -86,19 +83,16 @@ void UMouseTargetSkill::SetWaitTargetTask()
 	{
 		if (IsValid(MyTargetActor)) {
 			MyTargetActor->TryConfirmMouseTarget();
-			UE_LOG(LogTemp, Log, TEXT("IsValid(MyTargetActor)"));
 		}
 	}
 }
 
 void UMouseTargetSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle& DataHandle)
 {
-	UE_LOG(LogTemp, Log, TEXT("OnTargetDataReady"));
 	TArray<AActor*> TargetActors = UAbilitySystemBlueprintLibrary::GetActorsFromTargetData(DataHandle, 0);
 
 	if (TargetActors.Num() <= 0)
 	{
-		UE_LOG(LogTemp, Log, TEXT("TargetActors.Num() <= 0"));
 		return;
 	}
 
@@ -119,7 +113,6 @@ void UMouseTargetSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle
 
 void UMouseTargetSkill::OnTargetCancelled(const FGameplayAbilityTargetDataHandle& DataHandle)
 {
-	UE_LOG(LogTemp, Log, TEXT("OnTargetCancelled"));
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 }
 

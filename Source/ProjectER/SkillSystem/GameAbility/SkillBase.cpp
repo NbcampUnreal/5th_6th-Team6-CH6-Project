@@ -89,7 +89,6 @@ void USkillBase::ExecuteSkill()
 
 void USkillBase::OnActiveTagAdded()
 {
-	UE_LOG(LogTemp, Warning, TEXT("USkillBase::OnActiveTagAdded"));
 	if (CachedConfig->Data.bIsUseCasting)
 	{
 		if (GetAbilitySystemComponentFromActorInfo()->HasMatchingGameplayTag(CastingTag))
@@ -98,25 +97,22 @@ void USkillBase::OnActiveTagAdded()
 			ExecuteSkill();
 		}
 		else {
-			UE_LOG(LogTemp, Warning, TEXT("USkillBase::GetAbilitySystemComponentFromActorInfo()->HasMatchingGameplayTag(CastingTag) is false"));
 			EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 		}
 	}
 	else {
-		UE_LOG(LogTemp, Warning, TEXT("USkillBase::CachedConfig->Data.bIsUseCasting is false"));
+		
 	}
 }
 
 void USkillBase::PlayAnimMontage()
 {
-	UE_LOG(LogTemp, Warning, TEXT("USkillBase::PlayAnimMontage"));
 	UAbilityTask_PlayMontageAndWait* PlayTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, TEXT("SkillAnimation"), CachedConfig->Data.AnimMontage);
 	PlayTask->ReadyForActivation();
 }
 
 void USkillBase::SetWaitActiveTagTask()
 {
-	UE_LOG(LogTemp, Warning, TEXT("USkillBase::SetWaitActiveTagTask"));
 	UAbilityTask_WaitGameplayTagAdded* WaitTagAdd = UAbilityTask_WaitGameplayTagAdded::WaitGameplayTagAdd(this, ActiveTag);
 	WaitTagAdd->Added.AddDynamic(this, &USkillBase::OnActiveTagAdded);
 	WaitTagAdd->ReadyForActivation();
@@ -148,7 +144,6 @@ void USkillBase::PrepareToActiveSkill()
 
 void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ApplyEffectsToActors"));
 	if (Actors.Num() <= 0 || SkillEffectDataAssets.Num() <= 0) return;
 
 	FGameplayAbilityTargetDataHandle TargetDataHandle;
@@ -168,13 +163,11 @@ void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TAr
 	for (USkillEffectDataAsset* EffectData : SkillEffectDataAssets)
 	{
 		if (!EffectData) continue;
-		UE_LOG(LogTemp, Warning, TEXT("!EffectData"));
 		TArray<FGameplayEffectSpecHandle> SpecHandles = EffectData->MakeSpecs(InstigatorASC, this, GetAvatarActorFromActorInfo());
 		for (FGameplayEffectSpecHandle& SpecHandle : SpecHandles)
 		{
 			if (SpecHandle.IsValid())
 			{
-				UE_LOG(LogTemp, Warning, TEXT("SpecHandle.IsValid()"));
 				ApplyGameplayEffectSpecToTarget(
 					CurrentSpecHandle,
 					CurrentActorInfo,
