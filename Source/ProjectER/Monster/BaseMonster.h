@@ -6,12 +6,13 @@
 #include "GameplayTagContainer.h"
 #include "BaseMonster.generated.h"
 
-class UBaseMonsterAttributeSet;
 class UGameplayAbility;
 class UStateTreeComponent;
 class USphereComponent;
 class UMonsterRangeComponent;
 class UWidgetComponent;
+class UUserWidget;
+class UBaseMonsterAttributeSet;
 class ABaseCharacter;
 struct FOnAttributeChangeData;
 
@@ -53,8 +54,14 @@ private:
 
 	void InitGiveAbilities();
 
+#pragma region UI
+
 	UFUNCTION()
 	void OnHealthChangedHandle(float OldValue, float NewValue);
+
+#pragma endregion
+
+#pragma region StateTree
 
 	UFUNCTION()
 	void OnMonterHitHandle(AActor* Target);
@@ -73,6 +80,8 @@ private:
 
 	UFUNCTION(BlueprintCallable)
 	void SendReturnSuccessEvent();
+
+#pragma endregion
 
 public:
 
@@ -175,7 +184,7 @@ private:
 
 #pragma endregion 
 
-#pragma region State
+#pragma region StateTree
 
 	// 서버만
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
@@ -189,7 +198,7 @@ private:
 	FVector StartLocation;
 
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
-	AActor* TargetPlayer;
+	TObjectPtr<AActor> TargetPlayer;
 
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	bool bIsCombat;
@@ -197,6 +206,15 @@ private:
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	bool bIsDead;
 
+#pragma endregion
+
+#pragma region UI
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI", meta = (AllowprivateAccess = "true"))
+	TObjectPtr<UWidgetComponent> HPBarWidgetComp;
+
+	/*UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI", meta = (AllowprivateAccess = "true"))
+	TSubclassOf<UUserWidget> HPBarWidget;*/
 
 #pragma endregion
 

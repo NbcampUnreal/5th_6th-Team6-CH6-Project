@@ -1,17 +1,16 @@
 ﻿#include "Monster/BaseMonster.h"
 
-//
 #include "Net/UnrealNetwork.h"
 #include "AbilitySystemComponent.h"
 #include "AttributeSet/BaseMonsterAttributeSet.h"
+
 #include "Components/StateTreeComponent.h"
-
 #include "Components/CapsuleComponent.h"
-
-#include "Monster/MonsterRangeComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Monster/MonsterRangeComponent.h"
+#include "Components/ProgressBar.h"
 
-
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameModeBase/GameMode/ER_InGameMode.h"
 
 ABaseMonster::ABaseMonster()
@@ -49,8 +48,14 @@ ABaseMonster::ABaseMonster()
 	MonsterRangeComp = CreateDefaultSubobject<UMonsterRangeComponent>(TEXT("MonsterRangeComponent"));	
 	MonsterRangeComp->SetIsReplicated(true);
 
-	//이동속도 조절필요
-	GetMovementComponent();
+	//이동속도
+	GetCharacterMovement()->MaxWalkSpeed = AttributeSet->GetMoveSpeed();
+
+	//UI Component
+	HPBarWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComponent"));
+	HPBarWidgetComp->SetupAttachment(GetMesh());
+	HPBarWidgetComp->SetWidgetSpace(EWidgetSpace::Screen); // 체력바 크기가 일정할거같으니까?
+
 }
 
 UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
@@ -102,6 +107,10 @@ void ABaseMonster::PossessedBy(AController* newController)
 	{
 		// UI 변경
 		AttributeSet->OnHealthChanged.AddDynamic(this, &ABaseMonster::OnHealthChangedHandle);
+		
+		/*UUserWidget* Widget = HPBarWidgetComp->GetUserWidgetObject();
+		UProgressBar* HPBar = Cast<UProgressBar>(Widget->GetWidgetFromName(TEXT("HealthBar")));
+		HPBar->SetPercent(AttributeSet->GetHealth() / AttributeSet->GetMaxHealth());*/
 	}
 }
 
@@ -148,7 +157,10 @@ void ABaseMonster::InitGiveAbilities()
 
 void ABaseMonster::OnHealthChangedHandle(float OldValue, float NewValue)
 {
-	// UI 
+	// UpdateHP
+	UUserWidget* Widget = HPBarWidgetComp->GetUserWidgetObject();
+	UProgressBar* HPBar = Cast<UProgressBar>(Widget->GetWidgetFromName(TEXT("HealthBar")));
+	HPBar->SetPercent(NewValue / AttributeSet->GetMaxHealth());
 }
 
 // 서버에서만
@@ -204,7 +216,6 @@ void ABaseMonster::OnPlayerCountOneHandle()
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnPlayerCountOneHandle : Not ASC"));
 		return;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("%s : Awake"), *GetName());
 	FGameplayEventData* Payload = new FGameplayEventData();
 	ASC->HandleGameplayEvent(FGameplayTag(BeginSearchEventTag), Payload);
 	StateTreeComp->SendStateTreeEvent(FStateTreeEvent(BeginSearchEventTag));
@@ -220,7 +231,6 @@ void ABaseMonster::OnPlayerCountZeroHandle()
 
 	if (bIsCombat == false)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("%s : Sit"), *GetName());
 		FGameplayEventData* Payload = new FGameplayEventData();
 		ASC->HandleGameplayEvent(FGameplayTag(EndSearchEventTag), Payload);
 		StateTreeComp->SendStateTreeEvent(FStateTreeEvent(EndSearchEventTag));
