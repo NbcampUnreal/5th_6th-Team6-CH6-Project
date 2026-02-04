@@ -64,10 +64,17 @@ public:
     
 	// [인터페이스 구현] 하이라이트 (나중에 포스트 프로세스로 구현)
 	// virtual void HighlightActor(bool bIsHighlight) override;
-
+	
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_SetTeamID(ETeamType NewTeamID);
+	
+protected:
+	UFUNCTION()
+	void OnRep_TeamID();
+	
 protected:
 	// 팀 변수
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Team")
+	UPROPERTY(ReplicatedUsing = OnRep_TeamID, EditAnywhere, BlueprintReadWrite, Category = "Team")
 	ETeamType TeamID;
 	
 #pragma endregion

@@ -47,6 +47,9 @@ protected:
 	void OnConfirm();
 	void OnCanceled();
 	
+	// [테스트용] 팀 변경 함수
+	void Test_ChangeTeamToA();
+	void Test_ChangeTeamToB();
 protected:
 	// 입력 매핑 컨텍스트 (IMC)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
