@@ -7,10 +7,16 @@
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 #include "SkillSystem/SkillDataAsset.h"
+#include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
+
+
+#include "AbilitySystemLog.h" // GAS 관련 로그 확인용
 
 USkillBase::USkillBase()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
+	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
+	ReplicationPolicy = EGameplayAbilityReplicationPolicy::ReplicateYes;
 	CastingTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Casting"));
 	ActiveTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Active"));
 	StatusTag = FGameplayTag::RequestGameplayTag(FName("Skill.Data.IncomingStatus"));
@@ -18,35 +24,27 @@ USkillBase::USkillBase()
 
 void USkillBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
+	ENetMode NetMode = (GetWorld() != nullptr) ? GetWorld()->GetNetMode() : NM_Standalone;
+
+	FString NetModeStr;
+	switch (NetMode)
+	{
+	case NM_Client: NetModeStr = TEXT("Client"); break;
+	case NM_DedicatedServer: NetModeStr = TEXT("DedicatedServer"); break;
+	case NM_ListenServer: NetModeStr = TEXT("ListenServer"); break;
+	case NM_Standalone: NetModeStr = TEXT("Standalone"); break;
+	default: NetModeStr = TEXT("Unknown"); break;
+	}
+
+	FString SideStr = HasAuthority(&ActivationInfo) ? TEXT("SERVER") : TEXT("CLIENT");
+	FString ActorName = (ActorInfo && ActorInfo->AvatarActor.IsValid()) ? ActorInfo->AvatarActor->GetName() : TEXT("Unknown");
+
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 	if (CommitAbility(Handle, ActorInfo, ActivationInfo) == false)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-
-	//switch (SkillData.SkillActivationType)
-	//{
-	//case ESkillActivationType::Instant:
-	//	Instant();
-	//	break;
-
-	//case ESkillActivationType::Targeted:
-	//	Targeted();
-	//	break;
-
-	//case ESkillActivationType::PointClick:
-	//	PointClick();
-	//	break;
-
-	//case ESkillActivationType::ClickAndDrag:
-	//	ClickAndDrag();
-	//	break;
-
-	//case ESkillActivationType::Holding:
-	//	Holding();
-	//	break;
-	//}
 }
 
 void USkillBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
@@ -81,7 +79,12 @@ void USkillBase::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const
 
 void USkillBase::ExecuteSkill()
 {
-	
+	if (IsValid(CachedConfig) == false) return;
+	if (CachedConfig->GetExcutionEffects().Num() <= 0) return;
+	AActor* Avatar = GetAvatarActorFromActorInfo();
+	if (IsValid(Avatar) == false) return;
+
+	ApplyEffectsToActor(Avatar, CachedConfig->GetExcutionEffects());
 }
 
 void USkillBase::OnActiveTagAdded()
@@ -101,6 +104,7 @@ void USkillBase::OnActiveTagAdded()
 
 void USkillBase::PlayAnimMontage()
 {
+	UE_LOG(LogTemp, Warning, TEXT("PlayAnimMontage"));
 	UAbilityTask_PlayMontageAndWait* PlayTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, TEXT("SkillAnimation"), CachedConfig->Data.AnimMontage);
 	PlayTask->ReadyForActivation();
 }
@@ -123,71 +127,61 @@ void USkillBase::PrepareToActiveSkill()
 	}
 }
 
+void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets)
+{
+	UE_LOG(LogTemp, Warning, TEXT("ApplyEffectsToActors"));
+	if (Actors.Num() <= 0 || SkillEffectDataAssets.Num() <= 0) return;
+
+	FGameplayAbilityTargetDataHandle TargetDataHandle;
+	FGameplayAbilityTargetData_ActorArray* NewData = new FGameplayAbilityTargetData_ActorArray();
+
+	for (AActor* Target : Actors)
+	{
+		if (IsValid(Target))
+		{
+			NewData->TargetActorArray.Add(Target);
+		}
+	}
+
+	TargetDataHandle.Add(NewData);
+
+	UAbilitySystemComponent* InstigatorASC = GetAbilitySystemComponentFromActorInfo();
+	for (USkillEffectDataAsset* EffectData : SkillEffectDataAssets)
+	{
+		if (!EffectData) continue;
+		UE_LOG(LogTemp, Warning, TEXT("!EffectData"));
+		TArray<FGameplayEffectSpecHandle> SpecHandles = EffectData->MakeSpecs(InstigatorASC, this, GetAvatarActorFromActorInfo());
+		for (FGameplayEffectSpecHandle& SpecHandle : SpecHandles)
+		{
+			if (SpecHandle.IsValid())
+			{
+				UE_LOG(LogTemp, Warning, TEXT("SpecHandle.IsValid()"));
+				ApplyGameplayEffectSpecToTarget(
+					CurrentSpecHandle,
+					CurrentActorInfo,
+					CurrentActivationInfo,
+					SpecHandle,
+					TargetDataHandle
+				);
+			}
+		}
+	}
+}
+
+void USkillBase::ApplyEffectsToActor(AActor* Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets)
+{
+	if (IsValid(Actors) == false) return;
+
+	TSet<TObjectPtr<AActor>> TargetSet;
+	TargetSet.Add(Actors);
+
+	ApplyEffectsToActors(TargetSet, SkillEffectDataAssets);
+}
+
 FGameplayTag USkillBase::GetInputTag()
 {
 	return CachedConfig->Data.InputKeyTag;
 }
-
-//void USkillBase::Instant()
-//{
-//	PrepareToActiveSkill();
-//}
-
-//void USkillBase::Targeted()
-//{
-//	// 1. 입력을 기다립니다. (사용자가 왼쪽 마우스 버튼을 누를 때까지)
-//	// bTestInputAlreadyPressed를 false로 해서, 함수 호출 이전에 누르고 있던 건 무시합니다.
-//	UAbilityTask_WaitInputPress* WaitInputTask = UAbilityTask_WaitInputPress::WaitInputPress(this, false);
-//
-//	if (WaitInputTask)
-//	{
-//		// 2. 클릭했을 때 실행될 함수 연결
-//		WaitInputTask->OnPress.AddDynamic(this, &USkillBase::OnTargetConfirmed);
-//		WaitInputTask->ReadyForActivation();
-//		UE_LOG(LogTemp, Log, TEXT("타겟팅 모드 진입: 적을 클릭하세요."));
-//	}
-//}
-//
-//void USkillBase::OnTargetConfirmed(float ElapsedTime)
-//{
-//	//ElapsedTime는 빌리티가 실행된 순간부터 ~ 실제 키가 눌린 순간까지의 시간 차이인데 안씁니다.
-//	APlayerController* PC = GetActorInfo().PlayerController.Get();
-//	if (!PC) return;
-//
-//	//float Distance = FVector::Dist(GetAvatarActorFromActorInfo()->GetActorLocation(), HitActor->GetActorLocation());
-//	//if (Distance <= CachedConfig->MaxRange)
-//	//{
-//	//	// 발사!
-//	//}
-//	//else
-//	//{
-//	//	// "사거리가 너무 멉니다" 알림
-//	//}
-//
-//	FHitResult HitResult;
-//	if (PC->GetHitResultUnderCursor(ECC_Pawn, false, HitResult)) {
-//		AActor* HitActor = HitResult.GetActor();
-//		if (HitActor)
-//		{
-//			UE_LOG(LogTemp, Warning, TEXT("적 타겟팅 성공: %s"), *HitActor->GetName());
-//			PrepareToActiveSkill();
-//			TargetDatas.Add(HitActor);
-//			ExecuteSkill();
-//		}
-//	}
-//}
-
-//void USkillBase::PointClick()
-//{
-//}
-//
-//void USkillBase::ClickAndDrag()
-//{
-//}
-//
-//void USkillBase::Holding()
-//{
-//}
 
 void USkillBase::FinishSkill()
 {
@@ -205,7 +199,8 @@ void USkillBase::AddTagToOwner(FGameplayTag Tag)
 	if (Tag.IsValid())
 	{
 		//같은 태그가 여러개 있어도 해당 태그를 1개로 설정
-		GetAbilitySystemComponentFromActorInfo()->AddLooseGameplayTag(Tag, 1);
+		//GetAbilitySystemComponentFromActorInfo()->AddLooseGameplayTag(Tag, 1);
+		GetAbilitySystemComponentFromActorInfo()->SetTagMapCount(Tag, 1);
 	}
 }
 
@@ -214,6 +209,7 @@ void USkillBase::RemoveTagFromOwner(FGameplayTag Tag)
 	if (Tag.IsValid())
 	{
 		//같은 태그가 여러개 있어도 해당 태그를 0개로 설정
-		GetAbilitySystemComponentFromActorInfo()->RemoveLooseGameplayTag(Tag, 0);
+		GetAbilitySystemComponentFromActorInfo()->SetTagMapCount(Tag, 0);
+		//GetAbilitySystemComponentFromActorInfo()->RemoveLooseGameplayTag(Tag, 1);
 	}
 }
