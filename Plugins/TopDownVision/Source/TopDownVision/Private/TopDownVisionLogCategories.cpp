@@ -4,3 +4,5 @@
 #include "TopDownVisionLogCategories.h"
 
 DEFINE_LOG_CATEGORY(LOSVision);
+
+DEFINE_LOG_CATEGORY(LOSWorldBaker);

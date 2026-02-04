@@ -116,6 +116,15 @@ public:
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 	void Client_StopRespawnTimer();
 
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_OutGameInputMode();
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_InGameInputMode();
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_ReturnToMainMenu(const FString& Reason);
+
 private:
 	// UI 출력
 	void ShowWinUI();

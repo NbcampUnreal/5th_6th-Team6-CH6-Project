@@ -4,7 +4,6 @@
 #include "LineOfSight/VisionSubsystem.h"
 #include "LineOfSight/LineOfSightComponent.h"
 
-
 //LOG
 DEFINE_LOG_CATEGORY(VisionSubsystem);
 
@@ -12,8 +11,10 @@ void UVisionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 	
-	UE_LOG(VisionSubsystem, Log,
-		TEXT("UVisionSubsystem::Initialize >> VisionSubsystem initialized"));
+	UE_LOG(VisionSubsystem, Log, TEXT("UVisionSubsystem::Initialize >> Vision Subsystem Initialized"));
+
+	//load from level data asset hub
+	LoadAndInitializeTiles();
 }
 
 void UVisionSubsystem::Deinitialize()
@@ -26,13 +27,12 @@ void UVisionSubsystem::Deinitialize()
 
 bool UVisionSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
-	// no editor previews. only in Game World
-	if (const UWorld* World = Cast<UWorld>(Outer))
+	const UWorld* World = Cast<UWorld>(Outer);
+	if (World)
 	{
-		return World->IsGameWorld();
+		// Create in game world AND editor world
+		return true;
 	}
-
-	//could not bring any valid world, so this is also false
 	return false;
 }
 
@@ -101,6 +101,107 @@ void UVisionSubsystem::UnregisterProvider(ULineOfSightComponent* Provider, EVisi
 		InVisionChannel);
 }
 
+void UVisionSubsystem::RequestObstacleBake(EObstacleBakeRequest Request)
+{
+	if (OnObstacleBakeRequested.IsBound())
+	{
+		OnObstacleBakeRequested.Broadcast(Request);
+		UE_LOG(VisionSubsystem, Log,
+			TEXT(" UVisionSubsystem::RequestObstacleBake >> Broadcasted request %d"),
+			static_cast<int32>(Request));
+	}
+	else
+	{
+		UE_LOG(VisionSubsystem, Warning,
+			TEXT(" UVisionSubsystem::RequestObstacleBake >> No listeners bound to delegate"));
+	}
+}
+
+void UVisionSubsystem::RegisterObstacleTile(FObstacleMaskTile NewTile)
+{
+	if (!NewTile.Mask)
+	{
+		UE_LOG(VisionSubsystem, Warning,
+			TEXT("UVisionSubsystem::RegisterObstacleTile >> "
+		"Trying to register a tile without a valid mask"));
+		return;
+	}
+
+	// Add tile to array
+	WorldTiles.Add(NewTile);
+
+	UE_LOG(VisionSubsystem, Log,
+		TEXT("UVisionSubsystem::RegisterObstacleTile >> "
+	   "Registered tile at bounds Min=(%.1f, %.1f) Max=(%.1f, %.1f)"),
+		NewTile.WorldBounds.Min.X,
+		NewTile.WorldBounds.Min.Y,
+		NewTile.WorldBounds.Max.X,
+		NewTile.WorldBounds.Max.Y);
+}
+
+void UVisionSubsystem::ClearObstacleTiles()
+{
+	const int32 NumTiles = WorldTiles.Num();
+	WorldTiles.Reset();
+
+	UE_LOG(VisionSubsystem, Log,
+		TEXT("UVisionSubsystem::ClearObstacleTiles >> Cleared %d obstacle tiles"), NumTiles);
+}
+
+void UVisionSubsystem::InitializeTilesFromDataAsset(ULevelObstacleData* TileDataForWorld)
+{
+	if (!TileDataForWorld)
+	{
+		UE_LOG(VisionSubsystem, Warning,
+			TEXT("UVisionSubsystem::InitializeTilesFromDataAsset >> No TileData provided"));
+		return;
+	}
+
+	WorldTiles.Reset();
+
+	for (const FObstacleMaskTile& Tile : TileDataForWorld->Tiles)
+	{
+		WorldTiles.Add(Tile);
+
+		UE_LOG(VisionSubsystem, Log,
+			TEXT("UVisionSubsystem::InitializeTilesFromDataAsset >> Loaded tile at bounds Min=(%.1f, %.1f) Max=(%.1f, %.1f)"),
+			Tile.WorldBounds.Min.X, Tile.WorldBounds.Min.Y,
+			Tile.WorldBounds.Max.X, Tile.WorldBounds.Max.Y);
+	}
+}
+
+void UVisionSubsystem::RemoveTileByTexture(UTexture2D* Texture)
+{
+	if (!Texture) return;
+
+	for (int32 i = WorldTiles.Num() - 1; i >= 0; --i)
+	{
+		if (WorldTiles[i].Mask == Texture)
+		{
+			WorldTiles.RemoveAt(i);
+		}
+	}
+}
+
+
+void UVisionSubsystem::GetOverlappingTileIndices(const FBox2D& QueryBounds, TArray<int32>& OutIndices) const
+{
+	OutIndices.Reset();
+
+	if (!QueryBounds.bIsValid)
+	{
+		return;
+	}
+
+	for (int32 i = 0; i < WorldTiles.Num(); ++i)
+	{
+		if (WorldTiles[i].WorldBounds.Intersect(QueryBounds))
+		{
+			OutIndices.Add(i);
+		}
+	}
+}
+
 TArray<ULineOfSightComponent*> UVisionSubsystem::GetProvidersForTeam(EVisionChannel TeamChannel) const
 {
 	TArray<ULineOfSightComponent*> OutProviders;
@@ -129,4 +230,67 @@ TArray<ULineOfSightComponent*> UVisionSubsystem::GetProvidersForTeam(EVisionChan
 	}
 
 	return OutProviders;
+}
+
+
+
+void UVisionSubsystem::LoadAndInitializeTiles()
+{
+	if (!LevelObstacleDataPath.IsValid())
+	{
+		UE_LOG(VisionSubsystem, Warning,
+			TEXT("UVisionSubsystem::LoadAndInitializeTiles >> LevelObstacleDataPath is invalid"));
+		return;
+	}
+
+	UObject* LoadedObj = LevelObstacleDataPath.TryLoad();
+	if (!LoadedObj)
+	{
+		UE_LOG(VisionSubsystem, Warning,
+			TEXT("UVisionSubsystem::LoadAndInitializeTiles >> Failed to load asset at path: %s"),
+			*LevelObstacleDataPath.ToString());
+		return;
+	}
+
+	UWorldRequirementList* WorldReqList = Cast<UWorldRequirementList>(LoadedObj);
+	if (!WorldReqList)
+	{
+		UE_LOG(VisionSubsystem, Warning,
+			TEXT("UVisionSubsystem::LoadAndInitializeTiles >> Loaded object is not a UWorldRequirementList"));
+		return;
+	}
+
+	if (!GetWorld())
+	{
+		UE_LOG(VisionSubsystem, Warning,
+			TEXT("UVisionSubsystem::LoadAndInitializeTiles >> GetWorld() returned null"));
+		return;
+	}
+	
+	FString MapPackageLongName = GetWorld()->GetMapName();
+	MapPackageLongName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);//get remove prefix
+
+	if (TObjectPtr<ULevelObstacleData>* TileDataPtr = WorldReqList->WorldRequirements.Find(MapPackageLongName))
+	{
+		if (*TileDataPtr)
+		{
+			UE_LOG(VisionSubsystem, Log,
+				TEXT("UVisionSubsystem::LoadAndInitializeTiles >> Initializing tiles for world: %s"),
+				*MapPackageLongName);
+
+			InitializeTilesFromDataAsset(*TileDataPtr);
+		}
+		else
+		{
+			UE_LOG(VisionSubsystem, Warning,
+				TEXT("UVisionSubsystem::LoadAndInitializeTiles >> TileData is null for world: %s"),
+				*MapPackageLongName);
+		}
+	}
+	else
+	{
+		UE_LOG(VisionSubsystem, Warning,
+			TEXT("UVisionSubsystem::LoadAndInitializeTiles >> No tile data found for world: %s"),
+			*MapPackageLongName);
+	}
 }

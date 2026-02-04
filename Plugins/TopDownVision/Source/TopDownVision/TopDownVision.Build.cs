@@ -49,7 +49,13 @@ public class TopDownVision : ModuleRules
 				// Custom depth method
 				// for shader module
 				"RenderCore",
-				"RHI",//render hardware interface( in thiscase, 
+				"RHI",//render hardware interface
+				
+				// for editor function to bake World Obstacle maps
+				"UnrealEd", 
+				"EditorScriptingUtilities", 
+				"AssetTools",
+				"KismetCompiler",
 			});
 		
 		

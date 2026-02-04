@@ -17,11 +17,14 @@ public:
 	UMouseTargetSkill();
 
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
+	AActor* GetTargetUnderCursorInRange();
 protected:
 	virtual void ExecuteSkill() override;
 	virtual void FinishSkill() override;
 	void SetWaitTargetTask();
-	bool CastInstantly();
+	AActor* GetTargetUnderCursor();
+	bool IsInRange(AActor* Actor);
+	void RotateToTarget(AActor* Actor);
 
 	UFUNCTION()
 	void OnTargetDataReady(const FGameplayAbilityTargetDataHandle& DataHandle);
