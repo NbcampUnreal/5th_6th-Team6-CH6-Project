@@ -5,6 +5,8 @@
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Player/BasePlayerState.h"
 
+#include "GameModeBase/GameMode/ER_InGameMode.h"
+
 #include "GameplayEffect.h"
 #include "GameplayEffectExtension.h"
 #include "Net/UnrealNetwork.h"
@@ -101,6 +103,9 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 				if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(Data.Target.GetAvatarActor()))
 				{
 					TargetChar->HandleDeath(); 
+					// [전민성] - 사망 시 gamemode에 알림 추가
+					auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
+					InGameMode->NotifyPlayerDied(TargetChar);
 				}
 			}
 			else
