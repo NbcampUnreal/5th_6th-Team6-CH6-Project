@@ -2,7 +2,10 @@
 
 
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
+#include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Player/BasePlayerState.h"
+
+#include "GameModeBase/GameMode/ER_InGameMode.h"
 
 #include "GameplayEffect.h"
 #include "GameplayEffectExtension.h"
@@ -79,34 +82,35 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 	// Health 속성이 변경되었는지 확인
 	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
-		// %f는 실수(float)를 출력합니다.
 		UE_LOG(LogTemp, Warning, TEXT("!!! HP 변경 감지됨 !!! 현재 HP: %f / %f"), GetHealth(), GetMaxHealth());
 	}
 	// 데미지 처리
 	if (Data.EvaluatedData.Attribute == GetIncomingDamageAttribute())
 	{
 		const float LocalDamage = GetIncomingDamage();
-		SetIncomingDamage(0.0f); // 데미지 소비
+		SetIncomingDamage(0.0f); // Meta Data 초기화 
 
 		if (LocalDamage > 0.0f)
 		{
 			const float OldHealth = GetHealth();
 			const float NewHealth = OldHealth - LocalDamage;
-            
-			// 체력 적용 
+			
 			SetHealth(FMath::Clamp(NewHealth, 0.0f, GetMaxHealth()));
 			
-			// 피격 처리
+			
 			if (OldHealth > 0.0f && NewHealth <= 0.0f)
 			{
-				// TargetCharacter->HandleFatalDamage(); // 사망 처리
-#if WITH_EDITOR
-				
-#endif
+				if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(Data.Target.GetAvatarActor()))
+				{
+					TargetChar->HandleDeath(); 
+					// [전민성] - 사망 시 gamemode에 알림 추가
+					auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
+					InGameMode->NotifyPlayerDied(TargetChar);
+				}
 			}
 			else
 			{
-				// TargetCharacter->HandleTakeDamage(); // 피격 애니메이션 재생 등
+				// [필요 시, 피격 처리 추가 예정]
 			}
 		}
 	}

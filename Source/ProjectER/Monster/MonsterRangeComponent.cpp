@@ -1,11 +1,10 @@
 ﻿#include "Monster/MonsterRangeComponent.h"
 
+#include "Net/UnrealNetwork.h"
 #include "Components/SphereComponent.h"
 #include "Components/StateTreeComponent.h"
-#include "Monster/BaseMonster.h"
-
 #include "CharacterSystem/Character/BaseCharacter.h"
-#include "AbilitySystemComponent.h"
+
 
 UMonsterRangeComponent::UMonsterRangeComponent()
 {
@@ -13,10 +12,22 @@ UMonsterRangeComponent::UMonsterRangeComponent()
 
 }
 
+void UMonsterRangeComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UMonsterRangeComponent, PlayerCount);
+}
+
 void UMonsterRangeComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (!GetOwner()->HasAuthority())
+	{
+		return;
+	}
+	// 서버에서만 생성하여 체크
 	RangeSphere = NewObject<USphereComponent>(this);
     RangeSphere->InitSphereRadius(SphereRadius);
     RangeSphere->SetCollisionProfileName(TEXT("PlayerCounter"));
@@ -28,7 +39,6 @@ void UMonsterRangeComponent::BeginPlay()
         this, &UMonsterRangeComponent::OnPlayerCountingBeginOverlap);
     RangeSphere->OnComponentEndOverlap.AddDynamic(
         this, &UMonsterRangeComponent::OnPlayerCountingEndOverlap);
-
 }
 
 void UMonsterRangeComponent::SetPlayerCount(int32 Amount)
@@ -44,6 +54,7 @@ void UMonsterRangeComponent::OnPlayerCountingBeginOverlap(UPrimitiveComponent* O
 {
 	if (OtherActor && OtherActor->IsA<ABaseCharacter>())
 	{
+
 		PlayerCount = FMath::Max(0, PlayerCount + 1);
 		UE_LOG(LogTemp, Warning, TEXT("PlayerCount: %d"), PlayerCount);
 

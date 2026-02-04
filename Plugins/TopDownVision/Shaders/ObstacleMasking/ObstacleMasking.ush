@@ -1,0 +1,31 @@
+﻿#pragma once
+
+// path:   /Plugin/TopDownVision/ObstacleMasking/ObstacleMasking.ush 
+
+// Compare two world-height values (scene vs obstacle)
+float LOS_CompareHeight(float SceneHeight, float ObstacleHeight)
+{
+	// Obstacle is visible only if taller than scene -> occlusion area considered invisible
+	return ObstacleHeight > SceneHeight ? 0.0f : 1.0f;
+}
+
+// Sample the depth texture (already in world units)
+float LOS_SampleDepth(Texture2D DepthTex, SamplerState DepthSampler, float2 UV)
+{
+	return DepthTex.Sample(DepthSampler, UV).r;
+}
+
+// Build obstacle mask
+float LOS_BuildObstacleMask(
+	Texture2D SceneDepthTex,
+	SamplerState SceneSampler,   
+	Texture2D ObstacleDepthTex,
+	SamplerState ObstacleSampler,
+	float2 UV
+)
+{
+	float SceneH = LOS_SampleDepth(SceneDepthTex, SceneSampler, UV);
+	float ObstacleH = LOS_SampleDepth(ObstacleDepthTex, ObstacleSampler, UV);
+
+	return LOS_CompareHeight(SceneH, ObstacleH);
+}

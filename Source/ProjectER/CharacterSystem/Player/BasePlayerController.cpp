@@ -4,6 +4,8 @@
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
 
+#include "Kismet/GameplayStatics.h"
+
 #include "GameFramework/Character.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -68,7 +70,11 @@ void ABasePlayerController::SetupInputComponent()
 	{
 		UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(InputComponent);
 		if (!EnhancedInputComponent || !InputConfig) return;
-
+		
+		// [테스트용] 숫자키 1, 2번에 팀 변경 기능 강제 연결 (디버깅용)
+		InputComponent->BindKey(EKeys::One, IE_Pressed, this, &ABasePlayerController::Test_ChangeTeamToA);
+		InputComponent->BindKey(EKeys::Two, IE_Pressed, this, &ABasePlayerController::Test_ChangeTeamToB);
+		
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Started, this, &ABasePlayerController::OnMoveStarted);
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnMoveTriggered);
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Completed, this, &ABasePlayerController::OnMoveReleased);
@@ -292,6 +298,24 @@ void ABasePlayerController::OnCanceled() {
 	}
 }
 
+void ABasePlayerController::Test_ChangeTeamToA()
+{
+	if (ControlledBaseChar)
+	{
+		ControlledBaseChar->Server_SetTeamID(ETeamType::Team_A);
+		UE_LOG(LogTemp, Log, TEXT("Request Change Team to A"));
+	}
+}
+
+void ABasePlayerController::Test_ChangeTeamToB()
+{
+	if (ControlledBaseChar)
+	{
+		ControlledBaseChar->Server_SetTeamID(ETeamType::Team_B);
+		UE_LOG(LogTemp, Log, TEXT("Request Change Team to B"));
+	}
+}
+
 void ABasePlayerController::OnStopTriggered()
 {
 	bIsMousePressed = false;
@@ -385,6 +409,27 @@ void ABasePlayerController::Client_StartRespawnTimer_Implementation()
 void ABasePlayerController::Client_StopRespawnTimer_Implementation()
 {
 	HideRespawnTimerUI();
+}
+void ABasePlayerController::Client_OutGameInputMode_Implementation()
+{
+	FInputModeUIOnly InputMode;
+    SetInputMode(InputMode);
+    bShowMouseCursor = true;
+}
+
+void ABasePlayerController::Client_InGameInputMode_Implementation()
+{
+	FInputModeGameAndUI InputMode;
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	InputMode.SetHideCursorDuringCapture(false);
+	SetInputMode(InputMode);
+	bShowMouseCursor = true;
+}
+
+void ABasePlayerController::Client_ReturnToMainMenu_Implementation(const FString& Reason)
+{
+	UE_LOG(LogTemp, Warning, TEXT("ReturnToMainMenu: %s"), *Reason);
+	UGameplayStatics::OpenLevel(this, FName(TEXT("/Game/Level/Level_MainMenu")));
 }
 
 void ABasePlayerController::Server_StartGame_Implementation()

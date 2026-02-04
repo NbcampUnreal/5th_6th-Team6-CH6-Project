@@ -11,6 +11,7 @@
 
 #include "Monster/BaseMonster.h"
 
+#include "CharacterSystem/Player/BasePlayerController.h"
 
 void AER_InGameMode::BeginPlay()
 {
@@ -21,14 +22,7 @@ void AER_InGameMode::BeginPlay()
 		return;
 	}
 
-	// 로컬에서만 실행
-	APlayerController* PC = GetWorld()->GetFirstPlayerController();
-	if (IsValid(PC))
-	{
-		FInputModeUIOnly InputMode;
-		PC->SetInputMode(InputMode);
-		PC->bShowMouseCursor = true;
-	}
+
 }
 
 void AER_InGameMode::PostSeamlessTravel()
@@ -57,12 +51,50 @@ void AER_InGameMode::InitGame(const FString& MapName, const FString& Options, FS
 	}
 }
 
+void AER_InGameMode::Logout(AController* Exiting)
+{
+	Super::Logout(Exiting);
+
+	// 남아있는 플레이어 컨트롤러 수 계산
+	int32 RemainingPlayers = 0;
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* PC = It->Get();
+		if (IsValid(PC) && PC->PlayerState)
+		{
+			++RemainingPlayers;
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[GM] Logout. RemainingPlayers=%d"), RemainingPlayers);
+
+	if (RemainingPlayers <= 1)
+	{
+		GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this]()
+			{
+				if (AER_GameState* ERGS = GetGameState<AER_GameState>())
+				{
+					ERGS->RemoveTeamCache();
+				}
+
+				UE_LOG(LogTemp, Warning, TEXT("[GM] Player is Zero -> ServerTravel to Lobby"));
+
+				GetWorld()->ServerTravel(TEXT("/Game/Level/Level_Lobby"), true);
+			}));
+	}
+}
+
 void AER_InGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
 {
 	Super::HandleStartingNewPlayer_Implementation(NewPlayer);
 
 	if (!NewPlayer)
 		return;
+
+	if (ABasePlayerController* PC = Cast<ABasePlayerController>(NewPlayer))
+	{
+		PC->Client_InGameInputMode();
+	}
 
 	PlayersInitialized++;
 
@@ -92,7 +124,7 @@ void AER_InGameMode::EndGame()
 }
 
 
-void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter, AActor* DeathCauser)
+void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter)
 {
 	if (!HasAuthority() || !VictimCharacter)
 		return;
@@ -155,10 +187,21 @@ void AER_InGameMode::NotifyNeutralDied(ACharacter* VictimCharacter)
 
 void AER_InGameMode::DisConnectClient(APlayerController* PC)
 {
-	if (GameSession)
+	if (!PC) return;
+
+	if (ABasePlayerController* ERPC = Cast<ABasePlayerController>(PC))
 	{
-		GameSession->KickPlayer(PC, FText::FromString(TEXT("Defeated")));
+		ERPC->Client_ReturnToMainMenu(TEXT("GameOver"));
 	}
+
+	FTimerHandle Tmp;
+	GetWorld()->GetTimerManager().SetTimer(Tmp, [this, PC]()
+		{
+			if (GameSession)
+			{
+				GameSession->KickPlayer(PC, FText::FromString(TEXT("Defeated")));
+			}
+		}, 0.2f, false);
 }
 
 void AER_InGameMode::TEMP_SpawnNeutrals()

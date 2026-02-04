@@ -15,6 +15,7 @@ class PROJECTER_API AER_OutGameMode : public AGameModeBase
 public:
 	// mpyi _ 마우스 안보여서 마우스 보이게 하기 위하여 추가
 	virtual void BeginPlay() override;
+	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 	void StartGame();
 	
 	void EndGame();

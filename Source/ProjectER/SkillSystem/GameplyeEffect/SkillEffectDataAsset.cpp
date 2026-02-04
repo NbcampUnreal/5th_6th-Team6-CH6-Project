@@ -5,6 +5,7 @@
 #include "AbilitySystemComponent.h"
 #include "SkillSystem/GameAbility/SkillBase.h"
 #include "GameplayEffect.h"
+#include "GameplayEffectComponent.h"
 
 
 TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySystemComponent* InstigatorASC, USkillBase* InstigatorSkill, AActor* InEffectCauser)
@@ -33,6 +34,7 @@ TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySyste
 			// Spec 생성
 			FGameplayEffectSpecHandle SpecHandle = InstigatorASC->MakeOutgoingSpec(SkillEffectDefinition.SkillEffectClass, Level, ContextHandle);
 			FGameplayEffectSpec* Spec = SpecHandle.Data.Get();
+
 			if (Spec)
 			{
 				//FGameplayModifierInfo NewModInfo;

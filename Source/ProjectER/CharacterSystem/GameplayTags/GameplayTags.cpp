@@ -12,6 +12,8 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Chase, "Ability.Action.Chase", "Chase Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "Ability.Action.Return", "Return Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Sit, "Ability.Action.Sit", "Sit Ability");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Idle, "Ability.Action.Idle", "Idle Ability");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Combat, "Ability.Action.Combat", "Combat Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction, "Ability.Action.Interaction", "Interaction Ability");
 		}
 
@@ -89,10 +91,12 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Hit, "Event.Action.Hit", "Event for Hit");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "Event.Action.Attack", "Event for Attack");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(BeginSearch, "Event.Action.BeginSearch", "Monster BeginSearch");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(EndSearch, "Event.Action.EndSearch", "Monster EndSearch");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(TargetOn, "Event.Action.TargetOn", "Event for TargetOn");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(TargetOff, "Event.Action.TargetOff", "Event for TargetOff");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction, "Event.Action.Interaction", "Event for Interaction");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "Event.Action.Death", "Event for Death");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "Event.Action.Return", "Event for Return");
 		}
 
 		namespace Montage
@@ -115,7 +119,23 @@ namespace ProjectER
 
 	namespace GameplayCue
 	{
+		namespace State
+		{
+			namespace Life
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "GameplayCue.State.Life.Death", "");
+			}
 
+			namespace Action
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Sit, "GameplayCue.State.Action.Sit", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Idle, "GameplayCue.State.Action.Idle", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Combat, "GameplayCue.State.Action.Combat", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Chase, "GameplayCue.State.Action.Chase", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "GameplayCue.State.Action.Attack", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "GameplayCue.State.Action.Return", "");
+			}
+		}
 	}
 	
 	namespace State
@@ -126,6 +146,10 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Casting, "State.Action.Casting", "Casting State");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Combat, "State.Action.Combat", "Combat State");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Sit, "State.Action.Sit", "Sit State");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Idle, "State.Action.Idle", "Idle State");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Move, "State.Action.Move", "Move State");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "State.Action.Attack", "Attack State");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "State.Action.Return", "Return State");
 		}
 
 		namespace Buff

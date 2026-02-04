@@ -3,6 +3,7 @@
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
+#include "CharacterSystem/Player/BasePlayerController.h"
 
 
 void AER_OutGameMode::BeginPlay()
@@ -17,13 +18,24 @@ void AER_OutGameMode::BeginPlay()
     }
 
     // 로컬에서만 실행
-    APlayerController* PC = GetWorld()->GetFirstPlayerController();
-    if (IsValid(PC))
+    //APlayerController* PC = GetWorld()->GetFirstPlayerController();
+    //if (IsValid(PC))
+    //{
+    //    FInputModeUIOnly InputMode;
+    //    PC->SetInputMode(InputMode);
+    //    PC->bShowMouseCursor = true;
+    //}
+}
+
+void AER_OutGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
+{
+    Super::HandleStartingNewPlayer_Implementation(NewPlayer);
+
+    if (ABasePlayerController* PC = Cast<ABasePlayerController>(NewPlayer))
     {
-        FInputModeUIOnly InputMode;
-        PC->SetInputMode(InputMode);
-        PC->bShowMouseCursor = true;
+        PC->Client_OutGameInputMode();
     }
+
 }
 
 FString AER_OutGameMode::InitNewPlayer(APlayerController* NewPlayerController,

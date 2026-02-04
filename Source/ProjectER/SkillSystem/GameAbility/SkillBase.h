@@ -4,13 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
-//#include "SkillSystem/SkillData.h"
 #include "SkillBase.generated.h"
 
 /**
  * 
  */
 class USkillDataAsset;
+class USkillEffectDataAsset;
 class UBaseSkillConfig;
 
 UCLASS()
@@ -28,30 +28,22 @@ protected:
 	virtual void ExecuteSkill();
 	virtual void FinishSkill();
 	virtual void OnCancelAbility();
-	//void Instant();
-	/*void Targeted();
-	void OnTargetConfirmed(float ElapsedTime);*/
-	/*virtual void PointClick();
-	virtual void ClickAndDrag();
-	virtual void Holding();*/
 	void AddTagToOwner(FGameplayTag Tag);
 	void RemoveTagFromOwner(FGameplayTag Tag);
-
-	UFUNCTION()
-	void OnActiveTagAdded();
-
 	void PlayAnimMontage();
 	void SetWaitActiveTagTask();
 	void PrepareToActiveSkill();
+	void ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets);
+	void ApplyEffectsToActor(AActor* Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets);
 	FGameplayTag GetInputTag();
+
+	UFUNCTION()
+	void OnActiveTagAdded();
 //private:
 
 public:
 
 protected:
-	/*UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"), Category = "Skill|Data")
-	FSkillDefaultData SkillData;*/
-
 	UPROPERTY(BlueprintReadOnly)
 	TObjectPtr<UBaseSkillConfig> CachedConfig;
 

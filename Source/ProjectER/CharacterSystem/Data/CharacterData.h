@@ -25,6 +25,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Visual")
 	TSoftClassPtr<UAnimInstance> AnimClass;
 	
+	// 사망 몽타주 
+	UPROPERTY(EditDefaultsOnly, Category = "Visual")
+	TSoftObjectPtr<UAnimMontage> DeathMontage;
+	
 	// 기본 스킬 (일반 공격 : Auto Attack)
 	UPROPERTY(EditDefaultsOnly, Category = "AutoAttack")
 	TMap<FGameplayTag, TSoftClassPtr<UGameplayAbility>> Abilities;

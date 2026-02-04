@@ -113,7 +113,7 @@ public:
 	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, MoveSpeed);
 
 	UPROPERTY(EditDefaultsOnly);
-	float MoveSpeedAmount = 200.f;
+	float MoveSpeedAmount = 300.f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Attribute", meta = (AllowPrivateAccess = "true"))
 	FGameplayAttributeData InComingDamage;
