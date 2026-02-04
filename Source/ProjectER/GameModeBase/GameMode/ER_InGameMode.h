@@ -36,7 +36,7 @@ public:
 	void EndGame();
 
 	UFUNCTION(BlueprintCallable)
-	void NotifyPlayerDied(ACharacter* VictimCharacter, AActor* DeathCauser);
+	void NotifyPlayerDied(ACharacter* VictimCharacter); //AActor* DeathCauser
 
 	UFUNCTION(BlueprintCallable)
 	void NotifyNeutralDied(ACharacter* VictimCharacter);

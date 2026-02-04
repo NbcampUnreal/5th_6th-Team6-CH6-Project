@@ -124,7 +124,7 @@ void AER_InGameMode::EndGame()
 }
 
 
-void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter, AActor* DeathCauser)
+void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter)
 {
 	if (!HasAuthority() || !VictimCharacter)
 		return;
