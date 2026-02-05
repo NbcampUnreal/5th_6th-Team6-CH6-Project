@@ -1,4 +1,4 @@
-
+﻿
 #pragma once
 
 #include "CoreMinimal.h"
@@ -152,43 +152,43 @@ class PROJECTER_API UBaseAttributeSet : public UAttributeSet
 protected:
 	// OnRep Functions
 	UFUNCTION() 
-	void OnRep_Level(const FGameplayAttributeData& OldLevel);
+	virtual void OnRep_Level(const FGameplayAttributeData& OldLevel);
 	UFUNCTION() 
-	void OnRep_MaxLevel(const FGameplayAttributeData& OldMaxLevel);
+	virtual void OnRep_MaxLevel(const FGameplayAttributeData& OldMaxLevel);
 	UFUNCTION() 
-	void OnRep_XP(const FGameplayAttributeData& OldXP);
+	virtual void OnRep_XP(const FGameplayAttributeData& OldXP);
 	UFUNCTION() 
-	void OnRep_MaxXP(const FGameplayAttributeData& OldMaxXP);
+	virtual void OnRep_MaxXP(const FGameplayAttributeData& OldMaxXP);
 	UFUNCTION() 
-	void OnRep_Health(const FGameplayAttributeData& OldHealth);
+	virtual void OnRep_Health(const FGameplayAttributeData& OldHealth);
 	UFUNCTION() 
-	void OnRep_MaxHealth(const FGameplayAttributeData& OldMaxHealth);
+	virtual void OnRep_MaxHealth(const FGameplayAttributeData& OldMaxHealth);
 	UFUNCTION() 
-	void OnRep_HealthRegen(const FGameplayAttributeData& OldHealthRegen);
+	virtual void OnRep_HealthRegen(const FGameplayAttributeData& OldHealthRegen);
 	UFUNCTION() 
-	void OnRep_Stamina(const FGameplayAttributeData& OldStamina);
+	virtual void OnRep_Stamina(const FGameplayAttributeData& OldStamina);
 	UFUNCTION() 
-	void OnRep_MaxStamina(const FGameplayAttributeData& OldMaxStamina);
+	virtual void OnRep_MaxStamina(const FGameplayAttributeData& OldMaxStamina);
 	UFUNCTION() 
-	void OnRep_StaminaRegen(const FGameplayAttributeData& OldStaminaRegen);
+	virtual void OnRep_StaminaRegen(const FGameplayAttributeData& OldStaminaRegen);
 	UFUNCTION() 
-	void OnRep_AttackPower(const FGameplayAttributeData& OldAttackPower);
+	virtual void OnRep_AttackPower(const FGameplayAttributeData& OldAttackPower);
 	UFUNCTION() 
-	void OnRep_AttackSpeed(const FGameplayAttributeData& OldAttackSpeed);
+	virtual void OnRep_AttackSpeed(const FGameplayAttributeData& OldAttackSpeed);
 	UFUNCTION() 
-	void OnRep_AttackRange(const FGameplayAttributeData& OldAttackSpeed);
+	virtual void OnRep_AttackRange(const FGameplayAttributeData& OldAttackSpeed);
 	UFUNCTION() 
-	void OnRep_SkillAmp(const FGameplayAttributeData& OldSkillAmp);
+	virtual void OnRep_SkillAmp(const FGameplayAttributeData& OldSkillAmp);
 	UFUNCTION() 
-	void OnRep_CriticalChance(const FGameplayAttributeData& OldCriticalChance);
+	virtual void OnRep_CriticalChance(const FGameplayAttributeData& OldCriticalChance);
 	UFUNCTION() 
-	void OnRep_CriticalDamage(const FGameplayAttributeData& OldCriticalDamage);
+	virtual void OnRep_CriticalDamage(const FGameplayAttributeData& OldCriticalDamage);
 	UFUNCTION() 
-	void OnRep_Defense(const FGameplayAttributeData& OldDefense);
+	virtual void OnRep_Defense(const FGameplayAttributeData& OldDefense);
 	UFUNCTION() 
-	void OnRep_MoveSpeed(const FGameplayAttributeData& OldMoveSpeed);
+	virtual void OnRep_MoveSpeed(const FGameplayAttributeData& OldMoveSpeed);
 	UFUNCTION() 
-	void OnRep_CooldownReduction(const FGameplayAttributeData& OldCooldownReduction);
+	virtual void OnRep_CooldownReduction(const FGameplayAttributeData& OldCooldownReduction);
 	UFUNCTION() 
-	void OnRep_Tenacity(const FGameplayAttributeData& OldTenacity);
+	virtual void OnRep_Tenacity(const FGameplayAttributeData& OldTenacity);
 };

@@ -4,6 +4,7 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include "GameplayTagContainer.h"
+#include "CharacterSystem/Interface/TargetableInterface.h"
 #include "BaseMonster.generated.h"
 
 class UGameplayAbility;
@@ -17,7 +18,7 @@ class ABaseCharacter;
 struct FOnAttributeChangeData;
 
 UCLASS()
-class PROJECTER_API ABaseMonster : public ACharacter, public IAbilitySystemInterface
+class PROJECTER_API ABaseMonster : public ACharacter, public IAbilitySystemInterface, public ITargetableInterface
 {
 	GENERATED_BODY()
 
@@ -57,7 +58,13 @@ private:
 #pragma region UI
 
 	UFUNCTION()
-	void OnHealthChangedHandle(float OldValue, float NewValue);
+	void OnRep_IsCombat();
+
+	UFUNCTION()
+	void OnRep_IsDead();
+
+	UFUNCTION()
+	void OnHealthChangedHandle(float CurrentHP, float MaxHP);
 
 #pragma endregion
 
@@ -197,13 +204,16 @@ private:
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	FVector StartLocation;
 
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	FRotator StartRotator;
+
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<AActor> TargetPlayer;
 
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_IsCombat, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	bool bIsCombat;
 
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_IsDead, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	bool bIsDead;
 
 #pragma endregion
@@ -213,11 +223,33 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI", meta = (AllowprivateAccess = "true"))
 	TObjectPtr<UWidgetComponent> HPBarWidgetComp;
 
-	/*UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI", meta = (AllowprivateAccess = "true"))
-	TSubclassOf<UUserWidget> HPBarWidget;*/
-
 #pragma endregion
 
+#pragma region TargetableInterface
+public:
+	// 팀 정보 반환
+	virtual ETeamType GetTeamType() const override;
+
+	// 타겟팅 가능 여부 반환
+	virtual bool IsTargetable() const override;
+    
+	// [인터페이스 구현] 하이라이트 (나중에 포스트 프로세스로 구현)
+	// virtual void HighlightActor(bool bIsHighlight) override;
+	
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_SetTeamID(ETeamType NewTeamID);
+	
+protected:
+	UFUNCTION()
+	void OnRep_TeamID();
+	
+protected:
+	// 팀 변수
+	UPROPERTY(ReplicatedUsing = OnRep_TeamID, EditAnywhere, BlueprintReadWrite, Category = "Team")
+	ETeamType TeamID;
+	
+#pragma endregion
+	
 	/// [전민성 추가분]
 
 private:
