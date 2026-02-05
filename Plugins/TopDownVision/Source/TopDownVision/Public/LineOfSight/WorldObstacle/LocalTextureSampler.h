@@ -72,9 +72,6 @@ private:
 	void UpdateOverlappingTiles();
 	void DrawTilesIntoLocalRT();
 
-private:
-	void DebugDrawRT();// this will copy the rt of LocalMaskRT and draw the same thing to the debug rt
-	
 protected:
 	UPROPERTY(EditAnywhere, Category="LocalSampler|Debug")
 	bool bDrawDebugRT = false;
@@ -86,9 +83,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
 	TObjectPtr<UTextureRenderTarget2D> LocalMaskRT;
 
-	UPROPERTY(Transient)
-	TObjectPtr<UTextureRenderTarget2D> ScratchRT;// this will be used for storing prev rt. ping-pong bitches
-
+	/** Material used to project and merge tiles */
 	UPROPERTY(EditDefaultsOnly, Category="LocalSampler|Render")
 	TObjectPtr<UMaterialInterface> ProjectionMaterial;
 	
@@ -98,9 +93,7 @@ protected:
 
 	//MID Param names
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
-	FName MIDParam_TileTexture = TEXT("MergingTile");
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
-	FName MIDParam_PrevTexture = TEXT("PrevTexture");// to prevent flickering, the prev rt is now stored in temp texture
+	FName MIDParam_TileTexture_Merging = TEXT("MergingTile");
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
 	FName MIDParam_TileCenter = TEXT("TileCenter");
@@ -110,13 +103,10 @@ protected:
     
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
 	FName MIDParam_TileRotation = TEXT("TileRotation");
-
-	
-	// no longer needed. can merge rt without material
 	
 	// Sampling Settings
 
-	/* World-space radius of the local sampling area */
+	/** World-space radius of the local sampling area */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Settings")
 	float WorldSampleRadius = 512.f;
 	
@@ -128,19 +118,16 @@ protected:
 	/** Last world-space center used for sampling */
 	UPROPERTY(Transient)
 	FVector LastSampleCenter = FVector::ZeroVector;
+	
 	/** Cached local world bounds */
 	UPROPERTY(Transient)
 	FBox2D LocalWorldBounds;
+	
 	/** Indices for overlapping Textures on local RT */
 	UPROPERTY(Transient)
 	TArray<int32> ActiveTileIndices;
 
-private:
-
-
 	//Subsystem
-
 	UPROPERTY(Transient)
-	TObjectPtr<UVisionSubsystem> ObstacleSubsystem;
-
+	TObjectPtr<UVisionSubsystem> VisionSubsystem;
 };

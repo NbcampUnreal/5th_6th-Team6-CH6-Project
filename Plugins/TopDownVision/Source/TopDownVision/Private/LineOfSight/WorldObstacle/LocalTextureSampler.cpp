@@ -1,24 +1,20 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "LineOfSight/WorldObstacle/LocalTextureSampler.h"
 
+#include "CanvasItem.h"
+#include "CanvasTypes.h"
 #include "Engine/TextureRenderTarget2D.h"
-#include "Engine/Canvas.h"
 #include "Kismet/KismetRenderingLibrary.h"
-
 #include "Engine/World.h"
 #include "LineOfSight/VisionSubsystem.h"
-#include "TopDownVisionLogCategories.h"//log
-
+#include "TopDownVisionLogCategories.h"
 
 ULocalTextureSampler::ULocalTextureSampler()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
-
-// Called when the game starts
 void ULocalTextureSampler::BeginPlay()
 {
 	Super::BeginPlay();
@@ -26,22 +22,21 @@ void ULocalTextureSampler::BeginPlay()
 	if (!ShouldRunClientLogic())
 	{
 		UE_LOG(LOSVision, Verbose,
-			TEXT("ULocalTextureSampler::UpdateLocalTexture >> Cannot Run Client logic in here"));
-		return;// not for server. only client
+			TEXT("ULocalTextureSampler::BeginPlay >> Cannot run client logic (dedicated server)"));
+		return;
 	}
 
-	// nothing here yet
+	// Setup will happen when SetLocalRenderTarget is called
 }
 
 void ULocalTextureSampler::UpdateLocalTexture()
 {
 	if (!ShouldRunClientLogic())
 	{
-		return;// not for server. only client
+		return;
 	}
-	// for client/ standalone
 	
-	if (!LocalMaskRT || !ObstacleSubsystem)
+	if (!LocalMaskRT || !VisionSubsystem)
 	{
 		UE_LOG(LOSVision, Verbose,
 			TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing RT or Subsystem"));
@@ -54,7 +49,6 @@ void ULocalTextureSampler::UpdateLocalTexture()
 	UE_LOG(LOSVision, Verbose,
 		TEXT("ULocalTextureSampler::UpdateLocalTexture >> WorldCenter: %s"),
 		*WorldCenter.ToString());
-
 	
 	RebuildLocalBounds(WorldCenter);
 	UpdateOverlappingTiles();
@@ -77,7 +71,7 @@ void ULocalTextureSampler::SetWorldSampleRadius(float NewRadius)
 void ULocalTextureSampler::SetLocalRenderTarget(UTextureRenderTarget2D* InRT)
 {
 	UE_LOG(LOSVision, Log,
-			TEXT("ULocalTextureSampler::SetLocalRenderTarget >> SetLocalRenderTarget Called"));
+		TEXT("ULocalTextureSampler::SetLocalRenderTarget >> Called"));
 	
 	if (LocalMaskRT == InRT)
 	{
@@ -86,7 +80,7 @@ void ULocalTextureSampler::SetLocalRenderTarget(UTextureRenderTarget2D* InRT)
 		return;
 	}
 
-	LocalMaskRT = InRT;//set
+	LocalMaskRT = InRT;
 
 	if (!InRT)
 	{
@@ -98,22 +92,22 @@ void ULocalTextureSampler::SetLocalRenderTarget(UTextureRenderTarget2D* InRT)
 	if (!PrepareSetups())
 	{
 		UE_LOG(LOSVision, Error,
-			TEXT("SetLocalRenderTarget >> PrepareSetups failed"));
+			TEXT("ULocalTextureSampler::SetLocalRenderTarget >> PrepareSetups failed"));
 		return;
 	}
 
-	//for
+	// Initial update
 	UpdateLocalTexture();
 }
 
 bool ULocalTextureSampler::PrepareSetups()
 {
 	UE_LOG(LOSVision, Log,
-			TEXT("ULocalTextureSampler::PrepareSetups >> PrepareSetups Called"));
+		TEXT("ULocalTextureSampler::PrepareSetups >> Called"));
 	
 	// Grab the VisionSubsystem
-	ObstacleSubsystem = GetWorld() ? GetWorld()->GetSubsystem<UVisionSubsystem>() : nullptr;
-	if (!ObstacleSubsystem)
+	VisionSubsystem = GetWorld() ? GetWorld()->GetSubsystem<UVisionSubsystem>() : nullptr;
+	if (!VisionSubsystem)
 	{
 		UE_LOG(LOSVision, Warning,
 			TEXT("ULocalTextureSampler::PrepareSetups >> Failed to get VisionSubsystem"));
@@ -127,34 +121,32 @@ bool ULocalTextureSampler::PrepareSetups()
 		return false;
 	}
 
-	//RT Setup
+	// Validate LocalMaskRT
 	if (!LocalMaskRT)
 	{
 		UE_LOG(LOSVision, Warning,
-			TEXT("PrepareSetups >> LocalMaskRT not assigned"));
+			TEXT("ULocalTextureSampler::PrepareSetups >> LocalMaskRT not assigned"));
 		return false;
 	}
 
-	if (!ScratchRT)
+	// Resize DebugRT to match LocalMaskRT if enabled
+	if (bDrawDebugRT && DebugRT)
 	{
-		ScratchRT = NewObject<UTextureRenderTarget2D>(this);
-		ScratchRT->RenderTargetFormat = LocalMaskRT->RenderTargetFormat;//copy the LocalMaskRT's format
-		ScratchRT->ClearColor = FLinearColor::Black;
-		ScratchRT->InitAutoFormat(LocalMaskRT->SizeX, LocalMaskRT->SizeY);
-		ScratchRT->UpdateResourceImmediate(true);
-
-		UE_LOG(LOSVision, Log,
-			TEXT("PrepareSetups >> ScratchRT created (%dx%d)"),
-			ScratchRT->SizeX, ScratchRT->SizeY);
+		if (DebugRT->SizeX != LocalMaskRT->SizeX || DebugRT->SizeY != LocalMaskRT->SizeY)
+		{
+			DebugRT->ResizeTarget(LocalMaskRT->SizeX, LocalMaskRT->SizeY);
+			UE_LOG(LOSVision, Log,
+				TEXT("ULocalTextureSampler::PrepareSetups >> Resized DebugRT to %dx%d"),
+				DebugRT->SizeX, DebugRT->SizeY);
+		}
 	}
 
 	return true;
-	
 }
 
 bool ULocalTextureSampler::CreateProjectionMID()
 {
-	// Already created → just return it
+	// Already created
 	if (ProjectionMID)
 	{
 		return true;
@@ -163,21 +155,28 @@ bool ULocalTextureSampler::CreateProjectionMID()
 	if (!ProjectionMaterial)
 	{
 		UE_LOG(LOSVision, Error,
-			TEXT("CreateProjectionMID >> ProjectionMaterial not assigned"));
+			TEXT("ULocalTextureSampler::CreateProjectionMID >> ProjectionMaterial not assigned"));
 		return false;
 	}
 
 	ProjectionMID = UMaterialInstanceDynamic::Create(ProjectionMaterial, this);
 
-	return ProjectionMID != nullptr;
+	if (ProjectionMID)
+	{
+		UE_LOG(LOSVision, Log,
+			TEXT("ULocalTextureSampler::CreateProjectionMID >> Successfully created MID"));
+		return true;
+	}
+
+	UE_LOG(LOSVision, Error,
+		TEXT("ULocalTextureSampler::CreateProjectionMID >> Failed to create MID"));
+	return false;
 }
 
 bool ULocalTextureSampler::ShouldRunClientLogic() const
 {
 	if (GetNetMode() == NM_DedicatedServer)
 		return false;
-	
-	// other conditions if it is not runnable as clients
 
 	return true;
 }
@@ -192,7 +191,6 @@ void ULocalTextureSampler::RebuildLocalBounds(const FVector& WorldCenter)
 		Center2D + FVector2D(R, R)
 	);
 	
-	
 	UE_LOG(LOSVision, VeryVerbose,
 		TEXT("ULocalTextureSampler::RebuildLocalBounds >> Min: %s, Max: %s"),
 		*LocalWorldBounds.Min.ToString(), *LocalWorldBounds.Max.ToString());
@@ -202,7 +200,7 @@ void ULocalTextureSampler::UpdateOverlappingTiles()
 {
 	ActiveTileIndices.Reset();
 
-	const TArray<FObstacleMaskTile>& Tiles = ObstacleSubsystem->GetTiles();
+	const TArray<FObstacleMaskTile>& Tiles = VisionSubsystem->GetTiles();
 	UE_LOG(LOSVision, Verbose,
 		TEXT("ULocalTextureSampler::UpdateOverlappingTiles >> %d tiles in subsystem"),
 		Tiles.Num());
@@ -223,7 +221,7 @@ void ULocalTextureSampler::UpdateOverlappingTiles()
 
 		if (bOverlap)
 		{
-			ActiveTileIndices.Add(i);// add to the active tile array if overlapped
+			ActiveTileIndices.Add(i);
 		}
 	}
 
@@ -234,45 +232,41 @@ void ULocalTextureSampler::UpdateOverlappingTiles()
 
 void ULocalTextureSampler::DrawTilesIntoLocalRT()
 {
+	// Validation
+	if (!LocalMaskRT)
 	{
-		bool bReady = true;
-
-		if (!LocalMaskRT)
-		{
-			UE_LOG(LOSVision, Error,
-				TEXT("DrawTilesIntoLocalRT >> LocalMaskRT is null"));
-			bReady = false;
-		}
-
-		if (!ScratchRT)
-		{
-			UE_LOG(LOSVision, Error,
-				TEXT("DrawTilesIntoLocalRT >> ScratchRT is null"));
-			bReady = false;
-		}
-
-		if (!ProjectionMID)
-		{
-			UE_LOG(LOSVision, Error,
-				TEXT("DrawTilesIntoLocalRT >> ProjectionMID is null"));
-			bReady = false;
-		}
-
-		if (!ObstacleSubsystem)
-		{
-			UE_LOG(LOSVision, Error,
-				TEXT("DrawTilesIntoLocalRT >> ObstacleSubsystem is null"));
-			bReady = false;
-		}
-
-		if (!bReady)
-		{
-			return;
-		}
+		UE_LOG(LOSVision, Error,
+			TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Missing render targets"));
+		return;
 	}
-	// Clear both RTs
-	UKismetRenderingLibrary::ClearRenderTarget2D(this, LocalMaskRT, FLinearColor::Black);
-	UKismetRenderingLibrary::ClearRenderTarget2D(this, ScratchRT, FLinearColor::Black);
+
+	/*if (!ProjectionMID)
+	{
+		UE_LOG(LOSVision, Error,
+			TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> ProjectionMID is null"));
+		return;
+	}*/
+
+	if (!VisionSubsystem)
+	{
+		UE_LOG(LOSVision, Error,
+			TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> VisionSubsystem is null"));
+		return;
+	}
+
+	// Clear accumulation buffer ONCE
+	UKismetRenderingLibrary::ClearRenderTarget2D(
+		this,
+		LocalMaskRT,
+		FLinearColor::Black);
+
+	if (bDrawDebugRT && DebugRT)//do the same for the debug RT
+	{
+		UKismetRenderingLibrary::ClearRenderTarget2D(
+			this,
+			DebugRT,
+			FLinearColor::Black);
+	}
 
 	if (ActiveTileIndices.IsEmpty())
 	{
@@ -280,6 +274,15 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
 			TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> No active tiles"));
 		return;
 	}
+
+	const TArray<FObstacleMaskTile>& Tiles = VisionSubsystem->GetTiles();
+	const FVector2D LocalSize = LocalWorldBounds.GetSize();
+	const float CameraYawOffset = 90.f;
+
+	UE_LOG(LOSVision, Verbose,
+		TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Drawing %d tiles with accumulation"),
+		ActiveTileIndices.Num());
+
 	// using canvas item to draw caused the assert in multi--> now replace it with material
 	// Initialize Canvas tools
 	FCanvas Canvas(
@@ -287,20 +290,17 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
 		nullptr,
 		GetWorld(),
 		GMaxRHIFeatureLevel);
-    
-	const FVector2D LocalSize = LocalWorldBounds.GetSize();
 	
 	// Scene capture camera rotation constant
 	// Camera is at Rotation(-90, 90, 0) which creates a 90-degree transformation
-	const float CameraYawOffset = 90.f;
-
+	
 	UE_LOG(LOSVision, Verbose,
 		TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Drawing %d tiles"),
 		ActiveTileIndices.Num());
 
 	for (int32 TileIndex : ActiveTileIndices)
 	{
-		const FObstacleMaskTile& Tile = ObstacleSubsystem->GetTiles()[TileIndex];
+		const FObstacleMaskTile& Tile = VisionSubsystem->GetTiles()[TileIndex];
 		if (!Tile.Mask)
 		{
 			UE_LOG(LOSVision, VeryVerbose,
@@ -368,100 +368,16 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
 
 	UE_LOG(LOSVision, Verbose,
 		TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Finished drawing tiles"));
-
-	/*const TArray<FObstacleMaskTile>& Tiles = ObstacleSubsystem->GetTiles();
-    const FVector2D LocalSize = LocalWorldBounds.GetSize();
-    const float CameraYawOffset = 90.f;
-
-	UTextureRenderTarget2D* SourceRT = LocalMaskRT;
-	UTextureRenderTarget2D* DestRT   = ScratchRT;
-
-    UE_LOG(LOSVision, Verbose,
-        TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Drawing %d tiles with material"),
-        ActiveTileIndices.Num());
-
-    for (int32 TileIndex : ActiveTileIndices)
-    {
-    	const FObstacleMaskTile& Tile = Tiles[TileIndex];
-    	if (!Tile.Mask)
-    	{
-    		continue;
-    	}
-
-    	//World → UV transform
-    	const FVector2D LocalRelative = Tile.WorldCenter - LocalWorldBounds.Min;
-
-    	FVector2D RotatedLocal;
-    	RotatedLocal.X = LocalRelative.Y;
-    	RotatedLocal.Y = LocalSize.X - LocalRelative.X;
-
-    	const FVector2D TileCenterUV(
-			RotatedLocal.X / LocalSize.Y,
-			RotatedLocal.Y / LocalSize.X);
-
-    	const FVector2D TileSizeUV(
-			Tile.WorldSize.Y / LocalSize.Y,
-			Tile.WorldSize.X / LocalSize.X);
-
-    	//Bind material parameters
-    	ProjectionMID->SetTextureParameterValue(
-    		MIDParam_PrevTexture,
-    		SourceRT);
-
-    	ProjectionMID->SetTextureParameterValue(
-    		MIDParam_TileTexture,
-    		Tile.Mask);
-
-    	ProjectionMID->SetVectorParameterValue(
-    		MIDParam_TileCenter,
-    		FLinearColor(TileCenterUV.X, TileCenterUV.Y, 0, 0));
-
-    	ProjectionMID->SetVectorParameterValue(
-    		MIDParam_TileSize,
-    		FLinearColor(TileSizeUV.X, TileSizeUV.Y, 0, 0));
-
-    	ProjectionMID->SetScalarParameterValue(
-    		MIDParam_TileRotation,
-    		Tile.WorldRotationYaw - CameraYawOffset);
-
-    	// Draw merge 
-    	UKismetRenderingLibrary::DrawMaterialToRenderTarget(
-			this,
-			DestRT,
-			ProjectionMID);
-
-    	//Swap roles 
-    	Swap(SourceRT, DestRT);
-    }
-
-	// Ensure final output always ends in LocalMaskRT
-	if (SourceRT != LocalMaskRT)
-	{
-		Swap(SourceRT, LocalMaskRT);
-	}
-	
-	//debug draw
-	DebugDrawRT();
-	
-    UE_LOG(LOSVision, Verbose,
-        TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Finished drawing tiles with material"));*/
-}
-
-void ULocalTextureSampler::DebugDrawRT()
-{
-	if (!bDrawDebugRT||!DebugRT)
-	{
-		UE_LOG(LOSVision, Log,
-	   TEXT("ULocalTextureSampler::DebugDrawRT >> Cannot Draw Debug RT"));
-		return;
-	}
-	//draw same to the RT
-	UKismetRenderingLibrary::DrawMaterialToRenderTarget(
-	this,
-	DebugRT,
-	ProjectionMID);
-
-	UE_LOG(LOSVision, Log,
-	   TEXT("ULocalTextureSampler::DebugDrawRT >> Finished drawing Debug RT"));
 		
+	// Optionally draw debug RT for visualization
+	if (bDrawDebugRT && DebugRT)
+	{
+		UKismetRenderingLibrary::DrawMaterialToRenderTarget(
+			this,
+			DebugRT,
+			ProjectionMID);
+	}
+
+	UE_LOG(LOSVision, Verbose,
+		TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Finished drawing tiles"));
 }
