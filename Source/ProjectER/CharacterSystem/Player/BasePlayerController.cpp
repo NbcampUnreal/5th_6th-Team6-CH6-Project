@@ -534,12 +534,13 @@ void ABasePlayerController::HideRespawnTimerUI()
 }
 
 
-// [김현수 추가분2] Server_RequestInteract 구현
+// [김현수 추가분2]
 bool ABasePlayerController::Server_RequestInteract_Validate(AActor* TargetActor)
 {
 	return TargetActor != nullptr;
 }
 
+// [김현수 추가분2]
 void ABasePlayerController::Server_RequestInteract_Implementation(AActor* TargetActor)
 {
 	APawn* PlayerPawn = GetPawn();
@@ -554,6 +555,6 @@ void ABasePlayerController::Server_RequestInteract_Implementation(AActor* Target
 		}
 	}
 }
-// [김현수 추가분2]
+
 
 
