@@ -55,7 +55,9 @@ ABaseMonster::ABaseMonster()
 	HPBarWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComponent"));
 	HPBarWidgetComp->SetupAttachment(GetMesh());
 	HPBarWidgetComp->SetWidgetSpace(EWidgetSpace::Screen); // 체력바 크기가 일정할거같으니까?
-
+	
+	TeamID = ETeamType::Neutral;
+	HPBarWidgetComp->SetVisibility(false);
 }
 
 UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
@@ -77,8 +79,6 @@ void ABaseMonster::PossessedBy(AController* newController)
 {
 	Super::PossessedBy(newController);
 
-	UE_LOG(LogTemp, Warning, TEXT("%s : PossessedBy"), *GetName());
-
 	if (IsValid(ASC) == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::PossessedBy : Not ASC"), *GetName());
@@ -96,21 +96,10 @@ void ABaseMonster::PossessedBy(AController* newController)
 	{
 		InitGiveAbilities();
 
-		//ASC->AddLooseGameplayTag(AliveStateTag);
-
 		AttributeSet->OnMonsterHit.AddDynamic(this, &ABaseMonster::OnMonterHitHandle);
 		AttributeSet->OnMonsterDeath.AddDynamic(this, &ABaseMonster::OnMonterDeathHandle);
 		MonsterRangeComp->OnPlayerCountOne.AddDynamic(this, &ABaseMonster::OnPlayerCountOneHandle);
 		MonsterRangeComp->OnPlayerCountZero.AddDynamic(this, &ABaseMonster::OnPlayerCountZeroHandle);
-	}
-	else if (!HasAuthority())
-	{
-		// UI 변경
-		AttributeSet->OnHealthChanged.AddDynamic(this, &ABaseMonster::OnHealthChangedHandle);
-		
-		/*UUserWidget* Widget = HPBarWidgetComp->GetUserWidgetObject();
-		UProgressBar* HPBar = Cast<UProgressBar>(Widget->GetWidgetFromName(TEXT("HealthBar")));
-		HPBar->SetPercent(AttributeSet->GetHealth() / AttributeSet->GetMaxHealth());*/
 	}
 }
 
@@ -118,12 +107,28 @@ void ABaseMonster::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	UE_LOG(LogTemp, Warning, TEXT("%s : BeginPlay"), *GetName());
-
 	if (HasAuthority())
 	{
 		StartLocation = GetActorLocation();
 		StateTreeComp->StartLogic();
+	}
+	if (!HasAuthority())
+	{
+		// UI 로직
+		AttributeSet->OnHealthChanged.AddDynamic(this, &ABaseMonster::OnHealthChangedHandle);
+
+		UUserWidget* Widget = HPBarWidgetComp->GetUserWidgetObject();
+		if (IsValid(Widget) == false)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::BeginPlay : Not Widget"));
+		}
+		UProgressBar* HPBar = Cast<UProgressBar>(Widget->GetWidgetFromName(TEXT("HealthBar")));
+		if (IsValid(HPBar) == false)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::BeginPlay : Not HPBar"));
+		}
+
+		HPBar->SetPercent(1.f);
 	}
 }
 
@@ -155,12 +160,28 @@ void ABaseMonster::InitGiveAbilities()
 	}
 }
 
-void ABaseMonster::OnHealthChangedHandle(float OldValue, float NewValue)
+void ABaseMonster::OnRep_IsCombat()
+{
+	if (HPBarWidgetComp)
+	{
+		HPBarWidgetComp->SetVisibility(bIsCombat);
+	}
+}
+
+void ABaseMonster::OnRep_IsDead()
+{
+	if (bIsDead && HPBarWidgetComp)
+	{
+		HPBarWidgetComp->SetVisibility(false);
+	}
+}
+
+void ABaseMonster::OnHealthChangedHandle(float CurrentHP, float MaxHP)
 {
 	// UpdateHP
 	UUserWidget* Widget = HPBarWidgetComp->GetUserWidgetObject();
 	UProgressBar* HPBar = Cast<UProgressBar>(Widget->GetWidgetFromName(TEXT("HealthBar")));
-	HPBar->SetPercent(NewValue / AttributeSet->GetMaxHealth());
+	HPBar->SetPercent(CurrentHP / MaxHP);
 }
 
 // 서버에서만
@@ -248,13 +269,11 @@ void ABaseMonster::SendAttackRangeEvent(float AttackRange)
 	if (Distance <= AttackRange * AttackRange)
 	{
 		// 공격가능
-		UE_LOG(LogTemp, Warning, TEXT("Can Attack"));
 		StateTreeComp->SendStateTreeEvent(FGameplayTag(TargetOnEventTag));
 	}
 	else
 	{
 		// 공격불가능
-		UE_LOG(LogTemp, Warning, TEXT("Can't Attack"));
 		StateTreeComp->SendStateTreeEvent(FGameplayTag(TargetOffEventTag));
 	}
 }
@@ -301,6 +320,37 @@ bool ABaseMonster::GetbIsDead()
 }
 
 
+ETeamType ABaseMonster::GetTeamType() const
+{
+	return TeamID;
+}
+
+bool ABaseMonster::IsTargetable() const
+{
+	return true;
+}
+
+void ABaseMonster::Server_SetTeamID_Implementation(ETeamType NewTeamID)
+{
+	TeamID = NewTeamID;
+	OnRep_TeamID();
+}
+
+void ABaseMonster::OnRep_TeamID()
+{
+	/*FString Team = (TeamID == ETeamType::Team_A) ? TEXT("Team_A") : 
+						(TeamID == ETeamType::Team_B) ? TEXT("Team_B") : 
+							(TeamID == ETeamType::Team_C) ? TEXT("Team_C") : TEXT("None");
+	
+	FString Message = FString::Printf(TEXT("[%s] Team Changed to: %s"), *GetName(), *Team);
+	
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, Message);
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *Message);*/
+}
 
 /// [전민성 추가분]
 void ABaseMonster::Death()
