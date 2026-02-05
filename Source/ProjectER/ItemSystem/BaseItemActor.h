@@ -16,7 +16,7 @@ class PROJECTER_API ABaseItemActor : public AActor, public II_ItemInteractable
 public:
 	ABaseItemActor();
 
-protected:
+public:
 	virtual void BeginPlay() override;
 
 	// 상호작용 인터페이스 구현

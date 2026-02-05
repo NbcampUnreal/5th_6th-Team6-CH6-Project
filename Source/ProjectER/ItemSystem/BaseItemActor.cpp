@@ -48,6 +48,10 @@ void ABaseItemActor::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor*
 
 void ABaseItemActor::PickupItem(APawn* InHandler)
 {
+
+    if (!HasAuthority())
+        return;
+
     if (!InHandler || !ItemData) return;
 
     UBaseInventoryComponent* Inventory = InHandler->FindComponentByClass<UBaseInventoryComponent>();

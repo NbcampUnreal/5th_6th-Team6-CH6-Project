@@ -11,6 +11,12 @@ void UW_LootingPopup::InitPopup(AActor* InTargetBox, float InMaxDistance)
 {
 	TargetBox = InTargetBox;
 	MaxDistance = InMaxDistance;
+
+	// 즉각 업데이트
+	if (ABaseBoxActor* Box = Cast<ABaseBoxActor>(InTargetBox))
+	{
+		UpdateLootingSlots(Box->GetCurrentLoot());
+	}
 }
 
 void UW_LootingPopup::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
@@ -32,7 +38,7 @@ void UW_LootingPopup::UpdateLootingSlots(const TArray<UBaseItemData*>& Items)
 
 	const int32 ColumnCount = 5;
 
-	// [중요] 아이템 개수와 상관없이 무조건 10개의 슬롯 위젯을 생성
+	// 아이템 개수와 상관없이 무조건 10개의 슬롯 위젯을 생성
 	for (int32 i = 0; i < 10; ++i)
 	{
 		UUserWidget* NewSlot = CreateWidget<UUserWidget>(GetOwningPlayer(), SlotWidgetClass);
@@ -70,7 +76,7 @@ void UW_LootingPopup::UpdateLootingSlots(const TArray<UBaseItemData*>& Items)
 				}
 				else
 				{
-					// 아이템이 없으면 클릭 비활성화 (이 상태에서 슬롯 위젯의 디자인에 따라 반투명하게 보임)
+					// 아이템이 없으면 클릭 비활성화
 					SlotButton->SetIsEnabled(false);
 				}
 			}
@@ -108,10 +114,10 @@ void UW_LootingPopup::TryLootItem(UBaseItemData* TargetItem)
 	if (Box && OwningPawn)
 	{
 		UBaseInventoryComponent* Inv = OwningPawn->FindComponentByClass<UBaseInventoryComponent>();
-		if (Inv && Inv->AddItem(TargetItem))
+		if (Inv)
 		{
-			// 서버에 박스 아이템 제거 요청
-			Box->RemoveItemFromBox(TargetItem);
+			Inv->AddItem(TargetItem);
+			Box->Server_RemoveItemFromBox(TargetItem);
 		}
 	}
 }

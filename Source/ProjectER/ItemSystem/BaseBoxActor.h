@@ -16,7 +16,16 @@ public:
 	ABaseBoxActor();
 
 	const TArray<TObjectPtr<UBaseItemData>>& GetCurrentLoot() const { return CurrentLoot; }
+
+	// 클라이언트에서 호출할 아이템 제거 요청 RPC
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_RemoveItemFromBox(UBaseItemData* ItemToRemove);
+
 	void RemoveItemFromBox(UBaseItemData* ItemToRemove);
+
+	// [추가] 클라이언트에서 호출할 상호작용(상자 열기) 요청 RPC
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_PickupItem(class APawn* InHandler);
 
 protected:
 	virtual void BeginPlay() override;
@@ -25,6 +34,7 @@ protected:
 	UFUNCTION()
 	void OnRep_CurrentLoot();
 
+	// 인터페이스 함수
 	virtual void PickupItem(class APawn* InHandler) override;
 
 	UPROPERTY(VisibleAnywhere, Category = "Box")
@@ -36,7 +46,6 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "ProjectER|Loot")
 	TArray<TObjectPtr<class UBaseItemData>> ItemPool;
 
-	// 반드시 10개 요소가 리플리케이트 되도록 설정
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentLoot, VisibleAnywhere, Category = "ProjectER|Loot")
 	TArray<TObjectPtr<UBaseItemData>> CurrentLoot;
 
