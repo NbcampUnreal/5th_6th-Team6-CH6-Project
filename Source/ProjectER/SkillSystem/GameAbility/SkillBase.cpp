@@ -121,14 +121,14 @@ void USkillBase::OnCastingTagEventReceived(FGameplayEventData Payload)
 {
 	AddTagToOwner(CastingTag);
 
-	UAbilityTask_SendServerEvent* SendEvnet = UAbilityTask_SendServerEvent::SendServerEvent(this, CastingTag);
-	SendEvnet->ReadyForActivation();
+	/*UAbilityTask_SendServerEvent* SendEvnet = UAbilityTask_SendServerEvent::SendServerEvent(this, CastingTag);
+	SendEvnet->ReadyForActivation();*/
 }
 
 void USkillBase::PlayAnimMontage()
 {
-	UAbilityTask_PlayMontageAndWait* PlayTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, TEXT("SkillAnimation"), CachedConfig->Data.AnimMontage);
-	PlayTask->ReadyForActivation();
+	/*UAbilityTask_PlayMontageAndWait* PlayTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, TEXT("SkillAnimation"), CachedConfig->Data.AnimMontage);
+	PlayTask->ReadyForActivation();*/
 }
 
 void USkillBase::SetWaitEventActiveTag()

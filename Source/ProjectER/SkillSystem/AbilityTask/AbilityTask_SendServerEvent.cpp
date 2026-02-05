@@ -18,22 +18,8 @@ void UAbilityTask_SendServerEvent::Activate()
 {
     if (IsLocallyControlled())
     {
-        UE_LOG(LogTemp, Warning, TEXT("Activate - Client: Sending RPC"));
-        //Server_SendEvent(EventTag);
-
-        // [선택] 클라이언트에서도 로컬 반응이 필요하다면 여기서 로컬용 이벤트를 쏠 수 있음
-        // 만약 서버에서만 로직이 돌아가길 원한다면 여기서 EndTask를 하거나 기다림
-    }
-    else if (GetAvatarActor() && GetAvatarActor()->HasAuthority())
-    {
-        // 서버에서 생성된 경우: 서버는 클라이언트의 RPC를 기다려야 하므로 
-        // 여기서 EndTask를 부르지 않고 대기합니다. (정상 동작)
-        UE_LOG(LogTemp, Warning, TEXT("Activate - Server: Waiting for RPC"));
-    }
-    else
-    {
-        // 그 외 예외 상황(다른 클라이언트 등)에서는 태스크 종료
-        EndTask();
+        Server_SendEvent(EventTag); // 1. 서버로 배달해! 라고 시킴
+        EndTask(); // 2. "클라이언트" 태스크 종료 (OK)
     }
 }
 
