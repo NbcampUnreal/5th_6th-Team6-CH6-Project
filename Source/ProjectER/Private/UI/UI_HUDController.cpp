@@ -125,6 +125,13 @@ void UUI_HUDController::BindCallbacksToDependencies()
                 BroadcastCooldownReduction(Data.NewValue);
             }
         );
+    // AttackRange 변경 감지 람다
+    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+        BaseAS->GetAttackRangeAttribute()).AddLambda([this](const FOnAttributeChangeData& Data)
+            {
+				BroadcastARChanges(Data.NewValue);
+            }
+        );
     // 차후 위 람다식을 모든 스탯에 대해 반복 해야함~
 }
 
