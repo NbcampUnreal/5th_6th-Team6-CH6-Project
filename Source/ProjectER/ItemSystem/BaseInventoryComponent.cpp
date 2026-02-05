@@ -1,37 +1,53 @@
 ﻿#include "ItemSystem/BaseInventoryComponent.h"
 #include "ItemSystem/BaseItemData.h"
+#include "Net/UnrealNetwork.h"
 
 UBaseInventoryComponent::UBaseInventoryComponent()
 {
-    PrimaryComponentTick.bCanEverTick = false;
-    MaxSlots = 20;
+	PrimaryComponentTick.bCanEverTick = false;
+	MaxSlots = 20;
+	SetIsReplicatedByDefault(true); // 컴포넌트 리플리케이션 활성화
+}
+
+void UBaseInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(UBaseInventoryComponent, InventoryContents);
 }
 
 bool UBaseInventoryComponent::AddItem(UBaseItemData* Item)
 {
-    if (!Item || InventoryContents.Num() >= MaxSlots) return false;
+	if (!Item || InventoryContents.Num() >= MaxSlots) return false;
 
-    InventoryContents.Add(Item);
-    OnInventoryUpdated.Broadcast();
+	// 권한이 없으면 서버에 요청
+	if (!GetOwner()->HasAuthority())
+	{
+		Server_AddItem(Item);
+		return true;
+	}
 
-    // 화면 디버그 출력
-    if (GEngine)
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan,
-            FString::Printf(TEXT("가방에 추가됨: %s (현재 %d개)"), *Item->ItemName.ToString(), InventoryContents.Num()));
-    }
+	InventoryContents.Add(Item);
 
-    return true;
+	if (GEngine)
+	{
+		FString DebugMsg = FString::Printf(TEXT("가방에 추가됨: %s (현재 %d개)"),
+			*Item->ItemName.ToString(), InventoryContents.Num());
+
+		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan, DebugMsg);
+	}
+
+	OnInventoryUpdated.Broadcast();
+	return true;
 }
 
-void UBaseInventoryComponent::DebugPrintInventory()
+bool UBaseInventoryComponent::Server_AddItem_Validate(UBaseItemData* InData) { return true; }
+
+void UBaseInventoryComponent::Server_AddItem_Implementation(UBaseItemData* InData)
 {
-    UE_LOG(LogTemp, Warning, TEXT("=== Inventory Check ==="));
-    for (const UBaseItemData* Item : InventoryContents)
-    {
-        if (Item)
-        {
-            UE_LOG(LogTemp, Warning, TEXT("Item: %s"), *Item->ItemName.ToString());
-        }
-    }
+	AddItem(InData);
+}
+
+void UBaseInventoryComponent::OnRep_InventoryContents()
+{
+	OnInventoryUpdated.Broadcast();
 }

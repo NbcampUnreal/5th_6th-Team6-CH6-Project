@@ -46,6 +46,7 @@ public:
     void BroadcastATKChanges(float CurrentATK);
     void BroadcastSPChanges(float CurrentSP); // 스증
     void BroadcastASChanges(float CurrentAS);
+    void BroadcastARChanges(float CurrentAR); // 사거리
     void BroadcastCCChanges(float CurrentCC); // 크리티컬 찬스 = CC
     void BroadcastDEFChanges(float CurrentDEF);
     void BroadcastSpeedChanges(float CurrentSpeed);

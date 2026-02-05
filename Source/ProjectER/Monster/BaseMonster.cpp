@@ -16,6 +16,7 @@
 ABaseMonster::ABaseMonster()
 	:TargetPlayer(nullptr),
 	StartLocation(FVector::ZeroVector),
+	StartRotator(FRotator::ZeroRotator),
 	bIsCombat(false),
 	bIsDead(false)
 {
@@ -55,9 +56,9 @@ ABaseMonster::ABaseMonster()
 	HPBarWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComponent"));
 	HPBarWidgetComp->SetupAttachment(GetMesh());
 	HPBarWidgetComp->SetWidgetSpace(EWidgetSpace::Screen); // 체력바 크기가 일정할거같으니까?
-	
-	TeamID = ETeamType::Neutral;
 	HPBarWidgetComp->SetVisibility(false);
+
+	TeamID = ETeamType::Neutral;
 }
 
 UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
@@ -71,6 +72,7 @@ void ABaseMonster::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 
 	DOREPLIFETIME(ABaseMonster, TargetPlayer);
 	DOREPLIFETIME(ABaseMonster, StartLocation);
+	DOREPLIFETIME(ABaseMonster, StartRotator);
 	DOREPLIFETIME(ABaseMonster, bIsCombat);
 	DOREPLIFETIME(ABaseMonster, bIsDead);
 }
@@ -110,6 +112,7 @@ void ABaseMonster::BeginPlay()
 	if (HasAuthority())
 	{
 		StartLocation = GetActorLocation();
+		StartRotator = GetActorRotation();
 		StateTreeComp->StartLogic();
 	}
 	if (!HasAuthority())

@@ -11,64 +11,60 @@ void UW_LootingPopup::InitPopup(AActor* InTargetBox, float InMaxDistance)
 {
 	TargetBox = InTargetBox;
 	MaxDistance = InMaxDistance;
+
+	// 즉각 업데이트
+	if (ABaseBoxActor* Box = Cast<ABaseBoxActor>(InTargetBox))
+	{
+		UpdateLootingSlots(Box->GetCurrentLoot());
+	}
 }
 
 void UW_LootingPopup::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
-
-	if (TargetBox)
+	if (TargetBox && GetOwningPlayerPawn())
 	{
-		APawn* OwningPawn = GetOwningPlayerPawn();
-		if (OwningPawn && OwningPawn->GetDistanceTo(TargetBox) > MaxDistance)
-		{
+		if (GetOwningPlayerPawn()->GetDistanceTo(TargetBox) > MaxDistance)
 			RemoveFromParent();
-		}
 	}
 }
 
 void UW_LootingPopup::UpdateLootingSlots(const TArray<UBaseItemData*>& Items)
 {
-	if (!ItemGridPanel) return;
-	if (!SlotWidgetClass)
-	{
-		UE_LOG(LogTemp, Error, TEXT("W_LootingPopup: SlotWidgetClass가 할당되지 않았습니다!"));
-		return;
-	}
+	if (!ItemGridPanel || !SlotWidgetClass) return;
 
 	ItemGridPanel->ClearChildren();
 	SlotItemMap.Empty();
 
-	const int32 TotalSlots = 10;
 	const int32 ColumnCount = 5;
 
-	for (int32 i = 0; i < TotalSlots; ++i)
+	// 아이템 개수와 상관없이 무조건 10개의 슬롯 위젯을 생성
+	for (int32 i = 0; i < 10; ++i)
 	{
 		UUserWidget* NewSlot = CreateWidget<UUserWidget>(GetOwningPlayer(), SlotWidgetClass);
 		if (NewSlot)
 		{
+			// i번째 칸에 아이템이 있는지 확인
 			bool bHasItem = Items.IsValidIndex(i) && Items[i] != nullptr;
 			UBaseItemData* CurrentItem = bHasItem ? Items[i] : nullptr;
 
 			UImage* TargetImage = Cast<UImage>(NewSlot->GetWidgetFromName(TEXT("ItemIconImage")));
+			UButton* SlotButton = Cast<UButton>(NewSlot->GetWidgetFromName(TEXT("SlotButton")));
+
 			if (TargetImage)
 			{
-				if (bHasItem && CurrentItem && CurrentItem->ItemIcon.IsValid())
+				if (bHasItem)
 				{
-					UTexture2D* LoadedTexture = Cast<UTexture2D>(CurrentItem->ItemIcon.LoadSynchronous());
-					if (LoadedTexture)
-					{
-						TargetImage->SetBrushFromTexture(LoadedTexture);
-						TargetImage->SetVisibility(ESlateVisibility::HitTestInvisible); // 클릭 통과
-					}
+					TargetImage->SetBrushFromTexture(CurrentItem->ItemIcon.LoadSynchronous());
+					TargetImage->SetVisibility(ESlateVisibility::HitTestInvisible);
 				}
 				else
 				{
-					TargetImage->SetVisibility(ESlateVisibility::Hidden);
+					// 아이템이 없으면 이미지만 숨김 (슬롯 배경은 남음)
+					TargetImage->SetVisibility(ESlateVisibility::Collapsed);
 				}
 			}
 
-			UButton* SlotButton = Cast<UButton>(NewSlot->GetWidgetFromName(TEXT("SlotButton")));
 			if (SlotButton)
 			{
 				if (bHasItem)
@@ -80,6 +76,7 @@ void UW_LootingPopup::UpdateLootingSlots(const TArray<UBaseItemData*>& Items)
 				}
 				else
 				{
+					// 아이템이 없으면 클릭 비활성화
 					SlotButton->SetIsEnabled(false);
 				}
 			}
@@ -111,23 +108,16 @@ void UW_LootingPopup::TryLootItem(UBaseItemData* TargetItem)
 {
 	if (!TargetItem || !TargetBox) return;
 
-	APawn* PlayerPawn = GetOwningPlayerPawn();
-	UBaseInventoryComponent* Inventory = PlayerPawn ? PlayerPawn->FindComponentByClass<UBaseInventoryComponent>() : nullptr;
+	ABaseBoxActor* Box = Cast<ABaseBoxActor>(TargetBox);
+	APawn* OwningPawn = GetOwningPlayerPawn();
 
-	if (Inventory && Inventory->AddItem(TargetItem))
+	if (Box && OwningPawn)
 	{
-		ABaseBoxActor* Box = Cast<ABaseBoxActor>(TargetBox);
-		if (Box)
+		UBaseInventoryComponent* Inv = OwningPawn->FindComponentByClass<UBaseInventoryComponent>();
+		if (Inv)
 		{
-			Box->RemoveItemFromBox(TargetItem);
-
-			// 즉시 남은 아이템으로 UI 갱신
-			UpdateLootingSlots(Box->GetCurrentLoot());
-
-			if (Box->GetCurrentLoot().Num() == 0)
-			{
-				RemoveFromParent();
-			}
+			Inv->AddItem(TargetItem);
+			Box->Server_RemoveItemFromBox(TargetItem);
 		}
 	}
 }

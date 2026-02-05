@@ -1,4 +1,4 @@
-﻿#include "CharacterSystem/Player/BasePlayerController.h"
+#include "CharacterSystem/Player/BasePlayerController.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -17,7 +17,7 @@
 
 // [김현수 추가분] 상호작용 인터페이스 포함
 #include "ItemSystem/I_ItemInteractable.h"
-
+#include "ItemSystem/BaseItemActor.h"
 
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/GameMode/ER_OutGameMode.h"
@@ -142,7 +142,19 @@ void ABasePlayerController::OnMoveTriggered()
 
 void ABasePlayerController::OnMoveReleased()
 {
+	FHitResult Hit;
+
+	// [김현수 추가분2] Server_RequestInteract 구현
+	if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))
+	{
+		AActor* HitActor = Hit.GetActor();
+		if (II_ItemInteractable* Interactable = Cast<II_ItemInteractable>(HitActor))
+		{
+			Server_RequestInteract(HitActor);
+		}
+	}
 	bIsMousePressed = false;
+	// [김현수 추가분2] 끝
 }
 
 void ABasePlayerController::MoveToMouseCursor()
@@ -270,6 +282,8 @@ void ABasePlayerController::CheckInteractionDistance()
 			if (II_ItemInteractable* Interactable = Cast<II_ItemInteractable>(InteractionTarget))
 			{
 				Interactable->PickupItem(ControlledBaseChar);
+				ABaseItemActor* AAA = Cast<ABaseItemActor>(Interactable);
+				Server_RequestPickup(AAA);
 			}
 			InteractionTarget = nullptr;
 		}
@@ -456,6 +470,20 @@ void ABasePlayerController::Server_TEMP_DespawnNeutrals_Implementation()
 	InGameMode->TEMP_DespawnNeutrals();
 }
 
+void ABasePlayerController::Server_RequestPickup_Implementation(ABaseItemActor* Item)
+{
+	if (!Item) return;
+
+	APawn* PlayerPawn = GetPawn();
+	if (!PlayerPawn) return;
+
+	constexpr float MaxDist = 200.f;
+	if (FVector::DistSquared(PlayerPawn->GetActorLocation(), Item->GetActorLocation()) > FMath::Square(MaxDist))
+		return;
+
+	Item->PickupItem(PlayerPawn);
+}
+
 void ABasePlayerController::ShowWinUI()
 {
 	if (!WinUIClass)
@@ -501,6 +529,29 @@ void ABasePlayerController::HideRespawnTimerUI()
 	{
 		RespawnUIInstance->RemoveFromParent();
 		RespawnUIInstance = nullptr;
+	}
+}
+
+
+// [김현수 추가분2]
+bool ABasePlayerController::Server_RequestInteract_Validate(AActor* TargetActor)
+{
+	return TargetActor != nullptr;
+}
+
+// [김현수 추가분2]
+void ABasePlayerController::Server_RequestInteract_Implementation(AActor* TargetActor)
+{
+	APawn* PlayerPawn = GetPawn();
+	if (!PlayerPawn || !TargetActor) return;
+
+	// 서버측 거리 검증 (300 유닛)
+	if (PlayerPawn->GetDistanceTo(TargetActor) <= 300.f)
+	{
+		if (II_ItemInteractable* Interactable = Cast<II_ItemInteractable>(TargetActor))
+		{
+			Interactable->PickupItem(PlayerPawn);
+		}
 	}
 }
 

@@ -91,6 +91,10 @@ protected:
 
 	// 기존 Move 함수를 확장하여 상호작용 판정 포함
 	void ProcessMouseInteraction();
+
+public:
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_RequestInteract(AActor* TargetActor);
 /// [김현수 추가분] - 끝
 
 //-----------------------------------------------------------
@@ -125,6 +129,9 @@ public:
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 	void Client_ReturnToMainMenu(const FString& Reason);
 
+	// 아이템에서 호출할 Server RPC
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_RequestPickup(class ABaseItemActor* Item);
 private:
 	// UI 출력
 	void ShowWinUI();

@@ -6,18 +6,11 @@
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "BaseMonsterAttributeSet.generated.h"
 
-
-//#define ATTRIBUTE_ACCESSORS(ClassName, PropertyName)\
-//GAMEPLAYATTRIBUTE_PROPERTY_GETTER(ClassName, PropertyName)\
-//GAMEPLAYATTRIBUTE_VALUE_GETTER(PropertyName)\
-//GAMEPLAYATTRIBUTE_VALUE_SETTER(PropertyName)\
-//GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)
-
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChanged, float, OldValue, float, NewValue);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTakeDamage, AActor*, Target);
 
 UCLASS()
-class PROJECTER_API UBaseMonsterAttributeSet : public UAttributeSet
+class PROJECTER_API UBaseMonsterAttributeSet : public UBaseAttributeSet
 {
 	GENERATED_BODY()
 	
@@ -50,74 +43,38 @@ protected:
 private:
 
 #pragma region OnRep
-	UFUNCTION()
-	void OnRep_MaxHealth(const FGameplayAttributeData& OldMaxHealth);
 
-	UFUNCTION()
-	void OnRep_Health(const FGameplayAttributeData& OldHealth);
+	virtual void OnRep_Health(const FGameplayAttributeData& OldHealth) override;
 
-	UFUNCTION()
-	void OnRep_AttackPower(const FGameplayAttributeData& OldAttackPower);
 
-	UFUNCTION()
-	void OnRep_Defense(const FGameplayAttributeData& OldDefense);
-
-	UFUNCTION()
-	void OnRep_AttackSpeed(const FGameplayAttributeData& OldAttackSpeed);
-
-	UFUNCTION()
-	void OnRep_MoveSpeed(const FGameplayAttributeData& OldMoveSpeed);
 #pragma endregion
 
 
 public:
 
 #pragma region Attribute
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxHealth, Category = "Attribute", meta = (AllowPrivateAccess = "true"))
-	FGameplayAttributeData MaxHealth;
-	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, MaxHealth);
 
-	UPROPERTY(EditDefaultsOnly);
-	float MaxHealthAmount = 100.f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Monster Attribute");
+	float MaxHealthAmount = 200.f;
 
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Health, Category = "Attribute", meta = (AllowPrivateAccess = "true"))
-	FGameplayAttributeData Health;
-	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, Health);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Monster Attribute");
+	float HealthAmount = 200.f;
 
-	UPROPERTY(EditDefaultsOnly);
-	float HealthAmount = 100.f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Monster Attribute");
+	float AttackPowerAmount = 50.f;
 
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_AttackPower, Category = "Attribute", meta = (AllowPrivateAccess = "true"))
-	FGameplayAttributeData AttackPower;
-	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, AttackPower);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Monster Attribute");
+	float AttackSpeedAmount = 1.f;
 
-	UPROPERTY(EditDefaultsOnly);
-	float AttackPowerAmount = 10.f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Monster Attribute");
+	float AttackRangeAmount = 150.f;
 
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Defense, Category = "Attribute", meta = (AllowPrivateAccess = "true"))
-	FGameplayAttributeData Defense;
-	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, Defense);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Monster Attribute");
+	float DefenseAmount = 50.f;
 
-	UPROPERTY(EditDefaultsOnly);
-	float DefenseAmount = 5.f;
-
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_AttackSpeed, Category = "Attribute", meta = (AllowPrivateAccess = "true"))
-	FGameplayAttributeData AttackSpeed;
-	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, AttackSpeed);
-
-	UPROPERTY(EditDefaultsOnly);
-	float AttackSpeedAmount = 2.f;
-
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MoveSpeed, Category = "Attribute", meta = (AllowPrivateAccess = "true"))
-	FGameplayAttributeData MoveSpeed;
-	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, MoveSpeed);
-
-	UPROPERTY(EditDefaultsOnly);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Monster Attribute");
 	float MoveSpeedAmount = 300.f;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Attribute", meta = (AllowPrivateAccess = "true"))
-	FGameplayAttributeData InComingDamage;
-	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, InComingDamage);
 #pragma endregion
 
 	UPROPERTY()

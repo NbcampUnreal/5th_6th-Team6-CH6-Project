@@ -125,40 +125,47 @@ void UUI_MainHUD::setStat(ECharacterStat stat, int32 value)
             stat_02->SetText(FText::AsNumber(value));
         }
     }
-    else if (stat == ECharacterStat::AS)
+    else if (stat == ECharacterStat::DEF)
     {
         if (IsValid(stat_03))
         {
             stat_03->SetText(FText::AsNumber(value));
         }
     }
-    else if (stat == ECharacterStat::DEF)
+    else if (stat == ECharacterStat::COOL)
     {
         if (IsValid(stat_04))
         {
             stat_04->SetText(FText::AsNumber(value));
         }
     }
-    else if (stat == ECharacterStat::ADEF)
+    else if (stat == ECharacterStat::AS)
     {
         if (IsValid(stat_05))
         {
             stat_05->SetText(FText::AsNumber(value));
         }
     }
-    else if (stat == ECharacterStat::SPD)
+    else if (stat == ECharacterStat::ATRAN)
     {
         if (IsValid(stat_06))
         {
             stat_06->SetText(FText::AsNumber(value));
         }
     }
-    else if (stat == ECharacterStat::COOL)
+    else if (stat == ECharacterStat::CC)
     {
         if (IsValid(stat_07))
         {
             stat_07->SetText(FText::AsNumber(value));
             nowSkillCoolReduc = value;
+        }
+    }
+    else if (stat == ECharacterStat::SPD)
+    {
+        if (IsValid(stat_07))
+        {
+            stat_08->SetText(FText::AsNumber(value));
         }
     }
 }
