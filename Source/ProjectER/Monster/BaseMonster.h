@@ -58,7 +58,13 @@ private:
 #pragma region UI
 
 	UFUNCTION()
-	void OnHealthChangedHandle(float OldValue, float NewValue);
+	void OnRep_IsCombat();
+
+	UFUNCTION()
+	void OnRep_IsDead();
+
+	UFUNCTION()
+	void OnHealthChangedHandle(float CurrentHP, float MaxHP);
 
 #pragma endregion
 
@@ -201,10 +207,10 @@ private:
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<AActor> TargetPlayer;
 
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_IsCombat, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	bool bIsCombat;
 
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_IsDead, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	bool bIsDead;
 
 #pragma endregion
@@ -213,9 +219,6 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI", meta = (AllowprivateAccess = "true"))
 	TObjectPtr<UWidgetComponent> HPBarWidgetComp;
-
-	/*UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI", meta = (AllowprivateAccess = "true"))
-	TSubclassOf<UUserWidget> HPBarWidget;*/
 
 #pragma endregion
 

@@ -82,7 +82,6 @@ void UBaseMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 		// 데미지 계산 임시
 		float Damage = FMath::Max(0.f, GetInComingDamage() - GetDefense());
 		SetInComingDamage(0.f);
-		UE_LOG(LogTemp, Warning, TEXT("%s : Hp -%f "), *Monster->GetName(), Damage);
 
 		float NewHealth = FMath::Clamp(GetHealth() - Damage, 0.f, GetMaxHealth());
 		SetHealth(NewHealth);
@@ -129,6 +128,8 @@ void UBaseMonsterAttributeSet::OnRep_MaxHealth(const FGameplayAttributeData& Old
 void UBaseMonsterAttributeSet::OnRep_Health(const FGameplayAttributeData& OldHealth)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseMonsterAttributeSet, Health, OldHealth);
+
+	OnHealthChanged.Broadcast(GetHealth(), GetMaxHealth());
 }
 
 void UBaseMonsterAttributeSet::OnRep_AttackPower(const FGameplayAttributeData& OldAttackPower)
