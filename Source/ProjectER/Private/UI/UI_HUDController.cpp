@@ -214,6 +214,18 @@ void UUI_HUDController::BroadcastASChanges(float CurrentAS)
     }
 }
 
+void UUI_HUDController::BroadcastARChanges(float CurrentAR)
+{
+    if (IsValid(MainHUDWidget))
+    {
+        MainHUDWidget->setStat(ECharacterStat::ATRAN, CurrentAR);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+    }
+}
+
 void UUI_HUDController::BroadcastCCChanges(float CurrentCC)
 {
 }

@@ -59,11 +59,12 @@ void AUI_HUDFactory::InitOverlay(APlayerController* PC, APlayerState* PS, UAbili
         WidgetController->BroadcastXPChanges(BaseAS->GetXP(), BaseAS->GetMaxXP());
         WidgetController->BroadcastATKChanges(BaseAS->GetAttackPower());
         WidgetController->BroadcastSPChanges(BaseAS->GetSkillAmp());
-        WidgetController->BroadcastASChanges(BaseAS->GetAttackSpeed());
-        WidgetController->BroadcastCCChanges(BaseAS->GetCriticalChance());
         WidgetController->BroadcastDEFChanges(BaseAS->GetDefense());
+        WidgetController->BroadcastCooldownReduction(BaseAS->GetCooldownReduction());
+        WidgetController->BroadcastASChanges(BaseAS->GetAttackSpeed());
+        WidgetController->BroadcastARChanges(BaseAS->GetAttackRange());
+        WidgetController->BroadcastCCChanges(BaseAS->GetCriticalChance());
         WidgetController->BroadcastSpeedChanges(BaseAS->GetMoveSpeed());
-		WidgetController->BroadcastCooldownReduction(BaseAS->GetCooldownReduction());
     }
 }
 
