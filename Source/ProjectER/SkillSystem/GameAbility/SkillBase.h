@@ -28,17 +28,22 @@ protected:
 	virtual void ExecuteSkill();
 	virtual void FinishSkill();
 	virtual void OnCancelAbility();
+	virtual void OnExecuteSkill_InClient();
 	void AddTagToOwner(FGameplayTag Tag);
 	void RemoveTagFromOwner(FGameplayTag Tag);
 	void PlayAnimMontage();
-	void SetWaitActiveTagTask();
+	void SetWaitEventActiveTag();
+	void SetWaitEventCastingTag();
 	void PrepareToActiveSkill();
 	void ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets);
 	void ApplyEffectsToActor(AActor* Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets);
 	FGameplayTag GetInputTag();
 
 	UFUNCTION()
-	void OnActiveTagAdded();
+	void OnActiveTagEventReceived(FGameplayEventData Payload);
+
+	UFUNCTION()
+	void OnCastingTagEventReceived(FGameplayEventData Payload);
 //private:
 
 public:
