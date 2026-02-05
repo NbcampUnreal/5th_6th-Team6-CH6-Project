@@ -16,6 +16,7 @@
 ABaseMonster::ABaseMonster()
 	:TargetPlayer(nullptr),
 	StartLocation(FVector::ZeroVector),
+	StartRotator(FRotator::ZeroRotator),
 	bIsCombat(false),
 	bIsDead(false)
 {
@@ -71,6 +72,7 @@ void ABaseMonster::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 
 	DOREPLIFETIME(ABaseMonster, TargetPlayer);
 	DOREPLIFETIME(ABaseMonster, StartLocation);
+	DOREPLIFETIME(ABaseMonster, StartRotator);
 	DOREPLIFETIME(ABaseMonster, bIsCombat);
 	DOREPLIFETIME(ABaseMonster, bIsDead);
 }
@@ -110,6 +112,7 @@ void ABaseMonster::BeginPlay()
 	if (HasAuthority())
 	{
 		StartLocation = GetActorLocation();
+		StartRotator = GetActorRotation();
 		StateTreeComp->StartLogic();
 	}
 	if (!HasAuthority())
