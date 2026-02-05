@@ -40,7 +40,8 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
+							   FActorComponentTickFunction* ThisTickFunction) override;
 public:
 
 	/** Force update of the local texture (teleport, vision change, etc.) */
@@ -59,57 +60,65 @@ public:
 	UFUNCTION(BlueprintCallable, Category="LocalSampler")
 	UTextureRenderTarget2D* GetLocalRenderTarget() const { return LocalMaskRT; }
 
+	UFUNCTION(BlueprintCallable, Category="LocalSampler|Debug")
+	UTextureRenderTarget2D* GetDebugRT() const { return DebugRT; }
+
 private:
-	bool PrepareSetups();
-
-	// Helper for loading the material and return mid from it
-	bool CreateProjectionMID();
+	void PrepareSetups();
 	
-	bool ShouldRunClientLogic() const;// this is for preventing server to run the update. only cliet or stand alone does
+	// this is for preventing server to run the update. only cliet or stand alone does
+	bool ShouldRunClientLogic() const;
 	
-	//Internal helpers
-	void RebuildLocalBounds(const FVector& WorldCenter);
-	void UpdateOverlappingTiles();
-	void DrawTilesIntoLocalRT();
-
 protected:
-	UPROPERTY(EditAnywhere, Category="LocalSampler|Debug")
-	bool bDrawDebugRT = false;
 
-	UPROPERTY(EditAnywhere, Category="LocalSampler|Debug")
-	TObjectPtr<UTextureRenderTarget2D> DebugRT;// check what is being drawn in the content browser
-	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
+	bool TurnOffTheLog=true;
+
 	/** Local merged obstacle/height mask */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
 	TObjectPtr<UTextureRenderTarget2D> LocalMaskRT;
 
-	/** Material used to project and merge tiles */
-	UPROPERTY(EditDefaultsOnly, Category="LocalSampler|Render")
-	TObjectPtr<UMaterialInterface> ProjectionMaterial;
-	
-	// MID made from the upper material
-	UPROPERTY(Transient)
-	TObjectPtr<UMaterialInstanceDynamic> ProjectionMID;
+	/** Debug render target - persistent RT that can be viewed in content browser */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Debug")
+	TObjectPtr<UTextureRenderTarget2D> DebugRT;
 
-	//MID Param names
+	/** Auto-update debug RT when local texture updates */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Debug")
+	bool bAutoUpdateDebugRT = false;
+
+	/*/** Material used to project baked tiles into the local RT #1#
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
-	FName MIDParam_TileTexture_Merging = TEXT("MergingTile");
+	TObjectPtr<UMaterialInterface> TileProjectionMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> ProjectionMID;*/
+
+	/*//MID Param names
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
+	FName MIDParam_TextureObj =NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
+	FName MIDParam_TileWorldMin =NAME_None;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
+	FName MIDParam_TileWorldMax =NAME_None;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
-	FName MIDParam_TileCenter = TEXT("TileCenter");
-    
+	FName MIDParam_LocalWorldMin =NAME_None;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
-	FName MIDParam_TileSize = TEXT("TileSize");
-    
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
-	FName MIDParam_TileRotation = TEXT("TileRotation");
+	FName MIDParam_LocalWorldMax =NAME_None;*/
+	
+	// no longer needed. can merge rt without material
 	
 	// Sampling Settings
 
 	/** World-space radius of the local sampling area */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Settings")
 	float WorldSampleRadius = 512.f;
-	
+
+	/** Resolution of the local render target */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Settings")
+	int32 LocalResolution = 256;
+
 	/** Distance threshold before re-sampling */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Settings")
 	float UpdateDistanceThreshold = 100.f;
@@ -118,16 +127,22 @@ protected:
 	/** Last world-space center used for sampling */
 	UPROPERTY(Transient)
 	FVector LastSampleCenter = FVector::ZeroVector;
-	
 	/** Cached local world bounds */
 	UPROPERTY(Transient)
 	FBox2D LocalWorldBounds;
-	
 	/** Indices for overlapping Textures on local RT */
 	UPROPERTY(Transient)
 	TArray<int32> ActiveTileIndices;
+	
+private:
+	//Internal helpers
+	void RebuildLocalBounds(const FVector& WorldCenter);
+	void UpdateOverlappingTiles();
+	void DrawTilesIntoLocalRT();
 
 	//Subsystem
+
 	UPROPERTY(Transient)
-	TObjectPtr<UVisionSubsystem> VisionSubsystem;
+	TObjectPtr<UVisionSubsystem> ObstacleSubsystem;
+
 };
