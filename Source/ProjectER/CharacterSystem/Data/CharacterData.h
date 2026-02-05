@@ -10,6 +10,7 @@ class UGameplayEffect;
 class USkeletalMesh;
 class UAnimInstance;
 class USkillDataAsset;
+class ABaseProjectile;
 
 UCLASS(BlueprintType, Const)
 class PROJECTER_API UCharacterData : public UPrimaryDataAsset
@@ -30,8 +31,16 @@ public:
 	TSoftObjectPtr<UAnimMontage> DeathMontage;
 	
 	// 기본 스킬 (일반 공격 : Auto Attack)
-	UPROPERTY(EditDefaultsOnly, Category = "AutoAttack")
+	UPROPERTY(EditDefaultsOnly, Category = "Combat|AutoAttack")
 	TMap<FGameplayTag, TSoftClassPtr<UGameplayAbility>> Abilities;
+	
+	// 원거리 발사체 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "Combat|Ranged")
+	TSubclassOf<ABaseProjectile> ProjectileClass;
+
+	// 발사 소켓 이름 (예: "Muzzle_01", "ArrowSocket")
+	UPROPERTY(EditDefaultsOnly, Category = "Combat|Ranged")
+	FName MuzzleSocketName;
 	
 	// 특수 스킬 (Q, W, E, R)
 	UPROPERTY(EditDefaultsOnly, Category = "SkillDataAsset")
