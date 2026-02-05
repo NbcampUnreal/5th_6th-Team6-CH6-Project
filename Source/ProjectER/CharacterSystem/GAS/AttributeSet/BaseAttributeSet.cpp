@@ -74,6 +74,32 @@ void UBaseAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, 
 	{
 		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxStamina());
 	}
+
+	if (Attribute == GetMaxHealthAttribute())
+	{
+		NewValue = FMath::Max(1.f, NewValue);
+
+		if (NewValue < GetHealth())
+		{
+			SetHealth(NewValue);
+		}
+	}
+	else if (Attribute == GetAttackPowerAttribute())
+	{
+		NewValue = FMath::Max(0.0f, NewValue);
+	}
+	else if (Attribute == GetDefenseAttribute())
+	{
+		NewValue = FMath::Max(0.0f, NewValue);
+	}
+	else if (Attribute == GetAttackSpeedAttribute())
+	{
+		NewValue = FMath::Max(0.0f, NewValue);
+	}
+	else if (Attribute == GetMoveSpeedAttribute())
+	{
+		NewValue = FMath::Max(0.0f, NewValue);
+	}
 }
 
 void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
@@ -96,7 +122,8 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 			const float NewHealth = OldHealth - LocalDamage;
 			
 			SetHealth(FMath::Clamp(NewHealth, 0.0f, GetMaxHealth()));
-			
+			UE_LOG(LogTemp, Warning, TEXT("Hp %f / %f "),  GetHealth(), GetMaxHealth());
+
 			
 			if (OldHealth > 0.0f && NewHealth <= 0.0f)
 			{

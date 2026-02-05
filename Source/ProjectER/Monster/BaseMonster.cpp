@@ -55,9 +55,9 @@ ABaseMonster::ABaseMonster()
 	HPBarWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComponent"));
 	HPBarWidgetComp->SetupAttachment(GetMesh());
 	HPBarWidgetComp->SetWidgetSpace(EWidgetSpace::Screen); // 체력바 크기가 일정할거같으니까?
-	
-	TeamID = ETeamType::Neutral;
 	HPBarWidgetComp->SetVisibility(false);
+
+	TeamID = ETeamType::Neutral;
 }
 
 UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
