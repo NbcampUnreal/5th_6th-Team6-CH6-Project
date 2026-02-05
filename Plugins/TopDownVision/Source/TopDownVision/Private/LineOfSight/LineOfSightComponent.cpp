@@ -17,18 +17,31 @@
 ULineOfSightComponent::ULineOfSightComponent()
 {
     PrimaryComponentTick.bCanEverTick = false; // Manual draw
+
+    LocalTextureSampler = CreateDefaultSubobject<ULocalTextureSampler>(TEXT("LocalTextureSampler"));
 }
 
 void ULineOfSightComponent::BeginPlay()
 {
     Super::BeginPlay();
 
+    if (!ShouldRunClientLogic())
+    {
+        return;// not for server
+    }
+    
     CreateResources();// make RT and MID
 
 }
 
 void ULineOfSightComponent::UpdateLocalLOS()
 {
+    if (!ShouldRunClientLogic())
+    {
+        return;// not for server
+    }
+
+    
     if (!ShouldUpdate)
     {
         /*UE_LOG(LOSVision, Log,
@@ -114,26 +127,16 @@ void ULineOfSightComponent::CreateResources()
         LOSRenderTarget->InitAutoFormat(PixelResolution, PixelResolution);
         LOSRenderTarget->ClearColor = FLinearColor::Black;
     }
-
+    
+    LOSRenderTarget->RenderTargetFormat = RTF_R8; // only R/G needed
+    
     if (!LocalTextureSampler)
     {
-        LocalTextureSampler = NewObject<ULocalTextureSampler>(
-            this,
-            ULocalTextureSampler::StaticClass(),
-            TEXT("LOS_LocalSampler"));
-            
-        if (!LocalTextureSampler)
-        {
-            UE_LOG(LOSVision, Error,
-                TEXT("ULineOfSightComponent::CreateResources >> Failed to create LocalTextureSampler"));
-            return;
-        }
-
-        LocalTextureSampler->RegisterComponent();
-        LocalTextureSampler->AttachToComponent(this, FAttachmentTransformRules::KeepRelativeTransform);
+        UE_LOG(LOSVision, Error,
+            TEXT("CreateResources >> LocalTextureSampler default subobject missing"));
+        return;
     }
 
-    LOSRenderTarget->RenderTargetFormat = RTF_R8; // only R/G needed
     LocalTextureSampler->SetLocalRenderTarget(LOSRenderTarget);
 
     // Create MID
@@ -146,6 +149,16 @@ void ULineOfSightComponent::CreateResources()
             LOSMaterialMID->SetScalarParameterValue(MIDVisibleRangeParam, VisionRange / MaxVisionRange / 2.f);
         }
     }
+}
+
+bool ULineOfSightComponent::ShouldRunClientLogic() const
+{
+    if (GetNetMode() == NM_DedicatedServer)
+        return false;
+    
+    //other conditions
+
+    return true;
 }
 
 

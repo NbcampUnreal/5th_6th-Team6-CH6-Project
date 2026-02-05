@@ -1,0 +1,106 @@
+﻿#pragma once
+
+//include path ==> /Plugin/TopDownVision\LayerMerging\MergeTile.ush
+
+
+float2 RotateUV(float2 UV, float AngleDegrees)
+{
+	float rad = AngleDegrees * 0.01745329252; // PI / 180
+	float s = sin(rad);
+	float c = cos(rad);
+	return float2(
+		UV.x * c - UV.y * s,
+		UV.x * s + UV.y * c
+	);
+}
+
+float IsInBounds(float2 UV)
+{
+	float2 inBounds = step(0.0, UV) * step(UV, 1.0);
+	return inBounds.x * inBounds.y;
+}
+
+
+// Tile UV transform
+
+float3 TransformTileUV(
+	float2 ScreenUV,
+	float2 TileCenter,
+	float2 TileSize,
+	float Rotation)
+{
+	// Move into tile-centered space
+	float2 uv = ScreenUV - TileCenter;
+
+	// Scale into tile-local space
+	uv /= TileSize;
+
+	// Rotate
+	uv = RotateUV(uv, Rotation);
+
+	// Back to 0-1 space
+	uv += 0.5;
+
+	// Mask outside tile
+	float mask = IsInBounds(uv);
+
+	return float3(uv, mask);
+}
+
+// Sample tile with transform
+float4 SampleTileWithTransform(
+	Texture2D TileTexture,
+	SamplerState TileSampler,
+	float2 ScreenUV,
+	float2 TileCenter,
+	float2 TileSize,
+	float Rotation)
+{
+	float3 transformed = TransformTileUV(
+		ScreenUV,
+		TileCenter,
+		TileSize,
+		Rotation);
+
+	float2 uv   = transformed.xy;
+	float  mask = transformed.z;
+
+	float4 tile = TileTexture.Sample(TileSampler, uv);
+	tile *= mask; // applies to RGBA
+
+	return tile;
+}
+
+
+// Merge with previous RT
+
+float4 MergeTileWithPrevious(
+	Texture2D PrevTexture,
+	SamplerState PrevSampler,
+	Texture2D TileTexture,
+	SamplerState TileSampler,
+	float2 ScreenUV,
+	float2 TileCenter,
+	float2 TileSize,
+	float Rotation)
+{
+	// Previous accumulated result
+	float4 prev = PrevTexture.Sample(PrevSampler, ScreenUV);
+
+	// Current tile projection
+	float4 tile = SampleTileWithTransform(
+		TileTexture,
+		TileSampler,
+		ScreenUV,
+		TileCenter,
+		TileSize,
+		Rotation);
+
+	// Merge
+	float4 result = prev + tile;
+	
+	return result;
+
+	//Temp
+	return float4(1, 0, 0, 1);
+}
