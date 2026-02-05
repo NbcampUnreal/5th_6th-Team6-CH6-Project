@@ -125,6 +125,13 @@ void UUI_HUDController::BindCallbacksToDependencies()
                 BroadcastCooldownReduction(Data.NewValue);
             }
         );
+    // AttackRange 변경 감지 람다
+    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+        BaseAS->GetAttackRangeAttribute()).AddLambda([this](const FOnAttributeChangeData& Data)
+            {
+				BroadcastARChanges(Data.NewValue);
+            }
+        );
     // 차후 위 람다식을 모든 스탯에 대해 반복 해야함~
 }
 
@@ -207,6 +214,18 @@ void UUI_HUDController::BroadcastASChanges(float CurrentAS)
     if (IsValid(MainHUDWidget))
     {
         MainHUDWidget->setStat(ECharacterStat::AS, CurrentAS);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+    }
+}
+
+void UUI_HUDController::BroadcastARChanges(float CurrentAR)
+{
+    if (IsValid(MainHUDWidget))
+    {
+        MainHUDWidget->setStat(ECharacterStat::ATRAN, CurrentAR);
     }
     else
     {

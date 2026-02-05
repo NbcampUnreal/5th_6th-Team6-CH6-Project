@@ -20,11 +20,12 @@ enum class ECharacterStat : uint8
 {
 	AD			UMETA(DisplayName = "Attack Damage"),
 	AP			UMETA(DisplayName = "Ability Power"),
-	AS			UMETA(DisplayName = "Attack Speed"),
 	DEF			UMETA(DisplayName = "Defence"),
-	ADEF		UMETA(DisplayName = "Ability Defence"),
+	COOL		UMETA(DisplayName = "CoolDown"),
+	AS			UMETA(DisplayName = "Attack Speed"),
+	ATRAN		UMETA(DisplayName = "Attack Range"),
+	CC			UMETA(DisplayName = "Critical Chance"),
 	SPD			UMETA(DisplayName = "Speed"),
-	COOL		UMETA(DisplayName = "CoolDown")
 };
 
 UENUM(BlueprintType)
@@ -125,6 +126,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* stat_07;
+	
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* stat_08;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* skill_01;
