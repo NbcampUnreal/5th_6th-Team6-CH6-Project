@@ -19,6 +19,10 @@ public:
 
 	virtual void Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
 
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameplayAbility")
+	float EventMagnitude = 1.0f;
+
 private:
 	UPROPERTY(VisibleAnywhere, Category = "Tag")
 	FGameplayTag ActiveTag;

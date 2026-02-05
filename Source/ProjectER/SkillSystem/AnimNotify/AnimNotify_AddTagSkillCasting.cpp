@@ -14,9 +14,25 @@ void UAnimNotify_AddTagSkillCasting::Notify(USkeletalMeshComponent* MeshComp, UA
 {
 	Super::Notify(MeshComp, Animation, EventReference);
 
-	if (!MeshComp || !MeshComp->GetOwner() || !CastingTag.IsValid()) return;
+	if (MeshComp && MeshComp->GetWorld())
+	{
+		FString NetMode = MeshComp->GetWorld()->IsNetMode(NM_DedicatedServer) ? TEXT("Dedicated Server") : TEXT("Client/ListenServer");
+		UE_LOG(LogTemp, Warning, TEXT("Notify Executed on: %s"), *NetMode);
+	}
 
-	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(MeshComp->GetOwner());
-	//같은 태그가 여러개 있어도 해당 태그를 1개로 설정
-	if (ASC) ASC->AddLooseGameplayTag(CastingTag, 1);
+	if (!MeshComp) return;
+
+	AActor* OwnerActor = MeshComp->GetOwner();
+	if (!OwnerActor) return;
+
+	if (!MeshComp->GetWorld() || !MeshComp->GetWorld()->IsGameWorld()) return;
+
+	// 이벤트 전송
+	FGameplayEventData Payload;
+	Payload.EventTag = CastingTag;
+	Payload.Instigator = OwnerActor;
+	Payload.Target = OwnerActor;
+	Payload.EventMagnitude = EventMagnitude;
+
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(OwnerActor, CastingTag, Payload);
 }

@@ -13,17 +13,22 @@ UAnimNotify_AddTagSkillActive::UAnimNotify_AddTagSkillActive()
 void UAnimNotify_AddTagSkillActive::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference)
 {
 	Super::Notify(MeshComp, Animation, EventReference);
-	UE_LOG(LogTemp, Log, TEXT("UAnimNotify_AddTagSkillActive::Notify"));
 
-	if (!MeshComp || !MeshComp->GetOwner() || !ActiveTag.IsValid()) return;
+	if (!MeshComp) return;
 
-	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(MeshComp->GetOwner());
-	//같은 태그가 여러개 있어도 해당 태그를 1개로 설정
-	if (ASC) {
-		UE_LOG(LogTemp, Log, TEXT("UAnimNotify_AddTagSkillActive::Notify::ASC"));
-		ASC->AddLooseGameplayTag(ActiveTag, 1);
-	}
-	else {
-		UE_LOG(LogTemp, Log, TEXT("UAnimNotify_AddTagSkillActive::Notify::ASC is Null"));
-	}
+	AActor* OwnerActor = MeshComp->GetOwner();
+	if (!OwnerActor) return;
+
+	// 이벤트 전송
+	FGameplayEventData Payload;
+	Payload.EventTag = ActiveTag;
+	Payload.Instigator = OwnerActor;
+	Payload.Target = OwnerActor;
+	Payload.EventMagnitude = EventMagnitude;
+
+#if WITH_EDITOR
+	UE_LOG(LogTemp, Warning, TEXT("[AnimNotify] Activate SendGamePlayEvent.!!!"));
+#endif
+
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(OwnerActor, ActiveTag, Payload);
 }
