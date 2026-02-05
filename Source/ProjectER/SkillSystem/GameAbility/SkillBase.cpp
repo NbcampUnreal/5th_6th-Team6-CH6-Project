@@ -112,8 +112,8 @@ void USkillBase::OnActiveTagEventReceived(FGameplayEventData Payload)
 
 	ExecuteSkill();
 
-	UAbilityTask_SendServerEvent* SendEvnet = UAbilityTask_SendServerEvent::SendServerEvent(this, ActiveTag);
-	SendEvnet->ReadyForActivation();
+	/*UAbilityTask_SendServerEvent* SendEvnet = UAbilityTask_SendServerEvent::SendServerEvent(this, ActiveTag);
+	SendEvnet->ReadyForActivation();*/
 	//SendEvnet->Activate();
 }
 
@@ -127,8 +127,8 @@ void USkillBase::OnCastingTagEventReceived(FGameplayEventData Payload)
 
 void USkillBase::PlayAnimMontage()
 {
-	/*UAbilityTask_PlayMontageAndWait* PlayTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, TEXT("SkillAnimation"), CachedConfig->Data.AnimMontage);
-	PlayTask->ReadyForActivation();*/
+	UAbilityTask_PlayMontageAndWait* PlayTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, TEXT("SkillAnimation"), CachedConfig->Data.AnimMontage);
+	PlayTask->ReadyForActivation();
 }
 
 void USkillBase::SetWaitEventActiveTag()
