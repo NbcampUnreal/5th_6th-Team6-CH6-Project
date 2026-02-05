@@ -11,6 +11,7 @@ UBaseCharacterAnimInstance::UBaseCharacterAnimInstance()
 	GroundSpeed = 0.0f;
 	bIsFalling = false;
 	bShouldMove = false;
+	bIsDead = false;
 }
 
 void UBaseCharacterAnimInstance::NativeInitializeAnimation()

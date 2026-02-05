@@ -55,6 +55,8 @@ ABaseMonster::ABaseMonster()
 	HPBarWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComponent"));
 	HPBarWidgetComp->SetupAttachment(GetMesh());
 	HPBarWidgetComp->SetWidgetSpace(EWidgetSpace::Screen); // 체력바 크기가 일정할거같으니까?
+	
+	TeamID = ETeamType::Neutral;
 	HPBarWidgetComp->SetVisibility(false);
 }
 
@@ -318,6 +320,37 @@ bool ABaseMonster::GetbIsDead()
 }
 
 
+ETeamType ABaseMonster::GetTeamType() const
+{
+	return TeamID;
+}
+
+bool ABaseMonster::IsTargetable() const
+{
+	return true;
+}
+
+void ABaseMonster::Server_SetTeamID_Implementation(ETeamType NewTeamID)
+{
+	TeamID = NewTeamID;
+	OnRep_TeamID();
+}
+
+void ABaseMonster::OnRep_TeamID()
+{
+	/*FString Team = (TeamID == ETeamType::Team_A) ? TEXT("Team_A") : 
+						(TeamID == ETeamType::Team_B) ? TEXT("Team_B") : 
+							(TeamID == ETeamType::Team_C) ? TEXT("Team_C") : TEXT("None");
+	
+	FString Message = FString::Printf(TEXT("[%s] Team Changed to: %s"), *GetName(), *Team);
+	
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, Message);
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *Message);*/
+}
 
 /// [전민성 추가분]
 void ABaseMonster::Death()
