@@ -1,7 +1,8 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "Components/SceneComponent.h"
+//#include "Components/SceneComponent.h"
+#include "Components/ActorComponent.h"
 #include "LineOfSight/VisionData.h"// now as enum
 #include "LineOfSightComponent.generated.h"
 
@@ -15,7 +16,7 @@ class UMaterialInstanceDynamic;
 //LOG
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOPDOWNVISION_API ULineOfSightComponent : public USceneComponent//changed it into SceneComp for 2dSceneComp can be attached to
+class TOPDOWNVISION_API ULineOfSightComponent : public UActorComponent//changed it into SceneComp for 2dSceneComp can be attached to
 {
     GENERATED_BODY()
 
@@ -55,9 +56,11 @@ public:
 
 
     
-protected:
+private:
     //prep
     void CreateResources();// make RT and MID
+
+    bool ShouldRunClientLogic()const;
 
 protected:
     
@@ -80,8 +83,8 @@ protected:
     float MaxVisionRange = 800.f;//<- this will be used for Fixed RenderTarget Size and OrthoWidth
     
     //WorldEnvironmentCapturing
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
-    ULocalTextureSampler* LocalTextureSampler = nullptr;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="LineOfSight", Instanced)
+    ULocalTextureSampler* LocalTextureSampler;// now a default object
     
     // will be dynamically generated for the local LOS stamp, and be rendered by 2D Scene capture component
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="LineOfSight")

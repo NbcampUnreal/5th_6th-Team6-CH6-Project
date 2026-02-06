@@ -29,6 +29,11 @@ void UCameraVisionManager::BeginPlay()
 
 void UCameraVisionManager::Initialize(APlayerCameraManager* InCamera)
 {
+	if (!ShouldRunClientLogic())
+	{
+		return;// not for server
+	}
+
 	ActiveCamera = InCamera;
 	UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::Initialize >> Called with Camera: %s"), *GetNameSafe(ActiveCamera));
 
@@ -112,6 +117,11 @@ static bool RectOverlapsWorld(
 
 void UCameraVisionManager::UpdateCameraLOS()
 {
+	if (!ShouldRunClientLogic())
+	{
+		return;// not for server
+	}
+
 	/*UE_LOG(LOSVision, Log,
 		TEXT("UCameraVisionManager::UpdateCameraLOS >> Called"));*/
 
@@ -475,6 +485,18 @@ bool UCameraVisionManager::GetVisibleProviders(TArray<ULineOfSightComponent*>& O
 	}
 	//Get the Teams
 	OutProviders = Subsystem->GetProvidersForTeam(VisionChannel);
+	return true;
+}
+
+bool UCameraVisionManager::ShouldRunClientLogic() const
+{
+	if (GetNetMode() == NM_DedicatedServer)
+		return false;
+	
+	// other conditions
+
+
+
 	return true;
 }
 
