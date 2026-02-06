@@ -94,11 +94,8 @@ void ULocalTextureSampler::UpdateLocalTexture()
 	
 	if (!SourceRoot.IsValid())
 	{
-		if (!TurnOffTheLog)
-		{
-			UE_LOG(LOSVision, Verbose,
-				TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing SourceRoot"));
-		}
+		UE_LOG(LOSVision, Verbose,
+					TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing SourceRoot"));
 		return;
 	}
 	
@@ -215,14 +212,15 @@ void ULocalTextureSampler::UpdateOverlappingTiles()
 	for (int32 i = 0; i < Tiles.Num(); ++i)
 	{
 		bool bOverlap = Tiles[i].WorldBounds.Intersect(LocalWorldBounds);
+
+		const TCHAR* TextureName =Tiles[i].Mask? *Tiles[i].Mask->GetName(): TEXT("None");
 		
 		UE_LOG(LOSVision, VeryVerbose,
-			TEXT("ULocalTextureSampler::UpdateOverlappingTiles >> Tile %d bounds [%s-%s], LocalBounds [%s-%s], Overlap=%d"),
+			TEXT("Tile %d | Texture=%s | TileBounds [%s - %s] | Overlap=%d"),
 			i,
+			TextureName,
 			*Tiles[i].WorldBounds.Min.ToString(),
 			*Tiles[i].WorldBounds.Max.ToString(),
-			*LocalWorldBounds.Min.ToString(),
-			*LocalWorldBounds.Max.ToString(),
 			bOverlap
 		);
 
@@ -236,6 +234,7 @@ void ULocalTextureSampler::UpdateOverlappingTiles()
 		TEXT("ULocalTextureSampler::UpdateOverlappingTiles >> %d tiles in local area"),
 		ActiveTileIndices.Num());
 }
+
 
 void ULocalTextureSampler::DrawTilesIntoLocalRT()
 {
@@ -251,6 +250,18 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
 		LocalMaskRT,
 		FLinearColor::Black);
 
+	//clear the debug RT as well
+
+	if (bDrawDebugRT && DebugRT)
+	{
+		UKismetRenderingLibrary::ClearRenderTarget2D(
+	this,
+	DebugRT,
+	FLinearColor::Black);
+	}
+	
+	
+
 	if (ActiveTileIndices.IsEmpty())
 	{
 		UE_LOG(LOSVision, Verbose,
@@ -264,7 +275,20 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
 		nullptr,
 		GetWorld(),
 		GMaxRHIFeatureLevel);
-    
+	
+	//f0r debug canvas
+	FCanvas* DebugCanvas = nullptr;
+
+	if (bDrawDebugRT && DebugRT)
+	{
+		DebugCanvas = new FCanvas(
+			DebugRT->GameThread_GetRenderTargetResource(),
+			nullptr,
+			GetWorld(),
+			GMaxRHIFeatureLevel);
+	}
+
+	
 	const FVector2D LocalSize = LocalWorldBounds.GetSize();
 	
 	// Scene capture camera rotation constant
@@ -331,10 +355,22 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
 		TileItem.Rotation = FRotator(0.f, Tile.WorldRotationYaw - CameraYawOffset, 0.f);
 		
 		Canvas.DrawItem(TileItem);
+
+		//f0r debug canvas
+		if (bDrawDebugRT && DebugRT)
+		{
+			DebugCanvas->DrawItem(TileItem);
+		}
 	}
 
 	//  Tell the GPU to execute all queued draws at once!!!!
 	Canvas.Flush_GameThread();
+
+	if (DebugCanvas)//draw debug canvas
+	{
+		DebugCanvas->Flush_GameThread();
+		delete DebugCanvas;
+	}
 
 	UE_LOG(LOSVision, Verbose,
 		TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Finished drawing tiles"));
