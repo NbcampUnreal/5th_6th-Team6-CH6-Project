@@ -17,15 +17,38 @@ public:
 	UGA_OpenBox();
 
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
+	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
 
 protected:
+
+	// 거리 체크 타이머 시작
+	void StartDistanceCheck(const FGameplayAbilityActorInfo* ActorInfo);
+
+	// 거리 체크 타이머 종료
+	void StopDistanceCheck();
+
+	// 거리 체크
+	UFUNCTION()
+	void TickDistanceCheck();
+
+
 	UPROPERTY(EditDefaultsOnly, Category = "ProjectER|Design")
 	float OpenTime = 1.5f;
 
-	// 에디터에서 WBP_LootingPopup을 선택할 변수
-	UPROPERTY(EditDefaultsOnly, Category = "ProjectER|UI")
-	TSubclassOf<class UW_LootingPopup> LootWidgetClass;
+	// 박스와의 최대 거리
+	UPROPERTY(EditDefaultsOnly, Category = "OpenBox")
+	float MaxLootDistance = 500.f;
 
-	UFUNCTION()
-	void OnFinishOpen();
+	// 거리를 체크할 tick 시간
+	UPROPERTY(EditDefaultsOnly, Category = "OpenBox")
+	float DistanceCheckInterval = 0.1f;
+
+	// 체크할 박스 캐싱
+	UPROPERTY()
+	TWeakObjectPtr<const class ABaseBoxActor> TargetBox;
+
+	// 타이머
+	FTimerHandle DistanceCheckTimer;
+
+
 };

@@ -102,6 +102,10 @@ public:
 	
 	UPROPERTY(EditDefaultsOnly,Category = "GAS") 
 	TSubclassOf<UGameplayEffect> InitStatusEffectClass;
+
+	// 전민성 추가
+	UPROPERTY(EditAnywhere, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> OpenAbilityClass;
 	
 protected:
 	UFUNCTION()

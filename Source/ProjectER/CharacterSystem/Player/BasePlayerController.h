@@ -93,8 +93,6 @@ protected:
 	void ProcessMouseInteraction();
 
 public:
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_RequestInteract(AActor* TargetActor);
 /// [김현수 추가분] - 끝
 
 //-----------------------------------------------------------
@@ -132,6 +130,34 @@ public:
 	// 아이템에서 호출할 Server RPC
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_RequestPickup(class ABaseItemActor* Item);
+
+
+	// 박스 아이템 루팅 RPC 시작
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_BeginLoot(ABaseBoxActor* Box);// 루팅 시작 요청
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_EndLoot(ABaseBoxActor* Box); // 루팅 종료 요청(또는 거리 벗어남)
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_TakeItem(ABaseBoxActor* Box, int32 SlotIndex); // 아이템 가져가기(핵심)
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_OpenLootUI(const ABaseBoxActor* Box); // UI 열기(로컬 전용)
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_CloseLootUI(); // UI 닫기(로컬 전용)
+
+
+	UPROPERTY(EditDefaultsOnly, Category = "ProjectER|UI")
+	TSubclassOf<class UW_LootingPopup> LootWidgetClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UW_LootingPopup> LootWidgetInstance;
+	// 박스 아이템 루팅 RPC 끝
+
+
 private:
 	// UI 출력
 	void ShowWinUI();

@@ -1,4 +1,4 @@
-﻿#include "CharacterSystem/Character/BaseCharacter.h"
+#include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Player/BasePlayerState.h"
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -345,6 +345,11 @@ void ABaseCharacter::InitAbilitySystem()
 				ASC->GiveAbility(Spec);
 			}
 		}
+
+		// 전민성 추가
+		FGameplayAbilitySpec Spec(OpenAbilityClass, 1);
+		ASC->GiveAbility(Spec);
+
 
 		// Attribute Set 초기화
 		InitAttributes();
