@@ -73,37 +73,17 @@ private:
 	bool ShouldRunClientLogic() const;
 
 protected:
-
+	
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
-	bool TurnOffTheLog=true;
-
-
+	bool bDrawDebugRT=false;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
+	TObjectPtr<UTextureRenderTarget2D> DebugRT;
+	
 	/** Local merged obstacle/height mask */
   	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
 	TObjectPtr<UTextureRenderTarget2D> LocalMaskRT;
-
-	/*/** Material used to project baked tiles into the local RT #1#
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
-	TObjectPtr<UMaterialInterface> TileProjectionMaterial;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UMaterialInstanceDynamic> ProjectionMID;*/
-
-	/*//MID Param names
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
-	FName MIDParam_TextureObj =NAME_None;
- 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
-	FName MIDParam_TileWorldMin =NAME_None;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
-	FName MIDParam_TileWorldMax =NAME_None;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
-	FName MIDParam_LocalWorldMin =NAME_None;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
-	FName MIDParam_LocalWorldMax =NAME_None;*/
-	
-	// no longer needed. can merge rt without material
 	
 	// Sampling Settings
 
@@ -114,10 +94,7 @@ protected:
 	/** Resolution of the local render target */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Settings")
 	int32 LocalResolution = 256;
-
-	/** Distance threshold before re-sampling */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Settings")
-	float UpdateDistanceThreshold = 100.f;
+	
 	
 	// Cached State
 	/** Last world-space center used for sampling */
