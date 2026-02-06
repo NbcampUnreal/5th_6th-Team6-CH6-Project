@@ -7,11 +7,11 @@
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitTargetData.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "SkillSystem/AbilityTask/AbilityTask_WaitGameplayEventSyn.h"
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 #include "SkillSystem/SkillDataAsset.h"
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 #include "Abilities/GameplayAbilityTargetActor.h"
-#include "SkillSystem/AbilityTask/AbilityTask_SendServerEvent.h"
 
 #include "AbilitySystemLog.h" // GAS 관련 로그 확인용
 
@@ -111,10 +111,6 @@ void USkillBase::OnActiveTagEventReceived(FGameplayEventData Payload)
 	}
 
 	ExecuteSkill();
-
-	/*UAbilityTask_SendServerEvent* SendEvnet = UAbilityTask_SendServerEvent::SendServerEvent(this, ActiveTag);
-	SendEvnet->ReadyForActivation();*/
-	//SendEvnet->Activate();
 }
 
 void USkillBase::OnCastingTagEventReceived(FGameplayEventData Payload)
@@ -133,22 +129,16 @@ void USkillBase::PlayAnimMontage()
 
 void USkillBase::SetWaitEventActiveTag()
 {
-	if (IsLocallyControlled())
-	{
-		UAbilityTask_WaitGameplayEvent* WaitEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, ActiveTag);
-		WaitEventTask->EventReceived.AddDynamic(this, &USkillBase::OnActiveTagEventReceived);
-		WaitEventTask->ReadyForActivation();
-	}
+	UAbilityTask_WaitGameplayEventSyn* WaitEventTask = UAbilityTask_WaitGameplayEventSyn::WaitEventClientToServer(this, ActiveTag);
+	WaitEventTask->OnEventReceived.AddDynamic(this, &USkillBase::OnActiveTagEventReceived);
+	WaitEventTask->ReadyForActivation();
 }
 
 void USkillBase::SetWaitEventCastingTag()
 {
-	if (IsLocallyControlled())
-	{
-		UAbilityTask_WaitGameplayEvent* WaitEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, CastingTag);
-		WaitEventTask->EventReceived.AddDynamic(this, &USkillBase::OnCastingTagEventReceived);
-		WaitEventTask->ReadyForActivation();
-	}
+	UAbilityTask_WaitGameplayEventSyn* WaitEventTask = UAbilityTask_WaitGameplayEventSyn::WaitEventClientToServer(this, CastingTag);
+	WaitEventTask->OnEventReceived.AddDynamic(this, &USkillBase::OnCastingTagEventReceived);
+	WaitEventTask->ReadyForActivation();
 }
 
 void USkillBase::PrepareToActiveSkill()

@@ -1,4 +1,4 @@
-﻿#include "CharacterSystem/GameplayTags/GameplayTags.h"
+#include "CharacterSystem/GameplayTags/GameplayTags.h"
 
 namespace ProjectER
 {
@@ -114,6 +114,11 @@ namespace ProjectER
 		namespace UI
 		{
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Test, "Event.UI.Test", "");
+		}
+
+		namespace Interact
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(OpenBox, "Event.Interact.OpenBox", "");
 		}
 	}
 
@@ -249,4 +254,5 @@ namespace ProjectER
 		
 
 	}
+
 }

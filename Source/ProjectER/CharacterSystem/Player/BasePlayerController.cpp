@@ -18,6 +18,9 @@
 // [김현수 추가분] 상호작용 인터페이스 포함
 #include "ItemSystem/I_ItemInteractable.h"
 #include "ItemSystem/BaseItemActor.h"
+#include "ItemSystem/BaseBoxActor.h"
+#include "ItemSystem/W_LootingPopup.h"
+#include "ItemSystem/BaseInventoryComponent.h"
 
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/GameMode/ER_OutGameMode.h"
@@ -144,17 +147,7 @@ void ABasePlayerController::OnMoveReleased()
 {
 	FHitResult Hit;
 
-	// [김현수 추가분2] Server_RequestInteract 구현
-	if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))
-	{
-		AActor* HitActor = Hit.GetActor();
-		if (II_ItemInteractable* Interactable = Cast<II_ItemInteractable>(HitActor))
-		{
-			Server_RequestInteract(HitActor);
-		}
-	}
 	bIsMousePressed = false;
-	// [김현수 추가분2] 끝
 }
 
 void ABasePlayerController::MoveToMouseCursor()
@@ -277,13 +270,21 @@ void ABasePlayerController::CheckInteractionDistance()
 	if (InteractionTarget && ControlledBaseChar)
 	{
 		float Distance = FVector::Dist(ControlledBaseChar->GetActorLocation(), InteractionTarget->GetActorLocation());
-		if (Distance <= 150.f)
+		if (Distance <= 500.f)
 		{
 			if (II_ItemInteractable* Interactable = Cast<II_ItemInteractable>(InteractionTarget))
 			{
-				Interactable->PickupItem(ControlledBaseChar);
-				ABaseItemActor* AAA = Cast<ABaseItemActor>(Interactable);
-				Server_RequestPickup(AAA);
+				if (ABaseItemActor* AAA = Cast<ABaseItemActor>(Interactable))
+				{
+					AAA->PickupItem(ControlledBaseChar);
+					Server_RequestPickup(AAA);
+				}
+				else if (ABaseBoxActor* Box = Cast<ABaseBoxActor>(Interactable))
+				{
+					Server_BeginLoot(Box);
+					InteractionTarget = nullptr;
+				}
+
 			}
 			InteractionTarget = nullptr;
 		}
@@ -423,6 +424,7 @@ void ABasePlayerController::Client_StopRespawnTimer_Implementation()
 {
 	HideRespawnTimerUI();
 }
+
 void ABasePlayerController::Client_OutGameInputMode_Implementation()
 {
 	FInputModeUIOnly InputMode;
@@ -471,7 +473,7 @@ void ABasePlayerController::Server_TEMP_DespawnNeutrals_Implementation()
 }
 
 void ABasePlayerController::Server_RequestPickup_Implementation(ABaseItemActor* Item)
-{
+{ // 바닥에 있는 아이템 줍기
 	if (!Item) return;
 
 	APawn* PlayerPawn = GetPawn();
@@ -483,6 +485,79 @@ void ABasePlayerController::Server_RequestPickup_Implementation(ABaseItemActor* 
 
 	Item->PickupItem(PlayerPawn);
 }
+
+// 박스 아이템 루팅 RPC 시작
+void ABasePlayerController::Server_BeginLoot_Implementation(ABaseBoxActor* Box)
+{
+	if (!Box) return;
+
+	ABaseCharacter* Char = Cast<ABaseCharacter>(GetPawn());
+	if (!Char) return;
+
+	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
+	if (!PS) return;
+
+	// 서버 권위 거리 검증 (치트 방지)
+	const float Dist = FVector::Dist(Char->GetActorLocation(), Box->GetActorLocation());
+	if (Dist > 150.f) return;
+
+	// Target에 Box를 담는다
+	FGameplayEventData Payload;
+	Payload.Instigator = Char;
+	Payload.Target = Box;
+
+	const FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(TEXT("Event.Interact.OpenBox"));
+
+	// GA 트리거: Char(Avatar)에게 이벤트 보냄
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(PS, EventTag, Payload);
+}
+
+void ABasePlayerController::Server_EndLoot_Implementation(ABaseBoxActor* Box)
+{
+	// 뭐넣냐 이거
+}
+
+void ABasePlayerController::Server_TakeItem_Implementation(ABaseBoxActor* Box, int32 SlotIndex)
+{
+	//box->TryTakeItem 예정
+	UBaseInventoryComponent* Inv = GetPawn()->FindComponentByClass<UBaseInventoryComponent>();
+	UBaseItemData* TargetItem = Box->GetItemData(SlotIndex);
+	//Inv->AddItem(TargetItem);
+	// 여기서 아이템 인벤에 넣기
+	Box->ReduceItem(SlotIndex);
+}
+
+void ABasePlayerController::Client_OpenLootUI_Implementation(const ABaseBoxActor* Box)
+{
+	UE_LOG(LogTemp, Log, TEXT("Client_OpenLootUI START"));
+
+	if (!Box || !LootWidgetClass) return;
+
+	// 중복 방지
+	if (IsValid(LootWidgetInstance))
+	{
+		LootWidgetInstance->RemoveFromParent();
+		LootWidgetInstance = nullptr;
+	}
+
+	LootWidgetInstance = CreateWidget<UW_LootingPopup>(this, LootWidgetClass);
+
+	if (IsValid(LootWidgetInstance))
+	{
+		LootWidgetInstance->InitPopup(Box);
+		LootWidgetInstance->AddToViewport(10);
+		//LootWidgetInstance->UpdateLootingSlots(Box);
+		LootWidgetInstance->Refresh();
+	}
+}
+
+void ABasePlayerController::Client_CloseLootUI_Implementation()
+{
+	LootWidgetInstance->RemoveFromParent();
+	LootWidgetInstance = nullptr;
+}
+
+
 
 void ABasePlayerController::ShowWinUI()
 {
@@ -529,29 +604,6 @@ void ABasePlayerController::HideRespawnTimerUI()
 	{
 		RespawnUIInstance->RemoveFromParent();
 		RespawnUIInstance = nullptr;
-	}
-}
-
-
-// [김현수 추가분2]
-bool ABasePlayerController::Server_RequestInteract_Validate(AActor* TargetActor)
-{
-	return TargetActor != nullptr;
-}
-
-// [김현수 추가분2]
-void ABasePlayerController::Server_RequestInteract_Implementation(AActor* TargetActor)
-{
-	APawn* PlayerPawn = GetPawn();
-	if (!PlayerPawn || !TargetActor) return;
-
-	// 서버측 거리 검증 (300 유닛)
-	if (PlayerPawn->GetDistanceTo(TargetActor) <= 300.f)
-	{
-		if (II_ItemInteractable* Interactable = Cast<II_ItemInteractable>(TargetActor))
-		{
-			Interactable->PickupItem(PlayerPawn);
-		}
 	}
 }
 
