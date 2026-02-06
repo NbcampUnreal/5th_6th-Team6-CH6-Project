@@ -297,7 +297,6 @@ void ABasePlayerController::OnConfirm() {
 
 	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ControlledPawn);
 	if (IsValid(ASC)) {
-		UE_LOG(LogTemp, Log, TEXT("OnConfirm"));
 		ASC->LocalInputConfirm();
 	}
 }

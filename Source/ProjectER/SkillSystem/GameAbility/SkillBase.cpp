@@ -5,10 +5,13 @@
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayTag.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
+#include "Abilities/Tasks/AbilityTask_WaitTargetData.h"
+#include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "SkillSystem/AbilityTask/AbilityTask_WaitGameplayEventSyn.h"
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 #include "SkillSystem/SkillDataAsset.h"
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
-
+#include "Abilities/GameplayAbilityTargetActor.h"
 
 #include "AbilitySystemLog.h" // GAS 관련 로그 확인용
 
@@ -24,21 +27,19 @@ USkillBase::USkillBase()
 
 void USkillBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
-	ENetMode NetMode = (GetWorld() != nullptr) ? GetWorld()->GetNetMode() : NM_Standalone;
+	//ENetMode NetMode = (GetWorld() != nullptr) ? GetWorld()->GetNetMode() : NM_Standalone;
 
-	FString NetModeStr;
-	switch (NetMode)
-	{
-	case NM_Client: NetModeStr = TEXT("Client"); break;
-	case NM_DedicatedServer: NetModeStr = TEXT("DedicatedServer"); break;
-	case NM_ListenServer: NetModeStr = TEXT("ListenServer"); break;
-	case NM_Standalone: NetModeStr = TEXT("Standalone"); break;
-	default: NetModeStr = TEXT("Unknown"); break;
-	}
-
-	FString SideStr = HasAuthority(&ActivationInfo) ? TEXT("SERVER") : TEXT("CLIENT");
-	FString ActorName = (ActorInfo && ActorInfo->AvatarActor.IsValid()) ? ActorInfo->AvatarActor->GetName() : TEXT("Unknown");
-
+	//FString NetModeStr;
+	//switch (NetMode)
+	//{
+	//case NM_Client: NetModeStr = TEXT("Client"); break;
+	//case NM_DedicatedServer: NetModeStr = TEXT("DedicatedServer"); break;
+	//case NM_ListenServer: NetModeStr = TEXT("ListenServer"); break;
+	//case NM_Standalone: NetModeStr = TEXT("Standalone"); break;
+	//default: NetModeStr = TEXT("Unknown"); break;
+	//}
+	//FString SideStr = HasAuthority(&ActivationInfo) ? TEXT("SERVER") : TEXT("CLIENT");
+	//FString ActorName = (ActorInfo && ActorInfo->AvatarActor.IsValid()) ? ActorInfo->AvatarActor->GetName() : TEXT("Unknown");
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 	if (CommitAbility(Handle, ActorInfo, ActivationInfo) == false)
 	{
@@ -54,6 +55,8 @@ void USkillBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGame
 		OnCancelAbility();
 	}
 
+	RemoveTagFromOwner(CastingTag);
+	RemoveTagFromOwner(ActiveTag);
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
@@ -79,30 +82,43 @@ void USkillBase::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const
 
 void USkillBase::ExecuteSkill()
 {
-	if (IsValid(CachedConfig) == false) return;
-	if (CachedConfig->GetExcutionEffects().Num() <= 0) return;
+	if (IsValid(CachedConfig) == false || CachedConfig->GetExcutionEffects().Num() <= 0) return;
+
 	AActor* Avatar = GetAvatarActorFromActorInfo();
 	if (IsValid(Avatar) == false) return;
 
-	ApplyEffectsToActor(Avatar, CachedConfig->GetExcutionEffects());
+	if (HasAuthority(&CurrentActivationInfo))
+	{
+		ApplyEffectsToActor(Avatar, CachedConfig->GetExcutionEffects());
+	}
+
+	if (IsLocallyControlled())
+	{
+		OnExecuteSkill_InClient();
+	}
 }
 
-void USkillBase::OnActiveTagAdded()
+void USkillBase::OnActiveTagEventReceived(FGameplayEventData Payload)
 {
 	if (CachedConfig->Data.bIsUseCasting)
 	{
-		if (GetAbilitySystemComponentFromActorInfo()->HasMatchingGameplayTag(CastingTag))
+		if (GetAbilitySystemComponentFromActorInfo()->HasMatchingGameplayTag(CastingTag) == false)
 		{
-			RemoveTagFromOwner(CastingTag);
-			ExecuteSkill();
-		}
-		else {
 			EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+			return;
 		}
+		RemoveTagFromOwner(CastingTag);
 	}
-	else {
-		
-	}
+
+	ExecuteSkill();
+}
+
+void USkillBase::OnCastingTagEventReceived(FGameplayEventData Payload)
+{
+	AddTagToOwner(CastingTag);
+
+	/*UAbilityTask_SendServerEvent* SendEvnet = UAbilityTask_SendServerEvent::SendServerEvent(this, CastingTag);
+	SendEvnet->ReadyForActivation();*/
 }
 
 void USkillBase::PlayAnimMontage()
@@ -111,35 +127,25 @@ void USkillBase::PlayAnimMontage()
 	PlayTask->ReadyForActivation();
 }
 
-void USkillBase::SetWaitActiveTagTask()
+void USkillBase::SetWaitEventActiveTag()
 {
-	UAbilityTask_WaitGameplayTagAdded* WaitTagAdd = UAbilityTask_WaitGameplayTagAdded::WaitGameplayTagAdd(this, ActiveTag);
-	WaitTagAdd->Added.AddDynamic(this, &USkillBase::OnActiveTagAdded);
-	WaitTagAdd->ReadyForActivation();
+	UAbilityTask_WaitGameplayEventSyn* WaitEventTask = UAbilityTask_WaitGameplayEventSyn::WaitEventClientToServer(this, ActiveTag);
+	WaitEventTask->OnEventReceived.AddDynamic(this, &USkillBase::OnActiveTagEventReceived);
+	WaitEventTask->ReadyForActivation();
+}
+
+void USkillBase::SetWaitEventCastingTag()
+{
+	UAbilityTask_WaitGameplayEventSyn* WaitEventTask = UAbilityTask_WaitGameplayEventSyn::WaitEventClientToServer(this, CastingTag);
+	WaitEventTask->OnEventReceived.AddDynamic(this, &USkillBase::OnCastingTagEventReceived);
+	WaitEventTask->ReadyForActivation();
 }
 
 void USkillBase::PrepareToActiveSkill()
 {
-	//SetWaitActiveTagTask();
-	//PlayAnimMontage();
-	////캐스팅이 없는 스킬이면 Active 태그를 바로 붙여서 즉시 발동
-	//if (CachedConfig->Data.bIsUseCasting == false)
-	//{
-	//	ExecuteSkill();
-	//	AddTagToOwner(ActiveTag);
-	//}
-
-	PlayAnimMontage();
-
-	if (CachedConfig->Data.bIsUseCasting)
-	{
-		SetWaitActiveTagTask();
-	}
-	else
-	{
-		ExecuteSkill();
-		AddTagToOwner(ActiveTag);
-	}
+	SetWaitEventActiveTag();
+	if (CachedConfig->Data.bIsUseCasting) SetWaitEventCastingTag();
+	if (IsLocallyControlled()) PlayAnimMontage();
 }
 
 void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets)
@@ -206,6 +212,10 @@ void USkillBase::OnCancelAbility()
 
 }
 
+void USkillBase::OnExecuteSkill_InClient()
+{
+}
+
 void USkillBase::AddTagToOwner(FGameplayTag Tag)
 {
 	if (Tag.IsValid())
@@ -221,7 +231,7 @@ void USkillBase::RemoveTagFromOwner(FGameplayTag Tag)
 	if (Tag.IsValid())
 	{
 		//같은 태그가 여러개 있어도 해당 태그를 0개로 설정
-		GetAbilitySystemComponentFromActorInfo()->SetTagMapCount(Tag, 0);
 		//GetAbilitySystemComponentFromActorInfo()->RemoveLooseGameplayTag(Tag, 1);
+		GetAbilitySystemComponentFromActorInfo()->SetTagMapCount(Tag, 0);
 	}
 }

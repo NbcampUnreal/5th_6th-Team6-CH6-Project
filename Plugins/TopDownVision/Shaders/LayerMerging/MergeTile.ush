@@ -1,0 +1,113 @@
+﻿#pragma once
+
+//include path ==> /Plugin/TopDownVision\LayerMerging\MergeTile.ush
+
+/*
+
+ --> use this
+return MergeTileWithPrevious(
+    PrevMask,
+    PrevMaskSampler,
+    MergingTile,
+    MergingTileSampler,
+    ScreenUV,
+    TileCenter,
+    TileSize,
+    TileRotation)
+ */
+
+
+float2 RotateUV(float2 UV, float AngleDegrees)
+{
+    float rad = AngleDegrees * 0.01745329252; // PI / 180
+    float s = sin(rad);
+    float c = cos(rad);
+    return float2(
+       UV.x * c - UV.y * s,
+       UV.x * s + UV.y * c
+    );
+}
+
+float IsInBounds(float2 UV)
+{
+    float2 inBounds = step(0.0, UV) * step(UV, 1.0);
+    return inBounds.x * inBounds.y;
+}
+
+// Tile UV transform
+float3 TransformTileUV(
+    float2 ScreenUV,
+    float2 TileCenter,
+    float2 TileSize,
+    float Rotation)
+{
+    // Move into tile-centered space
+    float2 uv = ScreenUV - TileCenter;
+
+    // Scale into tile-local space
+    uv /= TileSize;
+
+    // Rotate around center
+    uv = RotateUV(uv, Rotation);
+
+    // Back to 0-1 space
+    uv += 0.5;
+
+    // Mask outside tile bounds
+    float mask = IsInBounds(uv);
+
+    return float3(uv, mask);
+}
+
+// Sample tile with transform (no merging - just the tile)
+float4 SampleTileWithTransform(
+    Texture2D TileTexture,
+    SamplerState TileSampler,
+    float2 ScreenUV,
+    float2 TileCenter,
+    float2 TileSize,
+    float Rotation)
+{
+    float3 transformed = TransformTileUV(
+       ScreenUV,
+       TileCenter,
+       TileSize,
+       Rotation);
+
+    float2 uv   = transformed.xy;
+    float  mask = transformed.z;
+
+    // Sample tile texture
+    float4 tile = TileTexture.Sample(TileSampler, uv);
+    
+    // Apply mask to all channels
+    tile *= mask;
+
+    return tile;
+}
+
+// merge with previous result
+float4 MergeTileWithPrevious(
+    Texture2D PrevMask,
+    SamplerState PrevSampler,
+    Texture2D TileTexture,
+    SamplerState TileSampler,
+    float2 ScreenUV,
+    float2 TileCenter,
+    float2 TileSize,
+    float Rotation)
+{
+    float4 prev = PrevMask.Sample(PrevSampler, ScreenUV);
+    float4 tile = SampleTileWithTransform(
+        TileTexture,
+        TileSampler,
+        ScreenUV,
+        TileCenter,
+        TileSize,
+        Rotation);
+
+    // Merge strategy:
+    //  - max() is ideal for binary / height / LOS masks
+    //  - use saturate(prev + tile) if you prefer additive
+    return max(prev, tile);
+}

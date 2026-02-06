@@ -19,6 +19,10 @@
 // Sets default values
 AObstacleMaskBaker::AObstacleMaskBaker()
 {
+	// client only
+	bReplicates = false;
+	SetReplicatingMovement(false);
+	
 	PrimaryActorTick.bCanEverTick = false;
 
 	// root
