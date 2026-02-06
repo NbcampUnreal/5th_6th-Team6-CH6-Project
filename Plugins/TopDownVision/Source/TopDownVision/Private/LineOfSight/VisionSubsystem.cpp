@@ -236,61 +236,115 @@ TArray<ULineOfSightComponent*> UVisionSubsystem::GetProvidersForTeam(EVisionChan
 
 void UVisionSubsystem::LoadAndInitializeTiles()
 {
-	if (!LevelObstacleDataPath.IsValid())
-	{
-		UE_LOG(VisionSubsystem, Warning,
-			TEXT("UVisionSubsystem::LoadAndInitializeTiles >> LevelObstacleDataPath is invalid"));
-		return;
-	}
+	UE_LOG(VisionSubsystem, Warning,
+        TEXT("LoadAndInitializeTiles >> Starting tile load..."));
 
-	UObject* LoadedObj = LevelObstacleDataPath.TryLoad();
-	if (!LoadedObj)
-	{
-		UE_LOG(VisionSubsystem, Warning,
-			TEXT("UVisionSubsystem::LoadAndInitializeTiles >> Failed to load asset at path: %s"),
-			*LevelObstacleDataPath.ToString());
-		return;
-	}
+    if (!LevelObstacleDataPath.IsValid())
+    {
+        UE_LOG(VisionSubsystem, Error,
+            TEXT("LoadAndInitializeTiles >> LevelObstacleDataPath is INVALID! Path: %s"),
+            *LevelObstacleDataPath.ToString());
+        return;
+    }
 
-	UWorldRequirementList* WorldReqList = Cast<UWorldRequirementList>(LoadedObj);
-	if (!WorldReqList)
-	{
-		UE_LOG(VisionSubsystem, Warning,
-			TEXT("UVisionSubsystem::LoadAndInitializeTiles >> Loaded object is not a UWorldRequirementList"));
-		return;
-	}
+    UE_LOG(VisionSubsystem, Warning,
+        TEXT("LoadAndInitializeTiles >> Attempting to load from path: %s"),
+        *LevelObstacleDataPath.ToString());
 
-	if (!GetWorld())
-	{
-		UE_LOG(VisionSubsystem, Warning,
-			TEXT("UVisionSubsystem::LoadAndInitializeTiles >> GetWorld() returned null"));
-		return;
-	}
-	
-	FString MapPackageLongName = GetWorld()->GetMapName();
-	MapPackageLongName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);//get remove prefix
+    UObject* LoadedObj = LevelObstacleDataPath.TryLoad();
+    
+    if (!LoadedObj)
+    {
+        UE_LOG(VisionSubsystem, Error,
+            TEXT("LoadAndInitializeTiles >> TryLoad() FAILED! Asset not found at: %s"),
+            *LevelObstacleDataPath.ToString());
+        return;
+    }
 
-	if (TObjectPtr<ULevelObstacleData>* TileDataPtr = WorldReqList->WorldRequirements.Find(MapPackageLongName))
-	{
-		if (*TileDataPtr)
-		{
-			UE_LOG(VisionSubsystem, Log,
-				TEXT("UVisionSubsystem::LoadAndInitializeTiles >> Initializing tiles for world: %s"),
-				*MapPackageLongName);
+    UE_LOG(VisionSubsystem, Warning,
+        TEXT("LoadAndInitializeTiles >> Successfully loaded object: %s (Class: %s)"),
+        *LoadedObj->GetName(),
+        *LoadedObj->GetClass()->GetName());
 
-			InitializeTilesFromDataAsset(*TileDataPtr);
-		}
-		else
-		{
-			UE_LOG(VisionSubsystem, Warning,
-				TEXT("UVisionSubsystem::LoadAndInitializeTiles >> TileData is null for world: %s"),
-				*MapPackageLongName);
-		}
-	}
-	else
-	{
-		UE_LOG(VisionSubsystem, Warning,
-			TEXT("UVisionSubsystem::LoadAndInitializeTiles >> No tile data found for world: %s"),
-			*MapPackageLongName);
-	}
+    UWorldRequirementList* WorldReqList = Cast<UWorldRequirementList>(LoadedObj);
+    
+    if (!WorldReqList)
+    {
+        UE_LOG(VisionSubsystem, Error,
+            TEXT("LoadAndInitializeTiles >> Cast to UWorldRequirementList FAILED! "
+                 "Loaded object class: %s"),
+            *LoadedObj->GetClass()->GetName());
+        return;
+    }
+
+    UE_LOG(VisionSubsystem, Warning,
+        TEXT("LoadAndInitializeTiles >> Cast successful, WorldReqList has %d entries"),
+        WorldReqList->WorldRequirements.Num());
+
+    // Debug: Print all available world names in the map
+    for (const auto& Pair : WorldReqList->WorldRequirements)
+    {
+        UE_LOG(VisionSubsystem, Warning,
+            TEXT("LoadAndInitializeTiles >> Available world key: '%s'"),
+            *Pair.Key);
+    }
+
+    if (!GetWorld())
+    {
+        UE_LOG(VisionSubsystem, Error,
+            TEXT("LoadAndInitializeTiles >> GetWorld() returned NULL!"));
+        return;
+    }
+    
+    FString MapPackageLongName = GetWorld()->GetMapName();
+    
+    UE_LOG(VisionSubsystem, Warning,
+        TEXT("LoadAndInitializeTiles >> Current world name (before prefix removal): '%s'"),
+        *MapPackageLongName);
+    
+    UE_LOG(VisionSubsystem, Warning,
+        TEXT("LoadAndInitializeTiles >> Streaming levels prefix: '%s'"),
+        *GetWorld()->StreamingLevelsPrefix);
+
+    MapPackageLongName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);
+
+    UE_LOG(VisionSubsystem, Warning,
+        TEXT("LoadAndInitializeTiles >> Current world name (after prefix removal): '%s'"),
+        *MapPackageLongName);
+
+    if (TObjectPtr<ULevelObstacleData>* TileDataPtr = WorldReqList->WorldRequirements.Find(MapPackageLongName))
+    {
+        if (*TileDataPtr)
+        {
+            UE_LOG(VisionSubsystem, Warning,
+                TEXT("LoadAndInitializeTiles >> FOUND tile data for world: '%s' with %d tiles"),
+                *MapPackageLongName,
+                (*TileDataPtr)->Tiles.Num());
+
+            InitializeTilesFromDataAsset(*TileDataPtr);
+        }
+        else
+        {
+            UE_LOG(VisionSubsystem, Error,
+                TEXT("LoadAndInitializeTiles >> TileData pointer is NULL for world: '%s'"),
+                *MapPackageLongName);
+        }
+    }
+    else
+    {
+        UE_LOG(VisionSubsystem, Error,
+            TEXT("LoadAndInitializeTiles >> NO MATCH FOUND for world name: '%s'"),
+            *MapPackageLongName);
+        
+        UE_LOG(VisionSubsystem, Error,
+            TEXT("LoadAndInitializeTiles >> Available keys in WorldRequirements:"));
+        
+        for (const auto& Pair : WorldReqList->WorldRequirements)
+        {
+            UE_LOG(VisionSubsystem, Error,
+                TEXT("  - '%s' (matches: %s)"),
+                *Pair.Key,
+                (Pair.Key == MapPackageLongName) ? TEXT("YES") : TEXT("NO"));
+        }
+    }
 }

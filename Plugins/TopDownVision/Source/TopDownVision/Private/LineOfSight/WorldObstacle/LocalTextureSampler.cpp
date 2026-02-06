@@ -11,6 +11,9 @@
 #include "LineOfSight/VisionSubsystem.h"
 #include "TopDownVisionLogCategories.h"//log
 
+
+
+
 ULocalTextureSampler::ULocalTextureSampler()
 {
 	PrimaryComponentTick.bCanEverTick = false;
@@ -21,13 +24,29 @@ ULocalTextureSampler::ULocalTextureSampler()
 void ULocalTextureSampler::BeginPlay()
 {
 	Super::BeginPlay();
+
+	
+	/*if (GetNetMode() == NM_DedicatedServer)
+	{
+		// Fully disable this component on server
+		SetComponentTickEnabled(false);
+		DestroyComponent();
+		return;
+	}*/
+
+	if (!ShouldRunClientLogic())
+	{
+		return;// not for client logic here
+	}
+
+	PrepareSetups();
 }
 
-
-// Called every frame
-void ULocalTextureSampler::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void ULocalTextureSampler::OnComponentCreated()
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	Super::OnComponentCreated();
+
+	
 }
 
 void ULocalTextureSampler::UpdateLocalTexture()
@@ -37,14 +56,53 @@ void ULocalTextureSampler::UpdateLocalTexture()
 		return;// not for client logic here
 	}
 	
-	if (!LocalMaskRT || !ObstacleSubsystem)
+	if (!LocalMaskRT)
 	{
 		UE_LOG(LOSVision, Verbose,
-			TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing RT or Subsystem"));
+			TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing RT"));
 		return;
 	}
+	/*if (!ObstacleSubsystem)
+	{
+		UE_LOG(LOSVision, Verbose,
+			TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing Subsystem"));
+		return;
+	}*/
 
-	const FVector WorldCenter = GetComponentLocation();
+	if (!ObstacleSubsystem)
+	{
+		UWorld* World = GetWorld();
+		if (World)
+		{
+			ObstacleSubsystem = World->GetSubsystem<UVisionSubsystem>();
+            
+			if (ObstacleSubsystem)
+			{
+				UE_LOG(LOSVision, Log,
+					TEXT("UpdateLocalTexture >> Lazy-loaded VisionSubsystem with %d tiles"),
+					ObstacleSubsystem->GetTiles().Num());
+			}
+		}
+	}
+    
+	if (!ObstacleSubsystem)
+	{
+		UE_LOG(LOSVision, Warning,
+			TEXT("UpdateLocalTexture >> Still missing Subsystem after lazy init"));
+		return;
+	}
+	
+	if (!SourceRoot.IsValid())
+	{
+		if (!TurnOffTheLog)
+		{
+			UE_LOG(LOSVision, Verbose,
+				TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing SourceRoot"));
+		}
+		return;
+	}
+	
+	const FVector WorldCenter = SourceRoot->GetComponentLocation();
 	LastSampleCenter = WorldCenter;
 
 	UE_LOG(LOSVision, Verbose,
@@ -113,6 +171,20 @@ bool ULocalTextureSampler::ShouldRunClientLogic() const
 		return false;
 
 	return true;
+}
+
+void ULocalTextureSampler::SetLocationRoot(USceneComponent* NewRoot)
+{
+	if (!NewRoot)
+	{
+		UE_LOG(LOSVision, Error,
+			TEXT(" ULocalTextureSampler::SetAsOwnerRoot >> Invalid Root"))
+		return;
+	}
+
+	SourceRoot = NewRoot;
+	UE_LOG(LOSVision, Log,
+		TEXT(" ULocalTextureSampler::SetAsOwnerRoot >> Root Settled"))
 }
 
 void ULocalTextureSampler::RebuildLocalBounds(const FVector& WorldCenter)

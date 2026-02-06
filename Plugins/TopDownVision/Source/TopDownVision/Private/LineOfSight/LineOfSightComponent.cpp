@@ -44,8 +44,8 @@ void ULineOfSightComponent::UpdateLocalLOS()
     
     if (!ShouldUpdate)
     {
-        /*UE_LOG(LOSVision, Log,
-            TEXT("ULineOfSightComponent::UpdateLocalLOS >> Skipped, ShouldUpdate is false"));*/
+        UE_LOG(LOSVision, Verbose,
+            TEXT("ULineOfSightComponent::UpdateLocalLOS >> Skipped, ShouldUpdate is false"));
         return;
     }
     if (!LOSRenderTarget)
@@ -82,17 +82,39 @@ void ULineOfSightComponent::UpdateLocalLOS()
             2.f );
     }
     
-    /*UE_LOG(LOSVision, Log,
-        TEXT("ULineOfSightComponent::UpdateLocalLOS >> UpdateResource called"));*/
+    UE_LOG(LOSVision, Verbose,
+        TEXT("ULineOfSightComponent::UpdateLocalLOS >> UpdateResource called"));
 }
 
 void ULineOfSightComponent::UpdateVisibleRange(float NewRange)
 {
+    
+    const float OldRange = VisionRange;
     VisionRange = FMath::Max(0.f, NewRange); // clamp to non-negative
-
-    /*UE_LOG(LOSVision, Log,
-        TEXT("ULineOfSightComponent::UpdateVisibleRange >> VisionRange set to %f"),
-        VisionRange);*/
+    
+    if (!ShouldRunClientLogic())
+    {
+        return;
+    }
+    
+    // Update material parameter if range changed
+    if (!FMath::IsNearlyEqual(OldRange, VisionRange) && LOSMaterialMID)
+    {
+        LOSMaterialMID->SetScalarParameterValue(
+            MIDVisibleRangeParam, 
+            VisionRange / MaxVisionRange / 2.f);
+        
+        UE_LOG(LOSVision, Verbose,
+            TEXT("ULineOfSightComponent::UpdateVisibleRange >> Updated material: VisionRange=%.1f, Normalized=%.3f"),
+            VisionRange,
+            VisionRange / MaxVisionRange / 2.f);
+    }
+    
+    // Also update LocalTextureSampler's world sample radius
+    if (LocalTextureSampler)
+    {
+        LocalTextureSampler->SetWorldSampleRadius(VisionRange);
+    }
 }
 
 
@@ -100,23 +122,28 @@ void ULineOfSightComponent::ToggleUpdate(bool bIsOn)
 {
     if (ShouldUpdate==bIsOn)
     {
-        /*UE_LOG(LOSVision, Log,
+        UE_LOG(LOSVision, VeryVerbose,
             TEXT("ULineOfSightComponent::ToggleUpdate >> Already set to %s"),
-            ShouldUpdate ? TEXT("true") : TEXT("false"));*/
+            ShouldUpdate ? TEXT("true") : TEXT("false"));
         return;
     }
     
     ShouldUpdate = bIsOn;
 
-    /*
-    UE_LOG(LOSVision, Log,
+    
+    UE_LOG(LOSVision, VeryVerbose,
         TEXT("ULineOfSightComponent::ToggleUpdate >> ShouldUpdate set to %s"),
-        ShouldUpdate ? TEXT("true") : TEXT("false"));*/
+        ShouldUpdate ? TEXT("true") : TEXT("false"));
 }
 
 
 void ULineOfSightComponent::CreateResources()
 {
+    if (!ShouldRunClientLogic())
+    {
+        return;// not for server
+    }
+    
     if (!GetWorld())
         return;
 
@@ -138,6 +165,9 @@ void ULineOfSightComponent::CreateResources()
     }
 
     LocalTextureSampler->SetLocalRenderTarget(LOSRenderTarget);
+    LocalTextureSampler->SetLocationRoot(GetOwner()->GetRootComponent());
+    LocalTextureSampler->SetWorldSampleRadius(VisionRange);
+    // pass the owner's root so that it can know world location
 
     // Create MID
     if (LOSMaterial)
