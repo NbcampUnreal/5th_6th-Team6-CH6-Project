@@ -7,6 +7,8 @@
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"
 
+#include "CharacterSystem/Player/BasePlayerController.h"
+
 UGA_OpenBox::UGA_OpenBox()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
@@ -14,67 +16,100 @@ UGA_OpenBox::UGA_OpenBox()
 
 void UGA_OpenBox::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
-	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+
+	UE_LOG(LogTemp, Log, TEXT("GA_OpenBox START"));
+
+	const ABaseBoxActor* Box = nullptr;
+	if (TriggerEventData)
+	{
+		Box = Cast<ABaseBoxActor>(TriggerEventData->Target.Get());
+	}
+
+	if (!Box)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
-	UAbilityTask_WaitDelay* WaitDelayTask = UAbilityTask_WaitDelay::WaitDelay(this, OpenTime);
-	if (WaitDelayTask)
+    TargetBox = Box;
+
+	if (ABasePlayerController* PC = Cast<ABasePlayerController>(ActorInfo->PlayerController.Get()))
 	{
-		WaitDelayTask->OnFinish.AddDynamic(this, &UGA_OpenBox::OnFinishOpen);
-		WaitDelayTask->ReadyForActivation();
+		PC->Client_OpenLootUI(Box);
 	}
+
+	// 거리 체크/종료까지 GA가 맡을 거면 Task/Timer로 유지
+    StartDistanceCheck(ActorInfo);
 }
 
-void UGA_OpenBox::OnFinishOpen()
+void UGA_OpenBox::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
-	AActor* Avatar = GetAvatarActorFromActorInfo();
-	if (!Avatar)
-	{
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
-		return;
-	}
+    StopDistanceCheck();
+    TargetBox.Reset();
 
-	APlayerController* PC = Cast<APlayerController>(Cast<APawn>(Avatar)->GetController());
-	ABaseBoxActor* TargetBox = nullptr;
-
-	// 주변 상자 검색
-	TArray<FOverlapResult> OverlapResults;
-	FCollisionShape Sphere = FCollisionShape::MakeSphere(300.f);
-	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(Avatar);
-
-	if (GetWorld()->OverlapMultiByChannel(OverlapResults, Avatar->GetActorLocation(), FQuat::Identity, ECC_Visibility, Sphere, QueryParams))
-	{
-		for (const FOverlapResult& Result : OverlapResults)
-		{
-			TargetBox = Cast<ABaseBoxActor>(Result.GetActor());
-			if (TargetBox) break;
-		}
-	}
-
-	// UI 생성 및 초기화
-	if (PC && TargetBox && LootWidgetClass)
-	{
-		UW_LootingPopup* LootWidget = CreateWidget<UW_LootingPopup>(PC, LootWidgetClass);
-		if (LootWidget)
-		{
-			LootWidget->AddToViewport(10);
-			LootWidget->UpdateLootingSlots(TargetBox->GetCurrentLoot());
-
-			// 팝업에 상자 정보를 넘겨 거리 체크를 시작하게 함
-			LootWidget->InitPopup(TargetBox, 350.f);
-
-			PC->bShowMouseCursor = true;
-			FInputModeGameAndUI InputMode;
-			InputMode.SetHideCursorDuringCapture(false);
-			PC->SetInputMode(InputMode);
-
-			UE_LOG(LogTemp, Warning, TEXT("[GA_OpenBox] 루팅 UI 표시 및 거리 체크 시작: %s"), *TargetBox->GetName());
-		}
-	}
-
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+    Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
+
+void UGA_OpenBox::StartDistanceCheck(const FGameplayAbilityActorInfo* ActorInfo)
+{
+    if (!ActorInfo) 
+        return;
+
+    UE_LOG(LogTemp, Log, TEXT("StartDistanceCheck Start"));
+
+    UWorld* World = GetWorld();
+    if (!World) 
+        return;
+
+    World->GetTimerManager().SetTimer(
+        DistanceCheckTimer,
+        this,
+        &UGA_OpenBox::TickDistanceCheck,
+        DistanceCheckInterval,
+        true
+    );
+}
+
+void UGA_OpenBox::StopDistanceCheck()
+{
+    if (UWorld* World = GetWorld())
+    {
+        UE_LOG(LogTemp, Log, TEXT("StopDistanceCheck Start"));
+        World->GetTimerManager().ClearTimer(DistanceCheckTimer);
+    }
+}
+
+void UGA_OpenBox::TickDistanceCheck()
+{
+    const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+    if (!ActorInfo)
+        return;
+
+    AActor* Avatar = ActorInfo->AvatarActor.Get();
+    const ABaseBoxActor* Box = TargetBox.Get();
+
+    if (!Avatar || !Box)
+    {
+        if (ABasePlayerController* PC = Cast<ABasePlayerController>(ActorInfo->PlayerController.Get()); PC && PC->IsLocalController())
+        {
+            PC->Client_CloseLootUI(); // Box가 null이면 Close 함수에서 null 처리해도 됨
+        }
+        UE_LOG(LogTemp, Log, TEXT("TickDistanceCheck !Avatar || !Box"));
+        StopDistanceCheck();
+        EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+        return;
+    }
+
+    const float Dist = FVector::Dist(Avatar->GetActorLocation(), Box->GetActorLocation());
+    if (Dist > MaxLootDistance)
+    {
+        if (ABasePlayerController* PC = Cast<ABasePlayerController>(ActorInfo->PlayerController.Get()))
+        {
+            PC->Client_CloseLootUI();
+        }
+        UE_LOG(LogTemp, Log, TEXT("TickDistanceCheck Dist > MaxLootDistance"));
+        StopDistanceCheck();
+        EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+    }
+}   
