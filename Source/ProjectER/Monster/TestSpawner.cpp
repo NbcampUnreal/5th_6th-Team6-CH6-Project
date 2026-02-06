@@ -3,7 +3,7 @@
 ATestSpawner::ATestSpawner()
 {
 	PrimaryActorTick.bCanEverTick = false;
-
+	SpawnCount = 1;
 }
 
 void ATestSpawner::BeginPlay()
@@ -12,7 +12,10 @@ void ATestSpawner::BeginPlay()
 	
 	if(HasAuthority())
 	{
-		GetWorld()->SpawnActor<AActor>(Monster, GetActorLocation(), FRotator::ZeroRotator);
+		for (int32 i = 0; i < SpawnCount; i++)
+		{
+			GetWorld()->SpawnActor<AActor>(Monster, GetActorLocation(), FRotator::ZeroRotator);
+		}
 	}
 }
 

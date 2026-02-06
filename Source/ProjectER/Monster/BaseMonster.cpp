@@ -2,7 +2,7 @@
 
 #include "Net/UnrealNetwork.h"
 #include "AbilitySystemComponent.h"
-#include "AttributeSet/BaseMonsterAttributeSet.h"
+#include "Monster/GAS/AttributeSet/BaseMonsterAttributeSet.h"
 
 #include "Components/StateTreeComponent.h"
 #include "Components/CapsuleComponent.h"
