@@ -20,6 +20,9 @@
  * GPU-only merge using material passes
  * 
  * fuck yeah
+ *
+ *
+ * s
  */
 
 
@@ -40,8 +43,9 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
-							   FActorComponentTickFunction* ThisTickFunction) override;
+
+	virtual void OnComponentCreated() override;
+	
 public:
 
 	/** Force update of the local texture (teleport, vision change, etc.) */
@@ -60,16 +64,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category="LocalSampler")
 	UTextureRenderTarget2D* GetLocalRenderTarget() const { return LocalMaskRT; }
 
-	// Debug RT functions
-	UFUNCTION(BlueprintCallable, Category="LocalSampler|Debug")
-	void UpdateDebugRT();
+	void SetLocationRoot(USceneComponent* NewRoot);
+	//Line of sight comp is now a actor comp with no location. make a function to set the location
 	
-	UFUNCTION(BlueprintCallable, Category="LocalSampler|Debug")
-	UTextureRenderTarget2D* GetDebugRT() const { return DebugRT; }
-
 private:
 	void PrepareSetups();
-	
+
+	bool ShouldRunClientLogic() const;
+
 protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
@@ -77,16 +79,8 @@ protected:
 
 
 	/** Local merged obstacle/height mask */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
+  	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
 	TObjectPtr<UTextureRenderTarget2D> LocalMaskRT;
-
-	/** Debug render target - persistent RT that can be viewed in content browser */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Debug")
-	TObjectPtr<UTextureRenderTarget2D> DebugRT;
-
-	/** Auto-update debug RT when local texture updates */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Debug")
-	bool bAutoUpdateDebugRT = false;
 
 	/*/** Material used to project baked tiles into the local RT #1#
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
@@ -98,7 +92,7 @@ protected:
 	/*//MID Param names
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
 	FName MIDParam_TextureObj =NAME_None;
-
+ 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
 	FName MIDParam_TileWorldMin =NAME_None;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
@@ -147,4 +141,6 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UVisionSubsystem> ObstacleSubsystem;
 
+	UPROPERTY(Transient)
+	TWeakObjectPtr<USceneComponent> SourceRoot;// to read the world location
 };

@@ -78,6 +78,7 @@ private:
 		//Out
 		TArray<ULineOfSightComponent*>& OutProviders) const;
 
+	bool ShouldRunClientLogic() const;// can it run as client or not
 
 
 

@@ -11,6 +11,9 @@
 #include "LineOfSight/VisionSubsystem.h"
 #include "TopDownVisionLogCategories.h"//log
 
+
+
+
 ULocalTextureSampler::ULocalTextureSampler()
 {
 	PrimaryComponentTick.bCanEverTick = false;
@@ -22,26 +25,84 @@ void ULocalTextureSampler::BeginPlay()
 {
 	Super::BeginPlay();
 
+	
+	/*if (GetNetMode() == NM_DedicatedServer)
+	{
+		// Fully disable this component on server
+		SetComponentTickEnabled(false);
+		DestroyComponent();
+		return;
+	}*/
+
+	if (!ShouldRunClientLogic())
+	{
+		return;// not for client logic here
+	}
+
 	PrepareSetups();
 }
 
-
-// Called every frame
-void ULocalTextureSampler::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void ULocalTextureSampler::OnComponentCreated()
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	Super::OnComponentCreated();
+
+	
 }
 
 void ULocalTextureSampler::UpdateLocalTexture()
 {
-	if (!LocalMaskRT || !ObstacleSubsystem)
+	if (!ShouldRunClientLogic())
+	{
+		return;// not for client logic here
+	}
+	
+	if (!LocalMaskRT)
 	{
 		UE_LOG(LOSVision, Verbose,
-			TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing RT or Subsystem"));
+			TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing RT"));
 		return;
 	}
+	/*if (!ObstacleSubsystem)
+	{
+		UE_LOG(LOSVision, Verbose,
+			TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing Subsystem"));
+		return;
+	}*/
 
-	const FVector WorldCenter = GetComponentLocation();
+	if (!ObstacleSubsystem)
+	{
+		UWorld* World = GetWorld();
+		if (World)
+		{
+			ObstacleSubsystem = World->GetSubsystem<UVisionSubsystem>();
+            
+			if (ObstacleSubsystem)
+			{
+				UE_LOG(LOSVision, Log,
+					TEXT("UpdateLocalTexture >> Lazy-loaded VisionSubsystem with %d tiles"),
+					ObstacleSubsystem->GetTiles().Num());
+			}
+		}
+	}
+    
+	if (!ObstacleSubsystem)
+	{
+		UE_LOG(LOSVision, Warning,
+			TEXT("UpdateLocalTexture >> Still missing Subsystem after lazy init"));
+		return;
+	}
+	
+	if (!SourceRoot.IsValid())
+	{
+		if (!TurnOffTheLog)
+		{
+			UE_LOG(LOSVision, Verbose,
+				TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing SourceRoot"));
+		}
+		return;
+	}
+	
+	const FVector WorldCenter = SourceRoot->GetComponentLocation();
 	LastSampleCenter = WorldCenter;
 
 	UE_LOG(LOSVision, Verbose,
@@ -52,12 +113,6 @@ void ULocalTextureSampler::UpdateLocalTexture()
 	RebuildLocalBounds(WorldCenter);
 	UpdateOverlappingTiles();
 	DrawTilesIntoLocalRT();
-
-	// Auto-update debug RT if enabled
-	if (bAutoUpdateDebugRT && DebugRT)
-	{
-		UpdateDebugRT();
-	}
 }
 
 void ULocalTextureSampler::SetWorldSampleRadius(float NewRadius)
@@ -73,8 +128,13 @@ void ULocalTextureSampler::SetWorldSampleRadius(float NewRadius)
 	}
 }
 
-void ULocalTextureSampler::SetLocalRenderTarget(UTextureRenderTarget2D* InRT)
+void ULocalTextureSampler::SetLocalRenderTarget(UTextureRenderTarget2D* InRT)// this is when the prep should be made
 {
+	if (!ShouldRunClientLogic())
+	{
+		return;// not for client logic here
+	}
+	
 	if (LocalMaskRT == InRT)
 	{
 		UE_LOG(LOSVision, Warning,
@@ -95,72 +155,6 @@ void ULocalTextureSampler::SetLocalRenderTarget(UTextureRenderTarget2D* InRT)
 	UpdateLocalTexture();
 }
 
-void ULocalTextureSampler::UpdateDebugRT()
-{
-	if (!LocalMaskRT)
-	{
-		UE_LOG(LOSVision, Warning,
-			TEXT("ULocalTextureSampler::UpdateDebugRT >> LocalMaskRT is null"));
-		return;
-	}
-
-	if (!DebugRT)
-	{
-		UE_LOG(LOSVision, Warning,
-			TEXT("ULocalTextureSampler::UpdateDebugRT >> DebugRT is null, please assign a debug render target"));
-		return;
-	}
-
-	// Make sure DebugRT has the same size as LocalMaskRT
-	if (DebugRT->SizeX != LocalMaskRT->SizeX || DebugRT->SizeY != LocalMaskRT->SizeY)
-	{
-		UE_LOG(LOSVision, Log,
-			TEXT("ULocalTextureSampler::UpdateDebugRT >> Resizing DebugRT to match LocalMaskRT: %dx%d"),
-			LocalMaskRT->SizeX, LocalMaskRT->SizeY);
-		
-		DebugRT->ResizeTarget(LocalMaskRT->SizeX, LocalMaskRT->SizeY);
-	}
-
-	// Copy LocalMaskRT to DebugRT
-	FTextureRenderTargetResource* SrcResource = LocalMaskRT->GameThread_GetRenderTargetResource();
-	FTextureRenderTargetResource* DstResource = DebugRT->GameThread_GetRenderTargetResource();
-
-	if (!SrcResource || !DstResource)
-	{
-		UE_LOG(LOSVision, Error,
-			TEXT("ULocalTextureSampler::UpdateDebugRT >> Failed to get render target resources"));
-		return;
-	}
-
-	// Read pixels from source
-	TArray<FColor> Pixels;
-	SrcResource->ReadPixels(Pixels);
-
-	// Write pixels to destination
-	ENQUEUE_RENDER_COMMAND(CopyLocalMaskToDebug)(
-		[DstResource, Pixels](FRHICommandListImmediate& RHICmdList)
-		{
-			FUpdateTextureRegion2D Region(
-				0, 0, 0, 0,
-				DstResource->GetSizeX(),
-				DstResource->GetSizeY()
-			);
-
-			RHIUpdateTexture2D(
-				DstResource->GetRenderTargetTexture(),
-				0,
-				Region,
-				DstResource->GetSizeX() * 4,
-				reinterpret_cast<const uint8*>(Pixels.GetData())
-			);
-		}
-	);
-
-	UE_LOG(LOSVision, Verbose,
-		TEXT("ULocalTextureSampler::UpdateDebugRT >> Updated debug RT with %d pixels"),
-		Pixels.Num());
-}
-
 void ULocalTextureSampler::PrepareSetups()
 {
 	// Grab the VisionSubsystem
@@ -169,6 +163,28 @@ void ULocalTextureSampler::PrepareSetups()
 	{
 		UE_LOG(LOSVision, Warning, TEXT("ULocalTextureSampler::PrepareSetups >> Failed to get VisionSubsystem"));
 	}
+}
+
+bool ULocalTextureSampler::ShouldRunClientLogic() const
+{
+	if (GetNetMode() == NM_DedicatedServer)
+		return false;
+
+	return true;
+}
+
+void ULocalTextureSampler::SetLocationRoot(USceneComponent* NewRoot)
+{
+	if (!NewRoot)
+	{
+		UE_LOG(LOSVision, Error,
+			TEXT(" ULocalTextureSampler::SetAsOwnerRoot >> Invalid Root"))
+		return;
+	}
+
+	SourceRoot = NewRoot;
+	UE_LOG(LOSVision, Log,
+		TEXT(" ULocalTextureSampler::SetAsOwnerRoot >> Root Settled"))
 }
 
 void ULocalTextureSampler::RebuildLocalBounds(const FVector& WorldCenter)
