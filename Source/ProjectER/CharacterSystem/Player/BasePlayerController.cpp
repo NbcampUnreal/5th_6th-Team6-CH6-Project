@@ -1,4 +1,4 @@
-#include "CharacterSystem/Player/BasePlayerController.h"
+﻿#include "CharacterSystem/Player/BasePlayerController.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -553,8 +553,11 @@ void ABasePlayerController::Client_OpenLootUI_Implementation(const ABaseBoxActor
 
 void ABasePlayerController::Client_CloseLootUI_Implementation()
 {
-	LootWidgetInstance->RemoveFromParent();
-	LootWidgetInstance = nullptr;
+	if (IsValid(LootWidgetInstance))
+	{
+		LootWidgetInstance->RemoveFromParent();
+		LootWidgetInstance = nullptr;
+	}
 }
 
 
