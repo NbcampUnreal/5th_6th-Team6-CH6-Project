@@ -12,6 +12,9 @@
 #include "TopDownVisionLogCategories.h"//log
 
 
+//Log Helper here
+// make it log the name of the local sampler  obj
+
 
 
 ULocalTextureSampler::ULocalTextureSampler()

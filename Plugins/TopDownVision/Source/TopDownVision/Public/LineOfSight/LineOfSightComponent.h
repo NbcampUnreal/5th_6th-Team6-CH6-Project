@@ -83,7 +83,7 @@ protected:
     float MaxVisionRange = 800.f;//<- this will be used for Fixed RenderTarget Size and OrthoWidth
     
     //WorldEnvironmentCapturing
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="LineOfSight", Instanced)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="LineOfSight")
     ULocalTextureSampler* LocalTextureSampler;// now a default object
     
     // will be dynamically generated for the local LOS stamp, and be rendered by 2D Scene capture component
