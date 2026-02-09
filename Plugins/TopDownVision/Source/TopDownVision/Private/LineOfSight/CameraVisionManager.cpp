@@ -156,7 +156,7 @@ void UCameraVisionManager::UpdateCameraLOS()
 
 		Provider->ToggleUpdate(bVisible);
 
-		if (bVisible)
+		if (bVisible)//!!!!! FUCK YEAH !!!!!
 		{
 			Provider->UpdateLocalLOS();// update in here, not in the owner's tick update
 		}
