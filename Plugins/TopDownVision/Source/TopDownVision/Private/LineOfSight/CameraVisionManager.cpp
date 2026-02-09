@@ -6,7 +6,7 @@
 #include "Engine/Canvas.h"
 #include "Kismet/KismetRenderingLibrary.h"
 #include "Materials/MaterialParameterCollectionInstance.h"
-#include "TopDownVisionLogCategories.h"
+#include "TopDownVisionDebug.h"
 #include "LineOfSight/VisionSubsystem.h"
 #include "LineOfSight/GPU/LOSStampPass.h"
 
@@ -155,6 +155,11 @@ void UCameraVisionManager::UpdateCameraLOS()
 			Provider->GetVisibleRange());
 
 		Provider->ToggleUpdate(bVisible);
+
+		if (bVisible)
+		{
+			Provider->UpdateLocalLOS();// update in here, not in the owner's tick update
+		}
 	}
 
 	if (bUseCPU)// if CPU

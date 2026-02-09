@@ -13,6 +13,13 @@ class ULocalTextureSampler;// for sampling pre-baked texture into local RT
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
 
+// Vision helpers
+class USphereComponent;
+class UShapeAwareVisibilityTracer;
+class UPrimitiveComponent;
+
+
+
 //LOG
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
@@ -28,7 +35,11 @@ protected:
 
 public:
     UFUNCTION(BlueprintCallable, Category="LineOfSight")
-    void UpdateLocalLOS();
+    void UpdateLocalLOS();//LOS stamp
+
+    //UFUNCTION(BlueprintCallable, Category="LineOfSight")
+    //void UpdateTargetDetection();// this is for target detection update.
+    //-> updating it per tick seems bit too much. use different timer
     
     UFUNCTION(BlueprintCallable, Category="LineOfSight")
     void UpdateVisibleRange(float NewRange);// this only updates when range change
@@ -53,7 +64,24 @@ public:
     //Switch function for update
     void ToggleUpdate(bool bIsOn);
     bool IsUpdating() const{return ShouldUpdate;}
+    
+protected:
+    //========== Physical Detection =========//
+    UFUNCTION()
+    void OnVisionSphereBeginOverlap(
+        UPrimitiveComponent* OverlappedComponent,
+        AActor* OtherActor,
+        UPrimitiveComponent* OtherComp,
+        int32 OtherBodyIndex,
+        bool bFromSweep,
+        const FHitResult& SweepResult);
 
+    UFUNCTION()
+    void OnVisionSphereEndOverlap(
+        UPrimitiveComponent* OverlappedComponent,
+        AActor* OtherActor,
+        UPrimitiveComponent* OtherComp,
+        int32 OtherBodyIndex);
 
     
 private:
@@ -61,7 +89,11 @@ private:
     void CreateResources();// make RT and MID
 
     bool ShouldRunClientLogic()const;
+    
+    /** Resolve which component represents the actor’s visibility shape */
+    //UPrimitiveComponent* ResolveVisibilityShape(AActor* TargetActor) const;
 
+    
 protected:
     
     //Debug for toggling activation
@@ -107,6 +139,35 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
     FName MIDVisibleRangeParam=NAME_None;
 
+    //============= Physical Detection ==========//
+#pragma region Detection
+    //----------------------------------------------------------------------------------------------------------------//
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="LineOfSight|Detection")
+    USphereComponent* VisionSphere = nullptr;
+
+    UPROPERTY(Transient)
+    UShapeAwareVisibilityTracer* VisibilityTracer = nullptr;// this will be used for doing shape aware tracing
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight|Detection")
+    TEnumAsByte<ECollisionChannel> ObstacleTraceChannel = ECC_Visibility;
+    //channel for the object tracing. use custom trace channel here
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight|Detection")
+    float DesiredAngleDegree=5.f;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight|Debug")
+    bool bDrawVisibilityRays = false;
+    
+    //Tag for the actor to be targeted
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight|Detection")
+    FName VisionTargetTag = TEXT("VisionTarget");
+
+    
+    UPROPERTY(Transient)
+    TSet<TWeakObjectPtr<AActor>> DetectedTargetActors;//targets detected
+    //----------------------------------------------------------------------------------------------------------------//
+#pragma endregion
+    
 private:
     bool ShouldUpdate=false;// only update when the camera vision capturing it
 };
