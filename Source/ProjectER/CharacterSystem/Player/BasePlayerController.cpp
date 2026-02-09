@@ -472,6 +472,12 @@ void ABasePlayerController::Server_TEMP_DespawnNeutrals_Implementation()
 	InGameMode->TEMP_DespawnNeutrals();
 }
 
+void ABasePlayerController::Server_MoveTeam_Implementation(int32 TeamIdx)
+{
+	auto OutGameMode = Cast<AER_OutGameMode>(GetWorld()->GetAuthGameMode());
+	OutGameMode->MoveTeam(this, TeamIdx);
+}
+
 void ABasePlayerController::Server_RequestPickup_Implementation(ABaseItemActor* Item)
 { // 바닥에 있는 아이템 줍기
 	if (!Item) return;
@@ -561,6 +567,8 @@ void ABasePlayerController::Client_CloseLootUI_Implementation()
 	LootWidgetInstance->RemoveFromParent();
 	LootWidgetInstance = nullptr;
 }
+
+
 
 
 
