@@ -553,11 +553,13 @@ void ABasePlayerController::Client_OpenLootUI_Implementation(const ABaseBoxActor
 
 void ABasePlayerController::Client_CloseLootUI_Implementation()
 {
-	if (IsValid(LootWidgetInstance))
+	if (!IsValid(LootWidgetInstance))
 	{
-		LootWidgetInstance->RemoveFromParent();
-		LootWidgetInstance = nullptr;
+		return;
 	}
+
+	LootWidgetInstance->RemoveFromParent();
+	LootWidgetInstance = nullptr;
 }
 
 

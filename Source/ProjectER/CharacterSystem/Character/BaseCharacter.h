@@ -150,6 +150,10 @@ private:
 	
 #pragma region Combat
 public:
+	// 소켓 위치에서 타겟(혹은 정면) 방향 회전값 반환
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	FRotator GetCombatGazeRotation(FName SocketName);
+	
 	// 타겟 설정 함수
 	void SetTarget(AActor* NewTarget);
 	
@@ -163,10 +167,12 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void Server_SetTarget(AActor* NewTarget);
 	
+	
 protected:
 	// 현재 타겟 (적)
 	UPROPERTY(ReplicatedUsing = OnRep_TargetActor, VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<AActor> TargetActor;
+	
 #pragma endregion
 
 #pragma region Death

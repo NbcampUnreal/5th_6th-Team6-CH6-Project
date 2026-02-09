@@ -9,6 +9,9 @@
 
 class USphereComponent;
 class UProjectileMovementComponent;
+class UNiagaraSystem;
+class UNiagaraComponent;
+class UProjectileData;
 
 UCLASS()
 class PROJECTER_API ABaseProjectile : public AActor
@@ -20,9 +23,13 @@ public:
 	
 protected:
 	virtual void BeginPlay() override;
-
+	
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+	
 public:
-	// 발사체 설정 (속도, 생명주기 등)
+	UPROPERTY(ReplicatedUsing = OnRep_ProjectileData, EditAnywhere, BlueprintReadWrite, Meta = (ExposeOnSpawn = true), Category = "Data")
+	TObjectPtr<UProjectileData> ProjectileData;
+	
 	UPROPERTY(VisibleAnywhere, Category = "Projectile")
 	TObjectPtr<USphereComponent> SphereComp;
 
@@ -31,12 +38,22 @@ public:
 
 	UPROPERTY(VisibleAnywhere, Category = "Projectile")
 	TObjectPtr<UStaticMeshComponent> MeshComp;
-
-	// [핵심] GAS 효과를 담을 변수 (ExposeOnSpawn으로 생성 시 주입 가능하게)
+	
+	UPROPERTY(VisibleAnywhere, Category = "Projectile")
+	TObjectPtr<UNiagaraComponent> ProjectileVFXComp;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Visual")
+	TObjectPtr<UNiagaraSystem> ImpactEffect; 
+	
 	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn = true))
 	FGameplayEffectSpecHandle DamageEffectSpecHandle;
 
 protected:
+	UFUNCTION()
+	void OnRep_ProjectileData();
+	
+	void InitializeProjectile();
+	
 	// 충돌 처리 함수
 	UFUNCTION()
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
