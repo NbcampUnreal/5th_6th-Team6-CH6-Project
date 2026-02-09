@@ -259,4 +259,9 @@ public :
 	void SetDeathCount(int32 InDeathCount);
 	void SetAssistCount(int32 InAssistCount);
 
+	// DEBUG
+private:
+	FTimerHandle KillTimerHandle;
+	void AddKillPerSecond();
+	int32 CurrentKillCount = 0;
 };

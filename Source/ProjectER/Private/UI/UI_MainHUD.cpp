@@ -243,9 +243,16 @@ void UUI_MainHUD::NativeConstruct()
     }
 
     // 디버그용
-    SetKillCount(3);
+    SetKillCount(0);
     SetDeathCount(41);
     SetAssistCount(411);
+
+    GetWorld()->GetTimerManager().SetTimer(
+        KillTimerHandle,
+        this,
+        &UUI_MainHUD::AddKillPerSecond,
+        1.0f,
+        true);
 }
 
 /// 마우스 이벤트!
@@ -732,4 +739,9 @@ void UUI_MainHUD::SetAssistCount(int32 InAssistCount)
     {
         AssistNumber_02->SetBrushFromTexture(SegmentTextures[OneDigit]);
     }
+}
+
+void UUI_MainHUD::AddKillPerSecond()
+{
+	SetKillCount(CurrentKillCount++);
 }
