@@ -3,6 +3,7 @@
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
 #include "GameModeBase/Subsystem/NeutralSpawn/ER_NeutralSpawnSubsystem.h"
+#include "GameModeBase/Subsystem/Phase/ER_PhaseSubsystem.h"
 
 #include "GameFramework/Character.h"
 #include "Engine/World.h"
@@ -114,6 +115,8 @@ void AER_InGameMode::HandleStartingNewPlayer_Implementation(APlayerController* N
 				});
 			NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
 			NeutralSS->InitializeSpawnPoints(NeutralClass);
+			NeutralSS->TEMP_SpawnNeutrals();
+			HandlePhaseTimeUp();
 		}
 	}
 }
@@ -146,7 +149,7 @@ void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter)
 			UE_LOG(LogTemp, Warning, TEXT("[GM] : NotifyPlayerDied , EvaluateTeamElimination = true"));
 
 			// 전멸 판정 true -> 해당 유저의 팀 사출 실행
-			const int32 TeamIdx = static_cast<int32>(ERPS->Team);
+			const int32 TeamIdx = static_cast<int32>(ERPS->TeamType);
 
 			// 해당 팀의 리스폰 타이머 정지
 			RespawnSS->StopResapwnTimer(*ERGS, TeamIdx);
@@ -202,6 +205,28 @@ void AER_InGameMode::DisConnectClient(APlayerController* PC)
 				GameSession->KickPlayer(PC, FText::FromString(TEXT("Defeated")));
 			}
 		}, 0.2f, false);
+}
+
+void AER_InGameMode::HandlePhaseTimeUp()
+{
+	AER_GameState* ERGS = GetGameState<AER_GameState>();
+	if (!ERGS)
+	{
+		return;
+	}
+	UER_PhaseSubsystem* PhaseSS = GetWorld()->GetSubsystem<UER_PhaseSubsystem>();
+	if (!PhaseSS)
+	{
+		return;
+	}
+
+	ERGS->CurrentPhase++;
+	// 페이즈에 따라 작동할 코드 넣기
+	// (항공 보급 생성)
+	// (오브젝트 스폰)
+	
+	// 이후에 10초에서 180초로 수정
+	PhaseSS->StartPhaseTimer(*ERGS, PhaseDuration);
 }
 
 void AER_InGameMode::TEMP_SpawnNeutrals()

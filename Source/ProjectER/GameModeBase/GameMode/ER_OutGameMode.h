@@ -17,8 +17,10 @@ public:
 	virtual void BeginPlay() override;
 	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 	void StartGame();
-	
 	void EndGame();
+
+	UFUNCTION(BlueprintCallable)
+	void MoveTeam(APlayerController* Player, int32 TeamIdx);
 
 protected:
 	virtual FString InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options, const FString& Portal) override;

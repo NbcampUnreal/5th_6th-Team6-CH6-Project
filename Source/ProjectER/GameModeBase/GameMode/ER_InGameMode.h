@@ -44,6 +44,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void DisConnectClient(APlayerController* PC);
 
+	void HandlePhaseTimeUp();
+
 
 	UFUNCTION(BlueprintCallable)
 	void TEMP_SpawnNeutrals();
@@ -54,6 +56,7 @@ public:
 private:
 	int32 PlayersInitialized = 0;
 	int32 ExpectedPlayers = 0;
+	float PhaseDuration = 30.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Subsystem|NeutralSpawn")
 	TMap<FName, FNeutralClassConfig> NeutralClass;
