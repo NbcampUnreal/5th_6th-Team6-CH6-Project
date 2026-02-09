@@ -21,6 +21,14 @@ enum class ESkillActivationType : uint8 {
     Holding    UMETA(DisplayName = "Holding")
 };
 
+UENUM(BlueprintType)
+enum class ETargetRelationship : uint8 {
+    None UMETA(DisplayName = "None", Hidden),
+    Friend     UMETA(DisplayName = "Friend"),
+    Enemy   UMETA(DisplayName = "Enemy")
+    //FriendAndEnemy   UMETA(DisplayName = "EnemyAndFriend")
+};
+
 class UAnimMontage; 
 
 USTRUCT(BlueprintType)
@@ -29,6 +37,9 @@ struct FSkillDefaultData {
 
     UPROPERTY(EditDefaultsOnly, Category = "Skill")
     ESkillActivationType SkillActivationType;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Skill")
+    ETargetRelationship ApplyTo = ETargetRelationship::None;
 
     UPROPERTY(EditDefaultsOnly, Category = "Skill")
     bool bIsUseCasting;
@@ -41,6 +52,7 @@ struct FSkillDefaultData {
 
     UPROPERTY(EditDefaultsOnly, Category = "Skill|InputKey", meta = (Categories = "Input"))
     FGameplayTag InputKeyTag;
+
 };
 
 //class PROJECTER_API SkillData

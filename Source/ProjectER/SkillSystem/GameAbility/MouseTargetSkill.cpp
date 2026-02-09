@@ -139,16 +139,22 @@ AActor* UMouseTargetSkill::GetTargetUnderCursorInRange()
 
 AActor* UMouseTargetSkill::GetTargetUnderCursor()
 {
+	AActor* Result = nullptr;
+
 	APlayerController* PC = Cast<APlayerController>(GetActorInfo().PlayerController.Get());
 	if (!PC) return nullptr;
 
 	FHitResult HitResult;
-	if (PC->GetHitResultUnderCursor(ECC_Pawn, false, HitResult))
+	PC->GetHitResultUnderCursor(ECC_Pawn, false, HitResult);
+	
+	Result = HitResult.GetActor();
+
+	if (IsValidRelationship(Result) == false)
 	{
-		return HitResult.GetActor();
+		Result = nullptr;
 	}
 
-	return nullptr;
+	return Result;
 }
 
 bool UMouseTargetSkill::IsInRange(AActor* Actor)
