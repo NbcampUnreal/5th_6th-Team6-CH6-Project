@@ -6,31 +6,52 @@
 #include "Components/UniformGridSlot.h"
 #include "Components/Image.h"
 #include "Components/Button.h"
+#include "CharacterSystem/Player/BasePlayerController.h"
 
-void UW_LootingPopup::InitPopup(AActor* InTargetBox, float InMaxDistance)
+void UW_LootingPopup::InitPopup(const ABaseBoxActor* Box)
 {
-	TargetBox = InTargetBox;
-	MaxDistance = InMaxDistance;
+	TargetBox = Box;
 
-	// 즉각 업데이트
-	if (ABaseBoxActor* Box = Cast<ABaseBoxActor>(InTargetBox))
+	if (const ABaseBoxActor* Box = TargetBox.Get())
 	{
-		UpdateLootingSlots(Box->GetCurrentLoot());
+		// 캐스트로 비-const 델리게이트 접근이 필요하면 설계를 조정(아래 참고)
+		ABaseBoxActor* Mutable = const_cast<ABaseBoxActor*>(Box);
+		Mutable->OnLootChanged.AddUObject(this, &UW_LootingPopup::Refresh);
 	}
+
+	Refresh();
+}
+
+void UW_LootingPopup::Refresh()
+{
+	const ABaseBoxActor* Box = TargetBox.Get();
+	if (!Box) return;
+
+	UpdateLootingSlots(Box); // Box->GetLootSlots()로 그림
 }
 
 void UW_LootingPopup::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
-	if (TargetBox && GetOwningPlayerPawn())
-	{
-		if (GetOwningPlayerPawn()->GetDistanceTo(TargetBox) > MaxDistance)
-			RemoveFromParent();
-	}
 }
 
-void UW_LootingPopup::UpdateLootingSlots(const TArray<UBaseItemData*>& Items)
+
+void UW_LootingPopup::UpdateLootingSlots(const ABaseBoxActor* Box)
 {
+	if (!TargetBox.IsValid())
+	{
+		TargetBox = Box;
+	}
+	else
+	{
+		// 다른 박스라면 (원한다면) 교체
+		if (TargetBox.Get() != Box)
+		{
+			TargetBox = Box;
+		}
+	}
+	const TArray<FLootSlot>& Items = Box->GetCurrentItemList();
+
 	if (!ItemGridPanel || !SlotWidgetClass) return;
 
 	ItemGridPanel->ClearChildren();
@@ -45,8 +66,9 @@ void UW_LootingPopup::UpdateLootingSlots(const TArray<UBaseItemData*>& Items)
 		if (NewSlot)
 		{
 			// i번째 칸에 아이템이 있는지 확인
-			bool bHasItem = Items.IsValidIndex(i) && Items[i] != nullptr;
-			UBaseItemData* CurrentItem = bHasItem ? Items[i] : nullptr;
+			int32 ItemIndex = Items[i].ItemId;
+			bool bHasItem = ItemIndex != -1;
+			UBaseItemData* CurrentItem = bHasItem ? Box->ItemPool[ItemIndex] : nullptr;
 
 			UImage* TargetImage = Cast<UImage>(NewSlot->GetWidgetFromName(TEXT("ItemIconImage")));
 			UButton* SlotButton = Cast<UButton>(NewSlot->GetWidgetFromName(TEXT("SlotButton")));
@@ -69,7 +91,7 @@ void UW_LootingPopup::UpdateLootingSlots(const TArray<UBaseItemData*>& Items)
 			{
 				if (bHasItem)
 				{
-					SlotItemMap.Add(SlotButton, CurrentItem);
+					SlotItemMap.Add(SlotButton, i);
 					SlotButton->OnClicked.RemoveAll(this);
 					SlotButton->OnClicked.AddDynamic(this, &UW_LootingPopup::OnSlotButtonClicked);
 					SlotButton->SetIsEnabled(true);
@@ -89,6 +111,7 @@ void UW_LootingPopup::UpdateLootingSlots(const TArray<UBaseItemData*>& Items)
 			}
 		}
 	}
+
 }
 
 void UW_LootingPopup::OnSlotButtonClicked()
@@ -104,20 +127,15 @@ void UW_LootingPopup::OnSlotButtonClicked()
 	}
 }
 
-void UW_LootingPopup::TryLootItem(UBaseItemData* TargetItem)
+void UW_LootingPopup::TryLootItem(int32 SlotIndex)
 {
-	if (!TargetItem || !TargetBox) return;
+	if (!TargetBox.IsValid() || SlotIndex == -1)
+		return; 
 
-	ABaseBoxActor* Box = Cast<ABaseBoxActor>(TargetBox);
 	APawn* OwningPawn = GetOwningPlayerPawn();
 
-	if (Box && OwningPawn)
+	if (ABasePlayerController* PC = GetOwningPlayer<ABasePlayerController>())
 	{
-		UBaseInventoryComponent* Inv = OwningPawn->FindComponentByClass<UBaseInventoryComponent>();
-		if (Inv)
-		{
-			Inv->AddItem(TargetItem);
-			Box->Server_RemoveItemFromBox(TargetItem);
-		}
+		PC->Server_TakeItem(const_cast<ABaseBoxActor*>(TargetBox.Get()), SlotIndex);
 	}
 }
