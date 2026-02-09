@@ -1,4 +1,4 @@
-﻿#include "ItemSystem/BaseBoxActor.h"
+#include "ItemSystem/BaseBoxActor.h"
 #include "ItemSystem/BaseItemData.h"
 #include "Net/UnrealNetwork.h"
 #include "AbilitySystemComponent.h"
@@ -89,17 +89,63 @@ void ABaseBoxActor::OnRep_GetCurrentItemList()
 
 void ABaseBoxActor::ReduceItem(int32 SlotIndex)
 {
+	// 범위 체크
+	if (SlotIndex < 0 || SlotIndex >= CurrentItemList.Num())
+	{
+		UE_LOG(LogTemp, Error, TEXT("ReduceItem: Invalid SlotIndex %d"), SlotIndex);
+		return;
+	}
+
+	// 개수 감소
 	if (CurrentItemList[SlotIndex].Count - 1 <= 0)
 	{
+		// 아이템이 완전히 소진됨 - 빈 슬롯으로 만듦
 		CurrentItemList[SlotIndex].ItemId = -1;
 		CurrentItemList[SlotIndex].Count = 0;
-		ForceNetUpdate();
 	}
 	else
 	{
+		// 개수만 감소
 		--CurrentItemList[SlotIndex].Count;
-		ForceNetUpdate();
 	}
+
+	// 아이템 정렬
+	CompactItemList();
+
+	// 네트워크 업데이트
+	ForceNetUpdate();
+}
+
+void ABaseBoxActor::CompactItemList()
+{
+	// 유효한 아이템만 추출
+	TArray<FLootSlot> ValidItems;
+	for (const FLootSlot& Slot : CurrentItemList)
+	{
+		if (Slot.ItemId != -1 && Slot.Count > 0)
+		{
+			ValidItems.Add(Slot);
+		}
+	}
+
+	// 리스트 재구성
+	CurrentItemList.Empty();
+	CurrentItemList.SetNum(10);
+
+	// 유효한 아이템 배치
+	for (int32 i = 0; i < ValidItems.Num(); ++i)
+	{
+		CurrentItemList[i] = ValidItems[i];
+	}
+
+	// 나머지는 빈 슬롯으로 채움
+	for (int32 i = ValidItems.Num(); i < 10; ++i)
+	{
+		CurrentItemList[i].ItemId = -1;
+		CurrentItemList[i].Count = 0;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("CompactItemList: %d items remaining"), ValidItems.Num());
 }
 
 UBaseItemData* ABaseBoxActor::GetItemData(int32 SlotIndex) const

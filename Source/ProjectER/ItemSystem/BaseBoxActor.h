@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -45,6 +45,11 @@ public:
 	// 인터페이스 함수
 	virtual void PickupItem(class APawn* InHandler) override;
 
+protected:
+	// ✅ 아이템 압축 정렬 함수 (빈 슬롯을 뒤로 보냄)
+	void CompactItemList();
+
+public:
 	UPROPERTY(VisibleAnywhere, Category = "Box")
 	TObjectPtr<UStaticMeshComponent> BoxMesh;
 
