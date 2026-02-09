@@ -26,6 +26,8 @@ protected:
 	
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	
+	virtual void NotifyHit(UPrimitiveComponent* MyComp, AActor* Other, UPrimitiveComponent* OtherComp, bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult& Hit) override;
+	
 public:
 	UPROPERTY(ReplicatedUsing = OnRep_ProjectileData, EditAnywhere, BlueprintReadWrite, Meta = (ExposeOnSpawn = true), Category = "Data")
 	TObjectPtr<UProjectileData> ProjectileData;

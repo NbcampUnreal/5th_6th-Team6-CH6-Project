@@ -660,17 +660,42 @@ void ABaseCharacter::StopPathFollowing()
 
 FRotator ABaseCharacter::GetCombatGazeRotation(FName SocketName)
 {
-	FVector StartPos = GetMesh()->GetSocketLocation(SocketName);
+	// 시작점 (Muzzle)
+	FVector StartPos = GetMuzzleLocation(SocketName);
     
-	// 타겟이 있으면 타겟 조준
+	// 목표점 (Target)
+	FVector TargetPos;
+    
 	if (TargetActor) 
 	{
-		// 타겟의 중앙(GetActorLocation)을 향하도록
-		return (TargetActor->GetActorLocation() - StartPos).Rotation();
+		// 단순 ActorLocation은 발밑(Root)일 수 있으므로, 
+		// 캡슐 컴포넌트의 중간이나 특정 뼈를 노리는 보정 로직 추가
+		TargetPos = TargetActor->GetActorLocation();
+        
+		// [디테일] 타겟의 키 절반만큼 위를 조준 (가슴팍)
+		// ACharacter로 캐스팅 가능하다면 Capsule HalfHeight를 더해줌
+		if (ACharacter* TargetChar = Cast<ACharacter>(TargetActor))
+		{
+			TargetPos.Z += TargetChar->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 0.7f; 
+		}
+	}
+	else
+	{
+		// 타겟이 없으면 내 정면 10m 앞
+		TargetPos = StartPos + (GetActorForwardVector() * 1000.0f);
 	}
     
-	// 타겟이 없으면 캐릭터가 보는 방향으로
-	return GetActorForwardVector().Rotation();
+	// 각도 계산 (Unreal Math Library)
+	return UKismetMathLibrary::FindLookAtRotation(StartPos, TargetPos);
+}
+
+FVector ABaseCharacter::GetMuzzleLocation(FName SocketName)
+{
+	if (GetMesh())
+	{
+		return GetMesh()->GetSocketLocation(SocketName);
+	}
+	return GetActorLocation();
 }
 
 void ABaseCharacter::SetTarget(AActor* NewTarget)

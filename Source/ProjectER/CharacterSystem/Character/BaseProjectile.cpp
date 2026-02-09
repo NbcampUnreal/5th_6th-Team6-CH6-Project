@@ -13,11 +13,15 @@
 #include "AbilitySystemComponent.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
+#include "DrawDebugHelpers.h"
+#include "GameFramework/Character.h"
 
 ABaseProjectile::ABaseProjectile()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true; // 서버에서 생성 및 위치 동기화
+	
+	SetReplicateMovement(true);
 	
 	// 충돌체 설정
 	SphereComp = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComp"));
@@ -50,6 +54,26 @@ void ABaseProjectile::BeginPlay()
 	
 	if (HasAuthority())
 	{
+		// Instigator는 물리적으로 부딪히지 않게 설정
+		if (GetInstigator())
+		{
+			SphereComp->IgnoreActorWhenMoving(GetInstigator(), true);
+            
+			// 만약 캐릭터 메쉬도 막고 싶다면
+			if (UPrimitiveComponent* InstigatorComp = Cast<UPrimitiveComponent>(GetInstigator()->GetRootComponent()))
+			{
+				SphereComp->IgnoreComponentWhenMoving(InstigatorComp, true);
+			}
+			
+			if (ACharacter* InstigatorChar = Cast<ACharacter>(GetInstigator()))
+			{
+				if (InstigatorChar->GetMesh())
+				{
+					SphereComp->IgnoreComponentWhenMoving(InstigatorChar->GetMesh(), true);
+				}
+			}
+		}
+		
 		SphereComp->OnComponentBeginOverlap.AddDynamic(this, &ABaseProjectile::OnOverlapBegin);
 		InitializeProjectile();
 	}
@@ -62,6 +86,18 @@ void ABaseProjectile::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
 	DOREPLIFETIME(ABaseProjectile, ProjectileData);
+}
+
+void ABaseProjectile::NotifyHit(UPrimitiveComponent* MyComp, AActor* Other, UPrimitiveComponent* OtherComp,
+	bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult& Hit)
+{
+	Super::NotifyHit(MyComp, Other, OtherComp, bSelfMoved, HitLocation, HitNormal, NormalImpulse, Hit);
+	
+	// Block 판정이 났을 때 로그 출력
+	if (Other)
+	{
+		UE_LOG(LogTemp, Error, TEXT("BLOCK HAPPENED! Stopped by: %s"), *Other->GetName());
+	}
 }
 
 void ABaseProjectile::OnRep_ProjectileData()
@@ -112,6 +148,26 @@ void ABaseProjectile::InitializeProjectile()
 void ABaseProjectile::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
                                      UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+#if WITH_EDITOR
+	if (OtherActor)
+	{
+		FString InstigatorName = GetInstigator() ? GetInstigator()->GetName() : TEXT("NULL");
+		FString HitActorName = OtherActor->GetName();
+		FString HitCompName = OtherComp ? OtherComp->GetName() : TEXT("NULL");
+
+		// 로그창(Output Log)에 출력
+		// 노란색 경고로 띄워서 눈에 잘 띄게 함
+		UE_LOG(LogTemp, Warning, TEXT("[Projectile Hit] HitActor: %s (Comp: %s) / Shooter: %s"), 
+			*HitActorName, *HitCompName, *InstigatorName);
+
+		// 화면에 붉은 공 그리기 (3초간 유지)
+		DrawDebugSphere(GetWorld(), GetActorLocation(), 30.0f, 12, FColor::Red, false, 3.0f);
+        
+		// 화면에 텍스트 띄우기 (누구랑 부딪혔는지 이름표)
+		DrawDebugString(GetWorld(), GetActorLocation() + FVector(0,0,50), *HitActorName, nullptr, FColor::Yellow, 3.0f);
+	}
+#endif
+	
 	// 나 자신이나 이미 죽은 대상은 무시
 	if (!OtherActor || OtherActor == GetInstigator()) return;
 

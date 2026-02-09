@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "NativeGameplayTags.h"
@@ -102,7 +102,8 @@ namespace ProjectER
 
 		namespace Montage
 		{
-			UE_DECLARE_GAMEPLAY_TAG_EXTERN(AttackHit); // 몽타주 노티파이: 공격 적중 시점
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(AttackHit);
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(SpawnProjectile); 
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Active);
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Casting);
 		}

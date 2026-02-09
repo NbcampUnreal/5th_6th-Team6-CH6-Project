@@ -19,27 +19,27 @@ class PROJECTER_API UCharacterData : public UPrimaryDataAsset
 	
 public:
 	// 캐릭터 Mesh
-	UPROPERTY(EditDefaultsOnly, Category = "Visual")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
 	TSoftObjectPtr<USkeletalMesh> Mesh;
 	
 	// 캐릭터 Animation Blueprint
-	UPROPERTY(EditDefaultsOnly, Category = "Visual")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
 	TSoftClassPtr<UAnimInstance> AnimClass;
 	
 	// 사망 몽타주 
-	UPROPERTY(EditDefaultsOnly, Category = "Visual")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
 	TSoftObjectPtr<UAnimMontage> DeathMontage;
 	
 	// 기본 스킬 (일반 공격 : Auto Attack)
-	UPROPERTY(EditDefaultsOnly, Category = "Combat|AutoAttack")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|AutoAttack")
 	TMap<FGameplayTag, TSoftClassPtr<UGameplayAbility>> Abilities;
 	
 	// 원거리 발사체 클래스
-	UPROPERTY(EditDefaultsOnly, Category = "Combat|Ranged")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Ranged")
 	TSubclassOf<ABaseProjectile> ProjectileClass;
 
 	// 발사 소켓 이름 (예: "Muzzle_01", "ArrowSocket")
-	UPROPERTY(EditDefaultsOnly, Category = "Combat|Ranged")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Ranged")
 	FName MuzzleSocketName;
 	
 	// 특수 스킬 (Q, W, E, R)
