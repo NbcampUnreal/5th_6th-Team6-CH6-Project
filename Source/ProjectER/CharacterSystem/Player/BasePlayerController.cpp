@@ -472,6 +472,12 @@ void ABasePlayerController::Server_TEMP_DespawnNeutrals_Implementation()
 	InGameMode->TEMP_DespawnNeutrals();
 }
 
+void ABasePlayerController::Server_MoveTeam_Implementation(int32 TeamIdx)
+{
+	auto OutGameMode = Cast<AER_OutGameMode>(GetWorld()->GetAuthGameMode());
+	OutGameMode->MoveTeam(this, TeamIdx);
+}
+
 void ABasePlayerController::Server_RequestPickup_Implementation(ABaseItemActor* Item)
 { // 바닥에 있는 아이템 줍기
 	if (!Item) return;
@@ -514,17 +520,84 @@ void ABasePlayerController::Server_BeginLoot_Implementation(ABaseBoxActor* Box)
 
 void ABasePlayerController::Server_EndLoot_Implementation(ABaseBoxActor* Box)
 {
-	// 뭐넣냐 이거
-}
+	if (!Box)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Server_EndLoot: Invalid Box"));
+		return;
+	}
 
+	// GA_OpenBox 종료
+	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
+	if (PS)
+	{
+		UAbilitySystemComponent* ASC = PS->GetAbilitySystemComponent();
+		if (ASC)
+		{
+			FGameplayTagContainer CancelTags;
+			CancelTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Event.Interact.OpenBox")));
+			ASC->CancelAbilities(&CancelTags);
+
+			UE_LOG(LogTemp, Log, TEXT("Server_EndLoot: Cancelled OpenBox ability"));
+		}
+	}
+}
 void ABasePlayerController::Server_TakeItem_Implementation(ABaseBoxActor* Box, int32 SlotIndex)
 {
-	//box->TryTakeItem 예정
+	////box->TryTakeItem 예정
+	//UBaseInventoryComponent* Inv = GetPawn()->FindComponentByClass<UBaseInventoryComponent>();
+	//UBaseItemData* TargetItem = Box->GetItemData(SlotIndex);
+	////Inv->AddItem(TargetItem);
+	//// 여기서 아이템 인벤에 넣기
+	//Box->ReduceItem(SlotIndex);
+
+	// 유효성 검증
+	if (!Box || !GetPawn())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Server_TakeItem: Invalid Box or Pawn"));
+		return;
+	}
+
+	// 슬롯 범위 체크
+	if (SlotIndex < 0 || SlotIndex >= Box->CurrentItemList.Num())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Server_TakeItem: Invalid SlotIndex %d"), SlotIndex);
+		return;
+	}
+
+	// 빈 슬롯 체크
+	if (Box->CurrentItemList[SlotIndex].ItemId == -1)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Server_TakeItem: Empty slot at index %d"), SlotIndex);
+		return;
+	}
+
+	// 인벤토리 컴포넌트 찾기
 	UBaseInventoryComponent* Inv = GetPawn()->FindComponentByClass<UBaseInventoryComponent>();
+	if (!Inv)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Server_TakeItem: No InventoryComponent found"));
+		return;
+	}
+
+	// 아이템 데이터 가져오기 (범위 체크 포함)
 	UBaseItemData* TargetItem = Box->GetItemData(SlotIndex);
-	//Inv->AddItem(TargetItem);
-	// 여기서 아이템 인벤에 넣기
-	Box->ReduceItem(SlotIndex);
+	if (!TargetItem)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Server_TakeItem: Failed to get item data"));
+		return;
+	}
+
+	// 인벤토리에 추가 (주석 해제!)
+	if (Inv->AddItem(TargetItem))
+	{
+		// 성공 시에만 박스에서 제거
+		Box->ReduceItem(SlotIndex);
+	}
+	else
+	{
+		// 인벤토리가 꽉 찬 경우
+		UE_LOG(LogTemp, Warning, TEXT("Server_TakeItem: Inventory full, cannot add item"));
+	}
 }
 
 void ABasePlayerController::Client_OpenLootUI_Implementation(const ABaseBoxActor* Box)
@@ -561,6 +634,8 @@ void ABasePlayerController::Client_CloseLootUI_Implementation()
 	LootWidgetInstance->RemoveFromParent();
 	LootWidgetInstance = nullptr;
 }
+
+
 
 
 

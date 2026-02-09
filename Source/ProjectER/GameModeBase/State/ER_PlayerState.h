@@ -4,18 +4,9 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include "AbilitySystemInterface.h"
+#include "CharacterSystem/Interface/TargetableInterface.h"
 #include "ER_PlayerState.generated.h"
 
-UENUM(BlueprintType)
-enum class ETeam : uint8
-{
-	None UMETA(DisplayName = "None"),
-	Team1 UMETA(DisplayName = "Team1"),
-	Team2 UMETA(DisplayName = "Team2"),
-	Team3 UMETA(DisplayName = "Team3"),
-	Neutral UMETA(DisplayName = "Neutral")
-
-};
 
 class UAbilitySystemComponent;
 class UBaseAttributeSet;
@@ -56,7 +47,7 @@ public:
 	bool bIsReady = false;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
-	ETeam Team = ETeam::None;
+	ETeamType TeamType = ETeamType::None;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsDead = false;

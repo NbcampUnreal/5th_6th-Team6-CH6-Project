@@ -7,12 +7,15 @@
 
 class AER_PlayerState;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPhaseChangedBP, int32, NewPhase);
+
 UCLASS()
 class PROJECTER_API AER_GameState : public AGameStateBase
 {
 	GENERATED_BODY()
 	
 public:
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	void BuildTeamCache();
 	void RemoveTeamCache();
@@ -23,9 +26,27 @@ public:
 
 	int32 GetLastTeamIdx();
 
+	UFUNCTION()
+	void OnRep_Phase();
+
+	float GetPhaseRemainingTime() const;
+
 public:
 	TArray<TArray<TWeakObjectPtr<AER_PlayerState>>> TeamCache;
 
 	UPROPERTY(BlueprintReadOnly)
 	TMap<int32, bool> TeamElimination;
+
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Phase)
+	int32 CurrentPhase = 0;
+
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Phase)
+	float PhaseServerTime = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Replicated)
+	float PhaseDuration = 10.f;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnPhaseChangedBP OnPhaseChanged;
 };
+

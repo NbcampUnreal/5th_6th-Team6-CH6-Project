@@ -9,7 +9,7 @@
 #include "Components/SceneCaptureComponent2D.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/KismetRenderingLibrary.h"
-#include "TopDownVisionLogCategories.h"//log
+#include "TopDownVisionDebug.h"//log
 #include "LineOfSight/VisionSubsystem.h"
 
 #if WITH_EDITOR

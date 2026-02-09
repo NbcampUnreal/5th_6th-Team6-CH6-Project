@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/SceneComponent.h"
-
+//#include "Components/SceneComponent.h"
+#include "Components/ActorComponent.h" //-> now actor
 #include "LocalTextureSampler.generated.h"
 
 /*
@@ -33,7 +33,7 @@ class UMaterialInstanceDynamic;
 class UVisionSubsystem;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOPDOWNVISION_API ULocalTextureSampler : public USceneComponent
+class TOPDOWNVISION_API ULocalTextureSampler : public UActorComponent
 {
 	GENERATED_BODY()
 

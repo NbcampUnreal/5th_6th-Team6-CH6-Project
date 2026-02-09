@@ -4,27 +4,55 @@
 #include "LineOfSight/LineOfSightComponent.h"
 #include "Engine/World.h"
 #include "Materials/MaterialInstanceDynamic.h"
-#include "TopDownVisionLogCategories.h"// log
+#include "TopDownVisionDebug.h"// log
 
 //environment texture source
 #include "LineOfSight/WorldObstacle/LocalTextureSampler.h"
 
+// Vision helpers
+#include "Components/SphereComponent.h"
+#include "LineOfSight/ObjectTracing/ShapeAwareVisibilityTracer.h"
+
 #include "DrawDebugHelpers.h"//debug for visualizing the activation
 #include "Engine/TextureRenderTarget2D.h"
+#include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
 
 
 ULineOfSightComponent::ULineOfSightComponent()
 {
     PrimaryComponentTick.bCanEverTick = false; // Manual draw
+    SetIsReplicatedByDefault(true);//replication on
 
+    //Local Texture Sampler
     LocalTextureSampler = CreateDefaultSubobject<ULocalTextureSampler>(TEXT("LocalTextureSampler"));
+
+
+    //=== Visible Target Detection ===//
+    VisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("VisionSphere"));
+    //VisionSphere->SetupAttachment(GetOwner()->GetRootComponent()); --> too early to get the root from owner -> put this in the begin play
+
+    VisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);//make it collide with
+    VisionSphere->SetCollisionObjectType(ECC_WorldDynamic);
+    VisionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+    VisionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+    VisionSphere->SetGenerateOverlapEvents(true);
+    
 }
 
 void ULineOfSightComponent::BeginPlay()
 {
     Super::BeginPlay();
 
+    //Degug
+    UE_LOG(LOSVision, Log,
+    TEXT("[%s] LOS BeginPlay | Owner=%s | Role=%d | RemoteRole=%d | IsLocallyControlled=%d"),
+    *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+    *GetOwner()->GetName(),
+    (int32)GetOwner()->GetLocalRole(),
+    (int32)GetOwner()->GetRemoteRole(),
+    GetOwner()->IsOwnedBy(GetWorld()->GetFirstPlayerController()));
+    
     if (!ShouldRunClientLogic())
     {
         return;// not for server
@@ -32,10 +60,37 @@ void ULineOfSightComponent::BeginPlay()
     
     CreateResources();// make RT and MID
 
+    //Target Detection
+    if (VisionSphere)
+    {
+       VisionSphere->AttachToComponent(
+            GetOwner()->GetRootComponent(),
+            FAttachmentTransformRules::KeepRelativeTransform);
+
+        VisionSphere->SetSphereRadius(VisionRange);
+
+        VisionSphere->OnComponentBeginOverlap.AddDynamic(
+            this, &ULineOfSightComponent::OnVisionSphereBeginOverlap);
+
+        VisionSphere->OnComponentEndOverlap.AddDynamic(
+            this, &ULineOfSightComponent::OnVisionSphereEndOverlap);
+    }
+
+    // ===== Create tracer =====
+    VisibilityTracer = NewObject<UShapeAwareVisibilityTracer>(this);
+
+    //set attachment of vision sphere
+    VisionSphere->SetupAttachment(GetOwner()->GetRootComponent());
 }
 
 void ULineOfSightComponent::UpdateLocalLOS()
 {
+    UE_LOG(LOSVision, VeryVerbose,
+        TEXT("[%s] ULineOfSightComponent::UpdateLocalLOS >> ENTER | Owner=%s | ShouldUpdate=%d"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+        *GetOwner()->GetName(),
+        ShouldUpdate);
+    
     if (!ShouldRunClientLogic())
     {
         return;// not for server
@@ -45,20 +100,23 @@ void ULineOfSightComponent::UpdateLocalLOS()
     if (!ShouldUpdate)
     {
         UE_LOG(LOSVision, Verbose,
-            TEXT("ULineOfSightComponent::UpdateLocalLOS >> Skipped, ShouldUpdate is false"));
+            TEXT("[%s]ULineOfSightComponent::UpdateLocalLOS >> Skipped, ShouldUpdate is false"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
         return;
     }
     if (!LOSRenderTarget)
     {
         UE_LOG(LOSVision, Warning,
-            TEXT("ULineOfSightComponent::UpdateLocalLOS >> Invalid HeightRenderTarget"));
+            TEXT("[%s]ULineOfSightComponent::UpdateLocalLOS >> Invalid HeightRenderTarget"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
         return;
     }
     // now only use local texture sampler as only a source of RT
     if (!LocalTextureSampler)
     {
         UE_LOG(LOSVision, Error,
-            TEXT("ULineOfSightComponent::UpdateLocalLOS >> LocalTextureSampler missing"));
+            TEXT("[%s]ULineOfSightComponent::UpdateLocalLOS >> LocalTextureSampler missing"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
         return;
     }
 
@@ -83,7 +141,8 @@ void ULineOfSightComponent::UpdateLocalLOS()
     }
     
     UE_LOG(LOSVision, Verbose,
-        TEXT("ULineOfSightComponent::UpdateLocalLOS >> UpdateResource called"));
+        TEXT("[%s]ULineOfSightComponent::UpdateLocalLOS >> UpdateResource called"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()));
 }
 
 void ULineOfSightComponent::UpdateVisibleRange(float NewRange)
@@ -100,12 +159,20 @@ void ULineOfSightComponent::UpdateVisibleRange(float NewRange)
     // Update material parameter if range changed
     if (!FMath::IsNearlyEqual(OldRange, VisionRange) && LOSMaterialMID)
     {
+
+        if (VisionSphere)//set the radius of the sphere comp
+        {
+            VisionSphere->SetSphereRadius(VisionRange);
+        }
+
+        
         LOSMaterialMID->SetScalarParameterValue(
             MIDVisibleRangeParam, 
             VisionRange / MaxVisionRange / 2.f);
         
         UE_LOG(LOSVision, Verbose,
-            TEXT("ULineOfSightComponent::UpdateVisibleRange >> Updated material: VisionRange=%.1f, Normalized=%.3f"),
+            TEXT("[%s]ULineOfSightComponent::UpdateVisibleRange >> Updated material: VisionRange=%.1f, Normalized=%.3f"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()),
             VisionRange,
             VisionRange / MaxVisionRange / 2.f);
     }
@@ -120,10 +187,17 @@ void ULineOfSightComponent::UpdateVisibleRange(float NewRange)
 
 void ULineOfSightComponent::ToggleUpdate(bool bIsOn)
 {
+    UE_LOG(LOSVision, Verbose,
+        TEXT("[%s] ToggleUpdate | Owner=%s | New=%d"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+        *GetOwner()->GetName(),
+        bIsOn);
+    
     if (ShouldUpdate==bIsOn)
     {
-        UE_LOG(LOSVision, VeryVerbose,
-            TEXT("ULineOfSightComponent::ToggleUpdate >> Already set to %s"),
+        UE_LOG(LOSVision, Verbose,
+            TEXT("[%s]ULineOfSightComponent::ToggleUpdate >> Already set to %s"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()),
             ShouldUpdate ? TEXT("true") : TEXT("false"));
         return;
     }
@@ -131,14 +205,59 @@ void ULineOfSightComponent::ToggleUpdate(bool bIsOn)
     ShouldUpdate = bIsOn;
 
     
-    UE_LOG(LOSVision, VeryVerbose,
-        TEXT("ULineOfSightComponent::ToggleUpdate >> ShouldUpdate set to %s"),
-        ShouldUpdate ? TEXT("true") : TEXT("false"));
+    UE_LOG(LOSVision, Verbose,
+       TEXT("[%s] ToggleUpdate APPLIED | Owner=%s | ShouldUpdate=%d"),
+       *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+       *GetOwner()->GetName(),
+       ShouldUpdate);
+}
+
+void ULineOfSightComponent::OnVisionSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+    if (!VisibilityTracer || !OtherComp || OtherActor == GetOwner())
+    {
+        return;
+    }
+
+    /*const bool bVisible = VisibilityTracer->IsTargetVisible(
+        GetWorld(),
+        GetOwner()->GetActorLocation(),
+        OtherComp,
+        VisionRange,
+        ObstacleTraceChannel,
+        bDrawVisibilityRays,
+        DesiredAngleDegree);
+
+    if (bVisible)
+    {
+        UE_LOG(LOSVision, Verbose,
+            TEXT("Target %s is Visible"), *OtherActor->GetName());
+    }*/
+}
+
+void ULineOfSightComponent::OnVisionSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+    if (!OtherActor)
+    {
+        return;
+    }
+
+    UE_LOG(LOSVision, Verbose,
+        TEXT("[%s]ULineOfSightComponent::OnVisionSphereEndOverlap >> Target %s left vision range"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+        *OtherActor->GetName());
 }
 
 
 void ULineOfSightComponent::CreateResources()
 {
+    UE_LOG(LOSVision, Log,
+        TEXT("[%s]ULineOfSightComponent::CreateResources >> Owner=%s"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+        *GetOwner()->GetName());
+    
     if (!ShouldRunClientLogic())
     {
         return;// not for server
@@ -147,12 +266,20 @@ void ULineOfSightComponent::CreateResources()
     if (!GetWorld())
         return;
 
-    //make RT
+    // Create RT with unique name
     if (!LOSRenderTarget)
     {
-        LOSRenderTarget = NewObject<UTextureRenderTarget2D>(this);
+        FString RTName = FString::Printf(TEXT("LOSRenderTarget_%s"), *GetOwner()->GetName());
+        LOSRenderTarget = NewObject<UTextureRenderTarget2D>(this, FName(*RTName));
         LOSRenderTarget->InitAutoFormat(PixelResolution, PixelResolution);
         LOSRenderTarget->ClearColor = FLinearColor::Black;
+        LOSRenderTarget->RenderTargetFormat = RTF_R8;
+
+        UE_LOG(LOSVision, Log,
+            TEXT("[%s] Created unique RT: %s (Address: %p)"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+            *LOSRenderTarget->GetName(),
+            LOSRenderTarget);
     }
     
     LOSRenderTarget->RenderTargetFormat = RTF_R8; // only R/G needed
@@ -160,7 +287,8 @@ void ULineOfSightComponent::CreateResources()
     if (!LocalTextureSampler)
     {
         UE_LOG(LOSVision, Error,
-            TEXT("CreateResources >> LocalTextureSampler default subobject missing"));
+            TEXT("[%s]ULineOfSightComponent::CreateResources >> LocalTextureSampler default subobject missing"),
+             *TopDownVisionDebug::GetClientDebugName(GetOwner()));
         return;
     }
 
@@ -169,16 +297,32 @@ void ULineOfSightComponent::CreateResources()
     LocalTextureSampler->SetWorldSampleRadius(VisionRange);
     // pass the owner's root so that it can know world location
 
-    // Create MID
+   // Create MID with unique name
     if (LOSMaterial)
     {
-        LOSMaterialMID = UMaterialInstanceDynamic::Create(LOSMaterial, this);
+        FString MIDName = FString::Printf(TEXT("LOSMID_%s"), *GetOwner()->GetName());
+        LOSMaterialMID = UMaterialInstanceDynamic::Create(LOSMaterial, this, FName(*MIDName));
+        
         if (LOSMaterialMID && LOSRenderTarget)
         {
             LOSMaterialMID->SetTextureParameterValue(MIDTextureParam, LOSRenderTarget);
             LOSMaterialMID->SetScalarParameterValue(MIDVisibleRangeParam, VisionRange / MaxVisionRange / 2.f);
+            
+            UE_LOG(LOSVision, Log,
+                TEXT("[%s] Created unique MID: %s (Address: %p)"),
+                *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+                *LOSMaterialMID->GetName(),
+                LOSMaterialMID);
         }
     }
+    
+    UE_LOG(LOSVision, Log,
+          TEXT("[%s] ULineOfSightComponent::CreateResources >> | RT=%s (%p) | MID=%s (%p)"),
+          *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+          LOSRenderTarget ? *LOSRenderTarget->GetName() : TEXT("NULL"),
+          LOSRenderTarget,
+          LOSMaterialMID ? *LOSMaterialMID->GetName() : TEXT("NULL"),
+          LOSMaterialMID);
 }
 
 bool ULineOfSightComponent::ShouldRunClientLogic() const
@@ -190,5 +334,7 @@ bool ULineOfSightComponent::ShouldRunClientLogic() const
 
     return true;
 }
+
+
 
 
