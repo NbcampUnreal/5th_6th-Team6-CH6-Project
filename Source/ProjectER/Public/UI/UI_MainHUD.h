@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Abilities/GameplayAbilityTypes.h"
+#include "Containers/Array.h"
 #include "UI_MainHUD.generated.h"
 
 class UTextBlock;
@@ -190,6 +191,24 @@ protected:
 	UPROPERTY()
 	UTexture2D* TEX_TempIcon;
 
+	UPROPERTY(meta = (BindWidget))
+	UImage* KillNumber_01;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* KillNumber_02;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* DeathNumber_01;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* DeathNumber_02;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* AssistNumber_01;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* AssistNumber_02;
+
 	UFUNCTION()
 	void OnSkillClicked_Q();
 	UFUNCTION()
@@ -227,5 +246,17 @@ protected:
 
 private:
 	float nowSkillCoolReduc = 0.f;
+
+	// SEVEN SEGMENT MAKER
+protected:
+	TArray<int32> GetDigitsFromNumber(int32 InNumber);
+	
+	UPROPERTY(EditAnywhere, Category = "UI_Resources")
+	TArray<UTexture2D*> SegmentTextures;
+
+public :
+	void SetKillCount(int32 InKillCount);
+	void SetDeathCount(int32 InDeathCount);
+	void SetAssistCount(int32 InAssistCount);
 
 };

@@ -187,6 +187,7 @@ void UUI_MainHUD::InitASCHud(UAbilitySystemComponent* _ASC)
     {
         ASC->AbilityActivatedCallbacks.AddUObject(this, &UUI_MainHUD::OnAbilityActivated);
     }
+    
 }
 
 void UUI_MainHUD::NativeConstruct()
@@ -240,6 +241,11 @@ void UUI_MainHUD::NativeConstruct()
     {
         RemainingTimes[i] = 0.f;
     }
+
+    // 디버그용
+    SetKillCount(3);
+    SetDeathCount(41);
+    SetAssistCount(411);
 }
 
 /// 마우스 이벤트!
@@ -625,5 +631,105 @@ void UUI_MainHUD::UpdateSkillCoolDown(int32 SkillIndex)
 
             SkillCoolTexts[SkillIndex]->SetText(FText::AsNumber(RemainingTimes[SkillIndex], &Opts));
         }
+    }
+}
+
+TArray<int32> UUI_MainHUD::GetDigitsFromNumber(int32 InNumber)
+{
+    TArray<int32> Digits;
+
+    // 0예외 처리
+    if (InNumber == 0)
+    {
+        Digits.Add(0);
+        return Digits;
+    }
+
+    // 음수예외 처리
+    int32 TempNumber = FMath::Abs(InNumber);
+
+    while (TempNumber > 0)
+    {
+        Digits.Add(TempNumber % 10);
+        TempNumber /= 10;
+    }
+
+    // 현재 Digits에는 역순으로 들어가 있어서 반전
+    Algo::Reverse(Digits);
+
+    return Digits;
+}
+
+void UUI_MainHUD::SetKillCount(int32 InKillCount)
+{
+    // 두자리수 고정
+	// if (InKillCount > 99) InKillCount = 99;
+	// TArray<int32> Digits = GetDigitsFromNumber(InKillCount);
+    //
+
+    int32 ClampedCount = FMath::Clamp(InKillCount, 0, 99);
+    int32 TenDigit = ClampedCount / 10;
+    int32 OneDigit = ClampedCount % 10;
+
+    if (SegmentTextures.Num() < 10)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("SEVEN SEGEMENT LOADING FAIL"));
+        return;
+    }
+    if (KillNumber_01 && SegmentTextures[TenDigit])
+    {
+        KillNumber_01->SetBrushFromTexture(SegmentTextures[TenDigit]);
+    }
+
+    if (KillNumber_02 && SegmentTextures[OneDigit])
+    {
+        KillNumber_02->SetBrushFromTexture(SegmentTextures[OneDigit]);
+    }
+
+}
+
+void UUI_MainHUD::SetDeathCount(int32 InDeathCount)
+{
+    // 두자리수 고정
+    int32 ClampedCount = FMath::Clamp(InDeathCount, 0, 99);
+    int32 TenDigit = ClampedCount / 10;
+    int32 OneDigit = ClampedCount % 10;
+
+    if (SegmentTextures.Num() < 10)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("SEVEN SEGEMENT LOADING FAIL"));
+        return;
+    }
+    if (DeathNumber_01 && SegmentTextures[TenDigit])
+    {
+        DeathNumber_01->SetBrushFromTexture(SegmentTextures[TenDigit]);
+    }
+
+    if (DeathNumber_02 && SegmentTextures[OneDigit])
+    {
+        DeathNumber_02->SetBrushFromTexture(SegmentTextures[OneDigit]);
+    }
+}
+
+void UUI_MainHUD::SetAssistCount(int32 InAssistCount)
+{
+    // 두자리수 고정
+    int32 ClampedCount = FMath::Clamp(InAssistCount, 0, 99);
+    int32 TenDigit = ClampedCount / 10;
+    int32 OneDigit = ClampedCount % 10;
+
+    if (SegmentTextures.Num() < 10)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("SEVEN SEGEMENT LOADING FAIL"));
+        return;
+    }
+    if (AssistNumber_01 && SegmentTextures[TenDigit])
+    {
+        AssistNumber_01->SetBrushFromTexture(SegmentTextures[TenDigit]);
+    }
+
+    if (AssistNumber_02 && SegmentTextures[OneDigit])
+    {
+        AssistNumber_02->SetBrushFromTexture(SegmentTextures[OneDigit]);
     }
 }
