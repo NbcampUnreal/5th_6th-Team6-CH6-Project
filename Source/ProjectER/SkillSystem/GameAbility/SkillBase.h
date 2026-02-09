@@ -9,6 +9,8 @@
 /**
  * 
  */
+
+enum class ETargetRelationship : uint8;
 class USkillDataAsset;
 class USkillEffectDataAsset;
 class UBaseSkillConfig;
@@ -38,6 +40,8 @@ protected:
 	void ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets);
 	void ApplyEffectsToActor(AActor* Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets);
 	FGameplayTag GetInputTag();
+	ETargetRelationship GetSkillTargetRelationship();
+	bool IsValidRelationship(AActor* Target);
 
 	UFUNCTION()
 	void OnActiveTagEventReceived(FGameplayEventData Payload);
@@ -60,6 +64,4 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Skill|Tags")
 	FGameplayTag StatusTag;
-//private:
-	//FGameplayAttribute
 };

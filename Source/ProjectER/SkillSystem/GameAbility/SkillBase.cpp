@@ -10,8 +10,12 @@
 #include "SkillSystem/AbilityTask/AbilityTask_WaitGameplayEventSyn.h"
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 #include "SkillSystem/SkillDataAsset.h"
+#include "SkillSystem/SkillData.h"
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 #include "Abilities/GameplayAbilityTargetActor.h"
+#include "Monster/BaseMonster.h"
+#include "CharacterSystem/Character/BaseCharacter.h"
+#include "GameModeBase/State/ER_PlayerState.h"
 
 #include "AbilitySystemLog.h" // GAS 관련 로그 확인용
 
@@ -157,7 +161,7 @@ void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TAr
 
 	for (AActor* Target : Actors)
 	{
-		if (IsValid(Target))
+		if (IsValid(Target) && IsValidRelationship(Target))
 		{
 			NewData->TargetActorArray.Add(Target);
 		}
@@ -198,7 +202,79 @@ void USkillBase::ApplyEffectsToActor(AActor* Actors, const TArray<TObjectPtr<USk
 
 FGameplayTag USkillBase::GetInputTag()
 {
-	return CachedConfig->Data.InputKeyTag;
+	FGameplayTag Result;
+
+	if (CachedConfig)
+	{
+		Result = CachedConfig->Data.InputKeyTag;
+	}
+
+	return Result;
+}
+
+ETargetRelationship USkillBase::GetSkillTargetRelationship()
+{
+	ETargetRelationship Result;
+
+	if (CachedConfig)
+	{
+		Result = CachedConfig->Data.ApplyTo;
+	}
+
+	return Result;
+}
+
+bool USkillBase::IsValidRelationship(AActor* Target)
+{
+	// 1. 기초 유효성 검사
+	if (!IsValid(Target)) return false;
+
+	ETargetRelationship SkillTargetRelationship = GetSkillTargetRelationship();
+	if (!ensureMsgf(SkillTargetRelationship != ETargetRelationship::None, TEXT("Relationship is None"))) return false;
+
+	AActor* Instigator = GetOwningActorFromActorInfo();
+	checkf(IsValid(Instigator), TEXT("Instigator is Not Valid"));
+
+	// 2. 인터페이스 캐스팅 (두 방식 모두 확인)
+	ITargetableInterface* InstigatorInterface = Cast<ITargetableInterface>(Instigator);
+	ITargetableInterface* TargetInterface = Cast<ITargetableInterface>(Target);
+
+	// 3. 인터페이스 구현 여부 확인 및 로그 출력
+	if (InstigatorInterface == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Instigator has not ITargetableInterface"), *Instigator->GetName());
+		return false;
+	}
+
+	if (TargetInterface == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Target has not ITargetableInterface"), *Target->GetName());
+		return false;
+	}
+
+	// 5. 팀 관계 비교 로직
+	ETeamType InstigatorInterTeam = InstigatorInterface->GetTeamType();
+	ETeamType TargetTeam = TargetInterface->GetTeamType();
+
+	bool bIsSameTeam = (InstigatorInterTeam == TargetTeam);
+
+	// 관계 설정에 따른 최종 결과 반환
+	if (SkillTargetRelationship == ETargetRelationship::Friend)
+	{
+		return bIsSameTeam;
+	}
+	else if (SkillTargetRelationship == ETargetRelationship::Enemy)
+	{
+		if (bIsSameTeam == false && TargetInterface->IsTargetable() == false)
+		{
+			return false;
+		}
+
+		return !bIsSameTeam;
+	}
+
+	//기본은 false
+	return false;
 }
 
 void USkillBase::FinishSkill()
@@ -214,6 +290,7 @@ void USkillBase::OnCancelAbility()
 
 void USkillBase::OnExecuteSkill_InClient()
 {
+
 }
 
 void USkillBase::AddTagToOwner(FGameplayTag Tag)
