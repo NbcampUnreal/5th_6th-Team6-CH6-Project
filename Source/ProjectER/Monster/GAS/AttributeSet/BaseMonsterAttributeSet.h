@@ -46,36 +46,12 @@ private:
 
 	virtual void OnRep_Health(const FGameplayAttributeData& OldHealth) override;
 
+	virtual void OnRep_MoveSpeed(const FGameplayAttributeData& OldHealth) override;
 
 #pragma endregion
 
 
 public:
-
-#pragma region Attribute
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Monster Attribute");
-	float MaxHealthAmount = 200.f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Monster Attribute");
-	float HealthAmount = 200.f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Monster Attribute");
-	float AttackPowerAmount = 50.f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Monster Attribute");
-	float AttackSpeedAmount = 1.f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Monster Attribute");
-	float AttackRangeAmount = 150.f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Monster Attribute");
-	float DefenseAmount = 50.f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Monster Attribute");
-	float MoveSpeedAmount = 300.f;
-
-#pragma endregion
 
 	UPROPERTY()
 	FOnAttributeChanged OnMaxHealthChanged;

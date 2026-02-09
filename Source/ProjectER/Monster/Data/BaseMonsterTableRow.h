@@ -10,50 +10,50 @@ struct PROJECTER_API FBaseMonsterTableRow : public FTableRowBase
 
 public:
 	UPROPERTY(EditAnywhere)
-	float BaseMaxLevel;
+	float BaseMaxLevel = 0;
 
 	UPROPERTY(EditAnywhere)
-	float BaseMaxXP;
+	float BaseMaxXP = 0;
 
 	UPROPERTY(EditAnywhere)
-	float BaseMaxHealth;
+	float BaseMaxHealth = 0;
 
 	UPROPERTY(EditAnywhere)
-	float BaseHealthRegen;
+	float BaseHealthRegen = 0;
 
 	UPROPERTY(EditAnywhere)
-	float BaseMaxStamina;
+	float BaseMaxStamina = 0;
 
 	UPROPERTY(EditAnywhere)
-	float BaseStaminaRegen;
+	float BaseStaminaRegen = 0;
 
 	UPROPERTY(EditAnywhere)
-	float BaseAttackPower;
+	float BaseAttackPower = 0;
 
 	UPROPERTY(EditAnywhere)
-	float BaseAttackSpeed;
+	float BaseAttackSpeed = 0;
 
 	UPROPERTY(EditAnywhere)
-	float BaseAttackRange;
+	float BaseAttackRange = 0;
 
 	UPROPERTY(EditAnywhere)
-	float BaseSkillAmp;
+	float BaseSkillAmp = 0;
 
 	UPROPERTY(EditAnywhere)
-	float BaseCriticalChance;
+	float BaseCriticalChance = 0;
 
 	UPROPERTY(EditAnywhere)
-	float BaseCriticalDamage;
+	float BaseCriticalDamage = 0;
 
 	UPROPERTY(EditAnywhere)
-	float BaseDefense;
+	float BaseDefense = 0;
 
 	UPROPERTY(EditAnywhere)
-	float BaseMoveSpeed;
+	float BaseMoveSpeed = 0;
 
 	UPROPERTY(EditAnywhere)
-	float BaseCooldownReduction;
+	float BaseCooldownReduction = 0;
 
 	UPROPERTY(EditAnywhere)
-	float BaseTenacity;
+	float BaseTenacity = 0;
 };
