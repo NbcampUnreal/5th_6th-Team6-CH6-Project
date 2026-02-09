@@ -19,6 +19,8 @@ ULineOfSightComponent::ULineOfSightComponent()
     PrimaryComponentTick.bCanEverTick = false; // Manual draw
 
     LocalTextureSampler = CreateDefaultSubobject<ULocalTextureSampler>(TEXT("LocalTextureSampler"));
+
+    SetIsReplicatedByDefault(true);//replication on
 }
 
 void ULineOfSightComponent::BeginPlay()

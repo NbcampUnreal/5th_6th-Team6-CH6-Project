@@ -26,7 +26,7 @@ public class WorldBender : ModuleRules
 			new string[]
 			{
 				"Core",
-				// ... add other public dependencies that you statically link with here ...
+				"Projects",// for plugin module (IPluginManager::Get())
 			}
 			);
 			
