@@ -146,7 +146,7 @@ void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter)
 			UE_LOG(LogTemp, Warning, TEXT("[GM] : NotifyPlayerDied , EvaluateTeamElimination = true"));
 
 			// 전멸 판정 true -> 해당 유저의 팀 사출 실행
-			const int32 TeamIdx = static_cast<int32>(ERPS->Team);
+			const int32 TeamIdx = static_cast<int32>(ERPS->TeamType);
 
 			// 해당 팀의 리스폰 타이머 정지
 			RespawnSS->StopResapwnTimer(*ERGS, TeamIdx);

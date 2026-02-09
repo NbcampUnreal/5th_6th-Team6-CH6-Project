@@ -35,7 +35,7 @@ bool UER_RespawnSubsystem::EvaluateTeamElimination(AER_PlayerState& PS, AER_Game
 
 	UE_LOG(LogTemp, Warning, TEXT("[RSS] : Start EvaluateTeamElimination"));
 
-	int32 TeamIdx = static_cast<int32>(PS.Team);
+	int32 TeamIdx = static_cast<int32>(PS.TeamType);
 
 	// 전멸 판정이면 팀 index 리턴, 아니면 -1리턴
 	return GS.GetTeamEliminate(TeamIdx);

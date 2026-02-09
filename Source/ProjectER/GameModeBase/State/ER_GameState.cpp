@@ -9,7 +9,7 @@ void AER_GameState::BuildTeamCache()
 
 	UE_LOG(LogTemp, Warning, TEXT("[GS] : Start BuildTeamCache"));
 
-	const int32 TeamCount = static_cast<int32>(ETeam::Team3);
+	const int32 TeamCount = static_cast<int32>(ETeamType::Team_C);
 
 	TeamCache.SetNum(TeamCount + 1);
 
@@ -19,7 +19,7 @@ void AER_GameState::BuildTeamCache()
 	{
 		if (AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS))
 		{
-			const int32 TeamIdx = static_cast<int32>(ERPS->Team);
+			const int32 TeamIdx = static_cast<int32>(ERPS->TeamType);
 
 			if (!TeamCache.IsValidIndex(TeamIdx))
 				continue;
