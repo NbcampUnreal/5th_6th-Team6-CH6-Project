@@ -653,6 +653,21 @@ void ABaseCharacter::StopPathFollowing()
 	}
 }
 
+FRotator ABaseCharacter::GetCombatGazeRotation(FName SocketName)
+{
+	FVector StartPos = GetMesh()->GetSocketLocation(SocketName);
+    
+	// 타겟이 있으면 타겟 조준
+	if (TargetActor) 
+	{
+		// 타겟의 중앙(GetActorLocation)을 향하도록
+		return (TargetActor->GetActorLocation() - StartPos).Rotation();
+	}
+    
+	// 타겟이 없으면 캐릭터가 보는 방향으로
+	return GetActorForwardVector().Rotation();
+}
+
 void ABaseCharacter::SetTarget(AActor* NewTarget)
 {
 	if (TargetActor == NewTarget) return;
