@@ -7,6 +7,8 @@
 #include "ItemSystem/W_LootingPopup.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "GameplayAbilitySpec.h"
+#include "CharacterSystem/Player/BasePlayerController.h"
+
 
 ABaseBoxActor::ABaseBoxActor()
 {
@@ -57,10 +59,26 @@ void ABaseBoxActor::BeginPlay()
 	}
 }
 
-// 상호작용(우클릭) 처리
 void ABaseBoxActor::PickupItem(APawn* InHandler)
 {
+	if (!InHandler)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("PickupItem: Invalid InHandler"));
+		return;
+	}
 
+	// 박스는 직접 습득이 아니라 UI를 통한 상호작용이므로
+	// PlayerController를 통해 Server_BeginLoot() 호출
+	ABasePlayerController* PC = Cast<ABasePlayerController>(InHandler->GetController());
+	if (PC)
+	{
+		PC->Server_BeginLoot(this);
+		UE_LOG(LogTemp, Log, TEXT("PickupItem: Opening box via %s"), *InHandler->GetName());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("PickupItem: No BasePlayerController found"));
+	}
 }
 
 
@@ -86,8 +104,28 @@ void ABaseBoxActor::ReduceItem(int32 SlotIndex)
 
 UBaseItemData* ABaseBoxActor::GetItemData(int32 SlotIndex) const
 {
-	int32 ItemPoolIdex = CurrentItemList[SlotIndex].ItemId;
+	// 슬롯 인덱스 범위 체크
+	if (SlotIndex < 0 || SlotIndex >= CurrentItemList.Num())
+	{
+		UE_LOG(LogTemp, Error, TEXT("GetItemData: Invalid SlotIndex %d (Max: %d)"), SlotIndex, CurrentItemList.Num() - 1);
+		return nullptr;
+	}
 
-	return ItemPool[ItemPoolIdex].Get();
+	int32 ItemPoolIndex = CurrentItemList[SlotIndex].ItemId;
+
+	// 빈 슬롯 체크
+	if (ItemPoolIndex == -1)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GetItemData: Empty slot at index %d"), SlotIndex);
+		return nullptr;
+	}
+
+	// 아이템 풀 인덱스 범위 체크
+	if (ItemPoolIndex < 0 || ItemPoolIndex >= ItemPool.Num())
+	{
+		UE_LOG(LogTemp, Error, TEXT("GetItemData: Invalid ItemPoolIndex %d (Max: %d)"), ItemPoolIndex, ItemPool.Num() - 1);
+		return nullptr;
+	}
+
+	return ItemPool[ItemPoolIndex].Get();
 }
-
