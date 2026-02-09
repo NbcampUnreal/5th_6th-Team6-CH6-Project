@@ -154,6 +154,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	FRotator GetCombatGazeRotation(FName SocketName);
 	
+	// 소켓의 위치를 반환하는 함수 (편의용)
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	FVector GetMuzzleLocation(FName SocketName);
+	
 	// 타겟 설정 함수
 	void SetTarget(AActor* NewTarget);
 	
