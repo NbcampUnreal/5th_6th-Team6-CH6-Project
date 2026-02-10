@@ -19,6 +19,10 @@
 #include "CharacterSystem/Player/BasePlayerController.h"
 #include "Abilities/GameplayAbilityTypes.h" // 쿨타임용
 
+#include "Blueprint/WidgetBlueprintGeneratedClass.h" // 초상화 반짝 애니메이션용
+#include "Animation/WidgetAnimation.h" // 초상화 반짝 애니메이션용
+#include "MovieScene.h" // 초상화 반짝 애니메이션용
+
 void UUI_MainHUD::Update_LV(float CurrentLV)
 {
     if(IsValid(stat_LV))
@@ -241,6 +245,10 @@ void UUI_MainHUD::NativeConstruct()
     {
         RemainingTimes[i] = 0.f;
     }
+
+    // UI 애니메이션 강제 바인딩
+    HeadHitAnim_01 = GetWidgetAnimationByName(TEXT("AN_HeadHitAnim_01"));
+    HeadHitAnim_02 = GetWidgetAnimationByName(TEXT("AN_HeadHitAnim_02"));
 
     // 디버그용
     SetKillCount(0);
@@ -744,4 +752,93 @@ void UUI_MainHUD::SetAssistCount(int32 InAssistCount)
 void UUI_MainHUD::AddKillPerSecond()
 {
 	SetKillCount(CurrentKillCount++);
+    
+    debugHP_01 -= 100.f;
+    debugHP_02 -= 200.f;
+    LastHP_01 = 1000.f;
+    LastHP_02 = 1000.f;
+	UpdateTeamHP(0, debugHP_01, 1000.f);
+    UpdateTeamHP(1, debugHP_02, 1000.f);
+}
+
+void UUI_MainHUD::UpdateTeamHP(int32 TeamIndex, float CurrentHP, float MaxHP)
+{
+    if (TeamIndex > MAX_TEAMMATE) return;
+    if (CurrentHP < 0) return;
+
+    if(TeamIndex == 0)
+    {
+        if(IsValid(PB_TeamHP_01))
+        {
+            float HealthPercent = CurrentHP / MaxHP;
+            PB_TeamHP_01->SetPercent(HealthPercent);
+
+            if (CurrentHP < LastHP_01)
+            {
+                if (HeadHitAnim_01 && !IsAnimationPlaying(HeadHitAnim_01))
+                {
+                    PlayAnimation(HeadHitAnim_01);
+                }
+            }
+            LastHP_01 = CurrentHP;
+        }
+    }
+    else if(TeamIndex == 1)
+    {
+        if(IsValid(PB_TeamHP_02))
+        {
+            float HealthPercent = CurrentHP / MaxHP;
+            PB_TeamHP_02->SetPercent(HealthPercent);
+
+            if (CurrentHP < LastHP_02)
+            {
+                if (HeadHitAnim_02 && !IsAnimationPlaying(HeadHitAnim_02))
+                {
+                    PlayAnimation(HeadHitAnim_02);
+                }
+            }
+            LastHP_02 = CurrentHP;
+        }
+	}
+}
+
+
+void UUI_MainHUD::UpdateTeamLV(int32 TeamIndex, int32 CurrentLV)
+{
+    if (TeamIndex > MAX_TEAMMATE) return;
+
+    if(TeamIndex == 0)
+    {
+        if(IsValid(TeamLevel_01))
+        {
+            TeamLevel_01->SetText(FText::AsNumber(CurrentLV));
+        }
+    }
+    else if (TeamIndex == 1)
+    {
+        if (IsValid(TeamLevel_02))
+        {
+            TeamLevel_02->SetText(FText::AsNumber(CurrentLV));
+        }
+    }
+}
+
+UWidgetAnimation* UUI_MainHUD::GetWidgetAnimationByName(FName AnimName) const
+{
+    UWidgetBlueprintGeneratedClass* WidgetClass = Cast<UWidgetBlueprintGeneratedClass>(GetClass());
+    if (!WidgetClass) return nullptr;
+
+    for (UWidgetAnimation* Anim : WidgetClass->Animations)
+    {
+        if (Anim && Anim->GetMovieScene())
+        {
+            FName InternalName = Anim->GetMovieScene()->GetFName();
+			UE_LOG(LogTemp, Error, TEXT("Checking Animation: %s"), *InternalName.ToString());
+            if (InternalName == AnimName)
+            {
+                return Anim;
+            }
+        }
+    }
+    return nullptr;
 }
