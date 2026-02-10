@@ -30,7 +30,7 @@
 class UTextureRenderTarget2D;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
-class UVisionSubsystem;
+class UWorldObstacleSubsystem;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class TOPDOWNVISION_API ULocalTextureSampler : public UActorComponent
@@ -116,7 +116,7 @@ private:
 	//Subsystem
 
 	UPROPERTY(Transient)
-	TObjectPtr<UVisionSubsystem> ObstacleSubsystem;
+	TObjectPtr<UWorldObstacleSubsystem> ObstacleSubsystem;
 
 	UPROPERTY(Transient)
 	TWeakObjectPtr<USceneComponent> SourceRoot;// to read the world location

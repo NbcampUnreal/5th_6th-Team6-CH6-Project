@@ -3,9 +3,10 @@
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
+#include "CharacterSystem/Player/BasePlayerState.h"
+#include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 
 #include "Kismet/GameplayStatics.h"
-
 #include "GameFramework/Character.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -16,16 +17,17 @@
 #include "GameplayAbilitySpec.h"
 
 // [김현수 추가분] 상호작용 인터페이스 포함
-#include "ItemSystem/I_ItemInteractable.h"
-#include "ItemSystem/BaseItemActor.h"
-#include "ItemSystem/BaseBoxActor.h"
-#include "ItemSystem/W_LootingPopup.h"
-#include "ItemSystem/BaseInventoryComponent.h"
+#include "ItemSystem/Interface/I_ItemInteractable.h"
+#include "ItemSystem/Actor/BaseItemActor.h"
+#include "ItemSystem/Actor/BaseBoxActor.h"
+#include "ItemSystem/UI/W_LootingPopup.h"
+#include "ItemSystem/Component/BaseInventoryComponent.h"
 
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/GameMode/ER_OutGameMode.h"
 #include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "Blueprint/UserWidget.h"
+
 
 ABasePlayerController::ABasePlayerController()
 {
@@ -49,6 +51,16 @@ void ABasePlayerController::BeginPlay()
 		if (DefaultMappingContext)
 		{
 			Subsystem->AddMappingContext(DefaultMappingContext, 0);
+		}
+	}
+
+	// Get curved world subsystem reference
+	if (UWorld* World = GetWorld())
+	{
+		CurvedWorldSubsystem = World->GetSubsystem<UCurvedWorldSubsystem>();
+		if (!CurvedWorldSubsystem)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("CurvedWorldSubsystem not found!"));
 		}
 	}
 }
@@ -77,6 +89,9 @@ void ABasePlayerController::SetupInputComponent()
 		// [테스트용] 숫자키 1, 2번에 팀 변경 기능 강제 연결 (디버깅용)
 		InputComponent->BindKey(EKeys::One, IE_Pressed, this, &ABasePlayerController::Test_ChangeTeamToA);
 		InputComponent->BindKey(EKeys::Two, IE_Pressed, this, &ABasePlayerController::Test_ChangeTeamToB);
+		
+		// [테스트용] 0번 부활 키 연결
+		InputComponent->BindKey(EKeys::Zero, IE_Pressed, this, &ABasePlayerController::Test_ReviveInput);
 		
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Started, this, &ABasePlayerController::OnMoveStarted);
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnMoveTriggered);
@@ -166,7 +181,8 @@ void ABasePlayerController::MoveToMouseCursor()
 	}
 
 	FHitResult Hit;
-	if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))
+	//if (GetHitResultUnderCursor(ECC_Visibility, false, Hit)) //2026/02/10
+	if (GetCurvedHitResultUnderCursor(ECC_Visibility, false, Hit))//<- Replaced with a curve world accurate-hit result
 	{
 		if (Hit.bBlockingHit)
 		{
@@ -327,6 +343,17 @@ void ABasePlayerController::Test_ChangeTeamToB()
 	{
 		ControlledBaseChar->Server_SetTeamID(ETeamType::Team_B);
 		UE_LOG(LogTemp, Log, TEXT("Request Change Team to B"));
+	}
+}
+
+void ABasePlayerController::Test_ReviveInput()
+{
+	if (ControlledBaseChar)
+	{
+		FVector CurrentLocation = ControlledBaseChar->GetActorLocation();
+		
+		// 서버에게 부활 요청
+		ControlledBaseChar->Server_Revive(CurrentLocation);
 	}
 }
 
@@ -685,6 +712,24 @@ void ABasePlayerController::HideRespawnTimerUI()
 		RespawnUIInstance->RemoveFromParent();
 		RespawnUIInstance = nullptr;
 	}
+}
+
+bool ABasePlayerController::GetCurvedHitResultUnderCursor(ECollisionChannel TraceChannel, bool bTraceComplex,
+	FHitResult& OutHitResult)
+{
+	if (!CurvedWorldSubsystem)
+	{
+		// Fallback to normal trace if subsystem not available
+		return GetHitResultUnderCursor(TraceChannel, bTraceComplex, OutHitResult);
+	}
+
+	// Use curved world corrected trace
+	return FCurvedWorldUtil::GetHitResultUnderCursorCorrected(
+		this,
+		CurvedWorldSubsystem,
+		OutHitResult,
+		TraceChannel
+	);
 }
 
 

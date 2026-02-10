@@ -126,35 +126,54 @@ AActor* UMouseTargetSkill::GetTargetUnderCursorInRange()
 
 	if (!IsValid(HitActor)) return nullptr;
 
+	UE_LOG(LogTemp, Log, TEXT("[%f] Returning Actor: %s"), GetWorld()->GetTimeSeconds(), *HitActor->GetName());
+
 	/*UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(HitActor);
 	if (!TargetASC) return nullptr;*/
-
+	//IsValidRelationship(HitActor)
 	if (IsInRange(HitActor))
 	{
-		return HitActor;
+		if (!HitActor)
+		{
+			UE_LOG(LogTemp, Log, TEXT("HitActor is Null  after IsInRange"));
+		}
+		if (IsValidRelationship(HitActor))
+		{
+			if (HitActor)
+			{
+				return HitActor;
+			}
+			else {
+				UE_LOG(LogTemp, Log, TEXT("HitActor is Null"));
+			}
+		}
+		else {
+			UE_LOG(LogTemp, Log, TEXT("HitActor is Is Not ValidRelationship"));
+		}
+	}
+	else {
+		UE_LOG(LogTemp, Log, TEXT("HitActor is Range Out"));
 	}
 
+	//if (IsInRange(HitActor) && IsValidRelationship(HitActor))
+	//{
+	//	UE_LOG(LogTemp, Log, TEXT("[%f] Returning Actor: %s"), GetWorld()->GetTimeSeconds(), *HitActor->GetName());
+	//	return HitActor;
+	//}
+
+	UE_LOG(LogTemp, Log, TEXT("HitActor is null"));
 	return nullptr;
 }
 
 AActor* UMouseTargetSkill::GetTargetUnderCursor()
 {
-	AActor* Result = nullptr;
-
 	APlayerController* PC = Cast<APlayerController>(GetActorInfo().PlayerController.Get());
 	if (!PC) return nullptr;
 
 	FHitResult HitResult;
 	PC->GetHitResultUnderCursor(ECC_Pawn, false, HitResult);
-	
-	Result = HitResult.GetActor();
 
-	if (IsValidRelationship(Result) == false)
-	{
-		Result = nullptr;
-	}
-
-	return Result;
+	return HitResult.GetActor();
 }
 
 bool UMouseTargetSkill::IsInRange(AActor* Actor)

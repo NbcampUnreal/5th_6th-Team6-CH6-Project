@@ -56,17 +56,24 @@ class PROJECTER_API USkillEffectDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
 public:
-    TArray<FGameplayEffectSpecHandle> MakeSpecs(UAbilitySystemComponent* InstigatorASC, USkillBase* InstigatorSkill, AActor* InEffectCauser = nullptr);
+    USkillEffectDataAsset();
 
+    TArray<FGameplayEffectSpecHandle> MakeSpecs(UAbilitySystemComponent* InstigatorASC, USkillBase* InstigatorSkill, AActor* InEffectCauser = nullptr);
+    FORCEINLINE FGameplayTag GetIndexTag() const { return IndexTag; }
+    FORCEINLINE FSkillEffectContainer GetData() const { return Data; }
 protected:
     
 private:
 
 public:
+    
 
 protected:
 
 private:
     UPROPERTY(EditDefaultsOnly)
     FSkillEffectContainer Data;
+
+    UPROPERTY(EditDefaultsOnly)
+    FGameplayTag IndexTag;
 };

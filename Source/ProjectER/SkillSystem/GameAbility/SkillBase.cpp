@@ -7,14 +7,15 @@
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitTargetData.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "Abilities/GameplayAbilityTargetActor.h"
 #include "SkillSystem/AbilityTask/AbilityTask_WaitGameplayEventSyn.h"
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 #include "SkillSystem/SkillDataAsset.h"
 #include "SkillSystem/SkillData.h"
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
-#include "Abilities/GameplayAbilityTargetActor.h"
 #include "Monster/BaseMonster.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
+#include "CharacterSystem/Interface/TargetableInterface.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 
 #include "AbilitySystemLog.h" // GAS 관련 로그 확인용
@@ -26,7 +27,6 @@ USkillBase::USkillBase()
 	ReplicationPolicy = EGameplayAbilityReplicationPolicy::ReplicateYes;
 	CastingTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Casting"));
 	ActiveTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Active"));
-	StatusTag = FGameplayTag::RequestGameplayTag(FName("Skill.Data.IncomingStatus"));
 }
 
 void USkillBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -232,12 +232,15 @@ bool USkillBase::IsValidRelationship(AActor* Target)
 	ETargetRelationship SkillTargetRelationship = GetSkillTargetRelationship();
 	if (!ensureMsgf(SkillTargetRelationship != ETargetRelationship::None, TEXT("Relationship is None"))) return false;
 
-	AActor* Instigator = GetOwningActorFromActorInfo();
+	AActor* Instigator = GetAvatarActorFromActorInfo();
 	checkf(IsValid(Instigator), TEXT("Instigator is Not Valid"));
 
 	// 2. 인터페이스 캐스팅 (두 방식 모두 확인)
-	ITargetableInterface* InstigatorInterface = Cast<ITargetableInterface>(Instigator);
-	ITargetableInterface* TargetInterface = Cast<ITargetableInterface>(Target);
+	const ITargetableInterface* InstigatorInterface = Cast<ITargetableInterface>(Instigator);
+	const ITargetableInterface* TargetInterface = Cast<ITargetableInterface>(Target);
+
+	//ETeamType InstigatorTeam = ITargetableInterface::Execute_GetTeamType(Instigator);
+	//ETeamType TargetTeam = ITargetableInterface::Execute_GetTeamType(Target);
 
 	// 3. 인터페이스 구현 여부 확인 및 로그 출력
 	if (InstigatorInterface == nullptr)
@@ -253,10 +256,10 @@ bool USkillBase::IsValidRelationship(AActor* Target)
 	}
 
 	// 5. 팀 관계 비교 로직
-	ETeamType InstigatorInterTeam = InstigatorInterface->GetTeamType();
+	ETeamType InstigatorTeam = InstigatorInterface->GetTeamType();
 	ETeamType TargetTeam = TargetInterface->GetTeamType();
 
-	bool bIsSameTeam = (InstigatorInterTeam == TargetTeam);
+	bool bIsSameTeam = (InstigatorTeam == TargetTeam);
 
 	// 관계 설정에 따른 최종 결과 반환
 	if (SkillTargetRelationship == ETargetRelationship::Friend)
@@ -265,10 +268,10 @@ bool USkillBase::IsValidRelationship(AActor* Target)
 	}
 	else if (SkillTargetRelationship == ETargetRelationship::Enemy)
 	{
-		if (bIsSameTeam == false && TargetInterface->IsTargetable() == false)
+		/*if (bIsSameTeam == false && TargetInterface->IsTargetable() == false)
 		{
 			return false;
-		}
+		}*/
 
 		return !bIsSameTeam;
 	}

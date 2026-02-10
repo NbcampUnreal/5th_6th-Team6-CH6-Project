@@ -3,16 +3,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
+#include "Components/SceneComponent.h"
 #include "TopDownCameraComp.generated.h"
 
-// this will manage the main RT(following the camera arm root)
 /**
- *
- *  also this will manage obstacle occlusion effect which will make the obstacle hiding the vision area 
+ *  this is for camera comp. the location will be used for RT and also curved World Origin Param value
  */
+
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class PROJECTER_API UTopDownCameraComp : public UActorComponent
+class PROJECTER_API UTopDownCameraComp : public USceneComponent
 {
 	GENERATED_BODY()
 

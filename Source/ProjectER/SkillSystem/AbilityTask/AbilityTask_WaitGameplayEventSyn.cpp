@@ -17,7 +17,7 @@ void UAbilityTask_WaitGameplayEventSyn::Activate()
     UAbilitySystemComponent* ASC = AbilitySystemComponent.Get();
     if (!ASC) return;
 
-    if (IsPredictingClient())
+    if (IsPredictingClient() || IsLocallyControlled())
     {
         ASC->GenericGameplayEventCallbacks.FindOrAdd(TagToWait).AddUObject(this, &UAbilityTask_WaitGameplayEventSyn::OnClientEventTriggered);
     }
@@ -35,13 +35,16 @@ void UAbilityTask_WaitGameplayEventSyn::Activate()
 void UAbilityTask_WaitGameplayEventSyn::OnClientEventTriggered(const FGameplayEventData* EventData)
 {
     UAbilitySystemComponent* ASC = AbilitySystemComponent.Get();
-    if (ASC && IsPredictingClient())
+    if (IsValid(ASC) == false) return;
+
+    if (IsPredictingClient())
     {
         FGameplayAbilityTargetDataHandle DataHandle;
         FScopedPredictionWindow ScopedPrediction(ASC);
         ASC->CallServerSetReplicatedTargetData(GetAbilitySpecHandle(), GetActivationPredictionKey(), DataHandle, TagToWait, GetActivationPredictionKey());
-        OnEventReceived.Broadcast(*EventData);
     }
+
+    OnEventReceived.Broadcast(*EventData);
 }
 
 void UAbilityTask_WaitGameplayEventSyn::OnTargetDataReplicated(const FGameplayAbilityTargetDataHandle& DataHandle, FGameplayTag ActivationTag)

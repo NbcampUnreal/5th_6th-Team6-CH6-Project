@@ -1,6 +1,6 @@
-﻿#include "ItemSystem/BaseItemActor.h"
-#include "ItemSystem/BaseItemData.h"
-#include "ItemSystem/BaseInventoryComponent.h"
+﻿#include "ItemSystem/Actor/BaseItemActor.h"
+#include "ItemSystem/Data/BaseItemData.h"
+#include "ItemSystem/Component/BaseInventoryComponent.h"
 #include "Components/SphereComponent.h"
 
 ABaseItemActor::ABaseItemActor()

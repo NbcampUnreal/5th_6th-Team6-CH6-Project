@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "ItemSystem/I_ItemInteractable.h"
+#include "ItemSystem/Interface/I_ItemInteractable.h"
 #include "BaseBoxActor.generated.h"
 
 class UBaseItemData;
