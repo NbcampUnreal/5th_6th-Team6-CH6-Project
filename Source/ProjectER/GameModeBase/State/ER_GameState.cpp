@@ -139,7 +139,7 @@ int32 AER_GameState::GetLastTeamIdx()
 
 void AER_GameState::OnRep_Phase()
 {
-	OnPhaseChanged.Broadcast(CurrentPhase);
+	OnPhaseChanged.Broadcast(GetCurrentPhase());
 }
 
 float AER_GameState::GetPhaseRemainingTime() const
