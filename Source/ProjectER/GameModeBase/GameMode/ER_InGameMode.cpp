@@ -219,6 +219,7 @@ void AER_InGameMode::NotifyNeutralDied(ACharacter* VictimCharacter)
 	NC->GetSpawnPoint();
 	int32 SpawnPoint = NC->GetSpawnPoint();
 	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
+
 	NeutralSS->StartRespawnNeutral(SpawnPoint);
 }
 
@@ -254,7 +255,7 @@ void AER_InGameMode::HandlePhaseTimeUp()
 		return;
 	}
 
-	ERGS->CurrentPhase++;
+	ERGS->SetCurrentPhase(ERGS->GetCurrentPhase() + 1);
 	// 페이즈에 따라 작동할 코드 넣기
 	// (항공 보급 생성)
 	// (오브젝트 스폰)
