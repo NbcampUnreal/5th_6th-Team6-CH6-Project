@@ -20,7 +20,7 @@ struct FSKillDamageStatics
     }
 };
 
-static const FSKillDamageStatics& DamageStatics()
+static const FSKillDamageStatics& SKillDamageStatics()
 {
     static FSKillDamageStatics DStatics;
     return DStatics;
@@ -28,7 +28,7 @@ static const FSKillDamageStatics& DamageStatics()
 
 UBaseExecutionCalculation::UBaseExecutionCalculation()
 {
-    RelevantAttributesToCapture.Add(DamageStatics().DefenseDef);
+    RelevantAttributesToCapture.Add(SKillDamageStatics().DefenseDef);
 }
 
 void UBaseExecutionCalculation::Execute_Implementation(const FGameplayEffectCustomExecutionParameters& ExecutionParams, FGameplayEffectCustomExecutionOutput& OutExecutionOutput) const
