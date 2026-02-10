@@ -31,14 +31,16 @@ public:
 
 	float GetPhaseRemainingTime() const;
 
-public:
-	TArray<TArray<TWeakObjectPtr<AER_PlayerState>>> TeamCache;
+	UFUNCTION(BlueprintCallable)
+	int32 GetCurrentPhase() { return CurrentPhase; }
 
+	UFUNCTION(BlueprintCallable)
+	void SetCurrentPhase(int32 input) { CurrentPhase = input; }
+
+
+public:
 	UPROPERTY(BlueprintReadOnly)
 	TMap<int32, bool> TeamElimination;
-
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Phase)
-	int32 CurrentPhase = 0;
 
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Phase)
 	float PhaseServerTime = 0.f;
@@ -48,5 +50,12 @@ public:
 
 	UPROPERTY(BlueprintAssignable)
 	FOnPhaseChangedBP OnPhaseChanged;
+
+private:
+	TArray<TArray<TWeakObjectPtr<AER_PlayerState>>> TeamCache;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Phase)
+	int32 CurrentPhase = 0;
+
 };
 
