@@ -24,9 +24,26 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	
+	virtual void Tick(float DeltaTime) override;
+	
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	virtual void NotifyHit(UPrimitiveComponent* MyComp, AActor* Other, UPrimitiveComponent* OtherComp, bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult& Hit) override;
+	
+	UFUNCTION()
+	void OnRep_ProjectileData();
+	
+	UFUNCTION()
+	void OnRep_HomingTargetActor();
+	
+	void InitializeProjectile();
+	
+	// 충돌 처리 함수
+	UFUNCTION()
+	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_SpawnImpactEffect(FVector Location);
 	
 public:
 	UPROPERTY(ReplicatedUsing = OnRep_ProjectileData, EditAnywhere, BlueprintReadWrite, Meta = (ExposeOnSpawn = true), Category = "Data")
@@ -50,14 +67,6 @@ public:
 	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn = true))
 	FGameplayEffectSpecHandle DamageEffectSpecHandle;
 
-protected:
-	UFUNCTION()
-	void OnRep_ProjectileData();
-	
-	void InitializeProjectile();
-	
-	// 충돌 처리 함수
-	UFUNCTION()
-	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-
+	UPROPERTY(ReplicatedUsing = OnRep_HomingTargetActor, BlueprintReadWrite, Meta = (ExposeOnSpawn = true), Category = "Combat")
+	AActor* HomingTargetActor;
 };

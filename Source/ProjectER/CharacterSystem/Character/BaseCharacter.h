@@ -179,15 +179,25 @@ protected:
 	
 #pragma endregion
 
-#pragma region Death
+#pragma region DeathRevive
 public:
+	UFUNCTION(Server, Reliable)
+	void Server_Revive(FVector RespawnLocation);
+	
 	// 사망 처리 호출
 	virtual void HandleDeath();
 	
+	// 부활 처리 호출
+	virtual void Revive(FVector RespawnLocation);
+	
 protected:
-	// 사망 연출 실행 RPC : 모든 클라이언트에 사망 사실 전파
+	// 사망 동기화
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_Death();
+	
+	// 부활 상태 동기화
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_Revive(FVector RespawnLocation);
 	
 protected:
 	// 사망 모션 몽타주 : 내부 캐싱용

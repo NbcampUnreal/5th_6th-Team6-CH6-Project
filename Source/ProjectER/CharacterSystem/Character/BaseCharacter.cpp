@@ -179,7 +179,15 @@ ETeamType ABaseCharacter::GetTeamType() const
 
 bool ABaseCharacter::IsTargetable() const
 {
-	return true;
+	if (AbilitySystemComponent.IsValid())
+	{
+		if (AbilitySystemComponent->HasMatchingGameplayTag(ProjectER::State::Life::Death))
+		{
+			return false;
+		}
+	}
+	
+	return !IsHidden(); // 숨어있지 않고 살아있으면 true
 }
 
 void ABaseCharacter::OnRep_TeamID()
@@ -252,22 +260,19 @@ float ABaseCharacter::GetCharacterLevel() const
 
 float ABaseCharacter::GetAttackRange() const
 {
-	if (const ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	if (const AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
 	{
 		// [전민성] - MVP 병합 시 else문 삭제 필요
-		if (const AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS))
+		if (const UBaseAttributeSet* AS = ERPS->GetAttributeSet())
 		{
-			if (const UBaseAttributeSet* AS = ERPS->GetAttributeSet())
-			{
-				return AS->GetAttackRange();
-			}
+			return AS->GetAttackRange();
 		}
-		else
+	}
+	else if(const ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	{
+		if (const UBaseAttributeSet* AS = PS->GetAttributeSet())
 		{
-			if (const UBaseAttributeSet* AS = PS->GetAttributeSet())
-			{
-				return AS->GetAttackRange();
-			}
+			return AS->GetAttackRange();
 		}
 	}
 
@@ -723,8 +728,23 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 {
 	if (!IsValid(TargetActor))
 	{
-		SetTarget(nullptr); // 타겟이 사망 혹은 소멸 시 지정 해제
+		SetTarget(nullptr); // 타겟이 소멸 시 지정 해제
 		return;
+	}
+	
+	if (ITargetableInterface* TargetObj = Cast<ITargetableInterface>(TargetActor))
+	{
+		// 타겟이 타겟팅 불가능 상태(사망, 은신 등)라면?
+		if (!TargetObj->IsTargetable())
+		{
+			// 타겟 해제
+			SetTarget(nullptr);
+            
+			// 이동 및 공격 행위 중단 (공격 선딜레이 캔슬)
+			StopMove(); 
+            
+			return;
+		}
 	}
 
 	float Distance = GetDistanceTo(TargetActor);
@@ -824,6 +844,11 @@ void ABaseCharacter::OnRep_TargetActor()
 #endif
 }
 
+void ABaseCharacter::Server_Revive_Implementation(FVector RespawnLocation)
+{
+	Revive(RespawnLocation);
+}
+
 void ABaseCharacter::HandleDeath()
 {
 	if (HasAuthority())
@@ -847,6 +872,87 @@ void ABaseCharacter::HandleDeath()
 		// 모든 클라이언트에게 연출 실행 명령
 		Multicast_Death();
 	}
+}
+
+void ABaseCharacter::Revive(FVector RespawnLocation)
+{
+	if (!HasAuthority()) return;
+
+	// 상태 태그 제거 (State.Life.Death)
+	if (AbilitySystemComponent.IsValid())
+	{
+		FGameplayTag DeathTag = ProjectER::State::Life::Death;
+		AbilitySystemComponent->RemoveLooseGameplayTag(DeathTag);
+		
+	}
+
+	// 스탯 초기화
+	// (AER_PlayerState 대응 추가)
+	UBaseAttributeSet* AS = nullptr;
+	
+	if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
+	{
+		AS = ERPS->GetAttributeSet();
+		UE_LOG(LogTemp, Log, TEXT("[Revive] Found AttributeSet via AER_PlayerState"));
+	}
+	else if (ABasePlayerState* BasePS = GetPlayerState<ABasePlayerState>())
+	{
+		AS = BasePS->GetAttributeSet();
+		UE_LOG(LogTemp, Log, TEXT("[Revive] Found AttributeSet via BasePlayerState"));
+	}
+	
+	if (AS)
+	{
+		AS->SetHealth(AS->GetMaxHealth());
+		AS->SetStamina(AS->GetMaxStamina());
+		
+		UE_LOG(LogTemp, Warning, TEXT("[Revive] HP Recovered: %f"), AS->GetHealth());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Revive] AttributeSet is NULL! Check PlayerState Class."));
+	}
+    
+	// 타겟 초기화
+	SetTarget(nullptr);
+
+	// 클라이언트 동기화 (위치 이동 및 비주얼/물리 복구)
+	Multicast_Revive(RespawnLocation);
+}
+
+void ABaseCharacter::Multicast_Revive_Implementation(FVector RespawnLocation)
+{
+	// 위치 이동
+	SetActorLocation(RespawnLocation);
+	SetActorRotation(FRotator::ZeroRotator);
+
+	// 애니메이션 초기화 
+	StopAnimMontage();
+	if (GetMesh() && GetMesh()->GetAnimInstance())
+	{
+		GetMesh()->GetAnimInstance()->Montage_Stop(0.0f);
+	}
+
+	// 캡슐 콜리전 복구
+	if (GetCapsuleComponent())
+	{
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+
+	// 이동 컴포넌트 복구
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+		GetCharacterMovement()->StopMovementImmediately();
+		// HandleDeath에서 DisableMovement()를 했으므로 다시 활성화 필요할 수 있음
+		// 보통 SetMovementMode(Walking)으로 해결되지만, 안 된다면 아래 코드 추가
+		// GetCharacterMovement()->Activate(); 
+	}
+	
+	SetActorTickEnabled(true);
+    
+	// (선택) 부활 이펙트 재생
+	// UNiagaraFunctionLibrary::SpawnSystemAtLocation(...)
 }
 
 void ABaseCharacter::Multicast_Death_Implementation()
@@ -882,7 +988,7 @@ void ABaseCharacter::Multicast_Death_Implementation()
 		// }
 	} */
     
-	// 5. 틱 비활성화 (불필요한 연산 방지)
+	// 틱 비활성화 (불필요한 연산 방지)
 	SetActorTickEnabled(false);
 }
 

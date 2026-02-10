@@ -18,7 +18,9 @@
 
 ABaseProjectile::ABaseProjectile()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = false;
+	
 	bReplicates = true; // 서버에서 생성 및 위치 동기화
 	
 	SetReplicateMovement(true);
@@ -75,10 +77,40 @@ void ABaseProjectile::BeginPlay()
 		}
 		
 		SphereComp->OnComponentBeginOverlap.AddDynamic(this, &ABaseProjectile::OnOverlapBegin);
+	}
+	
+	if (ProjectileData)
+	{
 		InitializeProjectile();
 	}
 	
 	SetLifeSpan(3.0f); // 3초 후 자동 삭제 (메모리 관리) : 평타가 안 맞을 경우	
+}
+
+void ABaseProjectile::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+	// 타겟이 유효한지 검사
+	if (IsValid(HomingTargetActor))
+	{
+		// 타겟이 타겟팅 불가능 상태(사망 등)가 되었는지 확인
+		if (ITargetableInterface* TargetObj = Cast<ITargetableInterface>(HomingTargetActor))
+		{
+			if (!TargetObj->IsTargetable())
+			{
+				// [선택 A] 타겟이 죽으면 그냥 투사체도 소멸 (깔끔함)
+				SetActorTickEnabled(false); 
+				Destroy();
+				return;
+			}
+		}
+	}
+	else
+	{
+		// 타겟 자체가 소멸했다면(Destroy) 투사체도 삭제
+		Destroy();
+	}
 }
 
 void ABaseProjectile::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -86,6 +118,7 @@ void ABaseProjectile::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
 	DOREPLIFETIME(ABaseProjectile, ProjectileData);
+	DOREPLIFETIME(ABaseProjectile, HomingTargetActor);
 }
 
 void ABaseProjectile::NotifyHit(UPrimitiveComponent* MyComp, AActor* Other, UPrimitiveComponent* OtherComp,
@@ -105,39 +138,62 @@ void ABaseProjectile::OnRep_ProjectileData()
 	InitializeProjectile();
 }
 
+void ABaseProjectile::OnRep_HomingTargetActor()
+{
+	InitializeProjectile();
+}
+
 void ABaseProjectile::InitializeProjectile()
 {
 	if (!ProjectileData) return;
-
+	
 	// 메쉬 설정 
-	if (ProjectileData->ProjectileMesh) // 투사체 Mesh가 있을 경우 (ex: 화살)
+	if (MeshComp->GetStaticMesh() != ProjectileData->ProjectileMesh)
 	{
-		MeshComp->SetStaticMesh(ProjectileData->ProjectileMesh);
-		MeshComp->SetHiddenInGame(false); // 메쉬 보이기
-		MeshComp->SetRelativeScale3D(ProjectileData->Scale);
-	}
-	else // 이펙트만 있을 경우 (ex: 순수 마법)
-	{
-		// 메쉬가 없으면 숨김 (순수 마법 구체인 경우)
-		MeshComp->SetStaticMesh(nullptr); 
-		MeshComp->SetHiddenInGame(true);
+		// 메쉬 설정 
+		if (ProjectileData->ProjectileMesh) 
+		{
+			MeshComp->SetStaticMesh(ProjectileData->ProjectileMesh);
+			MeshComp->SetHiddenInGame(false); 
+			// MeshComp->SetRelativeScale3D(ProjectileData->Scale); // <-- 아래 2번 항목 참조
+		}
+		else 
+		{
+			MeshComp->SetStaticMesh(nullptr); 
+			MeshComp->SetHiddenInGame(true);
+		}
 	}
 	
-	if (ProjectileData->FlyVFX)
+	if (ProjectileData->FlyVFX && ProjectileVFXComp->GetAsset() != ProjectileData->FlyVFX)
 	{
 		ProjectileVFXComp->SetAsset(ProjectileData->FlyVFX);
 		ProjectileVFXComp->Activate();
 	}
 	
+	SetActorScale3D(ProjectileData->Scale);
+	
 	// 무브먼트 설정
 	if (ProjectileMovement)
 	{
+		// 유도 설정 (타겟이 있을 때만)
+		if (HomingTargetActor)
+		{
+			ProjectileMovement->bIsHomingProjectile = true;
+			ProjectileMovement->HomingTargetComponent = HomingTargetActor->GetRootComponent();
+			ProjectileMovement->HomingAccelerationMagnitude = 30000.0f; // 강한 유도
+			SetActorTickEnabled(true); // 추적 개시
+		}
+		else
+		{
+			ProjectileMovement->bIsHomingProjectile = false; // 타겟 없으면 유도 끄기
+		}
+
+		// 속도 설정
 		ProjectileMovement->InitialSpeed = ProjectileData->InitialSpeed;
 		ProjectileMovement->MaxSpeed = ProjectileData->MaxSpeed;
 		ProjectileMovement->ProjectileGravityScale = ProjectileData->GravityScale;
-        
-		// 이미 날아가고 있을 수 있으므로 속도 갱신
-		// (서버는 생성 시점에 설정되지만 클라는 복제된 시점에 적용해야 함)
+
+		// 속도 갱신 
 		if (ProjectileMovement->Velocity.IsZero() == false)
 		{
 			ProjectileMovement->Velocity = ProjectileMovement->Velocity.GetSafeNormal() * ProjectileData->InitialSpeed;
@@ -181,20 +237,24 @@ void ABaseProjectile::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor
 		}
 	}
 	
-	// 충돌 대상에게 Effect 적용
 	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor);
 	if (TargetASC && DamageEffectSpecHandle.IsValid())
 	{
 		TargetASC->ApplyGameplayEffectSpecToSelf(*DamageEffectSpecHandle.Data.Get());
 	}
-
-	// [피격 이펙트 재생] (Multicast 혹은 자동 복제)
-	if (ProjectileData && ProjectileData->ImpactVFX)
-	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, ProjectileData->ImpactVFX, GetActorLocation());
-	}
+	
+	// 이펙트 Multicast
+	Multicast_SpawnImpactEffect(GetActorLocation());
 	
 	Destroy();
+}
+
+void ABaseProjectile::Multicast_SpawnImpactEffect_Implementation(FVector Location)
+{
+	if (ProjectileData && ProjectileData->ImpactVFX)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, ProjectileData->ImpactVFX, Location);
+	}
 }
 
 
