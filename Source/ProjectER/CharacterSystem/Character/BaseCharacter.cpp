@@ -1,4 +1,4 @@
-#include "CharacterSystem/Character/BaseCharacter.h"
+﻿#include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Player/BasePlayerState.h"
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -174,7 +174,8 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 
 ETeamType ABaseCharacter::GetTeamType() const
 {
-	return TeamID;
+	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
+	return PS->TeamType;
 }
 
 bool ABaseCharacter::IsTargetable() const
