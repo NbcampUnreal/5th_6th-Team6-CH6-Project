@@ -93,7 +93,7 @@ private:
     /** Resolve which component represents the actor’s visibility shape */
     UPrimitiveComponent* ResolveVisibilityShape(AActor* TargetActor) const;
 
-    void HandleDetectedTarget(AActor* DetectedTarget, bool bIsVisible);// this will be used for updating the visible actor
+   // void HandleTargetVisibilityChanged(AActor* DetectedTarget, bool bIsVisible);// this will be used for updating the visible actor
     
 protected:
     
