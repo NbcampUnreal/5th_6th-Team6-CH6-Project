@@ -2,10 +2,16 @@
 
 #include "ItemSystem/I_ItemInteractable.h" // [김현수 추가분]
 
+//Curved World Subsystem added //2026/02/10
+#include "CurvedWorldSubsystem.h"
+#include "FCurvedWorldUtil.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "GameplayTagContainer.h" 
 #include "BasePlayerController.generated.h"
+
+
 
 class UNiagaraSystem;
 class UInputMappingContext;
@@ -177,6 +183,11 @@ private:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_MoveTeam(int32 TeamIdx);
 
+	// Helper function to get hit result with curved world correction
+	bool GetCurvedHitResultUnderCursor(
+		ECollisionChannel TraceChannel,
+		bool bTraceComplex,
+		FHitResult& OutHitResult);
 
 private:
 	// UI 클래스
@@ -203,4 +214,11 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<class UW_LootingPopup> LootWidgetInstance;
+
+
+	// Add reference to curved world subsystem
+	UPROPERTY()
+	TObjectPtr<UCurvedWorldSubsystem> CurvedWorldSubsystem;//cahced subsystem
+    
+
 };

@@ -27,15 +27,12 @@ void UCameraVisionManager::BeginPlay()
 	UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::BeginPlay >> BeginPlay called"));
 }
 
-void UCameraVisionManager::Initialize(APlayerCameraManager* InCamera)
+void UCameraVisionManager::Initialize()
 {
 	if (!ShouldRunClientLogic())
 	{
 		return;// not for server
 	}
-
-	ActiveCamera = InCamera;
-	UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::Initialize >> Called with Camera: %s"), *GetNameSafe(ActiveCamera));
 
 	if (!CameraLocalRT)
 	{
@@ -265,20 +262,6 @@ void UCameraVisionManager::UpdateCameraLOS()
 		TEXT("UCameraVisionManager::UpdateCameraLOS >> Update finished"));*/
 }
 
-void UCameraVisionManager::SetActiveCamera(APlayerCameraManager* InCamera)
-{
-	UE_LOG(LOSVision, Log,
-		TEXT("UCameraVisionManager::SetActiveCamera >> Called with %s"),
-		*GetNameSafe(InCamera));
-
-	if (!InCamera || InCamera == ActiveCamera)
-	{
-		UE_LOG(LOSVision, Log, TEXT("SetActiveCamera skipped: invalid or same camera"));
-		return;
-	}
-
-	ActiveCamera = InCamera;
-}
 //Internal helper for the Drawing LOS stamp
 void UCameraVisionManager::DrawLOSStamp(UCanvas* Canvas, const TArray<ULineOfSightComponent*>& Providers,
 	const FLinearColor& Color)

@@ -53,9 +53,12 @@ bool UCurvedWorldSubsystem::SetCurvedWorldMPC(UMaterialParameterCollection* InMP
 	}
 
 	//set the mpc Param Names
+	//Location
 	MPC_Param_Origin=OriginName;
+	//Directions
 	MPC_Param_RightVector=RightName;
 	MPC_Param_ForwardVector=ForwardName;
+	//curves
 	MPC_Param_CurveX=CurveXName;
 	MPC_Param_CurveY=CurveYName;
 	MPC_Param_BendWeight=BendWeightName;

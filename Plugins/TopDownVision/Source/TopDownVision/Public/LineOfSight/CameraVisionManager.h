@@ -31,15 +31,11 @@ protected:
 public:
 	
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")// Initialize with the owning camera/player
-	void Initialize(APlayerCameraManager* InCamera);
+	void Initialize();
 	
 	//Update Main CRT (called every frame or when dirty)
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
 	void UpdateCameraLOS();
-
-	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	void SetActiveCamera(APlayerCameraManager* InCamera);
-
 	
 	/** Get the current camera-local RT for post-process */
 	UCanvasRenderTarget2D* GetCameraLOSTexture() const { return CameraLocalRT; }
@@ -95,9 +91,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	EVisionChannel VisionChannel=EVisionChannel::None;
 	
-	/** Owning cam*/
-	UPROPERTY()
-	APlayerCameraManager* ActiveCamera = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Vision")
 	float CameraVisionRange;// the half-radius of the camera view range

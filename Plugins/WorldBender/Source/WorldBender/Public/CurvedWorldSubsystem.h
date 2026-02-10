@@ -58,7 +58,7 @@ private:
 	// Sync parameters to Material Parameter Collection
 	void SyncToMaterialParameterCollection();
 
-protected://variables
+public://variables
 
 	//Param Values
 	//continuous update
@@ -76,7 +76,8 @@ protected://variables
 	float CurveY = 0.001f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
 	float BendWeight = 0.05f;
-
+	
+protected:
 	//MPC
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
 	TObjectPtr<UMaterialParameterCollection> MaterialParameterCollection;
@@ -86,9 +87,11 @@ protected://variables
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
 	FName MPC_Param_Origin=NAME_None;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
-	FName MPC_Param_RightVector=NAME_None;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
 	FName MPC_Param_ForwardVector=NAME_None;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
+	FName MPC_Param_RightVector=NAME_None;
+	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
 	FName MPC_Param_CurveX=NAME_None;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
