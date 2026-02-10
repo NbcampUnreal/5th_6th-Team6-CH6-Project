@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "ItemSystem/I_ItemInteractable.h" // [김현수 추가분]
+#include "ItemSystem/Interface/I_ItemInteractable.h" // [김현수 추가분]
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
