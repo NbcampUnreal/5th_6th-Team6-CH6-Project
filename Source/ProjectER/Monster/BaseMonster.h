@@ -15,6 +15,7 @@ class UWidgetComponent;
 class UUserWidget;
 class UBaseMonsterAttributeSet;
 class ABaseCharacter;
+class UMonsterDataAsset;
 struct FOnAttributeChangeData;
 
 UCLASS()
@@ -41,6 +42,8 @@ public:
 	void SetbIsDead(bool Target);
 	bool GetbIsDead();
 
+	void InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level);
+
 protected:
 
 	virtual void PossessedBy(AController* newController) override;
@@ -53,10 +56,6 @@ protected:
 
 private:
 
-	void InitGiveAbilities();
-
-#pragma region UI
-
 	UFUNCTION()
 	void OnRep_IsCombat();
 
@@ -66,7 +65,20 @@ private:
 	UFUNCTION()
 	void OnHealthChangedHandle(float CurrentHP, float MaxHP);
 
-#pragma endregion
+	UFUNCTION()
+	void OnMoveSpeedChangedHandle(float OldSpeed, float NewSpeed);
+
+
+	void OnMonsterDataLoaded(FPrimaryAssetId LoadedId, float Level);
+
+	void InitGiveAbilities();
+
+	void InitAttributes(float Level);
+
+	void InitVisuals();
+
+	void InitHPBar();
+
 
 #pragma region StateTree
 
@@ -92,6 +104,9 @@ private:
 
 public:
 
+	// 몬스터 데이터 묶음
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData")
+	TSoftObjectPtr<UMonsterDataAsset> MonsterData;
 
 protected:
 
@@ -103,8 +118,8 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UAbilitySystemComponent> ASC;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
-	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
+	//UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
+	//TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UBaseMonsterAttributeSet> AttributeSet;

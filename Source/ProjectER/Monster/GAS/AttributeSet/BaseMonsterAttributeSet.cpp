@@ -1,4 +1,4 @@
-﻿#include "AttributeSet/BaseMonsterAttributeSet.h"
+﻿#include "Monster/GAS/AttributeSet/BaseMonsterAttributeSet.h"
 
 #include "Monster/BaseMonster.h"
 #include "Net/UnrealNetwork.h"
@@ -7,13 +7,7 @@
 
 UBaseMonsterAttributeSet::UBaseMonsterAttributeSet()
 {
-	InitHealth(HealthAmount);
-	InitMaxHealth(MaxHealthAmount);
-	InitAttackPower(AttackPowerAmount);
-	InitAttackSpeed(AttackSpeedAmount);
-	InitAttackRange(AttackRangeAmount);
-	InitDefense(DefenseAmount);
-	InitMoveSpeed(MoveSpeedAmount);
+
 }
 
 void UBaseMonsterAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -57,27 +51,15 @@ void UBaseMonsterAttributeSet::PostAttributeChange(const FGameplayAttribute& Att
 {
 	Super::PostAttributeChange(Attribute, OldValue, NewValue);
 
-	// Attribute 변경된 후
-	/*if (Attribute == GetMaxHealthAttribute())
-	{
-		OnMaxHealthChanged.Broadcast(OldValue, NewValue);
-	}
-	else if (Attribute == GetHealthAttribute())
-	{
-		OnHealthChanged.Broadcast(OldValue, NewValue);
-	}
-	else if (Attribute == GetAttackSpeedAttribute())
-	{
-		OnAttackSpeedChanged.Broadcast(OldValue, NewValue);
-	}
-	else if (Attribute == GetMoveSpeedAttribute())
-	{
-		OnMoveSpeedChanged.Broadcast(OldValue, NewValue);
-	}*/
 }
 
 void UBaseMonsterAttributeSet::OnRep_Health(const FGameplayAttributeData& OldHealth)
 {
 	OnHealthChanged.Broadcast(GetHealth(), GetMaxHealth());
+}
+
+void UBaseMonsterAttributeSet::OnRep_MoveSpeed(const FGameplayAttributeData& OldHealth)
+{
+	OnMoveSpeedChanged.Broadcast(OldHealth.GetBaseValue(), GetMoveSpeed());
 }
 

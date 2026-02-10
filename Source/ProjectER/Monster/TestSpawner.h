@@ -18,4 +18,7 @@ protected:
 public:
 	UPROPERTY(EditAnywhere, Category = "Test")
 	TSubclassOf<AActor> Monster;
+
+	UPROPERTY(EditAnywhere, Category = "Test")
+	int32 SpawnCount;
 };
