@@ -71,17 +71,8 @@ void AER_InGameMode::Logout(AController* Exiting)
 
 	if (RemainingPlayers <= 1)
 	{
-		GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this]()
-			{
-				if (AER_GameState* ERGS = GetGameState<AER_GameState>())
-				{
-					ERGS->RemoveTeamCache();
-				}
-
-				UE_LOG(LogTemp, Warning, TEXT("[GM] Player is Zero -> ServerTravel to Lobby"));
-
-				GetWorld()->ServerTravel(TEXT("/Game/Level/Level_Lobby"), true);
-			}));
+		//로그아웃 시점에 플레이어가 1명일 시에 서버 초기화
+		EndGame();
 	}
 }
 
@@ -101,29 +92,71 @@ void AER_InGameMode::HandleStartingNewPlayer_Implementation(APlayerController* N
 
 	UE_LOG(LogTemp, Warning, TEXT("[GM] HandleStartingNewPlayer %d/%d"), PlayersInitialized, ExpectedPlayers);
 
-	if (PlayersInitialized >= ExpectedPlayers)
+	if (!bIsGameStarted && PlayersInitialized >= ExpectedPlayers)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[GM] All players ready! Building team cache..."));
-
-		AER_GameState* ERGS = GetGameState<AER_GameState>();
-		if (ERGS)
-		{
-			// 다음 틱에 실행
-			GetWorld()->GetTimerManager().SetTimerForNextTick([ERGS]()
-				{
-					ERGS->BuildTeamCache();
-				});
-			NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
-			NeutralSS->InitializeSpawnPoints(NeutralClass);
-			NeutralSS->TEMP_SpawnNeutrals();
-			HandlePhaseTimeUp();
-		}
+		// 모든 플레이어가 준비된 상황에서 실행
+		StartGame();
 	}
+}
+
+void AER_InGameMode::StartGame()
+{
+	if (bIsGameStarted) 
+	{
+		return;
+	}
+	bIsGameStarted = true;
+
+	UE_LOG(LogTemp, Warning, TEXT("[GM] All players ready! Starting game init..."));
+
+	TWeakObjectPtr<AER_InGameMode> WeakThis(this);
+	GetWorld()->GetTimerManager().SetTimerForNextTick([WeakThis]()
+		{
+			if (!WeakThis.IsValid()) return;
+			WeakThis->StartGame_Internal();
+		});
+}
+
+void AER_InGameMode::StartGame_Internal()
+{
+	AER_GameState* ERGS = GetGameState<AER_GameState>();
+	if (!ERGS)
+	{
+		return;
+	}
+
+	ERGS->BuildTeamCache();
+
+	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
+	if (NeutralSS)
+	{
+		NeutralSS->InitializeSpawnPoints(NeutralClass);
+		NeutralSS->TEMP_SpawnNeutrals();
+	}
+
+	HandlePhaseTimeUp();
 }
 
 void AER_InGameMode::EndGame()
 {
+	TWeakObjectPtr<AER_InGameMode> WeakThis(this);
+	GetWorld()->GetTimerManager().SetTimerForNextTick([WeakThis]()
+		{
+			if (!WeakThis.IsValid()) return;
+			WeakThis->EndGame_Internal();
+		});
+}
 
+void AER_InGameMode::EndGame_Internal()
+{
+	if (AER_GameState* ERGS = GetGameState<AER_GameState>())
+	{
+		ERGS->RemoveTeamCache();
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[GM] Player is Zero -> ServerTravel to Lobby"));
+
+	GetWorld()->ServerTravel(TEXT("/Game/Level/Level_Lobby"), true);
 }
 
 
@@ -185,6 +218,7 @@ void AER_InGameMode::NotifyNeutralDied(ACharacter* VictimCharacter)
 	ABaseMonster* NC = Cast<ABaseMonster>(VictimCharacter);
 	NC->GetSpawnPoint();
 	int32 SpawnPoint = NC->GetSpawnPoint();
+	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
 	NeutralSS->StartRespawnNeutral(SpawnPoint);
 }
 
@@ -231,10 +265,12 @@ void AER_InGameMode::HandlePhaseTimeUp()
 
 void AER_InGameMode::TEMP_SpawnNeutrals()
 {
+	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
 	NeutralSS->TEMP_SpawnNeutrals();
 }
 
 void AER_InGameMode::TEMP_DespawnNeutrals()
 {
+	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
 	NeutralSS->TEMP_NeutralsALLDespawn();
 }
