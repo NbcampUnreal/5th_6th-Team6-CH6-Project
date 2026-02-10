@@ -84,26 +84,38 @@ void AER_OutGameMode::PostLogin(APlayerController* NewPlayer)
             }
             const TArray<APlayerState*>& Players = GS->PlayerArray;
 
-            // 들어온 순서대로 팀 지정 이후 팀 선택이 필요하면 수정
-            switch (Players.Num() % 3)
+            int32 Team1 = 0, Team2 = 0, Team3 = 0;
+            for (APlayerState* it : Players)
             {
-            case 1:
-                ERPS->Team = ETeam::Team1;
-                break;
-
-            case 2:
-                ERPS->Team = ETeam::Team2;
-                break;
-
-            case 0:
-                ERPS->Team = ETeam::Team3;
-                break;
-
-            default:
-                ERPS->Team = ETeam::None;
-                break;
+                AER_PlayerState* state = Cast<AER_PlayerState>(it);
+                if (state->TeamType == ETeamType::Team_A)
+                {
+                    ++Team1;
+                }
+                else if (state->TeamType == ETeamType::Team_B)
+                {
+                    ++Team2;
+                }
+                else if (state->TeamType == ETeamType::Team_C)
+                {
+                    ++Team3;
+                }
             }
-            UE_LOG(LogTemp, Log, TEXT("Team = %s"), *UEnum::GetValueAsString(ERPS->Team));
+
+            if (Team1 < 3)
+            {
+                ERPS->TeamType = ETeamType::Team_A;
+            }
+            else if (Team2 < 3)
+            {
+                ERPS->TeamType = ETeamType::Team_B;
+            }
+            else if (Team3 < 3)
+            {
+                ERPS->TeamType = ETeamType::Team_C;
+            }
+
+            UE_LOG(LogTemp, Log, TEXT("Team = %s"), *UEnum::GetValueAsString(ERPS->TeamType));
         }
 
     }
@@ -133,4 +145,83 @@ void AER_OutGameMode::EndGame()
 		return;
 
 	GetWorld()->ServerTravel("/Game/Level/Level_Lobby", true);
+}
+
+void AER_OutGameMode::MoveTeam(APlayerController* Player, int32 TeamIdx)
+{
+    if (!HasAuthority())
+    {
+        return;
+    }
+
+    ABasePlayerController* PC = Cast<ABasePlayerController>(Player);
+    if (!PC)
+    {
+        return;
+    }
+
+    if (APlayerState* PS = PC->GetPlayerState<APlayerState>())
+    {
+        if (AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS))
+        {
+            AER_GameState* GS = GetGameState<AER_GameState>();
+            if (!GS)
+            {
+                return;
+            }
+            const TArray<APlayerState*>& Players = GS->PlayerArray;
+
+            int32 Team1 = 0, Team2 = 0, Team3 = 0;
+            for (APlayerState* it : Players)
+            {
+                AER_PlayerState* state = Cast<AER_PlayerState>(it);
+                if (state->TeamType == ETeamType::Team_A)
+                {
+                    ++Team1;
+                }
+                else if (state->TeamType == ETeamType::Team_B)
+                {
+                    ++Team2;
+                }
+                else if (state->TeamType == ETeamType::Team_C)
+                {
+                    ++Team3;
+                }
+            }
+
+            switch (TeamIdx)
+            {
+                case 1:
+                    if (Team1 < 3 && ERPS->TeamType != ETeamType::Team_A)
+                    {
+                        ERPS->TeamType = ETeamType::Team_A;
+                    }
+                    break;
+
+                case 2:
+                    if (Team2 < 3 && ERPS->TeamType != ETeamType::Team_B)
+                    {
+                        ERPS->TeamType = ETeamType::Team_B;
+                    }
+                    break;
+
+                case 3:
+                    if (Team3 < 3 && ERPS->TeamType != ETeamType::Team_C)
+                    {
+                        ERPS->TeamType = ETeamType::Team_C;
+                    }
+                    break;
+
+                default:
+
+                    break;
+            }
+
+        }
+
+    }
+
+
+
+
 }

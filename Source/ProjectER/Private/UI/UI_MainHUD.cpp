@@ -19,6 +19,10 @@
 #include "CharacterSystem/Player/BasePlayerController.h"
 #include "Abilities/GameplayAbilityTypes.h" // 쿨타임용
 
+#include "Blueprint/WidgetBlueprintGeneratedClass.h" // 초상화 반짝 애니메이션용
+#include "Animation/WidgetAnimation.h" // 초상화 반짝 애니메이션용
+#include "MovieScene.h" // 초상화 반짝 애니메이션용
+
 void UUI_MainHUD::Update_LV(float CurrentLV)
 {
     if(IsValid(stat_LV))
@@ -187,6 +191,7 @@ void UUI_MainHUD::InitASCHud(UAbilitySystemComponent* _ASC)
     {
         ASC->AbilityActivatedCallbacks.AddUObject(this, &UUI_MainHUD::OnAbilityActivated);
     }
+    
 }
 
 void UUI_MainHUD::NativeConstruct()
@@ -240,6 +245,22 @@ void UUI_MainHUD::NativeConstruct()
     {
         RemainingTimes[i] = 0.f;
     }
+
+    // UI 애니메이션 강제 바인딩
+    HeadHitAnim_01 = GetWidgetAnimationByName(TEXT("AN_HeadHitAnim_01"));
+    HeadHitAnim_02 = GetWidgetAnimationByName(TEXT("AN_HeadHitAnim_02"));
+
+    // 디버그용
+    SetKillCount(0);
+    SetDeathCount(41);
+    SetAssistCount(411);
+
+    GetWorld()->GetTimerManager().SetTimer(
+        KillTimerHandle,
+        this,
+        &UUI_MainHUD::AddKillPerSecond,
+        1.0f,
+        true);
 }
 
 /// 마우스 이벤트!
@@ -626,4 +647,198 @@ void UUI_MainHUD::UpdateSkillCoolDown(int32 SkillIndex)
             SkillCoolTexts[SkillIndex]->SetText(FText::AsNumber(RemainingTimes[SkillIndex], &Opts));
         }
     }
+}
+
+TArray<int32> UUI_MainHUD::GetDigitsFromNumber(int32 InNumber)
+{
+    TArray<int32> Digits;
+
+    // 0예외 처리
+    if (InNumber == 0)
+    {
+        Digits.Add(0);
+        return Digits;
+    }
+
+    // 음수예외 처리
+    int32 TempNumber = FMath::Abs(InNumber);
+
+    while (TempNumber > 0)
+    {
+        Digits.Add(TempNumber % 10);
+        TempNumber /= 10;
+    }
+
+    // 현재 Digits에는 역순으로 들어가 있어서 반전
+    Algo::Reverse(Digits);
+
+    return Digits;
+}
+
+void UUI_MainHUD::SetKillCount(int32 InKillCount)
+{
+    // 두자리수 고정
+	// if (InKillCount > 99) InKillCount = 99;
+	// TArray<int32> Digits = GetDigitsFromNumber(InKillCount);
+    //
+
+    int32 ClampedCount = FMath::Clamp(InKillCount, 0, 99);
+    int32 TenDigit = ClampedCount / 10;
+    int32 OneDigit = ClampedCount % 10;
+
+    if (SegmentTextures.Num() < 10)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("SEVEN SEGEMENT LOADING FAIL"));
+        return;
+    }
+    if (KillNumber_01 && SegmentTextures[TenDigit])
+    {
+        KillNumber_01->SetBrushFromTexture(SegmentTextures[TenDigit]);
+    }
+
+    if (KillNumber_02 && SegmentTextures[OneDigit])
+    {
+        KillNumber_02->SetBrushFromTexture(SegmentTextures[OneDigit]);
+    }
+
+}
+
+void UUI_MainHUD::SetDeathCount(int32 InDeathCount)
+{
+    // 두자리수 고정
+    int32 ClampedCount = FMath::Clamp(InDeathCount, 0, 99);
+    int32 TenDigit = ClampedCount / 10;
+    int32 OneDigit = ClampedCount % 10;
+
+    if (SegmentTextures.Num() < 10)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("SEVEN SEGEMENT LOADING FAIL"));
+        return;
+    }
+    if (DeathNumber_01 && SegmentTextures[TenDigit])
+    {
+        DeathNumber_01->SetBrushFromTexture(SegmentTextures[TenDigit]);
+    }
+
+    if (DeathNumber_02 && SegmentTextures[OneDigit])
+    {
+        DeathNumber_02->SetBrushFromTexture(SegmentTextures[OneDigit]);
+    }
+}
+
+void UUI_MainHUD::SetAssistCount(int32 InAssistCount)
+{
+    // 두자리수 고정
+    int32 ClampedCount = FMath::Clamp(InAssistCount, 0, 99);
+    int32 TenDigit = ClampedCount / 10;
+    int32 OneDigit = ClampedCount % 10;
+
+    if (SegmentTextures.Num() < 10)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("SEVEN SEGEMENT LOADING FAIL"));
+        return;
+    }
+    if (AssistNumber_01 && SegmentTextures[TenDigit])
+    {
+        AssistNumber_01->SetBrushFromTexture(SegmentTextures[TenDigit]);
+    }
+
+    if (AssistNumber_02 && SegmentTextures[OneDigit])
+    {
+        AssistNumber_02->SetBrushFromTexture(SegmentTextures[OneDigit]);
+    }
+}
+
+void UUI_MainHUD::AddKillPerSecond()
+{
+	SetKillCount(CurrentKillCount++);
+    
+    debugHP_01 -= 100.f;
+    debugHP_02 -= 200.f;
+    LastHP_01 = 1000.f;
+    LastHP_02 = 1000.f;
+	UpdateTeamHP(0, debugHP_01, 1000.f);
+    UpdateTeamHP(1, debugHP_02, 1000.f);
+}
+
+void UUI_MainHUD::UpdateTeamHP(int32 TeamIndex, float CurrentHP, float MaxHP)
+{
+    if (TeamIndex > MAX_TEAMMATE) return;
+    if (CurrentHP < 0) return;
+
+    if(TeamIndex == 0)
+    {
+        if(IsValid(PB_TeamHP_01))
+        {
+            float HealthPercent = CurrentHP / MaxHP;
+            PB_TeamHP_01->SetPercent(HealthPercent);
+
+            if (CurrentHP < LastHP_01)
+            {
+                if (HeadHitAnim_01 && !IsAnimationPlaying(HeadHitAnim_01))
+                {
+                    PlayAnimation(HeadHitAnim_01);
+                }
+            }
+            LastHP_01 = CurrentHP;
+        }
+    }
+    else if(TeamIndex == 1)
+    {
+        if(IsValid(PB_TeamHP_02))
+        {
+            float HealthPercent = CurrentHP / MaxHP;
+            PB_TeamHP_02->SetPercent(HealthPercent);
+
+            if (CurrentHP < LastHP_02)
+            {
+                if (HeadHitAnim_02 && !IsAnimationPlaying(HeadHitAnim_02))
+                {
+                    PlayAnimation(HeadHitAnim_02);
+                }
+            }
+            LastHP_02 = CurrentHP;
+        }
+	}
+}
+
+
+void UUI_MainHUD::UpdateTeamLV(int32 TeamIndex, int32 CurrentLV)
+{
+    if (TeamIndex > MAX_TEAMMATE) return;
+
+    if(TeamIndex == 0)
+    {
+        if(IsValid(TeamLevel_01))
+        {
+            TeamLevel_01->SetText(FText::AsNumber(CurrentLV));
+        }
+    }
+    else if (TeamIndex == 1)
+    {
+        if (IsValid(TeamLevel_02))
+        {
+            TeamLevel_02->SetText(FText::AsNumber(CurrentLV));
+        }
+    }
+}
+
+UWidgetAnimation* UUI_MainHUD::GetWidgetAnimationByName(FName AnimName) const
+{
+    UWidgetBlueprintGeneratedClass* WidgetClass = Cast<UWidgetBlueprintGeneratedClass>(GetClass());
+    if (!WidgetClass) return nullptr;
+
+    for (UWidgetAnimation* Anim : WidgetClass->Animations)
+    {
+        if (Anim && Anim->GetMovieScene())
+        {
+            FName InternalName = Anim->GetMovieScene()->GetFName();
+			UE_LOG(LogTemp, Error, TEXT("Checking Animation: %s"), *InternalName.ToString());
+            if (InternalName == AnimName)
+            {
+                return Anim;
+            }
+        }
+    }
+    return nullptr;
 }

@@ -1,6 +1,15 @@
 ﻿#include "ER_GameState.h"
 #include "GameModeBase/State/ER_PlayerState.h"
+#include "Net/UnrealNetwork.h"
 
+
+void AER_GameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AER_GameState, CurrentPhase);
+	DOREPLIFETIME(AER_GameState, PhaseServerTime);
+	DOREPLIFETIME(AER_GameState, PhaseDuration);
+}
 
 void AER_GameState::BuildTeamCache()
 {
@@ -9,7 +18,7 @@ void AER_GameState::BuildTeamCache()
 
 	UE_LOG(LogTemp, Warning, TEXT("[GS] : Start BuildTeamCache"));
 
-	const int32 TeamCount = static_cast<int32>(ETeam::Team3);
+	const int32 TeamCount = static_cast<int32>(ETeamType::Team_C);
 
 	TeamCache.SetNum(TeamCount + 1);
 
@@ -19,7 +28,7 @@ void AER_GameState::BuildTeamCache()
 	{
 		if (AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS))
 		{
-			const int32 TeamIdx = static_cast<int32>(ERPS->Team);
+			const int32 TeamIdx = static_cast<int32>(ERPS->TeamType);
 
 			if (!TeamCache.IsValidIndex(TeamIdx))
 				continue;
@@ -126,5 +135,16 @@ int32 AER_GameState::GetLastTeamIdx()
 
 	return (AliveTeamCount == 1) ? AliveTeamIdx : -1;
 	// 동시 탈락도 생각해야할 듯 추후에 개선
+}
+
+void AER_GameState::OnRep_Phase()
+{
+	OnPhaseChanged.Broadcast(GetCurrentPhase());
+}
+
+float AER_GameState::GetPhaseRemainingTime() const
+{
+	const float NowServer = GetServerWorldTimeSeconds();
+	return FMath::Max(0.f, (PhaseServerTime + PhaseDuration) - NowServer);
 }
 

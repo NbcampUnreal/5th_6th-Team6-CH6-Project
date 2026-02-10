@@ -9,8 +9,11 @@
 
 #include "Engine/World.h"
 #include "LineOfSight/VisionSubsystem.h"
-#include "TopDownVisionLogCategories.h"//log
+#include "TopDownVisionDebug.h"//log
 
+
+//Log Helper here
+// make it log the name of the local sampler  obj
 
 
 
@@ -56,12 +59,15 @@ void ULocalTextureSampler::UpdateLocalTexture()
 		return;// not for client logic here
 	}
 	
-	if (!LocalMaskRT)
+	if (!LocalMaskRT || !SourceRoot.IsValid())
 	{
-		UE_LOG(LOSVision, Verbose,
-			TEXT("ULocalTextureSampler::UpdateLocalTexture >> Missing RT"));
+		UE_LOG(LOSVision, VeryVerbose,
+			TEXT(" ULocalTextureSampler::UpdateLocalTexture >> skipped | RT=%d Root=%d"),
+			LocalMaskRT != nullptr,
+			SourceRoot.IsValid());
 		return;
 	}
+
 	/*if (!ObstacleSubsystem)
 	{
 		UE_LOG(LOSVision, Verbose,

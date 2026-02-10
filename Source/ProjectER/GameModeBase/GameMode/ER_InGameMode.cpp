@@ -3,6 +3,7 @@
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
 #include "GameModeBase/Subsystem/NeutralSpawn/ER_NeutralSpawnSubsystem.h"
+#include "GameModeBase/Subsystem/Phase/ER_PhaseSubsystem.h"
 
 #include "GameFramework/Character.h"
 #include "Engine/World.h"
@@ -70,17 +71,8 @@ void AER_InGameMode::Logout(AController* Exiting)
 
 	if (RemainingPlayers <= 1)
 	{
-		GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this]()
-			{
-				if (AER_GameState* ERGS = GetGameState<AER_GameState>())
-				{
-					ERGS->RemoveTeamCache();
-				}
-
-				UE_LOG(LogTemp, Warning, TEXT("[GM] Player is Zero -> ServerTravel to Lobby"));
-
-				GetWorld()->ServerTravel(TEXT("/Game/Level/Level_Lobby"), true);
-			}));
+		//로그아웃 시점에 플레이어가 1명일 시에 서버 초기화
+		EndGame();
 	}
 }
 
@@ -100,29 +92,91 @@ void AER_InGameMode::HandleStartingNewPlayer_Implementation(APlayerController* N
 
 	UE_LOG(LogTemp, Warning, TEXT("[GM] HandleStartingNewPlayer %d/%d"), PlayersInitialized, ExpectedPlayers);
 
-	if (PlayersInitialized >= ExpectedPlayers)
+	if (!bIsGameStarted && PlayersInitialized >= ExpectedPlayers)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[GM] All players ready! Building team cache..."));
-
-		AER_GameState* ERGS = GetGameState<AER_GameState>();
-		if (ERGS)
-		{
-			// 다음 틱에 실행
-			GetWorld()->GetTimerManager().SetTimerForNextTick([ERGS]()
-				{
-					ERGS->BuildTeamCache();
-				});
-			NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
-			NeutralSS->InitializeSpawnPoints(NeutralClass);
-		}
+		// 모든 플레이어가 준비된 상황에서 실행
+		StartGame();
 	}
+}
+
+void AER_InGameMode::DisConnectClient(APlayerController* PC)
+{
+	if (!PC) return;
+
+	if (ABasePlayerController* ERPC = Cast<ABasePlayerController>(PC))
+	{
+		ERPC->Client_ReturnToMainMenu(TEXT("GameOver"));
+	}
+
+	FTimerHandle Tmp;
+	GetWorld()->GetTimerManager().SetTimer(Tmp, [this, PC]()
+		{
+			if (GameSession)
+			{
+				GameSession->KickPlayer(PC, FText::FromString(TEXT("Defeated")));
+			}
+		}, 0.2f, false);
+}
+
+void AER_InGameMode::StartGame()
+{
+	if (bIsGameStarted) 
+	{
+		return;
+	}
+	bIsGameStarted = true;
+
+	UE_LOG(LogTemp, Warning, TEXT("[GM] All players ready! Starting game init..."));
+
+	TWeakObjectPtr<AER_InGameMode> WeakThis(this);
+	GetWorld()->GetTimerManager().SetTimerForNextTick([WeakThis]()
+		{
+			if (!WeakThis.IsValid()) return;
+			WeakThis->StartGame_Internal();
+		});
+}
+
+void AER_InGameMode::StartGame_Internal()
+{
+	AER_GameState* ERGS = GetGameState<AER_GameState>();
+	if (!ERGS)
+	{
+		return;
+	}
+
+	ERGS->BuildTeamCache();
+
+	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
+	if (NeutralSS)
+	{
+		NeutralSS->InitializeSpawnPoints(NeutralClass);
+		NeutralSS->FirstSpawnNeutral();
+	}
+
+	HandlePhaseTimeUp();
 }
 
 void AER_InGameMode::EndGame()
 {
-
+	TWeakObjectPtr<AER_InGameMode> WeakThis(this);
+	GetWorld()->GetTimerManager().SetTimerForNextTick([WeakThis]()
+		{
+			if (!WeakThis.IsValid()) return;
+			WeakThis->EndGame_Internal();
+		});
 }
 
+void AER_InGameMode::EndGame_Internal()
+{
+	if (AER_GameState* ERGS = GetGameState<AER_GameState>())
+	{
+		ERGS->RemoveTeamCache();
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[GM] Player is Zero -> ServerTravel to Lobby"));
+
+	GetWorld()->ServerTravel(TEXT("/Game/Level/Level_Lobby"), true);
+}
 
 void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter)
 {
@@ -146,7 +200,7 @@ void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter)
 			UE_LOG(LogTemp, Warning, TEXT("[GM] : NotifyPlayerDied , EvaluateTeamElimination = true"));
 
 			// 전멸 판정 true -> 해당 유저의 팀 사출 실행
-			const int32 TeamIdx = static_cast<int32>(ERPS->Team);
+			const int32 TeamIdx = static_cast<int32>(ERPS->TeamType);
 
 			// 해당 팀의 리스폰 타이머 정지
 			RespawnSS->StopResapwnTimer(*ERGS, TeamIdx);
@@ -182,34 +236,41 @@ void AER_InGameMode::NotifyNeutralDied(ACharacter* VictimCharacter)
 	ABaseMonster* NC = Cast<ABaseMonster>(VictimCharacter);
 	NC->GetSpawnPoint();
 	int32 SpawnPoint = NC->GetSpawnPoint();
+	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
+
 	NeutralSS->StartRespawnNeutral(SpawnPoint);
 }
 
-void AER_InGameMode::DisConnectClient(APlayerController* PC)
+void AER_InGameMode::HandlePhaseTimeUp()
 {
-	if (!PC) return;
-
-	if (ABasePlayerController* ERPC = Cast<ABasePlayerController>(PC))
+	AER_GameState* ERGS = GetGameState<AER_GameState>();
+	if (!ERGS)
 	{
-		ERPC->Client_ReturnToMainMenu(TEXT("GameOver"));
+		return;
+	}
+	UER_PhaseSubsystem* PhaseSS = GetWorld()->GetSubsystem<UER_PhaseSubsystem>();
+	if (!PhaseSS)
+	{
+		return;
 	}
 
-	FTimerHandle Tmp;
-	GetWorld()->GetTimerManager().SetTimer(Tmp, [this, PC]()
-		{
-			if (GameSession)
-			{
-				GameSession->KickPlayer(PC, FText::FromString(TEXT("Defeated")));
-			}
-		}, 0.2f, false);
+	ERGS->SetCurrentPhase(ERGS->GetCurrentPhase() + 1);
+	// 페이즈에 따라 작동할 코드 넣기
+	// (항공 보급 생성)
+	// (오브젝트 스폰)
+	
+	// 이후에 10초에서 180초로 수정
+	PhaseSS->StartPhaseTimer(*ERGS, PhaseDuration);
 }
 
 void AER_InGameMode::TEMP_SpawnNeutrals()
 {
+	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
 	NeutralSS->TEMP_SpawnNeutrals();
 }
 
 void AER_InGameMode::TEMP_DespawnNeutrals()
 {
+	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
 	NeutralSS->TEMP_NeutralsALLDespawn();
 }

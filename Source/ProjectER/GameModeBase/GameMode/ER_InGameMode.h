@@ -32,8 +32,10 @@ public:
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 	virtual void Logout(AController* Exiting) override;
 
-
+	void StartGame();
+	void StartGame_Internal();
 	void EndGame();
+	void EndGame_Internal();
 
 	UFUNCTION(BlueprintCallable)
 	void NotifyPlayerDied(ACharacter* VictimCharacter); //AActor* DeathCauser
@@ -44,6 +46,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void DisConnectClient(APlayerController* PC);
 
+	void HandlePhaseTimeUp();
+
 
 	UFUNCTION(BlueprintCallable)
 	void TEMP_SpawnNeutrals();
@@ -52,11 +56,12 @@ public:
 	void TEMP_DespawnNeutrals();
 
 private:
+	bool bIsGameStarted = false;
 	int32 PlayersInitialized = 0;
 	int32 ExpectedPlayers = 0;
+	float PhaseDuration = 30.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Subsystem|NeutralSpawn")
 	TMap<FName, FNeutralClassConfig> NeutralClass;
 
-	UER_NeutralSpawnSubsystem* NeutralSS;
 };

@@ -1,5 +1,5 @@
 ﻿#include "ItemSystem/ItemTestCharacter.h"
-#include "ItemSystem/BaseInventoryComponent.h"
+#include "ItemSystem/Component/BaseInventoryComponent.h"
 
 AItemTestCharacter::AItemTestCharacter()
 {

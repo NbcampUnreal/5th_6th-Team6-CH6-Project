@@ -2,7 +2,9 @@
 
 #include "Net/UnrealNetwork.h"
 #include "AbilitySystemComponent.h"
-#include "AttributeSet/BaseMonsterAttributeSet.h"
+#include "Monster/GAS/AttributeSet/BaseMonsterAttributeSet.h"
+#include "Monster/Data/MonsterDataAsset.h"
+#include "Monster/Data/BaseMonsterTableRow.h"
 
 #include "Components/StateTreeComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -12,6 +14,9 @@
 
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameModeBase/GameMode/ER_InGameMode.h"
+
+#include "Engine/AssetManager.h"
+#include "Engine/StreamableManager.h"
 
 ABaseMonster::ABaseMonster()
 	:TargetPlayer(nullptr),
@@ -48,9 +53,6 @@ ABaseMonster::ABaseMonster()
 	// 주변 플레이어 감지용 컴포넌트
 	MonsterRangeComp = CreateDefaultSubobject<UMonsterRangeComponent>(TEXT("MonsterRangeComponent"));	
 	MonsterRangeComp->SetIsReplicated(true);
-
-	//이동속도
-	GetCharacterMovement()->MaxWalkSpeed = AttributeSet->GetMoveSpeed();
 
 	//UI Component
 	HPBarWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComponent"));
@@ -96,12 +98,11 @@ void ABaseMonster::PossessedBy(AController* newController)
 
 	if (HasAuthority())
 	{
-		InitGiveAbilities();
-
 		AttributeSet->OnMonsterHit.AddDynamic(this, &ABaseMonster::OnMonterHitHandle);
 		AttributeSet->OnMonsterDeath.AddDynamic(this, &ABaseMonster::OnMonterDeathHandle);
 		MonsterRangeComp->OnPlayerCountOne.AddDynamic(this, &ABaseMonster::OnPlayerCountOneHandle);
 		MonsterRangeComp->OnPlayerCountZero.AddDynamic(this, &ABaseMonster::OnPlayerCountZeroHandle);
+		AttributeSet->OnMoveSpeedChanged.AddDynamic(this, &ABaseMonster::OnMoveSpeedChangedHandle);
 	}
 }
 
@@ -111,6 +112,9 @@ void ABaseMonster::BeginPlay()
 	
 	if (HasAuthority())
 	{
+		//테스트용 스폰
+		//FPrimaryAssetId MonsterAssetId(TEXT("Monster"), TEXT("DA_Monster_Orc"));
+		//InitMonsterData(MonsterAssetId, 1);
 		StartLocation = GetActorLocation();
 		StartRotator = GetActorRotation();
 		StateTreeComp->StartLogic();
@@ -118,20 +122,8 @@ void ABaseMonster::BeginPlay()
 	if (!HasAuthority())
 	{
 		// UI 로직
+		InitHPBar();
 		AttributeSet->OnHealthChanged.AddDynamic(this, &ABaseMonster::OnHealthChangedHandle);
-
-		UUserWidget* Widget = HPBarWidgetComp->GetUserWidgetObject();
-		if (IsValid(Widget) == false)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::BeginPlay : Not Widget"));
-		}
-		UProgressBar* HPBar = Cast<UProgressBar>(Widget->GetWidgetFromName(TEXT("HealthBar")));
-		if (IsValid(HPBar) == false)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::BeginPlay : Not HPBar"));
-		}
-
-		HPBar->SetPercent(1.f);
 	}
 }
 
@@ -139,6 +131,33 @@ void ABaseMonster::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+}
+
+void ABaseMonster::InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level)
+{
+	UAssetManager::Get().LoadPrimaryAsset(MonsterAssetId,
+		TArray<FName>(),
+		FStreamableDelegate::CreateUObject(
+			this,
+			&ABaseMonster::OnMonsterDataLoaded,
+			MonsterAssetId,
+			Level
+		));
+}
+
+void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Level)
+{
+	MonsterData = Cast<UMonsterDataAsset>(
+		UAssetManager::Get().GetPrimaryAssetObject(MonsterAssetId)
+	);
+	if (IsValid(MonsterData.Get()) == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitMonsterData - MonsterData is Not Valid!"));
+	}
+
+	InitVisuals();
+	InitAttributes(Level);
+	InitGiveAbilities();
 }
 
 void ABaseMonster::InitGiveAbilities()
@@ -149,18 +168,105 @@ void ABaseMonster::InitGiveAbilities()
 		return;
 	}
 
-	if (DefaultAbilities.IsEmpty())
+	if (MonsterData->DefaultAbilities.IsEmpty())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitGiveAbilities - DefaultAbilities is Empty!"));
 		return;
 	}
 
-	for (TSubclassOf<UGameplayAbility> Ability : DefaultAbilities)
+	for (auto& AbilityPtr : MonsterData->DefaultAbilities)
 	{
-		ASC->GiveAbility(
-			FGameplayAbilitySpec(Ability, 1, INDEX_NONE, this)
-		);
+		if (!AbilityPtr.IsValid())
+		{
+			AbilityPtr.LoadSynchronous();
+		}
+
+		if (AbilityPtr.IsValid() && ASC)
+		{
+			ASC->GiveAbility(FGameplayAbilitySpec(AbilityPtr.Get(), 1, 0));
+		}
 	}
+}
+
+void ABaseMonster::InitAttributes(float Level)
+{
+	MonsterData->MonsterDataTable.LoadSynchronous();
+	MonsterData->MonsterCurveTable.LoadSynchronous();
+
+	if (!MonsterData->MonsterDataTable.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitAttributes : MonsterDataTable Not"));
+		return;
+	}
+	if (!MonsterData->MonsterCurveTable.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitAttributes : MonsterCurveTable Not"));
+		return;
+	}
+	//Level로 CurveTable 적용 
+	
+	FBaseMonsterTableRow* MonsterRow = MonsterData->MonsterDataTable->FindRow<FBaseMonsterTableRow>(MonsterData->TableRowName, TEXT("MonsterData"));
+
+	if (MonsterRow)
+	{
+		
+		AttributeSet->SetLevel(1.f);
+		AttributeSet->SetMaxLevel(MonsterRow->BaseMaxLevel);
+		AttributeSet->SetXP(0.f);
+		AttributeSet->SetHealth(MonsterRow->BaseMaxHealth);
+		AttributeSet->SetHealthRegen(MonsterRow->BaseHealthRegen);
+		AttributeSet->SetStamina(MonsterRow->BaseMaxStamina);
+		AttributeSet->SetMaxStamina(MonsterRow->BaseMaxStamina);
+		AttributeSet->SetStaminaRegen(MonsterRow->BaseStaminaRegen);
+		AttributeSet->SetAttackRange(MonsterRow->BaseAttackRange);
+		AttributeSet->SetCriticalChance(MonsterRow->BaseCriticalChance);
+		AttributeSet->SetCriticalDamage(MonsterRow->BaseCriticalDamage);
+		AttributeSet->SetMoveSpeed(MonsterRow->BaseMoveSpeed);
+		AttributeSet->SetCooldownReduction(MonsterRow->BaseCooldownReduction);
+		AttributeSet->SetTenacity(MonsterRow->BaseTenacity);
+		AttributeSet->SetAttackSpeed(MonsterRow->BaseAttackSpeed);
+
+		FRealCurve* MaxHealth = MonsterData->MonsterCurveTable->FindCurve(FName("MaxHealth"), TEXT("MonsterCurve"));
+		if (MaxHealth)
+		{
+			AttributeSet->SetMaxHealth(MonsterRow->BaseMaxHealth + MaxHealth->Eval(Level));
+		}
+		FRealCurve* AttackPower = MonsterData->MonsterCurveTable->FindCurve(FName("AttackPower"), TEXT("MonsterCurve"));
+		if (AttackPower)
+		{
+			AttributeSet->SetAttackPower(MonsterRow->BaseAttackPower + AttackPower->Eval(Level));
+		}
+		FRealCurve* SkillAmp = MonsterData->MonsterCurveTable->FindCurve(FName("SkillAmp"), TEXT("MonsterCurve"));
+		if (SkillAmp)
+		{
+			AttributeSet->SetSkillAmp(MonsterRow->BaseSkillAmp + SkillAmp->Eval(Level));
+		}
+		FRealCurve* Defense = MonsterData->MonsterCurveTable->FindCurve(FName("Defense"), TEXT("MonsterCurve"));
+		if (Defense)
+		{
+			AttributeSet->SetDefense(MonsterRow->BaseDefense + Defense->Eval(Level));
+		}
+	}
+}
+
+void ABaseMonster::InitVisuals()
+{
+	MonsterData->Mesh.LoadSynchronous();
+	MonsterData->Anim.LoadSynchronous();
+
+	if (!MonsterData->Mesh.IsValid() || !GetMesh())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitVisuals : MonsterData->Mesh Not"));
+		return;
+	}
+	GetMesh()->SetSkeletalMesh(MonsterData->Mesh.Get());
+
+	if (!MonsterData->Anim.IsValid() || !GetMesh())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitVisuals : MonsterData->Anim Not"));
+		return;
+	}
+	GetMesh()->SetAnimInstanceClass(MonsterData->Anim.Get());
 }
 
 void ABaseMonster::OnRep_IsCombat()
@@ -185,6 +291,27 @@ void ABaseMonster::OnHealthChangedHandle(float CurrentHP, float MaxHP)
 	UUserWidget* Widget = HPBarWidgetComp->GetUserWidgetObject();
 	UProgressBar* HPBar = Cast<UProgressBar>(Widget->GetWidgetFromName(TEXT("HealthBar")));
 	HPBar->SetPercent(CurrentHP / MaxHP);
+}
+
+void ABaseMonster::OnMoveSpeedChangedHandle(float OldSpeed, float NewSpeed)
+{
+	GetCharacterMovement()->MaxWalkSpeed = NewSpeed;
+}
+
+void ABaseMonster::InitHPBar()
+{
+	UUserWidget* Widget = HPBarWidgetComp->GetUserWidgetObject();
+	if (IsValid(Widget) == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::BeginPlay : Not Widget"));
+	}
+	UProgressBar* HPBar = Cast<UProgressBar>(Widget->GetWidgetFromName(TEXT("HealthBar")));
+	if (IsValid(HPBar) == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::BeginPlay : Not HPBar"));
+	}
+
+	HPBar->SetPercent(1.f);
 }
 
 // 서버에서만
@@ -229,6 +356,11 @@ void ABaseMonster::OnMonterDeathHandle(AActor* Target)
 	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
 	InGameMode->NotifyNeutralDied(this);
 	// Target에게 보상 지급
+   
+	//BoxComp = 생성;
+	//BoxComp->InitBox(DataAsset->ItemList);
+
+	//타겟에게 GE를 이용해 경험치 전달
 
 	//
 }
@@ -241,8 +373,8 @@ void ABaseMonster::OnPlayerCountOneHandle()
 		return;
 	}
 	FGameplayEventData* Payload = new FGameplayEventData();
-	ASC->HandleGameplayEvent(FGameplayTag(BeginSearchEventTag), Payload);
-	StateTreeComp->SendStateTreeEvent(FStateTreeEvent(BeginSearchEventTag));
+	ASC->HandleGameplayEvent(BeginSearchEventTag, Payload);
+	StateTreeComp->SendStateTreeEvent(BeginSearchEventTag);
 }  
 
 void ABaseMonster::OnPlayerCountZeroHandle()
@@ -283,7 +415,6 @@ void ABaseMonster::SendAttackRangeEvent(float AttackRange)
 
 void ABaseMonster::SendReturnSuccessEvent()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Return Success"));
 	StateTreeComp->SendStateTreeEvent(FGameplayTag(ReturnEventTag));
 }
 
