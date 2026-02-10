@@ -33,7 +33,7 @@ public:
 	float RespawnDelay = 5.f;
 
 	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	//bool bIsSpawned = false;
+	bool bIsSpawned = false;
 };
 
 UCLASS()
@@ -44,6 +44,7 @@ class PROJECTER_API UER_NeutralSpawnSubsystem : public UWorldSubsystem
 public:
 	void InitializeSpawnPoints(TMap<FName, FNeutralClassConfig>& NeutralClass);
 	void StartRespawnNeutral(const int32 SpawnPointIdx);
+	void FirstSpawnNeutral();
 
 	void TEMP_SpawnNeutrals();
 	void TEMP_NeutralsALLDespawn();
@@ -52,4 +53,7 @@ private:
 
 	UPROPERTY()
 	TMap<int32, FNeutralInfo> NeutralSpawnMap;
+
+	UPROPERTY()
+	bool bIsInitialized = false;
 };
