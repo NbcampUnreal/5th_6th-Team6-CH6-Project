@@ -61,7 +61,4 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Skill|Tags")
 	FGameplayTag ActiveTag;
-
-	UPROPERTY(VisibleAnywhere, Category = "Skill|Tags")
-	FGameplayTag StatusTag;
 };
