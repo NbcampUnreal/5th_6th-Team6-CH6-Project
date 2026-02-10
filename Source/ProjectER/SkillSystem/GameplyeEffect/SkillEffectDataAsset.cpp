@@ -8,6 +8,11 @@
 #include "GameplayEffectComponent.h"
 
 
+USkillEffectDataAsset::USkillEffectDataAsset()
+{
+	IndexTag = FGameplayTag::RequestGameplayTag(FName("Skill.Data.EffectIndex"));
+}
+
 TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySystemComponent* InstigatorASC, USkillBase* InstigatorSkill, AActor* InEffectCauser)
 {
 	TArray<FGameplayEffectSpecHandle> OutSpecs;
@@ -21,44 +26,20 @@ TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySyste
 
 	int32 Level = InstigatorSkill->GetAbilityLevel();
 
-	for (const FSkillEffectDefinition& SkillEffectDefinition : Data.SkillEffectDefinition)
+	for (int32 i = 0; i < Data.SkillEffectDefinition.Num(); ++i)
 	{
-		if (SkillEffectDefinition.SkillEffectClass)
+		const FSkillEffectDefinition& Def = Data.SkillEffectDefinition[i];
+		if (Def.SkillEffectClass == nullptr) continue;
+
+		FGameplayEffectContextHandle ContextHandle = InstigatorASC->MakeEffectContext();
+		ContextHandle.AddSourceObject(this);
+		ContextHandle.AddInstigator(AvatarActor, FinalCauser);
+
+		FGameplayEffectSpecHandle SpecHandle = InstigatorASC->MakeOutgoingSpec(Def.SkillEffectClass, Level, ContextHandle);
+		if (SpecHandle.IsValid())
 		{
-			FGameplayEffectContextHandle ContextHandle = InstigatorASC->MakeEffectContext();
-
-			// 데이터 설정
-			ContextHandle.AddSourceObject(this);
-			ContextHandle.AddInstigator(AvatarActor, FinalCauser);
-
-			// Spec 생성
-			FGameplayEffectSpecHandle SpecHandle = InstigatorASC->MakeOutgoingSpec(SkillEffectDefinition.SkillEffectClass, Level, ContextHandle);
-			FGameplayEffectSpec* Spec = SpecHandle.Data.Get();
-
-			if (Spec)
-			{
-				//FGameplayModifierInfo NewModInfo;
-				//NewModInfo.Attribute = UMyAttributeSet::GetDefenseAttribute();
-				//NewModInfo.ModifierOp = EGameplayModOp::Additive;
-				//NewModInfo.ModifierMagnitude = FGameplayEffectModifierMagnitude(FScalableFloat(-10.f));
-
-				//// Spec의 Modifiers 배열에 강제로 삽입
-				//// 단, Modifiers는 FModifierSpec 배열이므로 포맷을 맞춰야 합니다.
-				//FModifierSpec NewModSpec(NewModInfo);
-				//Spec->Modifiers.Add(NewModSpec);
-				//ModifiedAttributes
-				/*for (FGameplayEffectModifiedAttribute& ModSpec : Spec->ModifiedAttributes)
-				{
-					
-					ModSpec.Attribute = Data.TargetAttribute;
-				}*/
-			}
-
-
-			if (SpecHandle.IsValid())
-			{
-				OutSpecs.Add(SpecHandle);
-			}
+			SpecHandle.Data->SetSetByCallerMagnitude(IndexTag, static_cast<float>(i));
+			OutSpecs.Add(SpecHandle);
 		}
 	}
 
