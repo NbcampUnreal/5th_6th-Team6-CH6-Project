@@ -728,8 +728,23 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 {
 	if (!IsValid(TargetActor))
 	{
-		SetTarget(nullptr); // 타겟이 사망 혹은 소멸 시 지정 해제
+		SetTarget(nullptr); // 타겟이 소멸 시 지정 해제
 		return;
+	}
+	
+	if (ITargetableInterface* TargetObj = Cast<ITargetableInterface>(TargetActor))
+	{
+		// 타겟이 타겟팅 불가능 상태(사망, 은신 등)라면?
+		if (!TargetObj->IsTargetable())
+		{
+			// 타겟 해제
+			SetTarget(nullptr);
+            
+			// 이동 및 공격 행위 중단 (공격 선딜레이 캔슬)
+			StopMove(); 
+            
+			return;
+		}
 	}
 
 	float Distance = GetDistanceTo(TargetActor);
