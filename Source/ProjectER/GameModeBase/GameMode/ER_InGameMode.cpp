@@ -99,6 +99,25 @@ void AER_InGameMode::HandleStartingNewPlayer_Implementation(APlayerController* N
 	}
 }
 
+void AER_InGameMode::DisConnectClient(APlayerController* PC)
+{
+	if (!PC) return;
+
+	if (ABasePlayerController* ERPC = Cast<ABasePlayerController>(PC))
+	{
+		ERPC->Client_ReturnToMainMenu(TEXT("GameOver"));
+	}
+
+	FTimerHandle Tmp;
+	GetWorld()->GetTimerManager().SetTimer(Tmp, [this, PC]()
+		{
+			if (GameSession)
+			{
+				GameSession->KickPlayer(PC, FText::FromString(TEXT("Defeated")));
+			}
+		}, 0.2f, false);
+}
+
 void AER_InGameMode::StartGame()
 {
 	if (bIsGameStarted) 
@@ -131,7 +150,7 @@ void AER_InGameMode::StartGame_Internal()
 	if (NeutralSS)
 	{
 		NeutralSS->InitializeSpawnPoints(NeutralClass);
-		NeutralSS->TEMP_SpawnNeutrals();
+		NeutralSS->FirstSpawnNeutral();
 	}
 
 	HandlePhaseTimeUp();
@@ -158,7 +177,6 @@ void AER_InGameMode::EndGame_Internal()
 
 	GetWorld()->ServerTravel(TEXT("/Game/Level/Level_Lobby"), true);
 }
-
 
 void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter)
 {
@@ -221,25 +239,6 @@ void AER_InGameMode::NotifyNeutralDied(ACharacter* VictimCharacter)
 	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
 
 	NeutralSS->StartRespawnNeutral(SpawnPoint);
-}
-
-void AER_InGameMode::DisConnectClient(APlayerController* PC)
-{
-	if (!PC) return;
-
-	if (ABasePlayerController* ERPC = Cast<ABasePlayerController>(PC))
-	{
-		ERPC->Client_ReturnToMainMenu(TEXT("GameOver"));
-	}
-
-	FTimerHandle Tmp;
-	GetWorld()->GetTimerManager().SetTimer(Tmp, [this, PC]()
-		{
-			if (GameSession)
-			{
-				GameSession->KickPlayer(PC, FText::FromString(TEXT("Defeated")));
-			}
-		}, 0.2f, false);
 }
 
 void AER_InGameMode::HandlePhaseTimeUp()
