@@ -3,9 +3,10 @@
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
+#include "CharacterSystem/Player/BasePlayerState.h"
+#include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 
 #include "Kismet/GameplayStatics.h"
-
 #include "GameFramework/Character.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -77,6 +78,9 @@ void ABasePlayerController::SetupInputComponent()
 		// [테스트용] 숫자키 1, 2번에 팀 변경 기능 강제 연결 (디버깅용)
 		InputComponent->BindKey(EKeys::One, IE_Pressed, this, &ABasePlayerController::Test_ChangeTeamToA);
 		InputComponent->BindKey(EKeys::Two, IE_Pressed, this, &ABasePlayerController::Test_ChangeTeamToB);
+		
+		// [테스트용] 0번 부활 키 연결
+		InputComponent->BindKey(EKeys::Zero, IE_Pressed, this, &ABasePlayerController::Test_ReviveInput);
 		
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Started, this, &ABasePlayerController::OnMoveStarted);
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnMoveTriggered);
@@ -327,6 +331,17 @@ void ABasePlayerController::Test_ChangeTeamToB()
 	{
 		ControlledBaseChar->Server_SetTeamID(ETeamType::Team_B);
 		UE_LOG(LogTemp, Log, TEXT("Request Change Team to B"));
+	}
+}
+
+void ABasePlayerController::Test_ReviveInput()
+{
+	if (ControlledBaseChar)
+	{
+		FVector CurrentLocation = ControlledBaseChar->GetActorLocation();
+		
+		// 서버에게 부활 요청
+		ControlledBaseChar->Server_Revive(CurrentLocation);
 	}
 }
 
