@@ -1,20 +1,20 @@
 ﻿#include "Monster/BaseMonster.h"
 
-#include "Net/UnrealNetwork.h"
-#include "AbilitySystemComponent.h"
 #include "Monster/GAS/AttributeSet/BaseMonsterAttributeSet.h"
 #include "Monster/Data/MonsterDataAsset.h"
 #include "Monster/Data/BaseMonsterTableRow.h"
+#include "GameModeBase/GameMode/ER_InGameMode.h"
 
 #include "Components/StateTreeComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Monster/MonsterRangeComponent.h"
 #include "Components/ProgressBar.h"
-
 #include "GameFramework/CharacterMovementComponent.h"
-#include "GameModeBase/GameMode/ER_InGameMode.h"
 
+#include "Net/UnrealNetwork.h"
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "Engine/AssetManager.h"
 #include "Engine/StreamableManager.h"
 
@@ -314,6 +314,8 @@ void ABaseMonster::InitHPBar()
 	HPBar->SetPercent(1.f);
 }
 
+
+
 // 서버에서만
 void ABaseMonster::OnMonterHitHandle(AActor* Target)
 {
@@ -360,9 +362,36 @@ void ABaseMonster::OnMonterDeathHandle(AActor* Target)
 	//BoxComp = 생성;
 	//BoxComp->InitBox(DataAsset->ItemList);
 
-	//타겟에게 GE를 이용해 경험치 전달
+	GiveRewardsToPlayer(Target);
+}
 
-	//
+void ABaseMonster::GiveRewardsToPlayer(AActor* Player)
+{
+	if (IsValid(Player) == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::GiveRewardsToPlayer : Not Player"));
+		return;
+	}
+	if (IsValid(MonsterData.Get()) == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::GiveRewardsToPlayer : Not MonsterData"));
+		return;
+	}
+		
+	//타겟에게 GE를 이용해 경험치 전달
+	FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
+	ContextHandle.AddSourceObject(this);
+	ContextHandle.AddInstigator(this, nullptr);
+	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(XPRewardEffect, 1, ContextHandle);
+	UAbilitySystemComponent* TargetASC =
+		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player);
+
+	SpecHandle.Data->SetSetByCallerMagnitude(
+		XPTag,
+		MonsterData->Exp
+	);
+	UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::GiveRewardsToPlayer : XP %d"), MonsterData->Exp);
+	TargetASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
 }
 
 void ABaseMonster::OnPlayerCountOneHandle()

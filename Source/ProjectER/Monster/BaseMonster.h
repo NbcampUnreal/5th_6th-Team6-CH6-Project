@@ -14,6 +14,7 @@ class UMonsterRangeComponent;
 class UWidgetComponent;
 class UUserWidget;
 class UBaseMonsterAttributeSet;
+class UGameplayEffect;
 class ABaseCharacter;
 class UMonsterDataAsset;
 struct FOnAttributeChangeData;
@@ -79,6 +80,8 @@ private:
 
 	void InitHPBar();
 
+	void GiveRewardsToPlayer(AActor* Player);
+
 
 #pragma region StateTree
 
@@ -123,7 +126,16 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UBaseMonsterAttributeSet> AttributeSet;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UGameplayEffect> AttributeEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UGameplayEffect> XPRewardEffect;
     
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	FGameplayTag XPTag;
+
 #pragma endregion
 
 #pragma region Ability Tag
