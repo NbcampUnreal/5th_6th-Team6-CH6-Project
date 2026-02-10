@@ -3,6 +3,7 @@
 
 #include "GameModeBase/Subsystem/NeutralSpawn/ER_NeutralSpawnSubsystem.h"
 #include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "GameModeBase/State/ER_GameState.h"
 #include "EngineUtils.h"
 #include "GameModeBase/TEMPNeutral.h"
 #include "Monster/BaseMonster.h"
@@ -16,7 +17,7 @@ void UER_NeutralSpawnSubsystem::InitializeSpawnPoints(TMap<FName, FNeutralClassC
     if (World->GetNetMode() == NM_Client)
         return;
 
-    const FName SpawnTag(TEXT("Neutral"));
+    const FName SpawnTag(TEXT("Monster"));
 
     UE_LOG(LogTemp, Log, TEXT("[NSS] InitializeSpawnPoints Start"));
 
@@ -33,6 +34,7 @@ void UER_NeutralSpawnSubsystem::InitializeSpawnPoints(TMap<FName, FNeutralClassC
 
         const FNeutralClassConfig* Picked = nullptr;
         // SpawnTag 태그가 아닌 다른 태그 확인
+        FName DAName;
         for (const FName& Tag : Actor->Tags)
         {
             if (Tag == SpawnTag)
@@ -42,11 +44,12 @@ void UER_NeutralSpawnSubsystem::InitializeSpawnPoints(TMap<FName, FNeutralClassC
             if (const FNeutralClassConfig* Found = NeutralClass.Find(Tag))
             {
                 Picked = Found;
+                DAName = Tag;
                 break;
             }
         }
 
-        if (!Picked || !Picked->Class)
+        if (!Picked || !Picked->Class || DAName.IsNone())
         {
             UE_LOG(LogTemp, Warning, TEXT("[NSS] No Class mapping for %s"), *Actor->GetName());
             continue;
@@ -59,6 +62,7 @@ void UER_NeutralSpawnSubsystem::InitializeSpawnPoints(TMap<FName, FNeutralClassC
         Info.SpawnPoint = Actor;
         Info.NeutralActorClass = Picked->Class;
         Info.RespawnDelay = Picked->RespawnDelay;
+        Info.DAName = DAName;
         //Info.bIsSpawned = false;
 
         // Map에 추가
@@ -92,10 +96,13 @@ void UER_NeutralSpawnSubsystem::StartRespawnNeutral(const int32 SpawnPointIdx)
                     Info->SpawnPoint->GetActorTransform(),
                     Params
                 );
-
+                FPrimaryAssetId MonsterAssetId(TEXT("Monster"), Info->DAName);
+                AER_GameState* ERGS = GetWorld()->GetAuthGameMode()->GetGameState<AER_GameState>();
+                Spawned->InitMonsterData(MonsterAssetId, ERGS->GetCurrentPhase());
                 Spawned->SetSpawnPoint(SpawnPointIdx);
 
                 Info->SpawnedActor = Spawned;
+                UE_LOG(LogTemp, Log, TEXT("[NSS] Complete NeutralSpawn DA_Name : %s , Phase : %d"), *Info->DAName.ToString(), ERGS->GetCurrentPhase());
             }),
         Info->RespawnDelay,
         false
@@ -126,7 +133,8 @@ void UER_NeutralSpawnSubsystem::TEMP_SpawnNeutrals()
             Info.SpawnPoint->GetActorTransform(),
             Params
         );
-
+        FPrimaryAssetId MonsterAssetId(TEXT("Monster"), TEXT("DA_Monster_Orc"));
+        Spawned->InitMonsterData(MonsterAssetId, 1);
         Spawned->SetSpawnPoint(Pair.Key);
 
         if (!Spawned)

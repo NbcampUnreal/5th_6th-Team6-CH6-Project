@@ -27,6 +27,8 @@ public:
 
 	FTimerHandle RespawnTimer;
 
+	FName DAName;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float RespawnDelay = 5.f;
 
