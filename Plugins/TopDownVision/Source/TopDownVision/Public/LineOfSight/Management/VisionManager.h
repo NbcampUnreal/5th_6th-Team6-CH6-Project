@@ -50,8 +50,8 @@ private:
 	TMap<uint8, FTeamVisionData> TeamVision;
 
 	// Replicated vision results (flattened)
-	UPROPERTY(ReplicatedUsing=OnRep_VisionUpdated)
-	TMap<uint8, TArray<AActor*>> ReplicatedVisibleActors;
+	//UPROPERTY(ReplicatedUsing=OnRep_VisionUpdated)
+	//TMap<uint8, TArray<AActor*>> ReplicatedVisibleActors;
 
 	UFUNCTION()
 	void OnRep_VisionUpdated();

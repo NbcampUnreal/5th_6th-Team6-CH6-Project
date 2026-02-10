@@ -47,7 +47,7 @@ void UVisionManager::UnregisterVisionProvider(
 
 void UVisionManager::UpdateVision()
 {
-	if (!CanRunServerLogic())
+	/*if (!CanRunServerLogic())
 	{
 		return;
 	}
@@ -91,7 +91,7 @@ void UVisionManager::UpdateVision()
 			if (Actor.IsValid())
 				RepArray.Add(Actor.Get());
 		}
-	}
+	}*/
 }
 
 bool UVisionManager::CanRunServerLogic()
@@ -101,11 +101,11 @@ bool UVisionManager::CanRunServerLogic()
 
 bool UVisionManager::IsActorVisibleToTeam(uint8 TeamId, AActor* Target) const
 {
-	if (const TArray<AActor*>* List =
+	/*if (const TArray<AActor*>* List =
 		ReplicatedVisibleActors.Find(TeamId))
 	{
 		return List->Contains(Target);
-	}
+	}*/
 	return false;
 }
 
@@ -114,7 +114,7 @@ void UVisionManager::GetLifetimeReplicatedProps(
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UVisionManager, ReplicatedVisibleActors);
+	/*DOREPLIFETIME(UVisionManager, ReplicatedVisibleActors);*/
 }
 
 void UVisionManager::OnRep_VisionUpdated()

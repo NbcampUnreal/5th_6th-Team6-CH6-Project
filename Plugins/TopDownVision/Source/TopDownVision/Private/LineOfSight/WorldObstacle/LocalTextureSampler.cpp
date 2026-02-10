@@ -8,12 +8,12 @@
 #include "Kismet/KismetRenderingLibrary.h"
 
 #include "Engine/World.h"
-#include "LineOfSight/WorldObstacleSubsystem.h"
+#include "LineOfSight/Management/WorldObstacleSubsystem.h"
 #include "TopDownVisionDebug.h"//log
 
 
 //Log Helper here
-// make it log the name of the local sampler  obj
+// make it log the name of the local sampler obj
 
 
 

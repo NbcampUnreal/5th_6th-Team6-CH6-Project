@@ -7,8 +7,8 @@
 #include "Kismet/KismetRenderingLibrary.h"
 #include "Materials/MaterialParameterCollectionInstance.h"
 #include "TopDownVisionDebug.h"
-#include "LineOfSight/VisionSubsystem.h"
 #include "LineOfSight/GPU/LOSStampPass.h"
+#include "LineOfSight/Management/WorldObstacleSubsystem.h"
 
 
 //Internal helper
