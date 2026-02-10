@@ -39,6 +39,9 @@ public class WorldBender : ModuleRules
 				"Slate",
 				"SlateCore",
 				// ... add private dependencies that you statically link with here ...	
+				
+				"RenderCore",//for shader module to be used
+				//"RHI",//render hardware interface
 			}
 			);
 		

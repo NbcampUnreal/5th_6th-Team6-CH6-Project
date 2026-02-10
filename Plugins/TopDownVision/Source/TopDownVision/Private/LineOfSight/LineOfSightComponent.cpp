@@ -145,6 +145,17 @@ void ULineOfSightComponent::UpdateLocalLOS()
         *TopDownVisionDebug::GetClientDebugName(GetOwner()));
 }
 
+void ULineOfSightComponent::UpdateTargetDetection()
+{
+    if (!bDetectionEnabled)
+    {
+        return;// not doing detection 
+    }
+
+    
+        
+}
+
 void ULineOfSightComponent::UpdateVisibleRange(float NewRange)
 {
     
@@ -215,37 +226,36 @@ void ULineOfSightComponent::ToggleUpdate(bool bIsOn)
 void ULineOfSightComponent::OnVisionSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-    if (!VisibilityTracer || !OtherComp || OtherActor == GetOwner())
-    {
+    if (!OtherActor || OtherActor == GetOwner())
         return;
-    }
 
-    /*const bool bVisible = VisibilityTracer->IsTargetVisible(
-        GetWorld(),
-        GetOwner()->GetActorLocation(),
-        OtherComp,
-        VisionRange,
-        ObstacleTraceChannel,
-        bDrawVisibilityRays,
-        DesiredAngleDegree);
+    if (!OtherComp)
+        return;
 
-    if (bVisible)
-    {
-        UE_LOG(LOSVision, Verbose,
-            TEXT("Target %s is Visible"), *OtherActor->GetName());
-    }*/
+    //filter by tag
+    if (!OtherActor->ActorHasTag(VisionTargetTag))
+        return;
+
+    OverlappedTargetActors.Add(OtherActor);
+
+    UE_LOG(LOSVision, Verbose,
+        TEXT("[%s] LOS overlap begin: %s"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+        *OtherActor->GetName());
 }
 
 void ULineOfSightComponent::OnVisionSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
     if (!OtherActor)
-    {
         return;
-    }
+
+    OverlappedTargetActors.Remove(OtherActor);
+
+    //remove the detected target as well in here
 
     UE_LOG(LOSVision, Verbose,
-        TEXT("[%s]ULineOfSightComponent::OnVisionSphereEndOverlap >> Target %s left vision range"),
+        TEXT("[%s] LOS overlap end: %s"),
         *TopDownVisionDebug::GetClientDebugName(GetOwner()),
         *OtherActor->GetName());
 }
@@ -333,6 +343,38 @@ bool ULineOfSightComponent::ShouldRunClientLogic() const
     //other conditions
 
     return true;
+}
+
+UPrimitiveComponent* ULineOfSightComponent::ResolveVisibilityShape(AActor* TargetActor) const
+{
+    if (!TargetActor)
+        return nullptr;
+
+    TArray<UPrimitiveComponent*> Prims;
+    TargetActor->GetComponents<UPrimitiveComponent>(Prims);
+
+    //priority of the returning primitive comp
+    // 1) Explicit tag wins
+    for (UPrimitiveComponent* Comp : Prims)
+    {
+        if (Comp && Comp->ComponentHasTag(VisionTargetTag))
+            return Comp;
+    }
+
+    // 2) Prefer common collision shapes
+    for (UPrimitiveComponent* Comp : Prims)
+    {
+        if (Comp && (
+            Comp->IsA<UCapsuleComponent>() ||
+            Comp->IsA<UBoxComponent>() ||
+            Comp->IsA<USphereComponent>()))
+        {
+            return Comp;
+        }
+    }
+
+    // 3) Fallback to root primitive
+    return Cast<UPrimitiveComponent>(TargetActor->GetRootComponent());
 }
 
 

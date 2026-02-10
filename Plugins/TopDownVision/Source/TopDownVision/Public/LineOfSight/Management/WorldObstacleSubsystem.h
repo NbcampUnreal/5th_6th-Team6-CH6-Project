@@ -7,7 +7,7 @@
 #include "LineOfSight/VisionData.h"// for enum, tag type
 
 #include "LineOfSight/WorldObstacle/LevelObstacleTileData.h"//FObstacleMaskTile
-#include "VisionSubsystem.generated.h"
+#include "WorldObstacleSubsystem.generated.h"
 
 
 //forward declare
@@ -34,10 +34,10 @@ DECLARE_MULTICAST_DELEGATE_OneParam(
 
 
 //Log
-TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(VisionSubsystem, Log, All);
+TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(ObstacleSubsystem, Log, All);
 
 UCLASS()
-class TOPDOWNVISION_API UVisionSubsystem : public UWorldSubsystem
+class TOPDOWNVISION_API UWorldObstacleSubsystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
 

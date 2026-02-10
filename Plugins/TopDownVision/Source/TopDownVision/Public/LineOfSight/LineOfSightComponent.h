@@ -38,7 +38,7 @@ public:
     void UpdateLocalLOS();//LOS stamp
 
     //UFUNCTION(BlueprintCallable, Category="LineOfSight")
-    //void UpdateTargetDetection();// this is for target detection update.
+    void UpdateTargetDetection();// this is for target detection update.
     //-> updating it per tick seems bit too much. use different timer
     
     UFUNCTION(BlueprintCallable, Category="LineOfSight")
@@ -91,8 +91,9 @@ private:
     bool ShouldRunClientLogic()const;
     
     /** Resolve which component represents the actor’s visibility shape */
-    //UPrimitiveComponent* ResolveVisibilityShape(AActor* TargetActor) const;
+    UPrimitiveComponent* ResolveVisibilityShape(AActor* TargetActor) const;
 
+   // void HandleTargetVisibilityChanged(AActor* DetectedTarget, bool bIsVisible);// this will be used for updating the visible actor
     
 protected:
     
@@ -107,6 +108,10 @@ protected:
      *  0 for shared vision
      *  others are shared only by same channel
      */
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
+    float VisibilityAlpha=1.0f;//0~1
+    //--> update the visibility alpha for update for appear and disappear anim
     
     /** Vision range (optional for material logic) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight")
@@ -142,6 +147,9 @@ protected:
     //============= Physical Detection ==========//
 #pragma region Detection
     //----------------------------------------------------------------------------------------------------------------//
+    UPROPERTY(EditAnywhere, Category="LineOfSight|Detection")
+    bool bDetectionEnabled = true;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="LineOfSight|Detection")
     USphereComponent* VisionSphere = nullptr;
 
@@ -164,7 +172,7 @@ protected:
 
     
     UPROPERTY(Transient)
-    TSet<TWeakObjectPtr<AActor>> DetectedTargetActors;//targets detected
+    TSet<TWeakObjectPtr<AActor>> OverlappedTargetActors;//targets detected
     //----------------------------------------------------------------------------------------------------------------//
 #pragma endregion
     

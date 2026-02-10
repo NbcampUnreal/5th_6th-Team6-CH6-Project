@@ -1,0 +1,82 @@
+#pragma once
+
+// path:   /Plugin/TopDownVision/PostFilter/PostFilter_Util.ush
+
+/*
+
+
+*/
+
+#pragma once
+
+float FeatherMaskOutward(
+	Texture2D MaskTex,
+	SamplerState MaskSampler,
+	float2 UV,
+	float2 TexelSize,
+	int FeatherRadius)
+{
+	float Center = MaskTex.SampleLevel(MaskSampler, UV, 0).r;
+    
+	// If we are already inside the mask, keep it solid (Feather Out only)
+	if (Center >= 0.99)
+	{
+		return 1.0;
+	}
+
+	float Accumulator = 0.0;
+	float Divisor = 0.0;
+    
+	// Use a box-search to find the proximity of the mask
+	// Increase radius for a wider, smoother falloff
+	for (int x = -FeatherRadius; x <= FeatherRadius; x++)
+	{
+		for (int y = -FeatherRadius; y <= FeatherRadius; y++)
+		{
+			float2 OffsetUV = UV + float2(x, y) * TexelSize;
+			float Sample = MaskTex.SampleLevel(MaskSampler, OffsetUV, 0).r;
+            
+			// Basic distance falloff for smoothness
+			float Dist = length(float2(x, y));
+			if (Dist <= FeatherRadius)
+			{
+				float Weight = 1.0 - (Dist / float(FeatherRadius));
+				Accumulator += Sample * Weight;
+				Divisor += Weight;
+			}
+		}
+	}
+
+	// Return the averaged influence, allowing the mask to "bleed" out
+	return saturate(Accumulator / max(Divisor, 0.0001) * 2.0);
+}
+
+
+float4 GaussianBlurPass(
+	float2 UV,
+	Texture2D Tex,
+	SamplerState TexSampler,
+	float2 TexelSize,
+	float Radius,
+	float Horizontal
+)
+{
+	float4 Sum = float4(0,0,0,0);
+	float WeightSum = 0;
+
+	float Sigma = Radius / 2.0;
+
+	// 1D Gaussian kernel (separable)
+	[unroll]
+	for (int i = -Radius; i <= Radius; i++)
+	{
+		float Offset = i;
+		float Weight = exp(-Offset*Offset / (2.0 * Sigma*Sigma));
+		WeightSum += Weight;
+
+		float2 SampleUV = UV + (Horizontal > 0.5 ? float2(Offset * TexelSize.x, 0) : float2(0, Offset * TexelSize.y));
+		Sum += Tex.Sample(TexSampler, SampleUV) * Weight;
+	}
+
+	return Sum / WeightSum;
+}

@@ -1,0 +1,47 @@
+#pragma once
+
+/**
+ * this is for visually updating the world with WPO alteration
+ *
+ * this math is copied in the cpp of this plugin so that the cpp and hlsl logic can be matched.
+ */
+
+// IncludePath : /Plugin/WorldBender/CurvedWorld.ush
+
+// return CalculateCurvedWorldOffset(WorldPos, Origin, CurveX, CurveY, BendWeight, RightVector, ForwardVector);
+
+
+float3 CalculateCurvedWorldOffset(
+	float3 WorldPos,
+	float3 Origin,//world pos of the camera rig root
+	float CurveX,
+	float CurveY,
+	float BendWeight,
+	float3 RightVector,//camera right
+	float3 ForwardVector)//camera forward
+{
+	// Calculate offset from origin
+	float3 Offset = WorldPos - Origin;
+    
+	// Project the World Offset onto the Camera's local horizontal axes using the Dot Product
+	// This gives us the distance *relative* to the camera's view, not the fixed World X/Y.
+    
+	// RightVector defines the camera's horizontal X-axis
+	float Offset_Camera_X = dot(Offset.xy, RightVector.xy);
+    
+	// ForwardVector defines the camera's horizontal Y-axis
+	float Offset_Camera_Y = dot(Offset.xy, ForwardVector.xy);
+    
+	// Calculate the total Z displacement based on Camera-Relative distance (Quadratic Curve)
+	// CurveX/CurveY control the strength of the side-to-side and front-to-back rolls
+	float Z_Bend_X = Offset_Camera_X * Offset_Camera_X * CurveX;
+	float Z_Bend_Y = Offset_Camera_Y * Offset_Camera_Y * CurveY;
+	float Total_Z_Bend = Z_Bend_X + Z_Bend_Y;
+    
+	// Apply the bending weight
+	Total_Z_Bend *= BendWeight;
+    
+	// Create the World Position Offset vector (WPO)
+	// Displacement is only along the World Z axis
+	return float3(0.0f, 0.0f, Total_Z_Bend);
+}

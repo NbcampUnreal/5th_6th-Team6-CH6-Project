@@ -10,7 +10,7 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/KismetRenderingLibrary.h"
 #include "TopDownVisionDebug.h"//log
-#include "LineOfSight/VisionSubsystem.h"
+#include "LineOfSight/Management/WorldObstacleSubsystem.h"
 
 #if WITH_EDITOR
 #include "EditorAssetLibrary.h"// this handles the asset management during the editor time
@@ -19,10 +19,6 @@
 // Sets default values
 AObstacleMaskBaker::AObstacleMaskBaker()
 {
-	// client only
-	bReplicates = false;
-	SetReplicatingMovement(false);
-	
 	PrimaryActorTick.bCanEverTick = false;
 
 	// root
@@ -89,7 +85,7 @@ static void MergeRTs_To_RG(
 	if (!RT_R || !RT_G || !OutRT)
 	{
 		UE_LOG(LOSWorldBaker, Error,
-			TEXT("MergeRTs_To_RG >> Invalid render target input"));
+			TEXT("AObstacleMaskBaker::MergeRTs_To_RG >> Invalid render target input"));
 		return;
 	}
 
@@ -106,7 +102,7 @@ static void MergeRTs_To_RG(
 	if (PixelsR.Num() != PixelsG.Num())
 	{
 		UE_LOG(LOSWorldBaker, Error,
-			TEXT("MergeRTs_To_RG >> Pixel count mismatch"));
+			TEXT("AObstacleMaskBaker::MergeRTs_To_RG >> Pixel count mismatch"));
 		return;
 	}
 
@@ -115,7 +111,7 @@ static void MergeRTs_To_RG(
 
 	for (int32 i = 0; i < PixelsR.Num(); i++)
 	{
-		OutPixels[i].R = PixelsR[i].R; // Shadow
+		OutPixels[i].R = PixelsR[i].R;// Shadow
 		OutPixels[i].G = PixelsG[i].R; // Low obstacle
 		OutPixels[i].A = 255;
 	}
@@ -142,7 +138,7 @@ static void MergeRTs_To_RG(
 	FlushRenderingCommands();
 
 	UE_LOG(LOSWorldBaker, Log,
-		TEXT("MergeRTs_To_RG >> Merge complete"));
+		TEXT("AObstacleMaskBaker::MergeRTs_To_RG >> Merge complete"));
 }
 
 
@@ -505,7 +501,7 @@ void AObstacleMaskBaker::ClearLocalData()
 	// Remove from VisionSubsystem
 	if (UWorld* World = GetWorld())
 	{
-		if (UVisionSubsystem* Vision = World->GetSubsystem<UVisionSubsystem>())
+		if (UWorldObstacleSubsystem* Vision = World->GetSubsystem<UWorldObstacleSubsystem>())
 		{
 			Vision->RemoveTileByTexture(LastBakedTexture);
 		}
@@ -577,7 +573,7 @@ void AObstacleMaskBaker::RegisterTile()
 		return;
 	}
 
-	UVisionSubsystem* Vision = GetWorld()->GetSubsystem<UVisionSubsystem>();
+	UWorldObstacleSubsystem* Vision = GetWorld()->GetSubsystem<UWorldObstacleSubsystem>();
 	if (!Vision)
 	{
 		UE_LOG(LOSWorldBaker, Log,

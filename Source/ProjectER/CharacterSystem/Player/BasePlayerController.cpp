@@ -28,6 +28,7 @@
 #include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "Blueprint/UserWidget.h"
 
+
 ABasePlayerController::ABasePlayerController()
 {
 	bShowMouseCursor = true;
@@ -50,6 +51,16 @@ void ABasePlayerController::BeginPlay()
 		if (DefaultMappingContext)
 		{
 			Subsystem->AddMappingContext(DefaultMappingContext, 0);
+		}
+	}
+
+	// Get curved world subsystem reference
+	if (UWorld* World = GetWorld())
+	{
+		CurvedWorldSubsystem = World->GetSubsystem<UCurvedWorldSubsystem>();
+		if (!CurvedWorldSubsystem)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("CurvedWorldSubsystem not found!"));
 		}
 	}
 }
@@ -170,7 +181,8 @@ void ABasePlayerController::MoveToMouseCursor()
 	}
 
 	FHitResult Hit;
-	if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))
+	//if (GetHitResultUnderCursor(ECC_Visibility, false, Hit)) //2026/02/10
+	if (GetCurvedHitResultUnderCursor(ECC_Visibility, false, Hit))//<- Replaced with a curve world accurate-hit result
 	{
 		if (Hit.bBlockingHit)
 		{
@@ -700,6 +712,24 @@ void ABasePlayerController::HideRespawnTimerUI()
 		RespawnUIInstance->RemoveFromParent();
 		RespawnUIInstance = nullptr;
 	}
+}
+
+bool ABasePlayerController::GetCurvedHitResultUnderCursor(ECollisionChannel TraceChannel, bool bTraceComplex,
+	FHitResult& OutHitResult)
+{
+	if (!CurvedWorldSubsystem)
+	{
+		// Fallback to normal trace if subsystem not available
+		return GetHitResultUnderCursor(TraceChannel, bTraceComplex, OutHitResult);
+	}
+
+	// Use curved world corrected trace
+	return FCurvedWorldUtil::GetHitResultUnderCursorCorrected(
+		this,
+		CurvedWorldSubsystem,
+		OutHitResult,
+		TraceChannel
+	);
 }
 
 

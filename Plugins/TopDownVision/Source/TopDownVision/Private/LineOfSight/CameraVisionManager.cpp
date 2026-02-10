@@ -7,8 +7,8 @@
 #include "Kismet/KismetRenderingLibrary.h"
 #include "Materials/MaterialParameterCollectionInstance.h"
 #include "TopDownVisionDebug.h"
-#include "LineOfSight/VisionSubsystem.h"
 #include "LineOfSight/GPU/LOSStampPass.h"
+#include "LineOfSight/Management/WorldObstacleSubsystem.h"
 
 
 //Internal helper
@@ -27,15 +27,12 @@ void UCameraVisionManager::BeginPlay()
 	UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::BeginPlay >> BeginPlay called"));
 }
 
-void UCameraVisionManager::Initialize(APlayerCameraManager* InCamera)
+void UCameraVisionManager::Initialize()
 {
 	if (!ShouldRunClientLogic())
 	{
 		return;// not for server
 	}
-
-	ActiveCamera = InCamera;
-	UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::Initialize >> Called with Camera: %s"), *GetNameSafe(ActiveCamera));
 
 	if (!CameraLocalRT)
 	{
@@ -156,7 +153,7 @@ void UCameraVisionManager::UpdateCameraLOS()
 
 		Provider->ToggleUpdate(bVisible);
 
-		if (bVisible)//!!!!! FUCK YEAH !!!!!
+		if (bVisible)// !!!!! FUCK YEAH !!!!!!
 		{
 			Provider->UpdateLocalLOS();// update in here, not in the owner's tick update
 		}
@@ -265,20 +262,6 @@ void UCameraVisionManager::UpdateCameraLOS()
 		TEXT("UCameraVisionManager::UpdateCameraLOS >> Update finished"));*/
 }
 
-void UCameraVisionManager::SetActiveCamera(APlayerCameraManager* InCamera)
-{
-	UE_LOG(LOSVision, Log,
-		TEXT("UCameraVisionManager::SetActiveCamera >> Called with %s"),
-		*GetNameSafe(InCamera));
-
-	if (!InCamera || InCamera == ActiveCamera)
-	{
-		UE_LOG(LOSVision, Log, TEXT("SetActiveCamera skipped: invalid or same camera"));
-		return;
-	}
-
-	ActiveCamera = InCamera;
-}
 //Internal helper for the Drawing LOS stamp
 void UCameraVisionManager::DrawLOSStamp(UCanvas* Canvas, const TArray<ULineOfSightComponent*>& Providers,
 	const FLinearColor& Color)
@@ -481,7 +464,7 @@ bool UCameraVisionManager::GetVisibleProviders(TArray<ULineOfSightComponent*>& O
 			TEXT("UCameraVisionManager::GetVisibleProviders >> Invalid VisionChannel"));*/
 		return false;
 	}
-	UVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<UVisionSubsystem>();
+	UWorldObstacleSubsystem* Subsystem = GetWorld()->GetSubsystem<UWorldObstacleSubsystem>();
 	if (!Subsystem)
 	{
 		/*UE_LOG(LOSVision, Error,
