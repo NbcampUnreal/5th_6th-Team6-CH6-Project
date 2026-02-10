@@ -112,8 +112,9 @@ void ABaseMonster::BeginPlay()
 	
 	if (HasAuthority())
 	{
-		FPrimaryAssetId MonsterAssetId(TEXT("Monster"), TEXT("DA_Monster_Orc"));
-		InitMonsterData(MonsterAssetId, 1);
+		//테스트용 스폰
+		//FPrimaryAssetId MonsterAssetId(TEXT("Monster"), TEXT("DA_Monster_Orc"));
+		//InitMonsterData(MonsterAssetId, 1);
 		StartLocation = GetActorLocation();
 		StartRotator = GetActorRotation();
 		StateTreeComp->StartLogic();
@@ -355,6 +356,11 @@ void ABaseMonster::OnMonterDeathHandle(AActor* Target)
 	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
 	InGameMode->NotifyNeutralDied(this);
 	// Target에게 보상 지급
+   
+	//BoxComp = 생성;
+	//BoxComp->InitBox(DataAsset->ItemList);
+
+	//타겟에게 GE를 이용해 경험치 전달
 
 	//
 }

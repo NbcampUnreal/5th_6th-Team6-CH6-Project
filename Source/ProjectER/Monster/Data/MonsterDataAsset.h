@@ -32,11 +32,24 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|GAS")
 	TArray<TSoftClassPtr<UGameplayAbility>> DefaultAbilities;
 
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|GAS")
+	TSoftClassPtr<UAnimMontage> SitMontage;
+
+
+
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
 	TSoftObjectPtr<USkeletalMesh> Mesh;
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
 	TSoftClassPtr<UAnimInstance> Anim;
 
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Reward")
+	int Exp;
+
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Reward")
+	int Gold;
+
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Reward")
+	TArray<UDataAsset*> ItemList;
 
 };

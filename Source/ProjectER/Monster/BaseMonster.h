@@ -108,6 +108,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData")
 	TSoftObjectPtr<UMonsterDataAsset> MonsterData;
 
+	// 사망 시 들고있을 박스 컴포넌트 변수
+	// ABaseBoxComponent BoxComp;
+
 protected:
 
 
@@ -117,9 +120,6 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UAbilitySystemComponent> ASC;
-
-	//UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
-	//TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UBaseMonsterAttributeSet> AttributeSet;
