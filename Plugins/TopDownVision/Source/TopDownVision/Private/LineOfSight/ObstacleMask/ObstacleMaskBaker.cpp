@@ -19,10 +19,6 @@
 // Sets default values
 AObstacleMaskBaker::AObstacleMaskBaker()
 {
-	// client only
-	bReplicates = false;
-	SetReplicatingMovement(false);
-	
 	PrimaryActorTick.bCanEverTick = false;
 
 	// root
@@ -89,7 +85,7 @@ static void MergeRTs_To_RG(
 	if (!RT_R || !RT_G || !OutRT)
 	{
 		UE_LOG(LOSWorldBaker, Error,
-			TEXT("MergeRTs_To_RG >> Invalid render target input"));
+			TEXT("AObstacleMaskBaker::MergeRTs_To_RG >> Invalid render target input"));
 		return;
 	}
 
@@ -106,7 +102,7 @@ static void MergeRTs_To_RG(
 	if (PixelsR.Num() != PixelsG.Num())
 	{
 		UE_LOG(LOSWorldBaker, Error,
-			TEXT("MergeRTs_To_RG >> Pixel count mismatch"));
+			TEXT("AObstacleMaskBaker::MergeRTs_To_RG >> Pixel count mismatch"));
 		return;
 	}
 
@@ -115,7 +111,7 @@ static void MergeRTs_To_RG(
 
 	for (int32 i = 0; i < PixelsR.Num(); i++)
 	{
-		OutPixels[i].R = PixelsR[i].R; // Shadow
+		OutPixels[i].R = PixelsR[i].R;// Shadow
 		OutPixels[i].G = PixelsG[i].R; // Low obstacle
 		OutPixels[i].A = 255;
 	}
@@ -142,7 +138,7 @@ static void MergeRTs_To_RG(
 	FlushRenderingCommands();
 
 	UE_LOG(LOSWorldBaker, Log,
-		TEXT("MergeRTs_To_RG >> Merge complete"));
+		TEXT("AObstacleMaskBaker::MergeRTs_To_RG >> Merge complete"));
 }
 
 

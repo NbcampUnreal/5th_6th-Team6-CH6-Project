@@ -1,12 +1,21 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "WorldBender.h"
+#include "Interfaces/IPluginManager.h"//for IPluginManager::Get()
+#include "Misc/Paths.h"
+#include "ShaderCore.h"
 
 #define LOCTEXT_NAMESPACE "FWorldBenderModule"
 
 void FWorldBenderModule::StartupModule()
 {
-	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
+	AddShaderSourceDirectoryMapping(
+    	TEXT("/Plugin/WorldBender"),
+    		FPaths::Combine(
+    			IPluginManager::Get().FindPlugin(TEXT("WorldBender"))->GetBaseDir(),
+    			TEXT("Shaders")
+    		)
+    	);
 }
 
 void FWorldBenderModule::ShutdownModule()

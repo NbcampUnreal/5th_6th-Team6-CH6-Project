@@ -305,7 +305,7 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
 		TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Drawing %d tiles"),
 		ActiveTileIndices.Num());
 
-	for (int32 TileIndex : ActiveTileIndices)
+	/*for (int32 TileIndex : ActiveTileIndices)
 	{
 		const FObstacleMaskTile& Tile = ObstacleSubsystem->GetTiles()[TileIndex];
 		if (!Tile.Mask)
@@ -367,6 +367,48 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
 		{
 			DebugCanvas->DrawItem(TileItem);
 		}
+	}
+	*/
+
+	for (int32 TileIndex : ActiveTileIndices)
+	{
+		const FObstacleMaskTile& Tile = ObstacleSubsystem->GetTiles()[TileIndex];
+		if (!Tile.Mask) continue;
+
+		// --- Math Section (Your original logic) ---
+		FVector2D LocalRelative = Tile.WorldCenter - LocalWorldBounds.Min;
+		FVector2D RotatedLocal;
+		RotatedLocal.X = LocalRelative.Y;
+		RotatedLocal.Y = LocalSize.X - LocalRelative.X;
+        
+		FVector2D TileCenterInRT;
+		TileCenterInRT.X = (RotatedLocal.X / LocalSize.Y) * LocalMaskRT->SizeX;
+		TileCenterInRT.Y = (RotatedLocal.Y / LocalSize.X) * LocalMaskRT->SizeY;
+        
+		FVector2D TileSizeInRT;
+		TileSizeInRT.X = (Tile.WorldSize.Y / LocalSize.Y) * LocalMaskRT->SizeX;
+		TileSizeInRT.Y = (Tile.WorldSize.X / LocalSize.X) * LocalMaskRT->SizeY;
+
+		// --- THE FIX: Inset Rendering ---
+		// We subtract a tiny fraction (0.5 pixel) from the size to prevent 
+		// the sampler from touching the "bleeding" edge of the source texture.
+		FVector2D SafeSize = TileSizeInRT - FVector2D(0.5f, 0.5f);
+		FVector2D TilePosInRT = TileCenterInRT - (SafeSize * 0.5f);
+
+		FCanvasTileItem TileItem(TilePosInRT, Tile.Mask->GetResource(), SafeSize, FLinearColor::White);
+        
+		// Ensure we use Additive blending so overlapping tiles merge correctly
+		TileItem.BlendMode = SE_BLEND_Additive;
+        
+		// --- THE FIX: UV Manual Clamp ---
+		// Instead of 0 to 1, we sample 0.001 to 0.999
+		TileItem.UV0 = FVector2D(0.001f, 0.001f);
+		TileItem.UV1 = FVector2D(0.999f, 0.999f);
+
+		TileItem.PivotPoint = FVector2D(0.5f, 0.5f);
+		TileItem.Rotation = FRotator(0.f, Tile.WorldRotationYaw - CameraYawOffset, 0.f);
+        
+		Canvas.DrawItem(TileItem);
 	}
 
 	//  Tell the GPU to execute all queued draws at once!!!!
