@@ -27,6 +27,9 @@ void UER_PhaseSubsystem::StartPhaseTimer(AER_GameState& GS, float Duration)
 
 void UER_PhaseSubsystem::ClearPhaseTimer()
 {
+    if (GetWorld()->GetNetMode() == NM_Client)
+        return;
+
     if (UWorld* World = GetWorld())
     {
         World->GetTimerManager().ClearTimer(PhaseTimer);
@@ -36,7 +39,11 @@ void UER_PhaseSubsystem::ClearPhaseTimer()
 void UER_PhaseSubsystem::OnPhaseTimeUp()
 {
     UWorld* World = GetWorld();
-    if (!World) return;
+    if (!World) 
+        return;
+
+    if (World->GetNetMode() == NM_Client)
+        return;
 
     if (AGameModeBase* GM = World->GetAuthGameMode())
     {
