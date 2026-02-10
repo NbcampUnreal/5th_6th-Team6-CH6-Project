@@ -8,7 +8,7 @@
 #include "Kismet/KismetRenderingLibrary.h"
 
 #include "Engine/World.h"
-#include "LineOfSight/VisionSubsystem.h"
+#include "LineOfSight/WorldObstacleSubsystem.h"
 #include "TopDownVisionDebug.h"//log
 
 
@@ -80,7 +80,7 @@ void ULocalTextureSampler::UpdateLocalTexture()
 		UWorld* World = GetWorld();
 		if (World)
 		{
-			ObstacleSubsystem = World->GetSubsystem<UVisionSubsystem>();
+			ObstacleSubsystem = World->GetSubsystem<UWorldObstacleSubsystem>();
             
 			if (ObstacleSubsystem)
 			{
@@ -161,7 +161,7 @@ void ULocalTextureSampler::SetLocalRenderTarget(UTextureRenderTarget2D* InRT)// 
 void ULocalTextureSampler::PrepareSetups()
 {
 	// Grab the VisionSubsystem
-	ObstacleSubsystem = GetWorld() ? GetWorld()->GetSubsystem<UVisionSubsystem>() : nullptr;
+	ObstacleSubsystem = GetWorld() ? GetWorld()->GetSubsystem<UWorldObstacleSubsystem>() : nullptr;
 	if (!ObstacleSubsystem)
 	{
 		UE_LOG(LOSVision, Warning, TEXT("ULocalTextureSampler::PrepareSetups >> Failed to get VisionSubsystem"));

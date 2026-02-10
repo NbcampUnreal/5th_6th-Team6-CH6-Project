@@ -464,7 +464,7 @@ bool UCameraVisionManager::GetVisibleProviders(TArray<ULineOfSightComponent*>& O
 			TEXT("UCameraVisionManager::GetVisibleProviders >> Invalid VisionChannel"));*/
 		return false;
 	}
-	UVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<UVisionSubsystem>();
+	UWorldObstacleSubsystem* Subsystem = GetWorld()->GetSubsystem<UWorldObstacleSubsystem>();
 	if (!Subsystem)
 	{
 		/*UE_LOG(LOSVision, Error,

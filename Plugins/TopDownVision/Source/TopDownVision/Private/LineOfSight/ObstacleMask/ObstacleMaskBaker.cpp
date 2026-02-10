@@ -10,7 +10,7 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/KismetRenderingLibrary.h"
 #include "TopDownVisionDebug.h"//log
-#include "LineOfSight/VisionSubsystem.h"
+#include "LineOfSight/WorldObstacleSubsystem.h"
 
 #if WITH_EDITOR
 #include "EditorAssetLibrary.h"// this handles the asset management during the editor time
@@ -501,7 +501,7 @@ void AObstacleMaskBaker::ClearLocalData()
 	// Remove from VisionSubsystem
 	if (UWorld* World = GetWorld())
 	{
-		if (UVisionSubsystem* Vision = World->GetSubsystem<UVisionSubsystem>())
+		if (UWorldObstacleSubsystem* Vision = World->GetSubsystem<UWorldObstacleSubsystem>())
 		{
 			Vision->RemoveTileByTexture(LastBakedTexture);
 		}
@@ -573,7 +573,7 @@ void AObstacleMaskBaker::RegisterTile()
 		return;
 	}
 
-	UVisionSubsystem* Vision = GetWorld()->GetSubsystem<UVisionSubsystem>();
+	UWorldObstacleSubsystem* Vision = GetWorld()->GetSubsystem<UWorldObstacleSubsystem>();
 	if (!Vision)
 	{
 		UE_LOG(LOSWorldBaker, Log,
