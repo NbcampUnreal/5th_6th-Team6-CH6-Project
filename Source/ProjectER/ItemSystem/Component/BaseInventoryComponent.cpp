@@ -1,5 +1,5 @@
-﻿#include "ItemSystem/BaseInventoryComponent.h"
-#include "ItemSystem/BaseItemData.h"
+﻿#include "ItemSystem/Component/BaseInventoryComponent.h"
+#include "ItemSystem/Data/BaseItemData.h"
 #include "Net/UnrealNetwork.h"
 
 UBaseInventoryComponent::UBaseInventoryComponent()

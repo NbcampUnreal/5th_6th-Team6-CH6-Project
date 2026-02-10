@@ -17,11 +17,11 @@
 #include "GameplayAbilitySpec.h"
 
 // [김현수 추가분] 상호작용 인터페이스 포함
-#include "ItemSystem/I_ItemInteractable.h"
-#include "ItemSystem/BaseItemActor.h"
-#include "ItemSystem/BaseBoxActor.h"
-#include "ItemSystem/W_LootingPopup.h"
-#include "ItemSystem/BaseInventoryComponent.h"
+#include "ItemSystem/Interface/I_ItemInteractable.h"
+#include "ItemSystem/Actor/BaseItemActor.h"
+#include "ItemSystem/Actor/BaseBoxActor.h"
+#include "ItemSystem/UI/W_LootingPopup.h"
+#include "ItemSystem/Component/BaseInventoryComponent.h"
 
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/GameMode/ER_OutGameMode.h"

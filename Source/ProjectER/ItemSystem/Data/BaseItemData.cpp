@@ -1,4 +1,4 @@
-﻿#include "ItemSystem/BaseItemData.h"
+﻿#include "ItemSystem/Data/BaseItemData.h"
 
 UBaseItemData::UBaseItemData()
 {

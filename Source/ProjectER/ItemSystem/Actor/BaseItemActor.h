@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "I_ItemInteractable.h"
+#include "ItemSystem/Interface/I_ItemInteractable.h"
 #include "BaseItemActor.generated.h"
 
 class USphereComponent;

@@ -1,5 +1,5 @@
 ﻿#include "ItemSystem/ItemTestPlayerController.h"
-#include "ItemSystem/I_ItemInteractable.h"
+#include "ItemSystem/Interface/I_ItemInteractable.h"
 #include "Kismet/GameplayStatics.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 
