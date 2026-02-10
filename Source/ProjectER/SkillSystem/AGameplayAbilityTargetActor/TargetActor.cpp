@@ -37,7 +37,10 @@ bool ATargetActor::TryConfirmMouseTarget()
 {
     UMouseTargetSkill* MouseSkill = Cast<UMouseTargetSkill>(OwningAbility);
     checkf(IsValid(MouseSkill), TEXT("ATargetActor::ConfirmTargetingAndContinue - MouseSkill Is Not Valid"));
-    if (AActor* ValidTarget = MouseSkill->GetTargetUnderCursorInRange())
+
+    AActor* ValidTarget = MouseSkill->GetTargetUnderCursorInRange();
+
+    if (ValidTarget)
     {
         FGameplayAbilityTargetDataHandle Handle = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(ValidTarget);
         TargetDataReadyDelegate.Broadcast(Handle);
