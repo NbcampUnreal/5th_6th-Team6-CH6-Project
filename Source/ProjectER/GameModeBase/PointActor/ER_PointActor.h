@@ -28,7 +28,7 @@ protected:
 
 public:	
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EPointActorType PointType = EPointActorType::None;
 
 };
