@@ -176,6 +176,22 @@ void UER_NeutralSpawnSubsystem::FirstSpawnNeutral()
     }
 }
 
+void UER_NeutralSpawnSubsystem::SetFalsebIsSpawned(const int32 SpawnPointIdx)
+{
+    UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    if (World->GetNetMode() == NM_Client)
+        return;
+
+    FNeutralInfo* Info = NeutralSpawnMap.Find(SpawnPointIdx);
+    if (!Info)
+        return;
+
+    Info->bIsSpawned = false;
+}
+
 void UER_NeutralSpawnSubsystem::TEMP_SpawnNeutrals()
 {
     UWorld* World = GetWorld();
