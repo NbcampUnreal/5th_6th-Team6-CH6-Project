@@ -11,8 +11,6 @@
 
 // Vision helpers
 #include "Components/SphereComponent.h"
-#include "Components/CapsuleComponent.h"
-#include "Components/BoxComponent.h"
 #include "LineOfSight/ObjectTracing/ShapeAwareVisibilityTracer.h"
 
 #include "DrawDebugHelpers.h"//debug for visualizing the activation
