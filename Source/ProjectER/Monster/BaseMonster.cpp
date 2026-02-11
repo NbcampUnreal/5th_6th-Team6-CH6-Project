@@ -113,8 +113,8 @@ void ABaseMonster::BeginPlay()
 	if (HasAuthority())
 	{
 		//테스트용 스폰
-		FPrimaryAssetId MonsterAssetId(TEXT("Monster"), TEXT("DA_Monster_Orc"));
-		InitMonsterData(MonsterAssetId, 1);
+		//FPrimaryAssetId MonsterAssetId(TEXT("Monster"), TEXT("DA_Monster_Orc"));
+		//InitMonsterData(MonsterAssetId, 1);
 		StartLocation = GetActorLocation();
 		StartRotator = GetActorRotation();
 	}
@@ -135,13 +135,14 @@ void ABaseMonster::Tick(float DeltaTime)
 void ABaseMonster::InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level)
 {
 	UAssetManager::Get().LoadPrimaryAsset(MonsterAssetId,
-		TArray<FName>({ "Init" }),
+		TArray<FName>(),
 		FStreamableDelegate::CreateUObject(
 			this,
 			&ABaseMonster::OnMonsterDataLoaded,
 			MonsterAssetId,
 			Level
-		));
+		))
+		;
 }
 
 void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Level)
