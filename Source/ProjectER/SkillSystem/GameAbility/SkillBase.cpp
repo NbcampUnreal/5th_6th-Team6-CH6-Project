@@ -94,6 +94,9 @@ void USkillBase::ExecuteSkill()
 	if (HasAuthority(&CurrentActivationInfo))
 	{
 		ApplyEffectsToActor(Avatar, CachedConfig->GetExcutionEffects());
+
+		ABaseCharacter* Character = Cast<ABaseCharacter>(Avatar);
+		if (Character) Character->StopMove();
 	}
 
 	if (IsLocallyControlled())
