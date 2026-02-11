@@ -237,7 +237,7 @@ void AER_InGameMode::NotifyNeutralDied(ACharacter* VictimCharacter)
 	NC->GetSpawnPoint();
 	int32 SpawnPoint = NC->GetSpawnPoint();
 	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
-
+	NeutralSS->SetFalsebIsSpawned(SpawnPoint);
 	NeutralSS->StartRespawnNeutral(SpawnPoint);
 }
 
