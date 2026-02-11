@@ -213,11 +213,21 @@ void ABaseMonster::InitAttributes(float Level)
 		AttributeSet->SetLevel(1.f);
 		AttributeSet->SetMaxLevel(MonsterRow->BaseMaxLevel);
 		AttributeSet->SetXP(0.f);
+		FRealCurve* MaxHealth = MonsterData->MonsterCurveTable->FindCurve(FName("MaxHealth"), TEXT("MonsterCurve"));
+		if (MaxHealth)
+		{
+			AttributeSet->SetMaxHealth(MonsterRow->BaseMaxHealth + MaxHealth->Eval(Level));
+		}
 		AttributeSet->SetHealth(MonsterRow->BaseMaxHealth);
 		AttributeSet->SetHealthRegen(MonsterRow->BaseHealthRegen);
 		AttributeSet->SetStamina(MonsterRow->BaseMaxStamina);
 		AttributeSet->SetMaxStamina(MonsterRow->BaseMaxStamina);
 		AttributeSet->SetStaminaRegen(MonsterRow->BaseStaminaRegen);
+		FRealCurve* AttackPower = MonsterData->MonsterCurveTable->FindCurve(FName("AttackPower"), TEXT("MonsterCurve"));
+		if (AttackPower)
+		{
+			AttributeSet->SetAttackPower(MonsterRow->BaseAttackPower + AttackPower->Eval(Level));
+		}
 		AttributeSet->SetAttackRange(MonsterRow->BaseAttackRange);
 		AttributeSet->SetCriticalChance(MonsterRow->BaseCriticalChance);
 		AttributeSet->SetCriticalDamage(MonsterRow->BaseCriticalDamage);
@@ -225,17 +235,6 @@ void ABaseMonster::InitAttributes(float Level)
 		AttributeSet->SetCooldownReduction(MonsterRow->BaseCooldownReduction);
 		AttributeSet->SetTenacity(MonsterRow->BaseTenacity);
 		AttributeSet->SetAttackSpeed(MonsterRow->BaseAttackSpeed);
-
-		FRealCurve* MaxHealth = MonsterData->MonsterCurveTable->FindCurve(FName("MaxHealth"), TEXT("MonsterCurve"));
-		if (MaxHealth)
-		{
-			AttributeSet->SetMaxHealth(MonsterRow->BaseMaxHealth + MaxHealth->Eval(Level));
-		}
-		FRealCurve* AttackPower = MonsterData->MonsterCurveTable->FindCurve(FName("AttackPower"), TEXT("MonsterCurve"));
-		if (AttackPower)
-		{
-			AttributeSet->SetAttackPower(MonsterRow->BaseAttackPower + AttackPower->Eval(Level));
-		}
 		FRealCurve* SkillAmp = MonsterData->MonsterCurveTable->FindCurve(FName("SkillAmp"), TEXT("MonsterCurve"));
 		if (SkillAmp)
 		{
