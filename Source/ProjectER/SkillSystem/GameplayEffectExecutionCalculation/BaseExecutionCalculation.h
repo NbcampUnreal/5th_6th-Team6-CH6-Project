@@ -10,6 +10,7 @@
  * 
  */
 struct FSkillEffectDefinition;
+class UBaseAttributeSet;
 UCLASS()
 class PROJECTER_API UBaseExecutionCalculation : public UGameplayEffectExecutionCalculation
 {
@@ -19,8 +20,9 @@ class PROJECTER_API UBaseExecutionCalculation : public UGameplayEffectExecutionC
 public:
 	UBaseExecutionCalculation();
 	virtual void Execute_Implementation(const FGameplayEffectCustomExecutionParameters& ExecutionParams, FGameplayEffectCustomExecutionOutput& OutExecutionOutput) const override;
-
 protected:
-	float ReturnCalculatedValue(const FGameplayEffectCustomExecutionParameters& ExecutionParams, const FSkillEffectDefinition& SkillEffectDefinition, const float Level) const;
+	float FindValueByAttribute(const FGameplayEffectCustomExecutionParameters& ExecutionParams, const FGameplayAttribute& Attribute, const TMap<FGameplayAttribute, FGameplayEffectAttributeCaptureDefinition>& TargetMap) const;
+	float ReturnCalculatedValue(const FGameplayEffectCustomExecutionParameters& ExecutionParams, const FSkillEffectDefinition& SkillEffectDefinition, const float Level, const TMap<FGameplayAttribute, FGameplayEffectAttributeCaptureDefinition>& SelectedMap) const;
+
 private:
 };

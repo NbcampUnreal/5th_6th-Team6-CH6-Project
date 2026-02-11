@@ -27,19 +27,20 @@ void UER_NeutralSpawnSubsystem::InitializeSpawnPoints(TMap<FName, FNeutralClassC
     NeutralSpawnMap.Reset();
 
     // 레벨에 있는 액터 순회
-    for (AActor* Actor : FActorRange(World))
+    for (auto& Point : Points)
     {
-        if (!IsValid(Actor))
+        AActor* PointActor = Point.Get();
+        if (!IsValid(PointActor))
             continue;
 
         // SpawnTag 태그를 가졌는지 확인
-        if (!Actor->ActorHasTag(SpawnTag))
+        if (!PointActor->ActorHasTag(SpawnTag))
             continue;
 
         const FNeutralClassConfig* Picked = nullptr;
         // SpawnTag 태그가 아닌 다른 태그 확인
         FName DAName;
-        for (const FName& Tag : Actor->Tags)
+        for (const FName& Tag : PointActor->Tags)
         {
             if (Tag == SpawnTag)
                 continue;
@@ -55,15 +56,15 @@ void UER_NeutralSpawnSubsystem::InitializeSpawnPoints(TMap<FName, FNeutralClassC
 
         if (!Picked || !Picked->Class || DAName.IsNone())
         {
-            UE_LOG(LogTemp, Warning, TEXT("[NSS] No Class mapping for %s"), *Actor->GetName());
+            UE_LOG(LogTemp, Warning, TEXT("[NSS] No Class mapping for %s"), *PointActor->GetName());
             continue;
         }
 
-        const int32 Key = Actor->GetUniqueID();
+        const int32 Key = PointActor->GetUniqueID();
 
         // FNeutralInfo 작성
         FNeutralInfo Info;
-        Info.SpawnPoint = Actor;
+        Info.SpawnPoint = PointActor;
         Info.NeutralActorClass = Picked->Class;
         Info.RespawnDelay = Picked->RespawnDelay;
         Info.DAName = DAName;
@@ -192,6 +193,17 @@ void UER_NeutralSpawnSubsystem::SetFalsebIsSpawned(const int32 SpawnPointIdx)
     Info->bIsSpawned = false;
 }
 
+void UER_NeutralSpawnSubsystem::RegisterPoint(AActor* Point)
+{
+    Points.AddUnique(Point);
+}
+
+void UER_NeutralSpawnSubsystem::UnregisterPoint(AActor* Point)
+{
+    Points.Remove(Point);
+}
+
+
 void UER_NeutralSpawnSubsystem::TEMP_SpawnNeutrals()
 {
     UWorld* World = GetWorld();
@@ -253,3 +265,4 @@ void UER_NeutralSpawnSubsystem::TEMP_NeutralsALLDespawn()
 
     }
 }
+
