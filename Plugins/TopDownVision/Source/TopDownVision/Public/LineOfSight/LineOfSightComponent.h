@@ -37,7 +37,7 @@ public:
     UFUNCTION(BlueprintCallable, Category="LineOfSight")
     void UpdateLocalLOS();//LOS stamp
 
-    //UFUNCTION(BlueprintCallable, Category="LineOfSight")
+    UFUNCTION(BlueprintCallable, Category="LineOfSight")
     void UpdateTargetDetection();// this is for target detection update.
     //-> updating it per tick seems bit too much. use different timer
     

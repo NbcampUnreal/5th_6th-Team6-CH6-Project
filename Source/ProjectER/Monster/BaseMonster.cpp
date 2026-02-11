@@ -423,6 +423,11 @@ void ABaseMonster::OnPlayerCountZeroHandle()
 
 void ABaseMonster::SendAttackRangeEvent(float AttackRange)
 {
+	if (IsValid(TargetPlayer) == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::SendAttackRangeEvent : Not Player"));
+		return;
+	}
 	const float Distance = 
 		FVector::DistSquared(
 			TargetPlayer->GetActorLocation(), 

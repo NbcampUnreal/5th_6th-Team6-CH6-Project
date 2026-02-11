@@ -6,7 +6,10 @@
 #include "UObject/Interface.h"
 #include "VisionProviderInterface.generated.h"
 
-// This class does not need to be modified.
+/*
+ * To Interact without casting, use TScriptInterface to pair and store them
+ * 
+ */
 UINTERFACE()
 class UVisionProviderInterface : public UInterface
 {
