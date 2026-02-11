@@ -87,11 +87,11 @@ void ABasePlayerController::SetupInputComponent()
 		if (!EnhancedInputComponent || !InputConfig) return;
 		
 		// [테스트용] 숫자키 1, 2번에 팀 변경 기능 강제 연결 (디버깅용)
-		InputComponent->BindKey(EKeys::One, IE_Pressed, this, &ABasePlayerController::Test_ChangeTeamToA);
-		InputComponent->BindKey(EKeys::Two, IE_Pressed, this, &ABasePlayerController::Test_ChangeTeamToB);
+		// InputComponent->BindKey(EKeys::One, IE_Pressed, this, &ABasePlayerController::Test_ChangeTeamToA);
+		// InputComponent->BindKey(EKeys::Two, IE_Pressed, this, &ABasePlayerController::Test_ChangeTeamToB);
 		
-		// [테스트용] 0번 부활 키 연결
-		InputComponent->BindKey(EKeys::Zero, IE_Pressed, this, &ABasePlayerController::Test_ReviveInput);
+		// [테스트용] 0번 경험치 획득(+100XP) 키 연결
+		InputComponent->BindKey(EKeys::Zero, IE_Pressed, this, &ABasePlayerController::Test_GainXP);
 		
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Started, this, &ABasePlayerController::OnMoveStarted);
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnMoveTriggered);
@@ -342,25 +342,25 @@ void ABasePlayerController::OnCanceled() {
 	}
 }
 
-void ABasePlayerController::Test_ChangeTeamToA()
+/*void ABasePlayerController::Test_ChangeTeamToA()
 {
 	if (ControlledBaseChar)
 	{
 		ControlledBaseChar->Server_SetTeamID(ETeamType::Team_A);
 		UE_LOG(LogTemp, Log, TEXT("Request Change Team to A"));
 	}
-}
+}*/
 
-void ABasePlayerController::Test_ChangeTeamToB()
+/*void ABasePlayerController::Test_ChangeTeamToB()
 {
 	if (ControlledBaseChar)
 	{
 		ControlledBaseChar->Server_SetTeamID(ETeamType::Team_B);
 		UE_LOG(LogTemp, Log, TEXT("Request Change Team to B"));
 	}
-}
+}*/
 
-void ABasePlayerController::Test_ReviveInput()
+/*void ABasePlayerController::Test_ReviveInput()
 {
 	if (ControlledBaseChar)
 	{
@@ -368,6 +368,26 @@ void ABasePlayerController::Test_ReviveInput()
 		
 		// 서버에게 부활 요청
 		ControlledBaseChar->Server_Revive(CurrentLocation);
+	}
+}*/
+
+void ABasePlayerController::Test_GainXP()
+{
+	if (ABaseCharacter* MyChar = Cast<ABaseCharacter>(GetPawn()))
+	{
+		if (UAbilitySystemComponent* ASC = MyChar->GetAbilitySystemComponent())
+		{
+			if (ABasePlayerState* PS = MyChar->GetPlayerState<ABasePlayerState>())
+			{
+				UBaseAttributeSet* AS = PS->GetAttributeSet();
+				if (AS)
+				{
+					ASC->ApplyModToAttribute(AS->GetIncomingXPAttribute(), EGameplayModOp::Additive, 100.0f);
+                    
+					UE_LOG(LogTemp, Log, TEXT("[Test] Gained 100 XP"));
+				}
+			}
+		}
 	}
 }
 

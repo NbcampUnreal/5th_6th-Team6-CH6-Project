@@ -228,6 +228,36 @@ void ABaseCharacter::OnRep_PlayerState()
 	InitUI();
 }
 
+void ABaseCharacter::HandleLevelUp()
+{
+	// 1. 서버 권한 확인
+	if (!HasAuthority()) return;
+
+	// 2. 스탯 재계산 (변경된 Level을 기준으로 CurveTable 값을 다시 읽어옴)
+	// InitAttributes 내부에서 GetCharacterLevel()을 호출하는데, 
+	// 이미 AttributeSet에서 Level을 올렸으므로 오른 레벨의 스탯이 적용됩니다.
+	InitAttributes();
+    
+	// 3. (선택) 레벨업 시 체력/마나 회복
+	if (GetAbilitySystemComponent())
+	{
+		// AttributeSet을 가져와서 직접 채워주거나 GameplayEffect 적용
+		if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+		{
+			if (UBaseAttributeSet* AS = PS->GetAttributeSet())
+			{
+				AS->SetHealth(AS->GetMaxHealth());
+				AS->SetStamina(AS->GetMaxStamina());
+			}
+		}
+	}
+
+	// 4. 이펙트 및 UI 처리 (Multicast)
+	// Multicast_LevelUpVFX(); 
+    
+	UE_LOG(LogTemp, Warning, TEXT("[LevelUp] New Level: %f"), GetCharacterLevel());
+}
+
 float ABaseCharacter::GetCharacterLevel() const
 {
 	/*if (const UBaseAttributeSet* BaseSet = GetPlayerState<ABasePlayerState>() ? GetPlayerState<ABasePlayerState>()->GetAttributeSet() : nullptr)
@@ -422,7 +452,34 @@ void ABaseCharacter::InitAttributes()
 		// 적용
 		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 	}
-
+	
+	// 최초 초기화 시 MaxXP 커브 데이터 캐싱
+	if (HeroData)
+	{
+		UCurveTable* Table = HeroData->StatCurveTable.LoadSynchronous(); 
+		if (Table)
+		{
+			// MaxXP 커브 찾기
+			FString RowNameStr = HeroData->StatusRowName.ToString() + TEXT("_MaxXp");
+			FRealCurve* FoundCurve = Table->FindCurve(FName(*RowNameStr), FString());
+			
+			if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+			{
+				if (UBaseAttributeSet* AS = PS->GetAttributeSet())
+				{
+					AS->SetMaxXPCurve(FoundCurve);
+				}
+			}
+			// 혹은 AER_PlayerState 사용 시
+			else if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
+			{
+				if (UBaseAttributeSet* AS = ERPS->GetAttributeSet())
+				{
+					AS->SetMaxXPCurve(FoundCurve);
+				}
+			}
+		}
+	}
 }
 
 void ABaseCharacter::InitVisuals()

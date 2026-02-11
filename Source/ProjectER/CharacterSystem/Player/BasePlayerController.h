@@ -54,11 +54,14 @@ protected:
 	void OnCanceled();
 	
 	// [테스트용] 팀 변경 함수
-	void Test_ChangeTeamToA();
-	void Test_ChangeTeamToB();
+	// void Test_ChangeTeamToA();
+	// void Test_ChangeTeamToB();
 	
 	// [테스트용] 부활 함수
-	void Test_ReviveInput();
+	// void Test_ReviveInput();
+
+	// [테스트] 경험치 획득
+	void Test_GainXP();
 	
 protected:
 	// 입력 매핑 컨텍스트 (IMC)

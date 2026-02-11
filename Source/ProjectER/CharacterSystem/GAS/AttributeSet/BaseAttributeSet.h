@@ -149,6 +149,17 @@ class PROJECTER_API UBaseAttributeSet : public UAttributeSet
 	
 #pragma endregion
 	
+#pragma region Cache
+public:
+	// 외부(캐릭터)에서 초기화할 때 커브 정보를 넘겨주는 함수
+	void SetMaxXPCurve(FRealCurve* InCurve) { CachedMaxXPCurve = InCurve; }
+	
+protected:
+	// 커브 데이터를 캐싱할 변수 (Replication 불필요)
+	FRealCurve* CachedMaxXPCurve = nullptr;
+
+#pragma endregion
+	
 protected:
 	// OnRep Functions
 	UFUNCTION() 
