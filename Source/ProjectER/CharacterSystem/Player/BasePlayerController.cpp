@@ -373,18 +373,25 @@ void ABasePlayerController::OnCanceled() {
 
 void ABasePlayerController::Test_GainXP()
 {
-	if (ABaseCharacter* MyChar = Cast<ABaseCharacter>(GetPawn()))
+	UE_LOG(LogTemp, Warning, TEXT("[Client] Zero Key Pressed!"));
+	
+	Server_TestGainXP();
+}
+
+void ABasePlayerController::Server_TestGainXP_Implementation()
+{
+	if (ControlledBaseChar)
 	{
-		if (UAbilitySystemComponent* ASC = MyChar->GetAbilitySystemComponent())
+		if (UAbilitySystemComponent* ASC = ControlledBaseChar->GetAbilitySystemComponent())
 		{
-			if (ABasePlayerState* PS = MyChar->GetPlayerState<ABasePlayerState>())
+			if (ABasePlayerState* PS = ControlledBaseChar->GetPlayerState<ABasePlayerState>())
 			{
 				UBaseAttributeSet* AS = PS->GetAttributeSet();
 				if (AS)
 				{
 					ASC->ApplyModToAttribute(AS->GetIncomingXPAttribute(), EGameplayModOp::Additive, 100.0f);
-                    
-					UE_LOG(LogTemp, Log, TEXT("[Test] Gained 100 XP"));
+					
+					UE_LOG(LogTemp, Log, TEXT("[Server] Gained 100 XP"));
 				}
 			}
 		}

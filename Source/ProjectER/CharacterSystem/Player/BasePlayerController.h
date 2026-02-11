@@ -63,6 +63,9 @@ protected:
 	// [테스트] 경험치 획득
 	void Test_GainXP();
 	
+	UFUNCTION(Server, Reliable)
+	void Server_TestGainXP();
+	
 protected:
 	// 입력 매핑 컨텍스트 (IMC)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
