@@ -83,7 +83,13 @@ float UBaseExecutionCalculation::ReturnCalculatedValue(const FGameplayEffectCust
         SourceStatValue = 0.f;
         FGameplayEffectAttributeCaptureDefinition CaptureDef(AttrData.SourceAttribute, EGameplayEffectAttributeCaptureSource::Source, false);
 
-        ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(CaptureDef, FAggregatorEvaluateParameters(), SourceStatValue);
+        if (ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(CaptureDef, FAggregatorEvaluateParameters(), SourceStatValue))
+        {
+
+        }
+        else {
+            UE_LOG(LogTemp, Warning, TEXT("123"));
+        }
 
         Coeff = AttrData.Coefficients.GetValueAtLevel(Level);
         BaseVal = AttrData.BasedValues.GetValueAtLevel(Level);
