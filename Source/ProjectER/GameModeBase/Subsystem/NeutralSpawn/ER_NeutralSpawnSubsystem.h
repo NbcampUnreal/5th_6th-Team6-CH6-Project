@@ -45,6 +45,7 @@ public:
 	void InitializeSpawnPoints(TMap<FName, FNeutralClassConfig>& NeutralClass);
 	void StartRespawnNeutral(const int32 SpawnPointIdx);
 	void FirstSpawnNeutral();
+	void SetFalsebIsSpawned(const int32 SpawnPointIdx);
 
 	void TEMP_SpawnNeutrals();
 	void TEMP_NeutralsALLDespawn();
