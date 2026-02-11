@@ -81,6 +81,7 @@ namespace ProjectER
 		{
 		//	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Heal);   // 치유량 (HP or MP)
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Damage); // 피해량
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(IncomingXP); // 경험치 습득량
 		}
 	}
 	

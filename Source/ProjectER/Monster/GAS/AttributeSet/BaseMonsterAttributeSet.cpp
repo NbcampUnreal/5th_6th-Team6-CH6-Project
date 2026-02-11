@@ -37,7 +37,12 @@ void UBaseMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 
 		AActor* Target = Context.GetEffectCauser();
 		ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActor());
-		
+		if (IsValid(Target) == false)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("UBaseMonsterAttributeSet::PostGameplayEffectExecute : Not Target"));
+			return;
+		}
+
 		OnMonsterHit.Broadcast(Target);
 		
 		if (GetHealth() <= 0.f)
