@@ -212,6 +212,20 @@ void ABasePlayerController::MoveToMouseCursor()
 					ETeamType MyTeam = ControlledBaseChar->GetTeamType();
 					ETeamType TargetTeam = TargetObj->GetTeamType();
 					
+					const UEnum* TeamEnumPtr = StaticEnum<ETeamType>();
+
+					if (TeamEnumPtr)
+					{
+						// 2. Enum 값을 사람이 읽을 수 있는 FString으로 변환합니다.
+						FString MyTeamStr = TeamEnumPtr->GetValueAsString(MyTeam);
+						FString TargetTeamStr = TeamEnumPtr->GetValueAsString(TargetTeam);
+
+						// 3. 로그 출력 (* 연산자로 FString -> TCHAR* 변환)
+						UE_LOG(LogTemp, Warning, TEXT("My Team: [%s] , Target Team : [%s]"), 
+							*MyTeamStr, 
+							*TargetTeamStr);
+					}
+					
 					bool bIsEnemy = (MyTeam != TargetTeam) && 
 									(MyTeam != ETeamType::None) && 
 									(TargetTeam != ETeamType::None);
