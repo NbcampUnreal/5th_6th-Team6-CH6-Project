@@ -23,25 +23,37 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Stat")
 	FName TableRowName; // 해당 몬스터 Row 이름
 
-	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Stat")
-	TSoftObjectPtr<UDataTable> MonsterDataTable;
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Stat", meta = (AssetBundles = "Init"))
+	TObjectPtr<UDataTable> MonsterDataTable;
 
-	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Stat")
-	TSoftObjectPtr<UCurveTable> MonsterCurveTable;
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Stat", meta = (AssetBundles = "Init"))
+	TObjectPtr<UCurveTable> MonsterCurveTable;
 
-	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|GAS")
-	TArray<TSoftClassPtr<UGameplayAbility>> DefaultAbilities;
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|GAS", meta = (AssetBundles = "Init"))
+	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
 
-	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|GAS")
-	TSoftClassPtr<UAnimMontage> SitMontage;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage", meta = (AssetBundles = "Init"))
+	TObjectPtr<UAnimMontage> AttackMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage", meta = (AssetBundles = "Init"))
+	TObjectPtr<UAnimMontage> DeadMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage", meta = (AssetBundles = "Init"))
+	TObjectPtr<UAnimMontage> IdleMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage", meta = (AssetBundles = "Init"))
+	TObjectPtr<UAnimMontage> MoveMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage", meta = (AssetBundles = "Init"))
+	TObjectPtr<UAnimMontage> SitMontage;
 
 
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual", meta = (AssetBundles = "Init"))
+	TObjectPtr<USkeletalMesh> Mesh;
 
-	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
-	TSoftObjectPtr<USkeletalMesh> Mesh;
-
-	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
-	TSoftClassPtr<UAnimInstance> Anim;
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual", meta = (AssetBundles = "Init"))
+	TSubclassOf<UAnimInstance> Anim;
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Reward")
 	int Exp;
@@ -49,6 +61,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Reward")
 	int Gold;
 
+	// 이거는 죽었을 때 로드해서 ??
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Reward")
 	TArray<UDataAsset*> ItemList;
 

@@ -34,8 +34,8 @@ void UBaseMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 		// 공격 대상 설정
 		const FGameplayEffectContextHandle& Context =
 			Data.EffectSpec.GetEffectContext();
-
-		AActor* Target = Context.GetEffectCauser();
+		
+		AActor* Target = Context.GetInstigator(); // 인스티게이터로
 		ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActor());
 		if (IsValid(Target) == false)
 		{

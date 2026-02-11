@@ -107,9 +107,9 @@ private:
 
 public:
 
-	// 몬스터 데이터 묶음
-	UPROPERTY(EditDefaultsOnly, Category = "MonsterData")
-	TSoftObjectPtr<UMonsterDataAsset> MonsterData;
+	// 몬스터 데이터 로드해서 참조
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "MonsterData")
+	TObjectPtr<UMonsterDataAsset> MonsterData;
 
 	// 사망 시 들고있을 박스 컴포넌트 변수
 	// ABaseBoxComponent BoxComp;
@@ -128,92 +128,89 @@ private:
 	TObjectPtr<UBaseMonsterAttributeSet> AttributeSet;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
-	TSubclassOf<UGameplayEffect> AttributeEffect;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<UGameplayEffect> XPRewardEffect;
     
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag XPTag;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Status", meta = (AllowPrivateAccess = "true"))
+	FGameplayTag IncomingXPTag;
 
 #pragma endregion
 
 #pragma region Ability Tag
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag DeathAbilityTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag ChaseAbilityTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag AttackAbilityTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag ReturnAbilityTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag SitAbilityTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag IdleAbilityTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag CombatAbilityTag;
 #pragma endregion
 
 #pragma region Event Tag
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Event", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag AttackEventTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Event", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag HitEventTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Event", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag DeathEventTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Event", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag BeginSearchEventTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Event", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag EndSearchEventTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Event", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag TargetOnEventTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Event", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag TargetOffEventTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Event", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag ReturnEventTag;
 
 #pragma endregion
 
 #pragma region State Tag
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|State", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag AliveStateTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|State", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag DeathStateTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|State", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag SitStateTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|State", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag IdleStateTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|State", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag CombatStateTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|State", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag MoveStateTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|State", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag AttackStateTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|State", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag ReturnStateTag;
 
 #pragma endregion 
