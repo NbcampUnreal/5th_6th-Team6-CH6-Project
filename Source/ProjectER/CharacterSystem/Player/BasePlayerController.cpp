@@ -737,13 +737,13 @@ bool ABasePlayerController::GetCurvedHitResultUnderCursor(ECollisionChannel Trac
 		return GetHitResultUnderCursor(TraceChannel, bTraceComplex, OutHitResult);
 	}
 
-	// Use curved world corrected trace
+	// Use curved world corrected trace -> for now, just do the z height only modification
 	return FCurvedWorldUtil::GetHitResultUnderCursorCorrected(
 		this,
 		CurvedWorldSubsystem,
 		OutHitResult,
-		TraceChannel
-	);
+		TraceChannel,
+		ECurveMathType::ZHeightOnly);
 }
 
 
