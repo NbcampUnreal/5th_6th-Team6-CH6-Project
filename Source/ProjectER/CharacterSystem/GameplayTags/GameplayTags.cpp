@@ -79,6 +79,7 @@ namespace ProjectER
 		{
 			// UE_DEFINE_GAMEPLAY_TAG_COMMENT(Health, "Data.Amount.Heal", "Heal Amount");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage, "Data.Amount.Damage", "Damage Amount");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(IncomingXP, "Data.Amount.IncomingXP", "Incoming XP Amount");
 		} 
 	}
 
