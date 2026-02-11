@@ -228,6 +228,36 @@ void ABaseCharacter::OnRep_PlayerState()
 	InitUI();
 }
 
+void ABaseCharacter::HandleLevelUp()
+{
+	// 서버 권한 확인
+	if (!HasAuthority()) return;
+
+	// 스탯 재계산 (변경된 Level을 기준으로 CurveTable 값을 다시 읽어옴)
+	// InitAttributes 내부에서 GetCharacterLevel()을 호출하는데, 
+	// 이미 AttributeSet에서 Level을 올렸으므로 오른 레벨의 스탯이 적용됩니다.
+	InitAttributes();
+    
+	// 레벨업 시 체력/마나 회복
+	if (GetAbilitySystemComponent())
+	{
+		// AttributeSet을 가져와서 직접 채워주거나 GameplayEffect 적용
+		if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+		{
+			if (UBaseAttributeSet* AS = PS->GetAttributeSet())
+			{
+				AS->SetHealth(AS->GetMaxHealth());
+				AS->SetStamina(AS->GetMaxStamina());
+			}
+		}
+	}
+
+	// 이펙트 및 UI 처리 (Multicast)
+	// Multicast_LevelUpVFX(); 
+    
+	UE_LOG(LogTemp, Warning, TEXT("[LevelUp] New Level: %f"), GetCharacterLevel());
+}
+
 float ABaseCharacter::GetCharacterLevel() const
 {
 	/*if (const UBaseAttributeSet* BaseSet = GetPlayerState<ABasePlayerState>() ? GetPlayerState<ABasePlayerState>()->GetAttributeSet() : nullptr)
@@ -235,24 +265,19 @@ float ABaseCharacter::GetCharacterLevel() const
 		return BaseSet->GetLevel();
 	}*/
 
-	if (const ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	if (const AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
 	{
-		// [전민성] - MVP 병합 시 else문 삭제 필요
-		if (const AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS))
+		if (const UBaseAttributeSet* AS = ERPS->GetAttributeSet())
 		{
-			if (const UBaseAttributeSet* AS = ERPS->GetAttributeSet())
-			{
-				return AS->GetLevel();
-			}
+			return AS->GetLevel();
 		}
-		else
+	}
+	else if (const ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	{
+		if (const UBaseAttributeSet* AS = PS->GetAttributeSet())
 		{
-			if (const UBaseAttributeSet* AS = PS->GetAttributeSet())
-			{
-				return AS->GetLevel();
-			}
+			return AS->GetLevel();
 		}
-
 	}
 
 	// 기본값(1레벨 시작) 반환
@@ -422,7 +447,44 @@ void ABaseCharacter::InitAttributes()
 		// 적용
 		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 	}
-
+	
+	// 최초 초기화 시 MaxXP 커브 데이터 캐싱
+	if (HeroData)
+	{
+		UCurveTable* Table = HeroData->StatCurveTable.LoadSynchronous(); 
+		if (Table)
+		{
+			// MaxXP 커브 찾기
+			FString RowNameStr = HeroData->StatusRowName.ToString() + TEXT("_MaxXp");
+			FRealCurve* FoundCurve = Table->FindCurve(FName(*RowNameStr), FString());
+			
+			// [로그 추가] 커브를 찾았는지 확인
+			if (FoundCurve)
+			{
+				UE_LOG(LogTemp, Log, TEXT("[InitAttributes] Found MaxXP Curve: %s"), *RowNameStr);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("[InitAttributes] FAILED to find Curve: %s !!! Check RowName in DataTable."), *RowNameStr);
+			}
+			
+			if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+			{
+				if (UBaseAttributeSet* AS = PS->GetAttributeSet())
+				{
+					AS->SetMaxXPCurve(FoundCurve);
+				}
+			}
+			// 혹은 AER_PlayerState 사용 시
+			else if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
+			{
+				if (UBaseAttributeSet* AS = ERPS->GetAttributeSet())
+				{
+					AS->SetMaxXPCurve(FoundCurve);
+				}
+			}
+		}
+	}
 }
 
 void ABaseCharacter::InitVisuals()
@@ -783,6 +845,16 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 		// 공격 어빌리티 실행 (GAS) : 서버 판정 우선
 		if (HasAuthority() && AbilitySystemComponent.IsValid())
 		{
+			// 공격 제한 태그 검사
+			static const FGameplayTag CastingTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Casting")); 
+			static const FGameplayTag ActiveTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Active"));
+            
+			if (AbilitySystemComponent->HasMatchingGameplayTag(CastingTag) || 
+				AbilitySystemComponent->HasMatchingGameplayTag(ActiveTag))
+			{
+				return; // 스킬 캐스팅 혹은 시전 중일 시 일반 공격 시도 종료
+			}
+			
 			FGameplayTag AttackTag = FGameplayTag::RequestGameplayTag(FName("Ability.Action.AutoAttack"));
 			
 			TArray<FGameplayAbilitySpec*> Specs;

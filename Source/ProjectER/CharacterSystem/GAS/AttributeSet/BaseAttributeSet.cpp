@@ -110,7 +110,7 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 	{
 		UE_LOG(LogTemp, Warning, TEXT("!!! HP 변경 감지됨 !!! 현재 HP: %f / %f"), GetHealth(), GetMaxHealth());
 	}
-	// 데미지 처리
+	// 데미지(Damage : Data.Amount.Damage) 처리
 	if (Data.EvaluatedData.Attribute == GetIncomingDamageAttribute())
 	{
 		const float LocalDamage = GetIncomingDamage();
@@ -138,6 +138,59 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 			else
 			{
 				// [필요 시, 피격 처리 추가 예정]
+			}
+		}
+	}
+	
+	// 경험치(XP : Data.Amount.IncomingXP) 처리
+	if (Data.EvaluatedData.Attribute == GetIncomingXPAttribute())
+	{
+		float LocalIncomingXP = GetIncomingXP();
+		SetIncomingXP(0.0f); // 메타 속성 초기화
+
+		if (LocalIncomingXP > 0.0f)
+		{
+			float CurrentXP = GetXP();
+			float NewXP = CurrentXP + LocalIncomingXP;
+			float CurrentMaxXP = GetMaxXP();
+			float CurrentLevel = GetLevel();
+			
+			int32 LevelUpCount = 0;
+			
+			if (CachedMaxXPCurve) 
+			{
+				if (CurrentMaxXP <= 0.0f) 
+				{
+					CurrentMaxXP = CachedMaxXPCurve->Eval(CurrentLevel);
+				}
+
+				while (NewXP >= CurrentMaxXP && CurrentMaxXP > 0.0f)
+				{
+					NewXP -= CurrentMaxXP;
+					CurrentLevel += 1.0f;
+					LevelUpCount++;
+                    
+					// 캐싱된 포인터에서 바로 계산 (LoadSynchronous 제거됨!)
+					CurrentMaxXP = CachedMaxXPCurve->Eval(CurrentLevel);
+				}
+			}
+			else
+			{
+				// [로그 추가] 캐싱된 커브가 없음
+				UE_LOG(LogTemp, Error, TEXT("[AttributeSet] CachedMaxXPCurve is NULL! Level Up Logic Skipped."));
+			}
+
+			// 남은 XP 적용 및 레벨 업
+			SetXP(NewXP);
+			SetLevel(CurrentLevel);
+			
+			// 레벨업이 발생 시 스탯 갱신 요청
+			if (LevelUpCount > 0)
+			{
+				if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(Data.Target.GetAvatarActor()))
+				{
+					TargetChar->HandleLevelUp(); 
+				}
 			}
 		}
 	}

@@ -191,11 +191,16 @@ void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter)
 	if (!ERPS || !ERGS)
 		return;
 
-	if (UER_RespawnSubsystem* RespawnSS = GetWorld()->GetSubsystem<UER_RespawnSubsystem>())
+	if (UER_RespawnSubsystem* RespawnSS = GetWorld()->GetSubsystem<UER_RespawnSubsystem>() )
 	{
 		RespawnSS->HandlePlayerDeath(*ERPS, *ERGS);
 
-		if (RespawnSS->EvaluateTeamElimination(*ERPS, *ERGS))
+		// 탈락 방지 페이즈인지 확인
+		const int32 Phase = ERGS->GetCurrentPhase();
+		const bool bCanEliminationProtect = (Phase == 1 || Phase == 2);
+
+		// 전멸 판정
+		if (RespawnSS->EvaluateTeamElimination(*ERPS, *ERGS) && !bCanEliminationProtect)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("[GM] : NotifyPlayerDied , EvaluateTeamElimination = true"));
 
@@ -237,7 +242,7 @@ void AER_InGameMode::NotifyNeutralDied(ACharacter* VictimCharacter)
 	NC->GetSpawnPoint();
 	int32 SpawnPoint = NC->GetSpawnPoint();
 	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
-
+	NeutralSS->SetFalsebIsSpawned(SpawnPoint);
 	NeutralSS->StartRespawnNeutral(SpawnPoint);
 }
 
@@ -253,11 +258,14 @@ void AER_InGameMode::HandlePhaseTimeUp()
 	{
 		return;
 	}
+	if (ERGS->GetCurrentPhase() < 5)
+	{
+		ERGS->SetCurrentPhase(ERGS->GetCurrentPhase() + 1);
+		// 페이즈에 따라 작동할 코드 넣기
+		// (항공 보급 생성)
+		// (오브젝트 스폰)
+	}
 
-	ERGS->SetCurrentPhase(ERGS->GetCurrentPhase() + 1);
-	// 페이즈에 따라 작동할 코드 넣기
-	// (항공 보급 생성)
-	// (오브젝트 스폰)
 	
 	// 이후에 10초에서 180초로 수정
 	PhaseSS->StartPhaseTimer(*ERGS, PhaseDuration);

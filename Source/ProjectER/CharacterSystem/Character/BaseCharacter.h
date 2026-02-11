@@ -90,11 +90,22 @@ protected:
 	
 #pragma region GAS
 public:
+	// [추가] 레벨업 시 AttributeSet에서 호출
+	virtual void HandleLevelUp();
+	
 	UFUNCTION(BlueprintCallable, Category = "GAS")
 	float GetCharacterLevel() const;
 	
 	UFUNCTION(BlueprintCallable, Category = "GAS")
 	float GetAttackRange() const;
+	
+protected:
+	UFUNCTION()
+	void OnRep_HeroData();
+
+	void InitAbilitySystem(); // ASC 초기화
+	void InitAttributes(); // AttributeSet 초기화
+	void InitVisuals(); // 메시, 애니메이션 로드
 	
 public:
 	UPROPERTY(ReplicatedUsing=OnRep_HeroData, EditAnywhere, BlueprintReadWrite, Category = "Data", meta = (ExposeOnSpawn = true))
@@ -106,14 +117,6 @@ public:
 	// 전민성 추가
 	UPROPERTY(EditAnywhere, Category = "GAS")
 	TSubclassOf<class UGameplayAbility> OpenAbilityClass;
-	
-protected:
-	UFUNCTION()
-	void OnRep_HeroData();
-
-	void InitAbilitySystem(); // ASC 초기화
-	void InitAttributes(); // AttributeSet 초기화
-	void InitVisuals(); // 메시, 애니메이션 로드
 	
 #pragma endregion 
 
