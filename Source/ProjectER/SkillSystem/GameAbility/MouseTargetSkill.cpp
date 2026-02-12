@@ -12,6 +12,7 @@
 #include "SkillSystem/AGameplayAbilityTargetActor/TargetActor.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
+#include "MouseClickSkill.h"
 
 #define ECC_SKill ECC_GameTraceChannel6
 
@@ -101,13 +102,6 @@ void UMouseTargetSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle
 	for (AActor* Actor : TargetActors)
 	{
 		AffectedActors.Add(Actor);
-		/*if (IsInRange(Actor))
-		{
-			AffectedActors.Add(Actor);
-		}
-		else {
-			EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
-		}*/
 	}
 
 	PrepareToActiveSkill();
