@@ -13,6 +13,16 @@ enum class EPointActorType : uint8
 	ObjectPoint,
 };
 
+UENUM(BlueprintType)
+enum class ERegionType : uint8
+{
+	None,
+	Region1,
+	Region2,
+	Region3,
+	Region4,
+};
+
 
 UCLASS()
 class PROJECTER_API AER_PointActor : public AActor
@@ -30,5 +40,8 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EPointActorType PointType = EPointActorType::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	ERegionType RegionType = ERegionType::None;
 
 };

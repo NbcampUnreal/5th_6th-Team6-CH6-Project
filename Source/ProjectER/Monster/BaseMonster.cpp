@@ -4,6 +4,7 @@
 #include "Monster/Data/MonsterDataAsset.h"
 #include "Monster/Data/BaseMonsterTableRow.h"
 #include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "CharacterSystem/Character/BaseCharacter.h"
 
 #include "Components/StateTreeComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -100,9 +101,11 @@ void ABaseMonster::PossessedBy(AController* newController)
 	{
 		AttributeSet->OnMonsterHit.AddDynamic(this, &ABaseMonster::OnMonterHitHandle);
 		AttributeSet->OnMonsterDeath.AddDynamic(this, &ABaseMonster::OnMonterDeathHandle);
+		AttributeSet->OnMoveSpeedChanged.AddDynamic(this, &ABaseMonster::OnMoveSpeedChangedHandle);
 		MonsterRangeComp->OnPlayerCountOne.AddDynamic(this, &ABaseMonster::OnPlayerCountOneHandle);
 		MonsterRangeComp->OnPlayerCountZero.AddDynamic(this, &ABaseMonster::OnPlayerCountZeroHandle);
-		AttributeSet->OnMoveSpeedChanged.AddDynamic(this, &ABaseMonster::OnMoveSpeedChangedHandle);
+		MonsterRangeComp->OnPlayerOut.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
+		
 	}
 }
 
@@ -322,7 +325,13 @@ void ABaseMonster::InitHPBar()
 // 서버에서만
 void ABaseMonster::OnMonterHitHandle(AActor* Target)
 {
-	SetTargetPlayer(Target);
+	if (TargetPlayer == nullptr)
+	{
+		SetTargetPlayer(Target);
+		ABaseCharacter* BC = Cast<ABaseCharacter>(Target);
+		BC->OnDeath.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
+	}
+	
 	SetbIsCombat(true);
 
 	if (IsValid(StateTreeComp) == false)
@@ -397,6 +406,40 @@ void ABaseMonster::GiveRewardsToPlayer(AActor* Player)
 	TargetASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
 }
 
+void ABaseMonster::OnCooldown(FGameplayTag CooldownTag, float Cooldown)
+{
+	// 쿨다운 태그 부착
+	AddCooldownTag(AutoAttackCooldownTag);
+	// 타이머로 일정시간후 쿨다운 태그 때기
+	GetWorld()->GetTimerManager().SetTimer(
+		AutoAttackCooldownTimer,
+		FTimerDelegate::CreateLambda([this]()
+			{
+				RemoveCooldownTag(AutoAttackCooldownTag);
+			}),
+		Cooldown,
+		false
+	);
+}
+
+void ABaseMonster::AddCooldownTag(FGameplayTag CooldownTag)
+{
+	ASC->AddLooseGameplayTag(CooldownTag);
+}
+
+void ABaseMonster::RemoveCooldownTag(FGameplayTag CooldownTag)
+{
+	ASC->RemoveLooseGameplayTag(CooldownTag);
+}
+
+void ABaseMonster::OnTargetLostHandle()
+{
+	ABaseCharacter* BC = Cast<ABaseCharacter>(TargetPlayer);
+	BC->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+	StateTreeComp->SendStateTreeEvent(FGameplayTag(TargetOffEventTag));
+	TargetPlayer = nullptr;
+}
+
 void ABaseMonster::OnPlayerCountOneHandle()
 { 
 	if (IsValid(ASC) == false)
@@ -432,21 +475,24 @@ void ABaseMonster::SendAttackRangeEvent(float AttackRange)
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::SendAttackRangeEvent : Not Player"));
 		return;
 	}
-	const float Distance = 
-		FVector::DistSquared(
-			TargetPlayer->GetActorLocation(), 
-			GetActorLocation()
-		);
-
-	if (Distance <= AttackRange * AttackRange)
+	const float Distance = FVector::DistSquared(
+			TargetPlayer->GetActorLocation(), GetActorLocation());
+	bool AutoAttackCooldown = ASC->HasMatchingGameplayTag(AutoAttackCooldownTag);
+	
+	UE_LOG(LogTemp, Warning, TEXT("%s"), AutoAttackCooldown ? TEXT("AutoAttackCooldownTag true") : TEXT("AutoAttackCooldownTag false"));
+	
+	if (!AutoAttackCooldown && Distance <= AttackRange * AttackRange)
 	{
 		// 공격가능
-		StateTreeComp->SendStateTreeEvent(FGameplayTag(TargetOnEventTag));
+		StateTreeComp->SendStateTreeEvent(FGameplayTag(AttackEventTag));
+
+		float Cooldown = AttributeSet->GetAttackSpeed();
+		OnCooldown(AutoAttackCooldownTag, Cooldown);
 	}
 	else
 	{
 		// 공격불가능
-		StateTreeComp->SendStateTreeEvent(FGameplayTag(TargetOffEventTag));
+		StateTreeComp->SendStateTreeEvent(FGameplayTag(TargetOnEventTag));
 	}
 }
 

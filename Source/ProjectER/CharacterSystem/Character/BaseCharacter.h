@@ -13,6 +13,8 @@ class UBaseAttributeSet;
 class UGameplayEffect;
 class UCharacterData;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
+
 UCLASS()
 class PROJECTER_API ABaseCharacter : public ACharacter,  public IAbilitySystemInterface, public ITargetableInterface
 {
@@ -167,6 +169,10 @@ public:
 	// 공격 가능 사거리 확인
 	void CheckCombatTarget(float DeltaTime);
 	
+	//  공격 명령 (A키 입력)
+	UFUNCTION(Server, Reliable)
+	void Server_AttackMoveToLocation(FVector TargetLocation);
+	
 protected:
 	UFUNCTION()
 	void OnRep_TargetActor();
@@ -174,11 +180,16 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void Server_SetTarget(AActor* NewTarget);
 	
+	// 이동 중 주변 적 검색 함수
+	void ScanForEnemiesWhileMoving();
 	
 protected:
 	// 현재 타겟 (적)
 	UPROPERTY(ReplicatedUsing = OnRep_TargetActor, VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<AActor> TargetActor;
+	
+	//  공격 명령 (A키 입력) 상태 확인 플래그
+	uint8 bIsAttackMoving : 1;
 	
 #pragma endregion
 
@@ -193,6 +204,9 @@ public:
 	// 부활 처리 호출
 	virtual void Revive(FVector RespawnLocation);
 	
+	UPROPERTY()
+	FOnDeath OnDeath;
+
 protected:
 	// 사망 동기화
 	UFUNCTION(NetMulticast, Reliable)

@@ -14,6 +14,8 @@
 #include "Net/UnrealNetwork.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Engine/World.h"
+#include "Engine/EngineTypes.h"
+#include "Engine/OverlapResult.h"
 #include "NavigationSystem.h"
 #include "NavigationPath.h"
 #include "GameplayEffect.h"
@@ -68,7 +70,7 @@ ABaseCharacter::ABaseCharacter()
 	/* === 팀 변수 초기화  === */
 	TeamID = ETeamType::None;
 
-
+	bIsAttackMoving = false;
 
 	// 26.01.29. mpyi
 	// 미니맵을 위한 씬 컴포넌트 2D <- 차후 '카메라' 시스템으로 이동할 예정
@@ -144,6 +146,11 @@ void ABaseCharacter::Tick(float DeltaTime)
 			CheckCombatTarget(DeltaTime);
 		}
 	}	
+	
+	if (HasAuthority() && bIsAttackMoving && !TargetActor)
+	{
+		ScanForEnemiesWhileMoving();
+	}
 }
 
 void ABaseCharacter::PossessedBy(AController* NewController)
@@ -608,6 +615,8 @@ void ABaseCharacter::StopMove()
 	{
 		Server_StopMove();
 	}
+	
+	bIsAttackMoving = false;
 }
 
 void ABaseCharacter::UpdatePathFollowing()
@@ -896,6 +905,18 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 	}
 }
 
+void ABaseCharacter::Server_AttackMoveToLocation_Implementation(FVector TargetLocation)
+{
+	// 기존 타겟 해제
+	SetTarget(nullptr);
+    
+	// 이동 상태를 '공격 명령'으로 설정
+	bIsAttackMoving = true;
+
+	// 이동 시작
+	MoveToLocation(TargetLocation);
+}
+
 void ABaseCharacter::OnRep_TargetActor()
 {
 	// 타겟 유무에 따라 Tick 활성화/비활성화
@@ -915,6 +936,62 @@ void ABaseCharacter::OnRep_TargetActor()
 			TargetActor ? *TargetActor->GetName() : TEXT("None"));
 	}
 #endif
+}
+
+void ABaseCharacter::ScanForEnemiesWhileMoving()
+{
+	// 주변 적 검색 로직 (SphereOverlap)
+	FVector MyLoc = GetActorLocation();
+	float ScanRange = GetAttackRange(); // 내 사거리만큼 검색 (혹은 시야거리)
+
+	TArray<FOverlapResult> OverlapResults;
+	FCollisionQueryParams QueryParams(NAME_None, false, this);
+    
+	bool bResult = GetWorld()->OverlapMultiByChannel(
+		OverlapResults,
+		MyLoc,
+		FQuat::Identity,
+		ECC_Pawn, // Pawn 채널 검색 (적 캐릭터)
+		FCollisionShape::MakeSphere(ScanRange),
+		QueryParams
+	);
+
+	if (bResult)
+	{
+		AActor* ClosestEnemy = nullptr;
+		float MinDistSq = FLT_MAX;
+
+		for (const FOverlapResult& Result : OverlapResults)
+		{
+			AActor* OtherActor = Result.GetActor();
+			if (!OtherActor || OtherActor == this) continue;
+
+			if (ITargetableInterface* TargetObj = Cast<ITargetableInterface>(OtherActor))
+			{
+				// 적군이고 타겟팅 가능한지 확인
+				if (TargetObj->GetTeamType() != GetTeamType() && TargetObj->IsTargetable())
+				{
+					float DistSq = FVector::DistSquared(MyLoc, OtherActor->GetActorLocation());
+					if (DistSq < MinDistSq)
+					{
+						MinDistSq = DistSq;
+						ClosestEnemy = OtherActor;
+					}
+				}
+			}
+		}
+
+		// 적을 찾았으면 타겟으로 설정하고 이동 중지 (자동 공격 시작됨)
+		if (ClosestEnemy)
+		{
+			SetTarget(ClosestEnemy);
+			bIsAttackMoving = false; // 어택 땅 모드 종료 -> 전투 모드 전환
+            
+			// 이동 멈춤 (Target이 생겼으므로 CheckCombatTarget에서 알아서 처리함)
+			StopPathFollowing(); 
+			GetCharacterMovement()->StopMovementImmediately();
+		}
+	}
 }
 
 void ABaseCharacter::Server_Revive_Implementation(FVector RespawnLocation)
@@ -941,7 +1018,8 @@ void ABaseCharacter::HandleDeath()
 		// 타겟 지정 해제 (나를 노리는 적들에게 "나 죽었어" 알림)
 		// (이 부분은 AI나 타겟팅 시스템에 따라 추가 구현 필요)
 		SetTarget(nullptr);
-		
+		// 사망 알림 델리게이트
+		OnDeath.Broadcast();
 		// 모든 클라이언트에게 연출 실행 명령
 		Multicast_Death();
 	}

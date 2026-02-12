@@ -4,6 +4,7 @@
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
 #include "GameModeBase/Subsystem/NeutralSpawn/ER_NeutralSpawnSubsystem.h"
 #include "GameModeBase/Subsystem/Phase/ER_PhaseSubsystem.h"
+#include "GameModeBase/Subsystem/Object/ER_ObjectSubsystem.h"
 
 #include "GameFramework/Character.h"
 #include "Engine/World.h"
@@ -152,6 +153,12 @@ void AER_InGameMode::StartGame_Internal()
 		NeutralSS->InitializeSpawnPoints(NeutralClass);
 		NeutralSS->FirstSpawnNeutral();
 	}
+	UER_ObjectSubsystem* ObjectSS = GetWorld()->GetSubsystem<UER_ObjectSubsystem>();
+	if (ObjectSS)
+	{
+		ObjectSS->InitializeObjectPoints(ObjectClass);
+		
+	}
 
 	HandlePhaseTimeUp();
 }
@@ -262,8 +269,15 @@ void AER_InGameMode::HandlePhaseTimeUp()
 	{
 		ERGS->SetCurrentPhase(ERGS->GetCurrentPhase() + 1);
 		// 페이즈에 따라 작동할 코드 넣기
-		// (항공 보급 생성)
-		// (오브젝트 스폰)
+		UER_ObjectSubsystem* ObjectSS = GetWorld()->GetSubsystem<UER_ObjectSubsystem>();
+		if (ObjectSS)
+		{
+			// (항공 보급 생성)
+			ObjectSS->SpawnSupplyOjbect();
+			// (오브젝트 스폰)
+		}
+		 
+
 	}
 
 	
