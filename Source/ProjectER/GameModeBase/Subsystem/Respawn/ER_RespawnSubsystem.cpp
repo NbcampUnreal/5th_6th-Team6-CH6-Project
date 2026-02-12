@@ -5,7 +5,9 @@
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/ER_OutGamePlayerController.h"
+#include "GameModeBase/Subsystem/Phase/ER_PhaseSubsystem.h"
 #include "CharacterSystem/Player/BasePlayerController.h"
+#include "CharacterSystem/Character/BaseCharacter.h"
 
 
 void UER_RespawnSubsystem::HandlePlayerDeath(AER_PlayerState& PS, AER_GameState& GS)
@@ -70,14 +72,47 @@ void UER_RespawnSubsystem::StartRespawnTimer(AER_PlayerState& PS, AER_GameState&
 	if (!PS.bIsDead)
 		return;
 
+	if (GS.GetCurrentPhase() == 5)
+		return;
+
+
 	const int32 PlayerId = PS.GetPlayerId();
 
 	// 리스폰 시간 계산 -> 추후에 페이즈, 레벨에 따라서 리스폰 시간 계산
+	// 이터널 리턴 -> 1~6레벨 3~8초, 7레벨 10초, 8~11레벨 25~30초, 12레벨 35초, 13레벨 이상 40초
+	// 롤 ->  1~6레벨 레벨 * 2 + 4, 7레벨 16 + 5 , 8~18 레벨 * 2.5 + 7.5
 	float RespawnTime = 5.f;
+	switch (GS.GetCurrentPhase())
+	{
+		case 1:
+			RespawnTime = 5.f;
+			break;
+		case 2:
+			RespawnTime = 10.f;
+			break;
+		case 3:
+			RespawnTime = 15.f;
+			break;
+		case 4:
+			RespawnTime = 20.f;
+			break;
+		case 5:
+			RespawnTime = 25.f;
+			break;
+		default: 
+			RespawnTime = 999.f;
+			break;
+	}
+
 	PS.RespawnTime = GS.GetServerWorldTimeSeconds() + RespawnTime;
 	PS.ForceNetUpdate();
 
 	TWeakObjectPtr<AER_PlayerState> WeakPS(&PS);
+	// 리스폰 UI 출력
+	if (ABasePlayerController* PC = Cast<ABasePlayerController>(PS.GetOwner()))
+	{
+		PC->Client_StartRespawnTimer();
+	}
 
 	// 리스폰 타이머 시작
 	FTimerHandle& Handle = RespawnMap.FindOrAdd(PlayerId);
@@ -92,6 +127,16 @@ void UER_RespawnSubsystem::StartRespawnTimer(AER_PlayerState& PS, AER_GameState&
 					return;
 
 				AER_PlayerState* PS_ = WeakPS.Get();
+				if (AController* C = PS_->GetOwner<AController>())
+				{
+					if (APawn* Pawn = C->GetPawn())
+					{
+						if (ABaseCharacter* Char = Cast<ABaseCharacter>(Pawn))
+						{
+							Char->Server_Revive(Char->GetActorLocation());
+						}
+					}
+				}
 
 				PS_->bIsDead = false;
 				PS_->ForceNetUpdate();
@@ -101,13 +146,6 @@ void UER_RespawnSubsystem::StartRespawnTimer(AER_PlayerState& PS, AER_GameState&
 		RespawnTime,
 		false
 	);
-
-	// 리스폰 UI 출력
-	if (ABasePlayerController* PC = Cast<ABasePlayerController>(PS.GetOwner()))
-	{
-		PC->Client_StartRespawnTimer();
-	}
-	
 }
 
 void UER_RespawnSubsystem::StopResapwnTimer(AER_GameState& GS, int32 TeamIdx)

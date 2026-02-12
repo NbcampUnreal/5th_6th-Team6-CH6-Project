@@ -149,12 +149,66 @@ void ULineOfSightComponent::UpdateLocalLOS()
 
 void ULineOfSightComponent::UpdateTargetDetection()
 {
-    if (!bDetectionEnabled)
+    if (!bDetectionEnabled || !VisionSphere)
+        return;
+
+    const FVector ObserverLocation = GetOwner()->GetActorLocation();
+
+    // Draw detection sphere
+    if (bDrawDetectionDebug)
     {
-        return;// not doing detection 
+        DrawDebugSphere(
+            GetWorld(),
+            VisionSphere->GetComponentLocation(),
+            VisionSphere->GetScaledSphereRadius(),
+            16,// segments
+            FColor::Blue,
+            false,// persistent
+            -1.f,// lifetime
+            0,// depth priority
+            1.f// line thickness
+        );
     }
 
-    
+    // Iterate over currently overlapped targets
+    for (TWeakObjectPtr<AActor>& TargetActorPtr : OverlappedTargetActors)
+    {
+        if (!TargetActorPtr.IsValid()) 
+            continue;
+
+        AActor* TargetActor = TargetActorPtr.Get();
+        UPrimitiveComponent* TargetShape = ResolveVisibilityShape(TargetActor);
+
+        if (!TargetShape)
+            continue;
+
+        // Check visibility using your shape-aware tracer
+        bool bVisible = VisibilityTracer && VisibilityTracer->IsTargetVisible(
+            GetWorld(),
+            ObserverLocation,
+            TargetShape,
+            VisionRange,
+            ObstacleTraceChannel,
+            {GetOwner()},     // ignore self
+            bDrawVisibilityRays, 
+            DesiredAngleDegree
+        );
+
+        // Draw line to target if visible
+        if (bDrawDetectionDebug && bVisible)
+        {
+            DrawDebugLine(
+                GetWorld(),
+                ObserverLocation,
+                TargetActor->GetActorLocation(),
+                FColor::Yellow,
+                false,
+                -1.f,
+                0,
+                1.f
+            );
+        }
+    }
         
 }
 

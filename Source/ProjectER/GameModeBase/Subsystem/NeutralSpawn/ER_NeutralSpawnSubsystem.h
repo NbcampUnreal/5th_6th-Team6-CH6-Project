@@ -47,8 +47,13 @@ public:
 	void FirstSpawnNeutral();
 	void SetFalsebIsSpawned(const int32 SpawnPointIdx);
 
+	void RegisterPoint(AActor* Point);
+	void UnregisterPoint(AActor* Point);
+
 	void TEMP_SpawnNeutrals();
 	void TEMP_NeutralsALLDespawn();
+
+	TArray<TWeakObjectPtr<AActor>> Points;
 
 private:
 

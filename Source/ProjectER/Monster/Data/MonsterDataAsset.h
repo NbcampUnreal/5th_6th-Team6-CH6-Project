@@ -24,24 +24,36 @@ public:
 	FName TableRowName; // 해당 몬스터 Row 이름
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Stat")
-	TSoftObjectPtr<UDataTable> MonsterDataTable;
+	TObjectPtr<UDataTable> MonsterDataTable;
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Stat")
-	TSoftObjectPtr<UCurveTable> MonsterCurveTable;
+	TObjectPtr<UCurveTable> MonsterCurveTable;
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|GAS")
-	TArray<TSoftClassPtr<UGameplayAbility>> DefaultAbilities;
+	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
 
-	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|GAS")
-	TSoftClassPtr<UAnimMontage> SitMontage;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
+	TObjectPtr<UAnimMontage> AttackMontage;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
+	TObjectPtr<UAnimMontage> DeadMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
+	TObjectPtr<UAnimMontage> IdleMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
+	TObjectPtr<UAnimMontage> MoveMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
+	TObjectPtr<UAnimMontage> SitMontage;
 
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
-	TSoftObjectPtr<USkeletalMesh> Mesh;
+	TObjectPtr<USkeletalMesh> Mesh;
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
-	TSoftClassPtr<UAnimInstance> Anim;
+	TSubclassOf<UAnimInstance> Anim;
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Reward")
 	int Exp;
@@ -49,6 +61,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Reward")
 	int Gold;
 
+	// 이거는 죽었을 때 로드해서 ??
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Reward")
 	TArray<UDataAsset*> ItemList;
 

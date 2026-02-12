@@ -71,7 +71,7 @@ UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
 void ABaseMonster::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
+	DOREPLIFETIME(ABaseMonster, MonsterData);
 	DOREPLIFETIME(ABaseMonster, TargetPlayer);
 	DOREPLIFETIME(ABaseMonster, StartLocation);
 	DOREPLIFETIME(ABaseMonster, StartRotator);
@@ -117,7 +117,6 @@ void ABaseMonster::BeginPlay()
 		//InitMonsterData(MonsterAssetId, 1);
 		StartLocation = GetActorLocation();
 		StartRotator = GetActorRotation();
-		StateTreeComp->StartLogic();
 	}
 	if (!HasAuthority())
 	{
@@ -142,7 +141,8 @@ void ABaseMonster::InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level)
 			&ABaseMonster::OnMonsterDataLoaded,
 			MonsterAssetId,
 			Level
-		));
+		))
+		;
 }
 
 void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Level)
@@ -150,7 +150,7 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 	MonsterData = Cast<UMonsterDataAsset>(
 		UAssetManager::Get().GetPrimaryAssetObject(MonsterAssetId)
 	);
-	if (IsValid(MonsterData.Get()) == false)
+	if (IsValid(MonsterData) == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitMonsterData - MonsterData is Not Valid!"));
 	}
@@ -158,6 +158,8 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 	InitVisuals();
 	InitAttributes(Level);
 	InitGiveAbilities();
+	// 데이터 로드 완료 후 실행
+	StateTreeComp->StartLogic();
 }
 
 void ABaseMonster::InitGiveAbilities()
@@ -176,12 +178,9 @@ void ABaseMonster::InitGiveAbilities()
 
 	for (auto& AbilityPtr : MonsterData->DefaultAbilities)
 	{
-		if (!AbilityPtr.IsValid())
-		{
-			AbilityPtr.LoadSynchronous();
-		}
+		//AbilityPtr.LoadSynchronous();
 
-		if (AbilityPtr.IsValid() && ASC)
+		if (IsValid(AbilityPtr) && ASC)
 		{
 			ASC->GiveAbility(FGameplayAbilitySpec(AbilityPtr.Get(), 1, 0));
 		}
@@ -190,15 +189,15 @@ void ABaseMonster::InitGiveAbilities()
 
 void ABaseMonster::InitAttributes(float Level)
 {
-	MonsterData->MonsterDataTable.LoadSynchronous();
-	MonsterData->MonsterCurveTable.LoadSynchronous();
+	//MonsterData->MonsterDataTable.LoadSynchronous();
+	//MonsterData->MonsterCurveTable.LoadSynchronous();
 
-	if (!MonsterData->MonsterDataTable.IsValid())
+	if (IsValid(MonsterData->MonsterDataTable) == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitAttributes : MonsterDataTable Not"));
 		return;
 	}
-	if (!MonsterData->MonsterCurveTable.IsValid())
+	if (IsValid(MonsterData->MonsterCurveTable) == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitAttributes : MonsterCurveTable Not"));
 		return;
@@ -250,17 +249,17 @@ void ABaseMonster::InitAttributes(float Level)
 
 void ABaseMonster::InitVisuals()
 {
-	MonsterData->Mesh.LoadSynchronous();
-	MonsterData->Anim.LoadSynchronous();
+	//MonsterData->Mesh.LoadSynchronous();
+	//MonsterData->Anim.LoadSynchronous();
 
-	if (!MonsterData->Mesh.IsValid() || !GetMesh())
+	if (IsValid(MonsterData->Mesh) == false || !GetMesh())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitVisuals : MonsterData->Mesh Not"));
 		return;
 	}
 	GetMesh()->SetSkeletalMesh(MonsterData->Mesh.Get());
 
-	if (!MonsterData->Anim.IsValid() || !GetMesh())
+	if (IsValid(MonsterData->Anim) == false || !GetMesh())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitVisuals : MonsterData->Anim Not"));
 		return;
@@ -295,6 +294,11 @@ void ABaseMonster::OnHealthChangedHandle(float CurrentHP, float MaxHP)
 void ABaseMonster::OnMoveSpeedChangedHandle(float OldSpeed, float NewSpeed)
 {
 	GetCharacterMovement()->MaxWalkSpeed = NewSpeed;
+}
+
+void ABaseMonster::Multicast_SetDeathCollision_Implementation()
+{
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 }
 
 void ABaseMonster::InitHPBar()
@@ -386,7 +390,7 @@ void ABaseMonster::GiveRewardsToPlayer(AActor* Player)
 		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player);
 
 	SpecHandle.Data->SetSetByCallerMagnitude(
-		XPTag,
+		IncomingXPTag,
 		MonsterData->Exp
 	);
 	UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::GiveRewardsToPlayer : XP %d"), MonsterData->Exp);

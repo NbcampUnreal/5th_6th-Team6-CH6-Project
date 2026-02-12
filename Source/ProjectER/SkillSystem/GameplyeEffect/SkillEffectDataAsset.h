@@ -61,6 +61,7 @@ public:
     TArray<FGameplayEffectSpecHandle> MakeSpecs(UAbilitySystemComponent* InstigatorASC, USkillBase* InstigatorSkill, AActor* InEffectCauser = nullptr);
     FORCEINLINE FGameplayTag GetIndexTag() const { return IndexTag; }
     FORCEINLINE FSkillEffectContainer GetData() const { return Data; }
+    FORCEINLINE FGameplayAttribute GetTargetAttribute() const { return Data.TargetAttribute; }
 protected:
     
 private:
