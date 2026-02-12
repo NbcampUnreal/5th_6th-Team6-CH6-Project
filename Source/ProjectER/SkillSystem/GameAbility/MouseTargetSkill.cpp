@@ -13,6 +13,8 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 
+#define ECC_SKill ECC_GameTraceChannel6
+
 UMouseTargetSkill::UMouseTargetSkill()
 {
 
@@ -171,7 +173,7 @@ AActor* UMouseTargetSkill::GetTargetUnderCursor()
 	if (!PC) return nullptr;
 
 	FHitResult HitResult;
-	PC->GetHitResultUnderCursor(ECC_Pawn, false, HitResult);
+	PC->GetHitResultUnderCursor(ECC_SKill, false, HitResult);
 
 	return HitResult.GetActor();
 }
