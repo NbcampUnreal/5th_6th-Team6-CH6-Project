@@ -23,6 +23,10 @@
 #include "Animation/WidgetAnimation.h" // 초상화 반짝 애니메이션용
 #include "MovieScene.h" // 초상화 반짝 애니메이션용
 
+#include "Kismet/GameplayStatics.h" // gamestate용
+#include "GameModeBase/State/ER_GameState.h" // gamestate
+#include "GameModeBase/State/ER_PlayerState.h"
+
 void UUI_MainHUD::Update_LV(float CurrentLV)
 {
     if(IsValid(stat_LV))
@@ -249,6 +253,14 @@ void UUI_MainHUD::NativeConstruct()
     // UI 애니메이션 강제 바인딩
     HeadHitAnim_01 = GetWidgetAnimationByName(TEXT("AN_HeadHitAnim_01"));
     HeadHitAnim_02 = GetWidgetAnimationByName(TEXT("AN_HeadHitAnim_02"));
+
+    // 페이즈 And Time
+    GetWorld()->GetTimerManager().SetTimer(
+        PhaseAndTimeTimer,
+        this,
+        &UUI_MainHUD::UpdatePhaseAndTimeText,
+        1.0f,
+        true);
 
     // 디버그용
     SetKillCount(0);
@@ -747,6 +759,62 @@ void UUI_MainHUD::SetAssistCount(int32 InAssistCount)
     {
         AssistNumber_02->SetBrushFromTexture(SegmentTextures[OneDigit]);
     }
+}
+
+void UUI_MainHUD::UpdatePhaseAndTimeText()
+{
+    // 1. GameState 가져오기
+
+    if (GS)
+    {
+        /// 시간 처리
+        float RemainTime = GS->GetPhaseRemainingTime();
+		// UE_LOG(LogTemp, Error, TEXT("Remain Time : %f"), RemainTime);
+
+        int32 TotalIntSeconds = FMath::Max(0, FMath::FloorToInt(RemainTime));
+
+        int32 Minutes = TotalIntSeconds / 60;
+        int32 Seconds = TotalIntSeconds % 60;
+
+        FString TimeString = FString::Printf(TEXT("%02d:%02d"), Minutes, Seconds);
+
+        int32 MinTenDigit = Minutes / 10;
+        int32 MinOneDigit = Minutes % 10;
+
+        int32 SecTenDigit = Seconds / 10;
+        int32 SecOneDigit = Seconds % 10;
+
+        if (PhaseTimerMinTen && SegmentTextures[MinTenDigit])
+        {
+            PhaseTimerMinTen->SetBrushFromTexture(SegmentTextures[MinTenDigit]);
+        }
+        if (PhaseTimerMinOne && SegmentTextures[MinOneDigit])
+        {
+            PhaseTimerMinOne->SetBrushFromTexture(SegmentTextures[MinOneDigit]);
+        }
+        if (PhaseTimerSecTen && SegmentTextures[SecTenDigit])
+        {
+            PhaseTimerSecTen->SetBrushFromTexture(SegmentTextures[SecTenDigit]);
+        }
+        if (PhaseTimerSecOne && SegmentTextures[SecOneDigit])
+        {
+            PhaseTimerSecOne->SetBrushFromTexture(SegmentTextures[SecOneDigit]);
+        }
+
+        // 페이즈 처리
+        int32 nowPhase = GS->GetCurrentPhase();
+        if (nowPhase > 9) nowPhase = 9;
+        if (NowCurrentPhase && SegmentTextures[nowPhase])
+        {
+            NowCurrentPhase->SetBrushFromTexture(SegmentTextures[nowPhase]);
+        }
+    }
+    else
+    {
+        /// GameState 가져오기
+        GS = GetWorld()->GetGameState<AER_GameState>();
+    }
+
 }
 
 void UUI_MainHUD::AddKillPerSecond()

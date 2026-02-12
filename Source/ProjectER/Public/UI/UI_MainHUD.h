@@ -229,6 +229,19 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* TeamLevel_02;
 
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* TextPhase;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* PhaseTimerMinTen;
+	UPROPERTY(meta = (BindWidget))
+	UImage* PhaseTimerMinOne;
+	UPROPERTY(meta = (BindWidget))
+	UImage* PhaseTimerSecTen;
+	UPROPERTY(meta = (BindWidget))
+	UImage* PhaseTimerSecOne;
+	UPROPERTY(meta = (BindWidget))
+	UImage* NowCurrentPhase;
 
 	UFUNCTION()
 	void OnSkillClicked_Q();
@@ -279,6 +292,12 @@ public :
 	void SetKillCount(int32 InKillCount);
 	void SetDeathCount(int32 InDeathCount);
 	void SetAssistCount(int32 InAssistCount);
+	void UpdatePhaseAndTimeText();
+	FTimerHandle PhaseAndTimeTimer;
+private:
+	UPROPERTY()
+	class AER_GameState* GS;
+
 
 	// DEBUG
 private:
