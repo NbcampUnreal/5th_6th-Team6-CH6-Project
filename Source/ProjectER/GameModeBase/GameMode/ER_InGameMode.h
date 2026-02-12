@@ -20,6 +20,16 @@ public:
 	float RespawnDelay = 5.f;
 };
 
+USTRUCT(BlueprintType)
+struct FObjectClassConfig
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<AActor> Class;
+};
+
 UCLASS()
 class PROJECTER_API AER_InGameMode : public AGameModeBase
 {
@@ -61,7 +71,10 @@ private:
 	int32 ExpectedPlayers = 0;
 	float PhaseDuration = 30.f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Subsystem|NeutralSpawn")
+	UPROPERTY(EditDefaultsOnly, Category = "Subsystem|Neutral")
 	TMap<FName, FNeutralClassConfig> NeutralClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Subsystem|Object")
+	TMap<FName, FObjectClassConfig> ObjectClass;
 
 };
