@@ -296,6 +296,11 @@ void ABaseMonster::OnMoveSpeedChangedHandle(float OldSpeed, float NewSpeed)
 	GetCharacterMovement()->MaxWalkSpeed = NewSpeed;
 }
 
+void ABaseMonster::Multicast_SetDeathCollision_Implementation()
+{
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+}
+
 void ABaseMonster::InitHPBar()
 {
 	UUserWidget* Widget = HPBarWidgetComp->GetUserWidgetObject();

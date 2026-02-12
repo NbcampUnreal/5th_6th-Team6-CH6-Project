@@ -69,6 +69,12 @@ private:
 	UFUNCTION()
 	void OnMoveSpeedChangedHandle(float OldSpeed, float NewSpeed);
 
+	UFUNCTION(NetMulticast, BlueprintCallable, Reliable)
+	void Multicast_SetDeathCollision();
+
+	void GiveRewardsToPlayer(AActor* Player);
+
+#pragma region Init
 
 	void OnMonsterDataLoaded(FPrimaryAssetId LoadedId, float Level);
 
@@ -80,8 +86,7 @@ private:
 
 	void InitHPBar();
 
-	void GiveRewardsToPlayer(AActor* Player);
-
+#pragma endregion
 
 #pragma region StateTree
 
