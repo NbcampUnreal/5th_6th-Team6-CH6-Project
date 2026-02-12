@@ -72,6 +72,9 @@ private:
 	UFUNCTION(NetMulticast, BlueprintCallable, Reliable)
 	void Multicast_SetDeathCollision();
 
+	UFUNCTION()
+	void OnTargetLostHandle();
+
 	void GiveRewardsToPlayer(AActor* Player);
 
 #pragma region Init

@@ -13,6 +13,8 @@ class UBaseAttributeSet;
 class UGameplayEffect;
 class UCharacterData;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
+
 UCLASS()
 class PROJECTER_API ABaseCharacter : public ACharacter,  public IAbilitySystemInterface, public ITargetableInterface
 {
@@ -193,6 +195,9 @@ public:
 	// 부활 처리 호출
 	virtual void Revive(FVector RespawnLocation);
 	
+	UPROPERTY()
+	FOnDeath OnDeath;
+
 protected:
 	// 사망 동기화
 	UFUNCTION(NetMulticast, Reliable)

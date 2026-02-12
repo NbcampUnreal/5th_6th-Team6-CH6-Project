@@ -941,7 +941,8 @@ void ABaseCharacter::HandleDeath()
 		// 타겟 지정 해제 (나를 노리는 적들에게 "나 죽었어" 알림)
 		// (이 부분은 AI나 타겟팅 시스템에 따라 추가 구현 필요)
 		SetTarget(nullptr);
-		
+		// 사망 알림 델리게이트
+		OnDeath.Broadcast();
 		// 모든 클라이언트에게 연출 실행 명령
 		Multicast_Death();
 	}
