@@ -147,6 +147,11 @@ protected:
     //============= Physical Detection ==========//
 #pragma region Detection
     //----------------------------------------------------------------------------------------------------------------//
+
+    //Debug
+    UPROPERTY(EditAnywhere, Category="LineOfSight|Detection")
+    bool bDrawDetectionDebug = true;
+
     UPROPERTY(EditAnywhere, Category="LineOfSight|Detection")
     bool bDetectionEnabled = true;
 
