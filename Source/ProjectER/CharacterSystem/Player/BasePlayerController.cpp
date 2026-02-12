@@ -7,6 +7,7 @@
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 
 #include "Kismet/GameplayStatics.h"
+#include "Components/DecalComponent.h"
 #include "GameFramework/Character.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -35,9 +36,15 @@ ABasePlayerController::ABasePlayerController()
 	DefaultMouseCursor = EMouseCursor::Default;
 
 	bIsMousePressed = false;
+	bIsAttackInputMode = false;
 	LastRPCUpdateTime = 0.f;
 	CachedDestination = FVector::ZeroVector;
-
+	
+	AttackRangeDecal = CreateDefaultSubobject<UDecalComponent>(TEXT("AttackRangeDecal"));
+	AttackRangeDecal->SetupAttachment(RootComponent);
+	AttackRangeDecal->SetVisibility(false); // 평소엔 꺼둠
+	AttackRangeDecal->SetRelativeRotation(FRotator(-90.0f, 0.0f, 0.0f));
+	
 	// [김현수 추가분] 변수 초기화
 	InteractionTarget = nullptr;
 }
@@ -86,18 +93,12 @@ void ABasePlayerController::SetupInputComponent()
 		UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(InputComponent);
 		if (!EnhancedInputComponent || !InputConfig) return;
 		
-		// [테스트용] 숫자키 1, 2번에 팀 변경 기능 강제 연결 (디버깅용)
-		// InputComponent->BindKey(EKeys::One, IE_Pressed, this, &ABasePlayerController::Test_ChangeTeamToA);
-		// InputComponent->BindKey(EKeys::Two, IE_Pressed, this, &ABasePlayerController::Test_ChangeTeamToB);
-		
-		// [테스트용] 0번 경험치 획득(+100XP) 키 연결
-		InputComponent->BindKey(EKeys::Zero, IE_Pressed, this, &ABasePlayerController::Test_GainXP);
-		
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Started, this, &ABasePlayerController::OnMoveStarted);
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnMoveTriggered);
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Completed, this, &ABasePlayerController::OnMoveReleased);
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Canceled, this, &ABasePlayerController::OnMoveReleased);
-
+		
+		EnhancedInputComponent->BindAction(InputConfig->InputAttack, ETriggerEvent::Started, this, &ABasePlayerController::OnAttackModePressed);
 		EnhancedInputComponent->BindAction(InputConfig->StopMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnStopTriggered);
 
 		EnhancedInputComponent->BindAction(InputConfig->InputConfirm, ETriggerEvent::Started, this, &ABasePlayerController::OnConfirm);
@@ -136,6 +137,11 @@ void ABasePlayerController::PlayerTick(float DeltaTime)
 			LastRPCUpdateTime = GetWorld()->GetTimeSeconds();
 		}
 	}
+	
+	if (bIsAttackInputMode && ControlledBaseChar && AttackRangeDecal->IsVisible())
+	{
+		AttackRangeDecal->SetWorldLocation(ControlledBaseChar->GetActorLocation());
+	}
 }
 
 void ABasePlayerController::OnRep_Pawn()
@@ -147,10 +153,13 @@ void ABasePlayerController::OnRep_Pawn()
 
 void ABasePlayerController::OnMoveStarted()
 {
+	if (bIsAttackInputMode)
+	{
+		CancelAttackMode();
+	}
+	
 	bIsMousePressed = true;
 	MoveToMouseCursor(); 
-	// [김현수 추가분] 아이템 판별 기능이 포함된 함수로 변경 호출
-	// ProcessMouseInteraction();
 }
 
 void ABasePlayerController::OnMoveTriggered()
@@ -321,14 +330,31 @@ void ABasePlayerController::CheckInteractionDistance()
 	}
 }
 
-void ABasePlayerController::OnConfirm() {
-	APawn* ControlledPawn = GetPawn();
-	if (!ControlledPawn) return;
+void ABasePlayerController::OnConfirm() 
+{
+	if (!bIsAttackInputMode)
+	{
+		APawn* ControlledPawn = GetPawn();
+		if (!ControlledPawn) return;
 
-	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ControlledPawn);
-	if (IsValid(ASC)) {
-		ASC->LocalInputConfirm();
+		UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ControlledPawn);
+		if (IsValid(ASC)) {
+			ASC->LocalInputConfirm();
+		}
+		
+		return;
 	}
+	
+	FHitResult Hit;
+	if (GetCurvedHitResultUnderCursor(ECC_Visibility, false, Hit))
+	{
+		if (Hit.bBlockingHit)
+		{
+			RequestAttackMove(Hit);
+		}
+	}
+	
+	CancelAttackMode();
 }
 
 void ABasePlayerController::OnCanceled() {
@@ -340,6 +366,66 @@ void ABasePlayerController::OnCanceled() {
 		//UE_LOG(LogTemp, Log, TEXT("OnCanceled"));
 		ASC->LocalInputCancel();
 	}
+}
+
+void ABasePlayerController::OnAttackModePressed()
+{
+	if (!ControlledBaseChar) return;
+
+	bIsAttackInputMode = true; // 공격 모드 활성화
+
+	// 사거리 가져오기 (Stat 컴포넌트나 AttributeSet에서)
+	float AttackRange = ControlledBaseChar->GetAttackRange();
+    
+	// 데칼 크기 조절 (X, Y는 반지름, Z는 두께)
+	AttackRangeDecal->DecalSize = FVector(100.0f, AttackRange, AttackRange);
+    
+	// 캐릭터 위치로 데칼 이동 (바닥에 붙이기)
+	AttackRangeDecal->SetWorldLocation(ControlledBaseChar->GetActorLocation());
+	AttackRangeDecal->SetVisibility(true);
+
+	// (선택) 마우스 커서를 공격 전용 커서로 변경
+	// CurrentMouseCursor = EMouseCursor::Crosshairs;
+}
+
+void ABasePlayerController::CancelAttackMode()
+{
+	if (bIsAttackInputMode)
+	{
+		bIsAttackInputMode = false;
+		if (AttackRangeDecal)
+		{
+			AttackRangeDecal->SetVisibility(false);
+		}
+		// CurrentMouseCursor = DefaultMouseCursor;
+	}
+}
+
+void ABasePlayerController::RequestAttackMove(const FHitResult& Hit)
+{
+	if (!ControlledBaseChar) return;
+    
+	AActor* HitActor = Hit.GetActor();
+
+	// Case A: 적을 직접 클릭함 -> 타겟팅 공격
+	if (ITargetableInterface* TargetObj = Cast<ITargetableInterface>(HitActor))
+	{
+		if (TargetObj->IsTargetable()) // 적군인지 확인하는 로직 추가 필요 (기존 코드 참고)
+		{
+			ETeamType MyTeam = ControlledBaseChar->GetTeamType();
+			ETeamType TargetTeam = TargetObj->GetTeamType();
+
+			if (MyTeam != TargetTeam && TargetTeam != ETeamType::None)
+			{
+				ControlledBaseChar->SetTarget(HitActor); // 타겟 설정
+				return;
+			}
+		}
+	}
+
+	// Case B: 땅을 클릭함 -> 어택 땅 (이동하다가 적 만나면 공격)
+	// 기존 MoveToLocation은 무시하고 이동만 하므로, 새로운 함수 필요
+	ControlledBaseChar->Server_AttackMoveToLocation(Hit.Location);
 }
 
 /*void ABasePlayerController::Test_ChangeTeamToA()
@@ -371,14 +457,14 @@ void ABasePlayerController::OnCanceled() {
 	}
 }*/
 
-void ABasePlayerController::Test_GainXP()
+/*void ABasePlayerController::Test_GainXP()
 {
 	UE_LOG(LogTemp, Warning, TEXT("[Client] Zero Key Pressed!"));
 	
 	Server_TestGainXP();
-}
+}*/
 
-void ABasePlayerController::Server_TestGainXP_Implementation()
+/*void ABasePlayerController::Server_TestGainXP_Implementation()
 {
 	if (ControlledBaseChar)
 	{
@@ -396,7 +482,7 @@ void ABasePlayerController::Server_TestGainXP_Implementation()
 			}
 		}
 	}
-}
+}*/
 
 void ABasePlayerController::OnStopTriggered()
 {
