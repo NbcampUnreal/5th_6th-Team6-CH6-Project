@@ -12,6 +12,19 @@
  * 
  */
 
+UENUM(BlueprintType)
+enum class EAdjustment : uint8 {
+    Add    UMETA(DisplayName = "Add"),
+    Subtract    UMETA(DisplayName = "Subtract")
+};
+
+UENUM(BlueprintType)
+enum class EDecreaseBy : uint8 {
+    Noting    UMETA(DisplayName = "Noting"),
+    Defense    UMETA(DisplayName = "Defense"),
+    Tenacity    UMETA(DisplayName = "Tenacity")
+};
+
 USTRUCT(BlueprintType)
 struct FSkillAttributeData {
     GENERATED_BODY()
@@ -23,7 +36,7 @@ struct FSkillAttributeData {
     FScalableFloat BasedValues;//기본값
 
     UPROPERTY(EditDefaultsOnly)
-    FGameplayAttribute SourceAttribute; //계수값을 곱할 스텟값
+    FGameplayAttribute SourceAttribute; //계수값을 곱할 Attribute값
 };
 
 USTRUCT(BlueprintType)
@@ -35,6 +48,14 @@ struct FSkillEffectDefinition {
 
     UPROPERTY(EditDefaultsOnly)
     TArray<FSkillAttributeData> SkillAttributeData;
+
+    UPROPERTY(EditDefaultsOnly)
+    EAdjustment Adjustment = EAdjustment::Add;//계산한 값을 Attribute에 더할지 뺄지 결정하는 enum
+
+    //데미지 타입이라고 생각하는게 편함.
+    //Noting은 트루 데미지, Defense는 데미지, Tenacity는 스탯 디버프용
+    UPROPERTY(EditDefaultsOnly)
+    EDecreaseBy DecreaseBy = EDecreaseBy::Noting;
 };
 
 USTRUCT(BlueprintType)
