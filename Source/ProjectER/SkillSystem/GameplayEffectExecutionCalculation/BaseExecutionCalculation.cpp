@@ -125,7 +125,6 @@ void UBaseExecutionCalculation::Execute_Implementation(const FGameplayEffectCust
     if (Container.SkillEffectDefinition.IsValidIndex(DataIndex))
     {
         const FSkillEffectDefinition& MyDef = Container.SkillEffectDefinition[DataIndex];
-        const EAdjustmentType AdjustmentType = MyDef.Adjustment;
         const EDecreaseBy DecreaseBy = MyDef.DamageType;
         float AbilityLevel = Spec.GetLevel();
         
@@ -161,8 +160,9 @@ void UBaseExecutionCalculation::Execute_Implementation(const FGameplayEffectCust
             }
 
             //값을 더할건지 뺄건지 결정
-            FinalValue *= MyDef.Adjustment == EAdjustment::Add ? 1 : -1;
-            OutExecutionOutput.AddOutputModifier(FGameplayModifierEvaluatedData(Container.TargetAttribute, EGameplayModOp::Additive, TotalCalculatedValue));
+            const EAdjustmentType AdjustmentType = MyDef.Adjustment;
+            FinalValue *= AdjustmentType == EAdjustmentType::Add ? 1 : -1;
+            OutExecutionOutput.AddOutputModifier(FGameplayModifierEvaluatedData(Container.TargetAttribute, EGameplayModOp::Additive, FinalValue));
         }
     }
     else {
