@@ -125,7 +125,8 @@ void UBaseExecutionCalculation::Execute_Implementation(const FGameplayEffectCust
     if (Container.SkillEffectDefinition.IsValidIndex(DataIndex))
     {
         const FSkillEffectDefinition& MyDef = Container.SkillEffectDefinition[DataIndex];
-        const EDecreaseBy DecreaseBy = MyDef.DecreaseBy;
+        const EAdjustmentType AdjustmentType = MyDef.Adjustment;
+        const EDecreaseBy DecreaseBy = MyDef.DamageType;
         float AbilityLevel = Spec.GetLevel();
         
         float TotalCalculatedValue = ReturnCalculatedValue(ExecutionParams, MyDef, AbilityLevel, AttributeStatics().SourceAttributeMap);
@@ -137,24 +138,24 @@ void UBaseExecutionCalculation::Execute_Implementation(const FGameplayEffectCust
             switch (DecreaseBy)
             {
             case EDecreaseBy::Noting:
+            {
                 FinalValue = TotalCalculatedValue;
                 break;
-
+            }
             case EDecreaseBy::Defense:
             {
                 float Defense = FindValueByAttribute(ExecutionParams, UBaseAttributeSet::GetDefenseAttribute(), AttributeStatics().TargetAttributeMap);
                 float Mitigation = 100.0f / (100.0f + Defense);
                 FinalValue = TotalCalculatedValue * Mitigation;
+				break;
             }
-            break;
-
             case EDecreaseBy::Tenacity:
             {
                 float Tenacity = FindValueByAttribute(ExecutionParams, UBaseAttributeSet::GetTenacityAttribute(), AttributeStatics().TargetAttributeMap);
                 float ResistanceMultiplier = FMath::Max<float>(1.0f - Tenacity, 0.0f);
                 FinalValue = TotalCalculatedValue * ResistanceMultiplier;
+				break;
             }
-            break;
             default:
                 break;
             }
