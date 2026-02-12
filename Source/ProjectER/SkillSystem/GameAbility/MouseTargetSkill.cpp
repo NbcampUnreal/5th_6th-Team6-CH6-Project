@@ -128,42 +128,11 @@ AActor* UMouseTargetSkill::GetTargetUnderCursorInRange()
 
 	if (!IsValid(HitActor)) return nullptr;
 
-	UE_LOG(LogTemp, Log, TEXT("[%f] Returning Actor: %s"), GetWorld()->GetTimeSeconds(), *HitActor->GetName());
-
-	/*UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(HitActor);
-	if (!TargetASC) return nullptr;*/
-	//IsValidRelationship(HitActor)
-	if (IsInRange(HitActor))
+	if (IsInRange(HitActor) && IsValidRelationship(HitActor))
 	{
-		if (!HitActor)
-		{
-			UE_LOG(LogTemp, Log, TEXT("HitActor is Null  after IsInRange"));
-		}
-		if (IsValidRelationship(HitActor))
-		{
-			if (HitActor)
-			{
-				return HitActor;
-			}
-			else {
-				UE_LOG(LogTemp, Log, TEXT("HitActor is Null"));
-			}
-		}
-		else {
-			UE_LOG(LogTemp, Log, TEXT("HitActor is Is Not ValidRelationship"));
-		}
-	}
-	else {
-		UE_LOG(LogTemp, Log, TEXT("HitActor is Range Out"));
+		return HitActor;
 	}
 
-	//if (IsInRange(HitActor) && IsValidRelationship(HitActor))
-	//{
-	//	UE_LOG(LogTemp, Log, TEXT("[%f] Returning Actor: %s"), GetWorld()->GetTimeSeconds(), *HitActor->GetName());
-	//	return HitActor;
-	//}
-
-	UE_LOG(LogTemp, Log, TEXT("HitActor is null"));
 	return nullptr;
 }
 
