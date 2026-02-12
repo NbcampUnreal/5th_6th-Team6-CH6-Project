@@ -151,7 +151,7 @@ void UCameraVisionManager::UpdateCameraLOS()
 			Provider->GetOwner()->GetActorLocation(),
 			Provider->GetVisibleRange());
 
-		Provider->ToggleUpdate(bVisible);
+		Provider->ToggleLOSStampUpdate(bVisible);
 
 		if (bVisible)// !!!!! FUCK YEAH !!!!!!
 		{

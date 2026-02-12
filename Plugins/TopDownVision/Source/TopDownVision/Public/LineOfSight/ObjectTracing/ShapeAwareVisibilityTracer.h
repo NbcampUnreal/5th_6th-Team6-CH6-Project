@@ -32,7 +32,9 @@ class TOPDOWNVISION_API UShapeAwareVisibilityTracer : public UObject
 	GENERATED_BODY()
 	
 public:
-	bool IsTargetVisible(
+
+
+	bool IsTargetVisible(//final wrapper for handling both shadow castable and low object type
 		UWorld* ContextWorld,
 		const FVector& ObserverLocation,
 		UPrimitiveComponent* TargetShape,
@@ -41,8 +43,33 @@ public:
 		const TArray<AActor*>& IgnoredActors,
 		bool bDrawDebugLine=false,
 		float RayGapDegrees = 5.f);//default 5 degrees
+	
+
 
 private:
+	// this is for evaluating if the target is hiding behind the obstacle or not
+	bool IsTargetVisible_ShadowCastableObject(
+		UWorld* ContextWorld,
+		const FVector& ObserverLocation,
+		UPrimitiveComponent* TargetShape,
+		float MaxDistance,
+		ECollisionChannel ObstacleChannel,
+		const TArray<AActor*>& IgnoredActors,
+		bool bDrawDebugLine,
+		float RayGapDegrees);
+
+	/*// this is for evaluating if the target is covered by the hiding volume or not
+	bool IsTargetVisible_LowObstacle(
+		const TArray<UPrimitiveComponent*>& LowObstacleVolumes,// the proxy volumes used for hiding area
+		UPrimitiveComponent* TargetShape,// shape of the target
+		int32 SamplePointsPerAxis = 2,// density of the sample points 
+		bool bDrawDebugLine);*/
+	// evaluating the sample points by the tracer can be bit tricky. so,
+	// lets give the responsibility of checking if it is visible or not to the target(low obstacle type case)
+	// target self evaluate the Visibility and pass it to the tracer
+
+	bool IsTargetVisible_LowObstacle();
+
 	
 	bool TraceVisibilityRay(
 		UWorld* ContextWorld,

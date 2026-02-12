@@ -16,7 +16,30 @@ DEFINE_LOG_CATEGORY(VisibilityTrace);
 
 bool UShapeAwareVisibilityTracer::IsTargetVisible(UWorld* ContextWorld, const FVector& ObserverLocation,
 	UPrimitiveComponent* TargetShape, float MaxDistance, ECollisionChannel ObstacleChannel,
-	const TArray<AActor*>& IgnoredActors,bool bDrawDebugLine, float RayGapDegrees)
+	const TArray<AActor*>& IgnoredActors, bool bDrawDebugLine, float RayGapDegrees)
+{
+	if (!ContextWorld || !TargetShape)
+		return false;
+
+	// 1. Check LOS against shadow-castable obstacles (your current rays)
+	if (!IsTargetVisible_ShadowCastableObject(
+			ContextWorld, ObserverLocation, TargetShape, 
+			MaxDistance, ObstacleChannel, IgnoredActors, 
+			bDrawDebugLine, RayGapDegrees))
+	{
+		return false; // blocked behind shadow-castable obstacle
+	}
+
+	// 2. Check full coverage for low obstacles (volume-based)
+	if (!IsTargetVisible_LowObstacle())
+	{
+		return false; // fully hidden in low obstacle volume
+	}
+}
+
+bool UShapeAwareVisibilityTracer::IsTargetVisible_ShadowCastableObject(UWorld* ContextWorld, const FVector& ObserverLocation,
+                                                                       UPrimitiveComponent* TargetShape, float MaxDistance, ECollisionChannel ObstacleChannel,
+                                                                       const TArray<AActor*>& IgnoredActors,bool bDrawDebugLine, float RayGapDegrees)
 {
 	if (!ContextWorld || !TargetShape)
 	{

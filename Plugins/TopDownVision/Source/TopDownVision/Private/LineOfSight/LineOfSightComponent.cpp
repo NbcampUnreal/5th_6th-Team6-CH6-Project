@@ -17,8 +17,10 @@
 
 #include "DrawDebugHelpers.h"//debug for visualizing the activation
 #include "Engine/TextureRenderTarget2D.h"
+#include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
+#include "LineOfSight/Management/VisionGameStateComp.h"
 
 
 ULineOfSightComponent::ULineOfSightComponent()
@@ -85,133 +87,6 @@ void ULineOfSightComponent::BeginPlay()
     VisionSphere->SetupAttachment(GetOwner()->GetRootComponent());
 }
 
-void ULineOfSightComponent::UpdateLocalLOS()
-{
-    UE_LOG(LOSVision, VeryVerbose,
-        TEXT("[%s] ULineOfSightComponent::UpdateLocalLOS >> ENTER | Owner=%s | ShouldUpdate=%d"),
-        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-        *GetOwner()->GetName(),
-        ShouldUpdate);
-    
-    if (!ShouldRunClientLogic())
-    {
-        return;// not for server
-    }
-
-    
-    if (!ShouldUpdate)
-    {
-        UE_LOG(LOSVision, Verbose,
-            TEXT("[%s]ULineOfSightComponent::UpdateLocalLOS >> Skipped, ShouldUpdate is false"),
-            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
-        return;
-    }
-    if (!LOSRenderTarget)
-    {
-        UE_LOG(LOSVision, Warning,
-            TEXT("[%s]ULineOfSightComponent::UpdateLocalLOS >> Invalid HeightRenderTarget"),
-            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
-        return;
-    }
-    // now only use local texture sampler as only a source of RT
-    if (!LocalTextureSampler)
-    {
-        UE_LOG(LOSVision, Error,
-            TEXT("[%s]ULineOfSightComponent::UpdateLocalLOS >> LocalTextureSampler missing"),
-            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
-        return;
-    }
-
-    LocalTextureSampler->UpdateLocalTexture();
-
-    //Debug
-    if (bDrawTextureRange)//draw debug box for LOS stamp area
-    {
-        const FVector Center = GetOwner()->GetActorLocation();
-        const FVector Extent = FVector(VisionRange, VisionRange, 50.f);
-
-        DrawDebugBox(
-            GetWorld(),
-            Center,
-            Extent,
-            FQuat::Identity,
-            FColor::Green,
-            false,
-            -1.f,
-            0,
-            2.f );
-    }
-    
-    UE_LOG(LOSVision, Verbose,
-        TEXT("[%s]ULineOfSightComponent::UpdateLocalLOS >> UpdateResource called"),
-        *TopDownVisionDebug::GetClientDebugName(GetOwner()));
-}
-
-void ULineOfSightComponent::UpdateTargetDetection()
-{
-    if (!bDetectionEnabled || !VisionSphere)
-        return;
-
-    const FVector ObserverLocation = GetOwner()->GetActorLocation();
-
-    // Draw detection sphere
-    if (bDrawDetectionDebug)
-    {
-        DrawDebugSphere(
-            GetWorld(),
-            VisionSphere->GetComponentLocation(),
-            VisionSphere->GetScaledSphereRadius(),
-            16,// segments
-            FColor::Blue,
-            false,// persistent
-            -1.f,// lifetime
-            0,// depth priority
-            1.f// line thickness
-        );
-    }
-
-    // Iterate over currently overlapped targets
-    for (TWeakObjectPtr<AActor>& TargetActorPtr : OverlappedTargetActors)
-    {
-        if (!TargetActorPtr.IsValid()) 
-            continue;
-
-        AActor* TargetActor = TargetActorPtr.Get();
-        UPrimitiveComponent* TargetShape = ResolveVisibilityShape(TargetActor);
-
-        if (!TargetShape)
-            continue;
-
-        // Check visibility using your shape-aware tracer
-        bool bVisible = VisibilityTracer && VisibilityTracer->IsTargetVisible(
-            GetWorld(),
-            ObserverLocation,
-            TargetShape,
-            VisionRange,
-            ObstacleTraceChannel,
-            {GetOwner()},     // ignore self
-            bDrawVisibilityRays, 
-            DesiredAngleDegree
-        );
-
-        // Draw line to target if visible
-        if (bDrawDetectionDebug && bVisible)
-        {
-            DrawDebugLine(
-                GetWorld(),
-                ObserverLocation,
-                TargetActor->GetActorLocation(),
-                FColor::Yellow,
-                false,
-                -1.f,
-                0,
-                1.f
-            );
-        }
-    }
-        
-}
-
 void ULineOfSightComponent::UpdateVisibleRange(float NewRange)
 {
     
@@ -250,72 +125,6 @@ void ULineOfSightComponent::UpdateVisibleRange(float NewRange)
         LocalTextureSampler->SetWorldSampleRadius(VisionRange);
     }
 }
-
-
-void ULineOfSightComponent::ToggleUpdate(bool bIsOn)
-{
-    UE_LOG(LOSVision, Verbose,
-        TEXT("[%s] ToggleUpdate | Owner=%s | New=%d"),
-        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-        *GetOwner()->GetName(),
-        bIsOn);
-    
-    if (ShouldUpdate==bIsOn)
-    {
-        UE_LOG(LOSVision, Verbose,
-            TEXT("[%s]ULineOfSightComponent::ToggleUpdate >> Already set to %s"),
-            *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-            ShouldUpdate ? TEXT("true") : TEXT("false"));
-        return;
-    }
-    
-    ShouldUpdate = bIsOn;
-
-    
-    UE_LOG(LOSVision, Verbose,
-       TEXT("[%s] ToggleUpdate APPLIED | Owner=%s | ShouldUpdate=%d"),
-       *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-       *GetOwner()->GetName(),
-       ShouldUpdate);
-}
-
-void ULineOfSightComponent::OnVisionSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-    if (!OtherActor || OtherActor == GetOwner())
-        return;
-
-    if (!OtherComp)
-        return;
-
-    //filter by tag
-    if (!OtherActor->ActorHasTag(VisionTargetTag))
-        return;
-
-    OverlappedTargetActors.Add(OtherActor);
-
-    UE_LOG(LOSVision, Verbose,
-        TEXT("[%s] LOS overlap begin: %s"),
-        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-        *OtherActor->GetName());
-}
-
-void ULineOfSightComponent::OnVisionSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-    if (!OtherActor)
-        return;
-
-    OverlappedTargetActors.Remove(OtherActor);
-
-    //remove the detected target as well in here
-
-    UE_LOG(LOSVision, Verbose,
-        TEXT("[%s] LOS overlap end: %s"),
-        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-        *OtherActor->GetName());
-}
-
 
 void ULineOfSightComponent::CreateResources()
 {
@@ -401,6 +210,230 @@ bool ULineOfSightComponent::ShouldRunClientLogic() const
     return true;
 }
 
+
+//======================= LOS Vision Stamp ===========================================================================//
+#pragma region VisionStamp Management
+
+void ULineOfSightComponent::UpdateLocalLOS()
+{
+    UE_LOG(LOSVision, VeryVerbose,
+        TEXT("[%s] ULineOfSightComponent::UpdateLocalLOS >> ENTER | Owner=%s | ShouldUpdate=%d"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+        *GetOwner()->GetName(),
+        ShouldUpdateLOSStamp);
+    
+    if (!ShouldRunClientLogic())
+    {
+        return;// not for server
+    }
+
+    
+    if (!ShouldUpdateLOSStamp)
+    {
+        UE_LOG(LOSVision, Verbose,
+            TEXT("[%s]ULineOfSightComponent::UpdateLocalLOS >> Skipped, ShouldUpdate is false"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+        return;
+    }
+    if (!LOSRenderTarget)
+    {
+        UE_LOG(LOSVision, Warning,
+            TEXT("[%s]ULineOfSightComponent::UpdateLocalLOS >> Invalid HeightRenderTarget"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+        return;
+    }
+    // now only use local texture sampler as only a source of RT
+    if (!LocalTextureSampler)
+    {
+        UE_LOG(LOSVision, Error,
+            TEXT("[%s]ULineOfSightComponent::UpdateLocalLOS >> LocalTextureSampler missing"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+        return;
+    }
+
+    LocalTextureSampler->UpdateLocalTexture();
+
+    //Debug
+    if (bDrawTextureRange)//draw debug box for LOS stamp area
+    {
+        const FVector Center = GetOwner()->GetActorLocation();
+        const FVector Extent = FVector(VisionRange, VisionRange, 50.f);
+
+        DrawDebugBox(
+            GetWorld(),
+            Center,
+            Extent,
+            FQuat::Identity,
+            FColor::Green,
+            false,
+            -1.f,
+            0,
+            2.f );
+    }
+    
+    UE_LOG(LOSVision, Verbose,
+        TEXT("[%s]ULineOfSightComponent::UpdateLocalLOS >> UpdateResource called"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+}
+
+
+void ULineOfSightComponent::ToggleLOSStampUpdate(bool bIsOn)
+{
+    UE_LOG(LOSVision, Verbose,
+        TEXT("[%s] ToggleUpdate | Owner=%s | New=%d"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+        *GetOwner()->GetName(),
+        bIsOn);
+    
+    if (ShouldUpdateLOSStamp==bIsOn)
+    {
+        UE_LOG(LOSVision, Verbose,
+            TEXT("[%s]ULineOfSightComponent::ToggleUpdate >> Already set to %s"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+            ShouldUpdateLOSStamp ? TEXT("true") : TEXT("false"));
+        return;
+    }
+    
+    ShouldUpdateLOSStamp = bIsOn;
+
+    
+    UE_LOG(LOSVision, Verbose,
+       TEXT("[%s] ToggleUpdate APPLIED | Owner=%s | ShouldUpdate=%d"),
+       *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+       *GetOwner()->GetName(),
+       ShouldUpdateLOSStamp);
+}
+
+#pragma endregion
+
+//======================= LOS Target Detection =======================================================================//
+#pragma region LOS Target Detection Management
+
+void ULineOfSightComponent::UpdateTargetDetection()
+{
+    if (!bDetectionEnabled || !VisionSphere || !VisibilityTracer)
+    {
+        UE_LOG(LOSVision, VeryVerbose,
+            TEXT("[%s] ULineOfSightComponent::UpdateTargetDetection >> skipped (Disabled or missing components)"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+        return;
+    }
+
+    const FVector ObserverLocation = GetOwner()->GetActorLocation();
+
+    if (bDrawDetectionDebug)//draw a debug sphere for collision range
+    {
+        DrawDebugSphere(
+            GetWorld(),
+            ObserverLocation,
+            VisionRange,
+            24,// segments
+            FColor::Blue,
+            false, // persistent
+            -1.f,// lifetime
+            0,// depth priority
+            2.f // thickness
+        );
+    }
+    
+    for (auto& Pair : TargetVisibilityMap)
+    {
+        AActor* TargetActor = Pair.Key;
+        bool bLastVisible = Pair.Value;
+
+        if (!TargetActor || TargetActor == GetOwner())
+            continue;
+
+        UPrimitiveComponent* TargetShape = ResolveVisibilityShape(TargetActor);
+        if (!TargetShape)
+        {
+            UE_LOG(LOSVision, Warning,
+                TEXT("[%s] ULineOfSightComponent::UpdateTargetDetection >> Cannot resolve visibility shape: %s"),
+                *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+                *TargetActor->GetName());
+            continue;
+        }
+
+        bool bCurrentlyVisible = VisibilityTracer->IsTargetVisible_ShadowCastableObject(
+            GetWorld(),
+            ObserverLocation,
+            TargetShape,
+            VisionRange,
+            ObstacleTraceChannel,
+            { GetOwner() },
+            bDrawDetectionDebug,
+            DesiredAngleDegree);
+
+        // Only call handler if visibility changed
+        if (bCurrentlyVisible != bLastVisible)
+        {
+            UE_LOG(LOSVision, Log,
+               TEXT("[%s] VisibilityChanged: %s | WasVisible=%d | NowVisible=%d"),
+               *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+               *TargetActor->GetName(),
+               bLastVisible,
+               bCurrentlyVisible);
+            
+            HandleTargetVisibilityChanged(TargetActor, bCurrentlyVisible);
+            Pair.Value = bCurrentlyVisible; // update map
+        }
+        else
+        {
+            UE_LOG(LOSVision, VeryVerbose,
+                TEXT("[%s] NoChange in visibility: %s | Visible=%d"),
+                *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+                *TargetActor->GetName(),
+                bCurrentlyVisible);
+        }
+    }
+}
+
+void ULineOfSightComponent::OnVisionSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+    if (!OtherActor || OtherActor == GetOwner())
+        return;
+
+    if (!OtherComp)
+        return;
+
+    //filter by tag
+    if (!OtherActor->ActorHasTag(VisionTargetTag))
+    {
+        UE_LOG(LOSVision, Verbose,
+            TEXT("[%s] ULineOfSightComponent::OnVisionSphereBeginOverlap >> OverlapBegin ignored (missing tag): %s"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+            *OtherActor->GetName());
+        return;
+    }
+
+    // Add to the map, initially not visible
+    TargetVisibilityMap.Add(OtherActor, false);
+
+    UE_LOG(LOSVision, Log,
+        TEXT("[%s] ULineOfSightComponent::OnVisionSphereBeginOverlap >> LOS overlap begin: %s"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+        *OtherActor->GetName());
+}
+
+void ULineOfSightComponent::OnVisionSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+    if (!OtherActor)
+        return;
+
+    // Remove from map
+    TargetVisibilityMap.Remove(OtherActor);
+
+    // Handle visibility reset
+    HandleTargetVisibilityChanged(OtherActor, false);
+
+    UE_LOG(LOSVision, Log,
+        TEXT("[%s] ULineOfSightComponent::OnVisionSphereEndOverlap >> LOS overlap end: %s"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+        *OtherActor->GetName());
+}
+
 UPrimitiveComponent* ULineOfSightComponent::ResolveVisibilityShape(AActor* TargetActor) const
 {
     if (!TargetActor)
@@ -410,14 +443,14 @@ UPrimitiveComponent* ULineOfSightComponent::ResolveVisibilityShape(AActor* Targe
     TargetActor->GetComponents<UPrimitiveComponent>(Prims);
 
     //priority of the returning primitive comp
-    // 1) Explicit tag wins
+    //  Explicit tag wins
     for (UPrimitiveComponent* Comp : Prims)
     {
         if (Comp && Comp->ComponentHasTag(VisionTargetTag))
             return Comp;
     }
 
-    // 2) Prefer common collision shapes
+    // Prefer common collision shapes
     for (UPrimitiveComponent* Comp : Prims)
     {
         if (Comp && (
@@ -429,9 +462,66 @@ UPrimitiveComponent* ULineOfSightComponent::ResolveVisibilityShape(AActor* Targe
         }
     }
 
-    // 3) Fallback to root primitive
+    // Fallback to root primitive
     return Cast<UPrimitiveComponent>(TargetActor->GetRootComponent());
 }
+
+
+void ULineOfSightComponent::HandleTargetVisibilityChanged(AActor* DetectedTarget, bool bIsVisible)
+{
+    if (!DetectedTarget)
+        return;
+
+    // Get GameState // using lazy load method
+    UVisionGameStateComp* VisionGSComp = GetVisionGameStateComp();
+    if (!VisionGSComp)
+        return;
+    
+    // Register / Unregister target visibility
+    if (bIsVisible)
+    {
+        VisionGSComp->RegisterVisionProvider(this); // assuming the LOS component itself is the provider
+        UE_LOG(LOSVision, Log,
+            TEXT("[%s] ULineOfSightComponent::HandleTargetVisibilityChanged >> Registered visible target: %s"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+            *DetectedTarget->GetName());
+    }
+    else
+    {
+        VisionGSComp->UnregisterVisionProvider(this);
+        UE_LOG(LOSVision, Log,
+            TEXT("[%s] ULineOfSightComponent::HandleTargetVisibilityChanged >> Unregistered target: %s"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+            *DetectedTarget->GetName());
+    }
+}
+
+UVisionGameStateComp* ULineOfSightComponent::GetVisionGameStateComp()
+{
+    // Already cached, just return
+    if (CachedVisionGameStateComp)
+        return CachedVisionGameStateComp;
+
+    // Get GameState
+    if (UWorld* World = GetWorld())
+    {
+        if (AGameStateBase* GS = World->GetGameState())
+        {
+            CachedVisionGameStateComp = GS->FindComponentByClass<UVisionGameStateComp>();
+            if (!CachedVisionGameStateComp)
+            {
+                UE_LOG(LOSVision, Warning,
+                    TEXT("[%s] ULineOfSightComponent::GetVisionGameStateComp >> UVisionGameStateComp not found on GameState"),
+                    *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+            }
+        }
+    }
+
+    return CachedVisionGameStateComp;
+}
+#pragma endregion
+
+
 
 
 
