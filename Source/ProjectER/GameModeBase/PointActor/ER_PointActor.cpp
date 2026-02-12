@@ -25,7 +25,7 @@ void AER_PointActor::BeginPlay()
 	{
 		if (UER_ObjectSubsystem* OSS = GetWorld()->GetSubsystem<UER_ObjectSubsystem>())
 		{
-			//
+			OSS->RegisterPoint(this);
 		}
 	}
 	
@@ -46,7 +46,7 @@ void AER_PointActor::EndPlay(const EEndPlayReason::Type Reason)
 		{
 			if (UER_ObjectSubsystem* OSS = GetWorld()->GetSubsystem<UER_ObjectSubsystem>())
 			{
-				//
+				OSS->UnregisterPoint(this);
 			}
 		}
 	}
