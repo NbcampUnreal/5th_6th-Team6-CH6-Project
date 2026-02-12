@@ -17,6 +17,7 @@ class UNiagaraSystem;
 class UInputMappingContext;
 class UInputConfig;
 class UInputAction;
+class UDecalComponent;
 class ABaseCharacter;
 
 struct FInputActionValue;
@@ -53,18 +54,14 @@ protected:
 	void OnConfirm();
 	void OnCanceled();
 	
-	// [테스트용] 팀 변경 함수
-	// void Test_ChangeTeamToA();
-	// void Test_ChangeTeamToB();
-	
-	// [테스트용] 부활 함수
-	// void Test_ReviveInput();
+	// A키 입력 처리
+	void OnAttackModePressed();
 
-	// [테스트] 경험치 획득
-	void Test_GainXP();
-	
-	UFUNCTION(Server, Reliable)
-	void Server_TestGainXP();
+	// 공격 모드 상태 해제 (우클릭 이동 시 취소용)
+	void CancelAttackMode();
+
+	// 공격 명령 (Attack Move) 로직 요청
+	void RequestAttackMove(const FHitResult& Hit);
 	
 protected:
 	// 입력 매핑 컨텍스트 (IMC)
@@ -75,13 +72,20 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputConfig> InputConfig;
 	
+	// [추가] 사거리 표시용 데칼 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
+	TObjectPtr<UDecalComponent> AttackRangeDecal;
+	
 	// 커서 클릭 이펙트 (FX Class)
 	UPROPERTY(EditAnywhere, Category="Input")
 	TObjectPtr<UNiagaraSystem> FXCursor;
 	
 private:
 	// 마우스 입력 키다운 플래그
-	uint32 bIsMousePressed : 1;
+	uint8 bIsMousePressed : 1;
+	
+	// 공격 모드(A키 누른 상태) 확인 플래그
+	uint8 bIsAttackInputMode : 1;
 	
 	// 이동할 위치 캐싱
 	FVector CachedDestination;

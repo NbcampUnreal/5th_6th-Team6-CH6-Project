@@ -35,9 +35,13 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MouseClick")
 	TObjectPtr<UInputAction> InputCancel;
 
-	//마우스 왼쪽클릭
+	// 마우스 왼쪽클릭
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MouseClick")
 	TObjectPtr<UInputAction> InputConfirm;
+	
+	// 공격 명령 (A키)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Command")
+	TObjectPtr<UInputAction> InputAttack;
 	
 	// 이동 정지 명령
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Command")
