@@ -406,6 +406,32 @@ void ABaseMonster::GiveRewardsToPlayer(AActor* Player)
 	TargetASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
 }
 
+void ABaseMonster::OnCooldown(FGameplayTag CooldownTag, float Cooldown)
+{
+	// 쿨다운 태그 부착
+	AddCooldownTag(AutoAttackCooldownTag);
+	// 타이머로 일정시간후 쿨다운 태그 때기
+	GetWorld()->GetTimerManager().SetTimer(
+		AutoAttackCooldownTimer,
+		FTimerDelegate::CreateLambda([this]()
+			{
+				RemoveCooldownTag(AutoAttackCooldownTag);
+			}),
+		Cooldown,
+		false
+	);
+}
+
+void ABaseMonster::AddCooldownTag(FGameplayTag CooldownTag)
+{
+	ASC->AddLooseGameplayTag(CooldownTag);
+}
+
+void ABaseMonster::RemoveCooldownTag(FGameplayTag CooldownTag)
+{
+	ASC->RemoveLooseGameplayTag(CooldownTag);
+}
+
 void ABaseMonster::OnTargetLostHandle()
 {
 	ABaseCharacter* BC = Cast<ABaseCharacter>(TargetPlayer);
@@ -449,16 +475,19 @@ void ABaseMonster::SendAttackRangeEvent(float AttackRange)
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::SendAttackRangeEvent : Not Player"));
 		return;
 	}
-	const float Distance = 
-		FVector::DistSquared(
-			TargetPlayer->GetActorLocation(), 
-			GetActorLocation()
-		);
-
-	if (Distance <= AttackRange * AttackRange)
+	const float Distance = FVector::DistSquared(
+			TargetPlayer->GetActorLocation(), GetActorLocation());
+	bool AutoAttackCooldown = ASC->HasMatchingGameplayTag(AutoAttackCooldownTag);
+	
+	UE_LOG(LogTemp, Warning, TEXT("%s"), AutoAttackCooldown ? TEXT("AutoAttackCooldownTag true") : TEXT("AutoAttackCooldownTag false"));
+	
+	if (!AutoAttackCooldown && Distance <= AttackRange * AttackRange)
 	{
 		// 공격가능
 		StateTreeComp->SendStateTreeEvent(FGameplayTag(AttackEventTag));
+
+		float Cooldown = AttributeSet->GetAttackSpeed();
+		OnCooldown(AutoAttackCooldownTag, Cooldown);
 	}
 	else
 	{

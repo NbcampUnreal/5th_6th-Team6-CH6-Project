@@ -72,10 +72,14 @@ private:
 	UFUNCTION(NetMulticast, BlueprintCallable, Reliable)
 	void Multicast_SetDeathCollision();
 
-	UFUNCTION()
-	void OnTargetLostHandle();
-
 	void GiveRewardsToPlayer(AActor* Player);
+
+	void OnCooldown(FGameplayTag CooldownTag, float Cooldown);
+
+	void AddCooldownTag(FGameplayTag CooldownTag);
+
+	void RemoveCooldownTag(FGameplayTag CooldownTag);
+
 
 #pragma region Init
 
@@ -110,6 +114,9 @@ private:
 
 	UFUNCTION(BlueprintCallable)
 	void SendReturnSuccessEvent();
+
+	UFUNCTION()
+	void OnTargetLostHandle();
 
 #pragma endregion
 
@@ -165,6 +172,16 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag CombatAbilityTag;
+#pragma endregion
+
+#pragma region Cooldown Tag
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Cooldown", meta = (AllowPrivateAccess = "true"))
+	FGameplayTag AutoAttackCooldownTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Cooldown", meta = (AllowPrivateAccess = "true"))
+	FGameplayTag QSkillCooldownTag;
+
 #pragma endregion
 
 #pragma region Event Tag
@@ -254,6 +271,14 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI", meta = (AllowprivateAccess = "true"))
 	TObjectPtr<UWidgetComponent> HPBarWidgetComp;
+
+#pragma endregion
+
+#pragma region Timer
+
+	FTimerHandle AutoAttackCooldownTimer;
+
+	FTimerHandle QSkillCooldownTimer;
 
 #pragma endregion
 
