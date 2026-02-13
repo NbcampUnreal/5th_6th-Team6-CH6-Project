@@ -115,7 +115,15 @@ public:
 	
 	UPROPERTY(EditDefaultsOnly,Category = "GAS") 
 	TSubclassOf<UGameplayEffect> InitStatusEffectClass;
+	
+	// 기본 상태(Alive) 이펙트 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Life")
+	TSubclassOf<UGameplayEffect> AliveStateEffectClass;
 
+	// 빈사 상태(Down) 이펙트 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Life")
+	TSubclassOf<UGameplayEffect> DownStateEffectClass;
+	
 	// 전민성 추가
 	UPROPERTY(EditAnywhere, Category = "GAS")
 	TSubclassOf<class UGameplayAbility> OpenAbilityClass;
@@ -203,6 +211,9 @@ public:
 	
 	// 부활 처리 호출
 	virtual void Revive(FVector RespawnLocation);
+	
+	// 빈사 상태 진입
+	virtual void HandleDown();
 	
 	UPROPERTY()
 	FOnDeath OnDeath;

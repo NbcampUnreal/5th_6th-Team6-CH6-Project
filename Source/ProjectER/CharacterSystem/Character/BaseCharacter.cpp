@@ -387,7 +387,17 @@ void ABaseCharacter::InitAbilitySystem()
 		// 전민성 추가
 		FGameplayAbilitySpec Spec(OpenAbilityClass, 1);
 		ASC->GiveAbility(Spec);
-
+		
+		if (AliveStateEffectClass)
+		{
+			FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+			Context.AddSourceObject(this);
+			FGameplayEffectSpecHandle EffectSpec = AbilitySystemComponent->MakeOutgoingSpec(AliveStateEffectClass, 1.0f, Context);
+			if (EffectSpec.IsValid())
+			{
+				AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*EffectSpec.Data.Get());
+			}
+		}
 
 		// Attribute Set 초기화
 		InitAttributes();
@@ -1028,13 +1038,36 @@ void ABaseCharacter::HandleDeath()
 void ABaseCharacter::Revive(FVector RespawnLocation)
 {
 	if (!HasAuthority()) return;
-
-	// 상태 태그 제거 (State.Life.Death)
+	
+	// 빈사 상태(Down) 제거 (추가 예정)
+	// 태그로 찾아서 GE 제거
+	// AbilitySystemComponent->RemoveActiveEffectsWithGrantedTags(FGameplayTagContainer(ProjectER::State::Life::Down));
+	
 	if (AbilitySystemComponent.IsValid())
 	{
-		FGameplayTag DeathTag = ProjectER::State::Life::Death;
-		AbilitySystemComponent->RemoveLooseGameplayTag(DeathTag);
+		// [상태 초기화] 사망(Death) 또는 빈사(Down) 태그를 가진 모든 GE 제거
+		FGameplayTagContainer BadStateTags;
+		BadStateTags.AddTag(ProjectER::State::Life::Death);
+		BadStateTags.AddTag(ProjectER::State::Life::Down);
 		
+		AbilitySystemComponent->RemoveActiveEffectsWithGrantedTags(BadStateTags);
+
+		// (안전장치) 혹시 Loose Tag로 남아있을 경우를 대비해 직접 제거 (기존 코드 호환용)
+		AbilitySystemComponent->RemoveLooseGameplayTag(ProjectER::State::Life::Death);
+		AbilitySystemComponent->RemoveLooseGameplayTag(ProjectER::State::Life::Down);
+
+		//  Alive GE 적용
+		if (AliveStateEffectClass)
+		{
+			FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+			Context.AddSourceObject(this);
+			
+			FGameplayEffectSpecHandle Spec = AbilitySystemComponent->MakeOutgoingSpec(AliveStateEffectClass, 1.0f, Context);
+			if (Spec.IsValid())
+			{
+				AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+			}
+		}
 	}
 
 	// 스탯 초기화
@@ -1044,12 +1077,10 @@ void ABaseCharacter::Revive(FVector RespawnLocation)
 	if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
 	{
 		AS = ERPS->GetAttributeSet();
-		UE_LOG(LogTemp, Log, TEXT("[Revive] Found AttributeSet via AER_PlayerState"));
 	}
 	else if (ABasePlayerState* BasePS = GetPlayerState<ABasePlayerState>())
 	{
 		AS = BasePS->GetAttributeSet();
-		UE_LOG(LogTemp, Log, TEXT("[Revive] Found AttributeSet via BasePlayerState"));
 	}
 	
 	if (AS)
@@ -1069,6 +1100,38 @@ void ABaseCharacter::Revive(FVector RespawnLocation)
 
 	// 클라이언트 동기화 (위치 이동 및 비주얼/물리 복구)
 	Multicast_Revive(RespawnLocation);
+}
+
+void ABaseCharacter::HandleDown()
+{
+	if (HasAuthority())
+	{
+		if (AbilitySystemComponent.IsValid())
+		{
+			// 1. 기존 진행 중인 모든 어빌리티 취소 (공격, 캐스팅 등)
+			AbilitySystemComponent->CancelAllAbilities();
+
+			// 2. GE_DownStatus 적용
+			if (DownStateEffectClass)
+			{
+				FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+				EffectContext.AddSourceObject(this);
+                
+				FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(DownStateEffectClass, GetCharacterLevel(), EffectContext);
+				if (SpecHandle.IsValid())
+				{
+					AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+				}
+			}
+		}
+        
+		// 3. 타겟 해제 (적들이 나를 더 이상 우선순위로 공격하지 않게 하려면)
+		// SetTarget(nullptr); 
+	}
+	
+	// (선택) 클라이언트 비주얼 처리 필요 시 Multicast_HandleDown() 추가 호출
+	// 이동 모드 변경 (예: 걷기 -> 기어가기 속도 제어는 GE에서 처리되므로 여기선 생략 가능)
+	UE_LOG(LogTemp, Warning, TEXT("[HandleDown] User is now Down-But-Not-Out!"));
 }
 
 void ABaseCharacter::Multicast_Revive_Implementation(FVector RespawnLocation)

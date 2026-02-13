@@ -79,7 +79,7 @@ namespace ProjectER
 
 		namespace Amount // 수치
 		{
-		//	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Heal);   // 치유량 (HP or MP)
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Heal);   // 치유량 (HP or MP)
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Damage); // 피해량
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(IncomingXP); // 경험치 습득량
 		}
@@ -158,6 +158,7 @@ namespace ProjectER
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Move);
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack);
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Return);
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reviving); // 아군 살리기
 		}
 
 		namespace Buff
@@ -193,6 +194,11 @@ namespace ProjectER
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Down);     // 그로기
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Alive);    // 생존
 		}
+		
+		/*namespace Status
+		{
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Unselectable); // 적 타겟팅은 되지만 일부 스킬 불가(Down 시 부여)
+		}*/
 	}
 	
 	namespace Status // 스탯

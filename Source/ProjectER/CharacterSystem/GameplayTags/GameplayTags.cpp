@@ -77,7 +77,7 @@ namespace ProjectER
 
 		namespace Amount
 		{
-			// UE_DEFINE_GAMEPLAY_TAG_COMMENT(Health, "Data.Amount.Heal", "Heal Amount");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Health, "Data.Amount.Heal", "Heal Amount");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage, "Data.Amount.Damage", "Damage Amount");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(IncomingXP, "Data.Amount.IncomingXP", "Incoming XP Amount");
 		} 
@@ -157,6 +157,7 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Move, "State.Action.Move", "Move State");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "State.Action.Attack", "Attack State");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "State.Action.Return", "Return State");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Reviving, "State.Action.Reviving", "Reviving State");
 		}
 
 		namespace Buff
@@ -192,6 +193,11 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Down, "State.Life.Down", "Groggy State");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Alive, "State.Life.Alive", "Alive State");
 		}
+		
+		/*namespace Status
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unselectable, "State.Status.Unselectable", "Unselectable State"); // 적 타겟팅은 되지만 일부 스킬 불가(Down 시 부여)
+		}*/
 	}
 
 	namespace Status
