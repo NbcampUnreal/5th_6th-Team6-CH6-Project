@@ -48,7 +48,7 @@ public:
 	void EndGame_Internal();
 
 	UFUNCTION(BlueprintCallable)
-	void NotifyPlayerDied(ACharacter* VictimCharacter, AController* KillerController);
+	void NotifyPlayerDied(ACharacter* VictimCharacter, APlayerState* KillerPS, const TArray<APlayerState*>& Assists);
 
 	UFUNCTION(BlueprintCallable)
 	void NotifyNeutralDied(ACharacter* VictimCharacter);
