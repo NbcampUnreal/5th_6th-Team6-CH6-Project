@@ -8,6 +8,8 @@ class UUniformGridPanel;
 class UBaseItemData;
 class ABaseBoxActor;
 class UButton;
+class UUI_ToolTip;		// 툴팁용
+class UUI_ToolTipManager;	// 툴팁용
 
 UCLASS()
 class PROJECTER_API UW_LootingPopup : public UUserWidget
@@ -49,4 +51,24 @@ private:
 
 	UFUNCTION()
 	void OnSlotButtonClicked();
+
+	// 툴팁용 공간
+#pragma region Tooltip
+protected:
+	// 툴팁 클래스 (에디터에서 할당)
+	UPROPERTY(EditAnywhere, Category = "Tooltip")
+	TSubclassOf<UUserWidget> TooltipClass;
+
+	// 툴팁 인스턴스
+	UPROPERTY()
+	UUI_ToolTip* TooltipInstance;
+
+	UPROPERTY()
+	UUI_ToolTipManager* TooltipManager;
+
+	UFUNCTION()
+	void OnItemHovered();
+	UFUNCTION()
+	void HideTooltip();
+#pragma endregion
 };

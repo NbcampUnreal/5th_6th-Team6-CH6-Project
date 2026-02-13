@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Abilities/GameplayAbilityTypes.h"
 #include "Containers/Array.h"
+#include "UI/UI_ToolTipManager.h" // 툴팁용
 #include "UI_MainHUD.generated.h"
 
 #define MAX_TEAMMATE	2
@@ -17,6 +18,7 @@ class UImage;
 class UUI_ToolTip;
 class UCharacterData;
 class UAbilitySystemComponent;
+
 
 UENUM(BlueprintType)
 enum class ECharacterStat : uint8
@@ -82,6 +84,9 @@ protected:
 	// 툴팁 인스턴스
 	UPROPERTY()
 	UUI_ToolTip* TooltipInstance;
+
+	UPROPERTY()
+	UUI_ToolTipManager* TooltipManager;
 
 	// --- 마우스 오버 이벤트 핸들러 ---
 	// 버튼용
