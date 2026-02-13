@@ -230,23 +230,24 @@ void ABaseMonster::InitAttributes(float Level)
 		{
 			AttributeSet->SetAttackPower(MonsterRow->BaseAttackPower + AttackPower->Eval(Level));
 		}
-		AttributeSet->SetAttackRange(MonsterRow->BaseAttackRange);
-		AttributeSet->SetCriticalChance(MonsterRow->BaseCriticalChance);
-		AttributeSet->SetCriticalDamage(MonsterRow->BaseCriticalDamage);
-		AttributeSet->SetMoveSpeed(MonsterRow->BaseMoveSpeed);
-		AttributeSet->SetCooldownReduction(MonsterRow->BaseCooldownReduction);
-		AttributeSet->SetTenacity(MonsterRow->BaseTenacity);
-		AttributeSet->SetAttackSpeed(MonsterRow->BaseAttackSpeed);
 		FRealCurve* SkillAmp = MonsterData->MonsterCurveTable->FindCurve(FName("SkillAmp"), TEXT("MonsterCurve"));
+		AttributeSet->SetAttackSpeed(MonsterRow->BaseAttackSpeed);
 		if (SkillAmp)
 		{
 			AttributeSet->SetSkillAmp(MonsterRow->BaseSkillAmp + SkillAmp->Eval(Level));
 		}
+		AttributeSet->SetAttackRange(MonsterRow->BaseAttackRange);
+		AttributeSet->SetCriticalChance(MonsterRow->BaseCriticalChance);
+		AttributeSet->SetCriticalDamage(MonsterRow->BaseCriticalDamage);
 		FRealCurve* Defense = MonsterData->MonsterCurveTable->FindCurve(FName("Defense"), TEXT("MonsterCurve"));
 		if (Defense)
 		{
 			AttributeSet->SetDefense(MonsterRow->BaseDefense + Defense->Eval(Level));
 		}
+		AttributeSet->SetMoveSpeed(MonsterRow->BaseMoveSpeed);
+		AttributeSet->SetCooldownReduction(MonsterRow->BaseCooldownReduction);
+		AttributeSet->SetTenacity(MonsterRow->BaseTenacity);
+		AttributeSet->SetAttackDelay(MonsterRow->BaseAttackDelay);
 	}
 }
 

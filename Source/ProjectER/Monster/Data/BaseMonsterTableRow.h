@@ -56,4 +56,7 @@ public:
 
 	UPROPERTY(EditAnywhere)
 	float BaseTenacity = 0;
+
+	UPROPERTY(EditAnywhere)
+	float BaseAttackDelay = 0;
 };
