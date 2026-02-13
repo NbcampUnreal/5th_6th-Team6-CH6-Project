@@ -32,6 +32,7 @@ UBaseAttributeSet::UBaseAttributeSet()
 	InitMoveSpeed(0.0f);
 	InitCooldownReduction(0.0f);
 	InitTenacity(0.0f);
+	InitAttackDelay(0.0f);
 }
 
 void UBaseAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -57,6 +58,7 @@ void UBaseAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimePropert
 	DOREPLIFETIME_CONDITION_NOTIFY(UBaseAttributeSet, MoveSpeed, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBaseAttributeSet, CooldownReduction, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBaseAttributeSet, Tenacity, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UBaseAttributeSet, AttackDelay, COND_None, REPNOTIFY_Always);
 }
 
 void UBaseAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -294,4 +296,9 @@ void UBaseAttributeSet::OnRep_CooldownReduction(const FGameplayAttributeData& Ol
 void UBaseAttributeSet::OnRep_Tenacity(const FGameplayAttributeData& OldTenacity)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, MoveSpeed, OldTenacity);
+}
+
+void UBaseAttributeSet::OnRep_AttackDelay(const FGameplayAttributeData& OldTenacity)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, AttackDelay, OldTenacity);
 }

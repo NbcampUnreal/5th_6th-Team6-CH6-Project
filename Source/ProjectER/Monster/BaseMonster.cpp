@@ -5,6 +5,7 @@
 #include "Monster/Data/BaseMonsterTableRow.h"
 #include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
+#include "ItemSystem/Data/BaseItemData.h"
 
 #include "Components/StateTreeComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -12,6 +13,7 @@
 #include "Monster/MonsterRangeComponent.h"
 #include "Components/ProgressBar.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "ItemSystem/Component/LootableComponent.h"
 
 #include "Net/UnrealNetwork.h"
 #include "AbilitySystemComponent.h"
@@ -62,6 +64,9 @@ ABaseMonster::ABaseMonster()
 	HPBarWidgetComp->SetVisibility(false);
 
 	TeamID = ETeamType::Neutral;
+
+	//ItemBox
+	LootableComp = CreateDefaultSubobject<ULootableComponent>(TEXT("LootableComponent"));
 }
 
 UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
@@ -230,23 +235,24 @@ void ABaseMonster::InitAttributes(float Level)
 		{
 			AttributeSet->SetAttackPower(MonsterRow->BaseAttackPower + AttackPower->Eval(Level));
 		}
-		AttributeSet->SetAttackRange(MonsterRow->BaseAttackRange);
-		AttributeSet->SetCriticalChance(MonsterRow->BaseCriticalChance);
-		AttributeSet->SetCriticalDamage(MonsterRow->BaseCriticalDamage);
-		AttributeSet->SetMoveSpeed(MonsterRow->BaseMoveSpeed);
-		AttributeSet->SetCooldownReduction(MonsterRow->BaseCooldownReduction);
-		AttributeSet->SetTenacity(MonsterRow->BaseTenacity);
-		AttributeSet->SetAttackSpeed(MonsterRow->BaseAttackSpeed);
 		FRealCurve* SkillAmp = MonsterData->MonsterCurveTable->FindCurve(FName("SkillAmp"), TEXT("MonsterCurve"));
+		AttributeSet->SetAttackSpeed(MonsterRow->BaseAttackSpeed);
 		if (SkillAmp)
 		{
 			AttributeSet->SetSkillAmp(MonsterRow->BaseSkillAmp + SkillAmp->Eval(Level));
 		}
+		AttributeSet->SetAttackRange(MonsterRow->BaseAttackRange);
+		AttributeSet->SetCriticalChance(MonsterRow->BaseCriticalChance);
+		AttributeSet->SetCriticalDamage(MonsterRow->BaseCriticalDamage);
 		FRealCurve* Defense = MonsterData->MonsterCurveTable->FindCurve(FName("Defense"), TEXT("MonsterCurve"));
 		if (Defense)
 		{
 			AttributeSet->SetDefense(MonsterRow->BaseDefense + Defense->Eval(Level));
 		}
+		AttributeSet->SetMoveSpeed(MonsterRow->BaseMoveSpeed);
+		AttributeSet->SetCooldownReduction(MonsterRow->BaseCooldownReduction);
+		AttributeSet->SetTenacity(MonsterRow->BaseTenacity);
+		AttributeSet->SetAttackDelay(MonsterRow->BaseAttackDelay);
 	}
 }
 
@@ -385,8 +391,12 @@ void ABaseMonster::OnMonterDeathHandle(AActor* Target)
 	InGameMode->NotifyNeutralDied(this);
 	// Target에게 보상 지급
    
-	//BoxComp = 생성;
-	//BoxComp->InitBox(DataAsset->ItemList);
+	//아이템 박스 초기화;
+	if (MonsterData->ItemList.Num() <= 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ItemList Not"));
+	}
+	LootableComp->InitializeWithItems(MonsterData->ItemList);
 
 	GiveRewardsToPlayer(Target);
 }

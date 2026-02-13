@@ -6,6 +6,7 @@
 #include "MonsterDataAsset.generated.h"
 
 class UGameplayAbility;
+class UBaseItemData;
 struct FGameplayTag;
 
 // 몬스터 데이터
@@ -63,6 +64,6 @@ public:
 
 	// 이거는 죽었을 때 로드해서 ??
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Reward")
-	TArray<UDataAsset*> ItemList;
+	TArray<UBaseItemData*> ItemList;
 
 };
