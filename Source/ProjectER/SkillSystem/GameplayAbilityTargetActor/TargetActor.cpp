@@ -1,7 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "SkillSystem/AGameplayAbilityTargetActor/TargetActor.h"
+#include "SkillSystem/GameplayAbilityTargetActor/TargetActor.h"
 #include "GameFramework/Actor.h"
 #include "SkillSystem/GameAbility/MouseTargetSkill.h"
 #include "AbilitySystemBlueprintLibrary.h"
