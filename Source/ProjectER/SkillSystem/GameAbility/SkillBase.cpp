@@ -88,6 +88,12 @@ void USkillBase::ExecuteSkill()
 {
 	if (IsValid(CachedConfig) == false || CachedConfig->GetExcutionEffects().Num() <= 0) return;
 
+	/*if (CommitAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo) == false)
+	{
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+		return;
+	}*/
+
 	AActor* Avatar = GetAvatarActorFromActorInfo();
 	if (IsValid(Avatar) == false) return;
 
@@ -217,7 +223,7 @@ FGameplayTag USkillBase::GetInputTag()
 
 ETargetRelationship USkillBase::GetSkillTargetRelationship()
 {
-	ETargetRelationship Result;
+	ETargetRelationship Result = ETargetRelationship::None;
 
 	if (CachedConfig)
 	{

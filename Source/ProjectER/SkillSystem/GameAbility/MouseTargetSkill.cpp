@@ -9,7 +9,7 @@
 #include "AbilitySystemComponent.h"
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 #include "AbilitySystemBlueprintLibrary.h"
-#include "SkillSystem/AGameplayAbilityTargetActor/TargetActor.h"
+#include "SkillSystem/GameplayAbilityTargetActor/TargetActor.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "MouseClickSkill.h"
