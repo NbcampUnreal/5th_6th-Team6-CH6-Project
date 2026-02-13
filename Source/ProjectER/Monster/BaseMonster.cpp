@@ -327,9 +327,23 @@ void ABaseMonster::OnMonterHitHandle(AActor* Target)
 {
 	if (TargetPlayer == nullptr)
 	{
-		SetTargetPlayer(Target);
 		ABaseCharacter* BC = Cast<ABaseCharacter>(Target);
-		BC->OnDeath.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
+		if (bIsDead)
+		{
+			if (BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+			{
+				BC->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+			}
+			return;
+		}
+		else
+		{
+			SetTargetPlayer(Target);
+			if (!BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+			{
+				BC->OnDeath.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
+			}
+		}
 	}
 	
 	SetbIsCombat(true);
@@ -435,7 +449,10 @@ void ABaseMonster::RemoveCooldownTag(FGameplayTag CooldownTag)
 void ABaseMonster::OnTargetLostHandle()
 {
 	ABaseCharacter* BC = Cast<ABaseCharacter>(TargetPlayer);
-	BC->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+	if (BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+	{
+		BC->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+	}
 	StateTreeComp->SendStateTreeEvent(FGameplayTag(TargetOffEventTag));
 	TargetPlayer = nullptr;
 }
@@ -478,8 +495,6 @@ void ABaseMonster::SendAttackRangeEvent(float AttackRange)
 	const float Distance = FVector::DistSquared(
 			TargetPlayer->GetActorLocation(), GetActorLocation());
 	bool AutoAttackCooldown = ASC->HasMatchingGameplayTag(AutoAttackCooldownTag);
-	
-	UE_LOG(LogTemp, Warning, TEXT("%s"), AutoAttackCooldown ? TEXT("AutoAttackCooldownTag true") : TEXT("AutoAttackCooldownTag false"));
 	
 	if (!AutoAttackCooldown && Distance <= AttackRange * AttackRange)
 	{
