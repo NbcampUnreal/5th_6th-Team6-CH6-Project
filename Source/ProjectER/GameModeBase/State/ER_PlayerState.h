@@ -11,6 +11,17 @@
 class UAbilitySystemComponent;
 class UBaseAttributeSet;
 
+
+USTRUCT()
+struct FDamageContrib
+{
+	GENERATED_BODY()
+
+	TWeakObjectPtr<APlayerState> AttackerPS;
+	float LastHitTime = 0.f;
+	float TotalDamage = 0.f;
+};
+
 UCLASS()
 class PROJECTER_API AER_PlayerState : public APlayerState, public IAbilitySystemInterface
 {
@@ -22,9 +33,13 @@ public:
 	virtual void CopyProperties(class APlayerState* PlayerState) override;
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
-	UBaseAttributeSet* GetAttributeSet() const { return AttributeSet; }
+	void AddDamageContributor(APlayerState* AttackerPS, float Damage, float Now);
+	void GetAssists(float Now, float WindowSec, APlayerState* KillerPS, TArray<APlayerState*>& OutAssists) const;
+	void ResetDamageContrib();
 
 	// Getter
+	UBaseAttributeSet* GetAttributeSet() const { return AttributeSet; }
+
 	UFUNCTION(BlueprintCallable)
 	FString GetPlayerStateName() { return PlayerStateName; }
 
@@ -96,4 +111,9 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "GAS")
 	TObjectPtr<UBaseAttributeSet> AttributeSet;
 
+	UPROPERTY()
+	TMap<TWeakObjectPtr<APlayerState>, FDamageContrib> DamageContribMap;
+
+	UPROPERTY()
+	TArray<APlayerState*> OutAssistArray;
 };
