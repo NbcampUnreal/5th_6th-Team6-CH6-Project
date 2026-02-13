@@ -5,6 +5,7 @@
 #include "Monster/Data/BaseMonsterTableRow.h"
 #include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
+#include "ItemSystem/Data/BaseItemData.h"
 
 #include "Components/StateTreeComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -12,6 +13,7 @@
 #include "Monster/MonsterRangeComponent.h"
 #include "Components/ProgressBar.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "ItemSystem/Component/LootableComponent.h"
 
 #include "Net/UnrealNetwork.h"
 #include "AbilitySystemComponent.h"
@@ -62,6 +64,9 @@ ABaseMonster::ABaseMonster()
 	HPBarWidgetComp->SetVisibility(false);
 
 	TeamID = ETeamType::Neutral;
+
+	//ItemBox
+	LootableComp = CreateDefaultSubobject<ULootableComponent>(TEXT("LootableComponent"));
 }
 
 UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
@@ -386,8 +391,12 @@ void ABaseMonster::OnMonterDeathHandle(AActor* Target)
 	InGameMode->NotifyNeutralDied(this);
 	// Target에게 보상 지급
    
-	//BoxComp = 생성;
-	//BoxComp->InitBox(DataAsset->ItemList);
+	//아이템 박스 초기화;
+	if (MonsterData->ItemList.Num() <= 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ItemList Not"));
+	}
+	LootableComp->InitializeWithItems(MonsterData->ItemList);
 
 	GiveRewardsToPlayer(Target);
 }
