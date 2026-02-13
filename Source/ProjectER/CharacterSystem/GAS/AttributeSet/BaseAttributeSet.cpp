@@ -115,7 +115,14 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 	{
 		const float LocalDamage = GetIncomingDamage();
 		SetIncomingDamage(0.0f); // Meta Data 초기화 
-
+		
+		// 공격 대상 설정
+		const FGameplayEffectContextHandle& Context =
+			Data.EffectSpec.GetEffectContext();
+		
+		//AActor* Target = Context.GetInstigator(); // 인스티게이터로
+		AActor* Target = Context.GetEffectCauser(); 
+		
 		if (LocalDamage > 0.0f)
 		{
 			const float OldHealth = GetHealth();
