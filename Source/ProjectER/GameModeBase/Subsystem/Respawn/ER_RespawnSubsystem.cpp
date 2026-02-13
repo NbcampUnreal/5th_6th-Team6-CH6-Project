@@ -10,7 +10,7 @@
 #include "CharacterSystem/Character/BaseCharacter.h"
 
 
-void UER_RespawnSubsystem::HandlePlayerDeath(AER_PlayerState& PS, AER_GameState& GS)
+void UER_RespawnSubsystem::HandlePlayerDeath(AER_PlayerState& PS, AER_GameState& GS, AER_PlayerState& KillerPS)
 {
 	if (!GS.HasAuthority())
 		return;
@@ -22,8 +22,12 @@ void UER_RespawnSubsystem::HandlePlayerDeath(AER_PlayerState& PS, AER_GameState&
 		return;
 
 	PS.bIsDead = true;
+	PS.AddDeathCount();
 	PS.ForceNetUpdate();
-	PS.FlushNetDormancy();
+	//PS.FlushNetDormancy();
+	KillerPS.AddKillCount();
+	KillerPS.ForceNetUpdate();
+
 	UE_LOG(LogTemp, Warning, TEXT("PS.bIsDead = %s"), PS.bIsDead ? TEXT("True") : TEXT("False"));
 }
 
