@@ -10,7 +10,7 @@
 #include "CharacterSystem/Character/BaseCharacter.h"
 
 
-void UER_RespawnSubsystem::HandlePlayerDeath(AER_PlayerState& PS, AER_GameState& GS)
+void UER_RespawnSubsystem::HandlePlayerDeath(AER_PlayerState& PS, AER_GameState& GS, AER_PlayerState& KillerPS, const TArray<APlayerState*>& Assists)
 {
 	if (!GS.HasAuthority())
 		return;
@@ -22,8 +22,25 @@ void UER_RespawnSubsystem::HandlePlayerDeath(AER_PlayerState& PS, AER_GameState&
 		return;
 
 	PS.bIsDead = true;
+	PS.AddDeathCount();
 	PS.ForceNetUpdate();
-	PS.FlushNetDormancy();
+	UE_LOG(LogTemp, Warning, TEXT("Death.PS  K : %d, D : %d, A : %d"), PS.GetKillCount(), PS.GetDeathCount(), PS.GetAssistCount());
+	//PS.FlushNetDormancy();
+	KillerPS.AddKillCount();
+	KillerPS.ForceNetUpdate();
+	UE_LOG(LogTemp, Warning, TEXT("Kill.PS K : %d, D : %d, A : %d"), KillerPS.GetKillCount(), KillerPS.GetDeathCount(), KillerPS.GetAssistCount());
+
+	for (auto& AssistPS : Assists)
+	{
+		AER_PlayerState* AssistERPS = Cast<AER_PlayerState>(AssistPS);
+		if (AssistERPS && AssistERPS != &KillerPS)
+		{
+			AssistERPS->AddAssistCount();
+			AssistERPS->ForceNetUpdate();
+			UE_LOG(LogTemp, Warning, TEXT("Kill.PS K : %d, D : %d, A : %d"), AssistERPS->GetKillCount(), AssistERPS->GetDeathCount(), AssistERPS->GetAssistCount());
+		}
+	}
+
 	UE_LOG(LogTemp, Warning, TEXT("PS.bIsDead = %s"), PS.bIsDead ? TEXT("True") : TEXT("False"));
 }
 

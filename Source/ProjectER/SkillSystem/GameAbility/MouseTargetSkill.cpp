@@ -9,9 +9,12 @@
 #include "AbilitySystemComponent.h"
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 #include "AbilitySystemBlueprintLibrary.h"
-#include "SkillSystem/AGameplayAbilityTargetActor/TargetActor.h"
+#include "SkillSystem/GameplayAbilityTargetActor/TargetActor.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
+#include "MouseClickSkill.h"
+
+#define ECC_SKill ECC_GameTraceChannel6
 
 UMouseTargetSkill::UMouseTargetSkill()
 {
@@ -99,13 +102,6 @@ void UMouseTargetSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle
 	for (AActor* Actor : TargetActors)
 	{
 		AffectedActors.Add(Actor);
-		/*if (IsInRange(Actor))
-		{
-			AffectedActors.Add(Actor);
-		}
-		else {
-			EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
-		}*/
 	}
 
 	PrepareToActiveSkill();
@@ -126,42 +122,11 @@ AActor* UMouseTargetSkill::GetTargetUnderCursorInRange()
 
 	if (!IsValid(HitActor)) return nullptr;
 
-	UE_LOG(LogTemp, Log, TEXT("[%f] Returning Actor: %s"), GetWorld()->GetTimeSeconds(), *HitActor->GetName());
-
-	/*UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(HitActor);
-	if (!TargetASC) return nullptr;*/
-	//IsValidRelationship(HitActor)
-	if (IsInRange(HitActor))
+	if (IsInRange(HitActor) && IsValidRelationship(HitActor))
 	{
-		if (!HitActor)
-		{
-			UE_LOG(LogTemp, Log, TEXT("HitActor is Null  after IsInRange"));
-		}
-		if (IsValidRelationship(HitActor))
-		{
-			if (HitActor)
-			{
-				return HitActor;
-			}
-			else {
-				UE_LOG(LogTemp, Log, TEXT("HitActor is Null"));
-			}
-		}
-		else {
-			UE_LOG(LogTemp, Log, TEXT("HitActor is Is Not ValidRelationship"));
-		}
-	}
-	else {
-		UE_LOG(LogTemp, Log, TEXT("HitActor is Range Out"));
+		return HitActor;
 	}
 
-	//if (IsInRange(HitActor) && IsValidRelationship(HitActor))
-	//{
-	//	UE_LOG(LogTemp, Log, TEXT("[%f] Returning Actor: %s"), GetWorld()->GetTimeSeconds(), *HitActor->GetName());
-	//	return HitActor;
-	//}
-
-	UE_LOG(LogTemp, Log, TEXT("HitActor is null"));
 	return nullptr;
 }
 
@@ -171,7 +136,7 @@ AActor* UMouseTargetSkill::GetTargetUnderCursor()
 	if (!PC) return nullptr;
 
 	FHitResult HitResult;
-	PC->GetHitResultUnderCursor(ECC_Pawn, false, HitResult);
+	PC->GetHitResultUnderCursor(ECC_SKill, false, HitResult);
 
 	return HitResult.GetActor();
 }

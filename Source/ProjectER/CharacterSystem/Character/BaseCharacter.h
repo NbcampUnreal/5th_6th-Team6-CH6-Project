@@ -13,6 +13,8 @@ class UBaseAttributeSet;
 class UGameplayEffect;
 class UCharacterData;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
+
 UCLASS()
 class PROJECTER_API ABaseCharacter : public ACharacter,  public IAbilitySystemInterface, public ITargetableInterface
 {
@@ -113,7 +115,15 @@ public:
 	
 	UPROPERTY(EditDefaultsOnly,Category = "GAS") 
 	TSubclassOf<UGameplayEffect> InitStatusEffectClass;
+	
+	// 기본 상태(Alive) 이펙트 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Life")
+	TSubclassOf<UGameplayEffect> AliveStateEffectClass;
 
+	// 빈사 상태(Down) 이펙트 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Life")
+	TSubclassOf<UGameplayEffect> DownStateEffectClass;
+	
 	// 전민성 추가
 	UPROPERTY(EditAnywhere, Category = "GAS")
 	TSubclassOf<class UGameplayAbility> OpenAbilityClass;
@@ -167,6 +177,10 @@ public:
 	// 공격 가능 사거리 확인
 	void CheckCombatTarget(float DeltaTime);
 	
+	//  공격 명령 (A키 입력)
+	UFUNCTION(Server, Reliable)
+	void Server_AttackMoveToLocation(FVector TargetLocation);
+	
 protected:
 	UFUNCTION()
 	void OnRep_TargetActor();
@@ -174,11 +188,16 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void Server_SetTarget(AActor* NewTarget);
 	
+	// 이동 중 주변 적 검색 함수
+	void ScanForEnemiesWhileMoving();
 	
 protected:
 	// 현재 타겟 (적)
 	UPROPERTY(ReplicatedUsing = OnRep_TargetActor, VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<AActor> TargetActor;
+	
+	//  공격 명령 (A키 입력) 상태 확인 플래그
+	uint8 bIsAttackMoving : 1;
 	
 #pragma endregion
 
@@ -193,6 +212,12 @@ public:
 	// 부활 처리 호출
 	virtual void Revive(FVector RespawnLocation);
 	
+	// 빈사 상태 진입
+	virtual void HandleDown();
+	
+	UPROPERTY()
+	FOnDeath OnDeath;
+
 protected:
 	// 사망 동기화
 	UFUNCTION(NetMulticast, Reliable)

@@ -8,6 +8,8 @@ class UUniformGridPanel;
 class UBaseItemData;
 class ABaseBoxActor;
 class UButton;
+class UUI_ToolTip;		// 툴팁용
+class UUI_ToolTipManager;	// 툴팁용
 
 UCLASS()
 class PROJECTER_API UW_LootingPopup : public UUserWidget
@@ -17,12 +19,12 @@ class PROJECTER_API UW_LootingPopup : public UUserWidget
 public:
 
 	UFUNCTION(BlueprintCallable, Category = "Looting")
-	void UpdateLootingSlots(const ABaseBoxActor* Box);
+	void UpdateLootingSlots(const AActor* Box);
 
 	UFUNCTION(BlueprintCallable, Category = "Looting")
 	void TryLootItem(int32 ItemPoolIdx);
 
-	void InitPopup(const ABaseBoxActor* Box);
+	void InitPopup(const AActor* Box);
 
 	void Refresh();
 	//AActor* GetTargetBox() const { return TargetBox; }
@@ -37,7 +39,7 @@ protected:
 	TObjectPtr<UUniformGridPanel> ItemGridPanel;
 
 	UPROPERTY()
-	TWeakObjectPtr<const ABaseBoxActor> TargetBox = nullptr;
+	TObjectPtr<const AActor> TargetBox = nullptr;
 
 	UPROPERTY()
 	float MaxDistance = 300.f;
@@ -49,4 +51,24 @@ private:
 
 	UFUNCTION()
 	void OnSlotButtonClicked();
+
+	// 툴팁용 공간
+#pragma region Tooltip
+protected:
+	// 툴팁 클래스 (에디터에서 할당)
+	UPROPERTY(EditAnywhere, Category = "Tooltip")
+	TSubclassOf<UUserWidget> TooltipClass;
+
+	// 툴팁 인스턴스
+	UPROPERTY()
+	UUI_ToolTip* TooltipInstance;
+
+	UPROPERTY()
+	UUI_ToolTipManager* TooltipManager;
+
+	UFUNCTION()
+	void OnItemHovered();
+	UFUNCTION()
+	void HideTooltip();
+#pragma endregion
 };

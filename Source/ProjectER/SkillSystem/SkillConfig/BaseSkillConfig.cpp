@@ -4,6 +4,7 @@
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 #include "Skillsystem/GameAbility/SkillBase.h"
 #include "SkillSystem/GameAbility/MouseTargetSkill.h"
+#include "SkillSystem/GameAbility/MouseClickSkill.h"
 
 UBaseSkillConfig::UBaseSkillConfig()
 {
@@ -14,4 +15,10 @@ UMouseTargetSkillConfig::UMouseTargetSkillConfig()
 {
 	AbilityClass = UMouseTargetSkill::StaticClass();
 	Data.SkillActivationType = ESkillActivationType::Targeted;
+}
+
+UMouseClickSkillConfig::UMouseClickSkillConfig()
+{
+	AbilityClass = UMouseClickSkill::StaticClass();
+	Data.SkillActivationType = ESkillActivationType::PointClick;
 }

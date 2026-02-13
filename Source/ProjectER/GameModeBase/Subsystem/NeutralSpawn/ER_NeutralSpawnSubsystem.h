@@ -19,7 +19,6 @@ struct FNeutralInfo
 public:
 	TWeakObjectPtr<AActor> SpawnPoint;
 
-	// 추후 몬스터 클래스로 수정
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<ACharacter> NeutralActorClass;
 
@@ -53,6 +52,8 @@ public:
 	void TEMP_SpawnNeutrals();
 	void TEMP_NeutralsALLDespawn();
 
+
+public:
 	TArray<TWeakObjectPtr<AActor>> Points;
 
 private:

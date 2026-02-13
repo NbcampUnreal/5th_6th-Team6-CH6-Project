@@ -45,7 +45,7 @@ protected:
 
 	// 체크할 박스 캐싱
 	UPROPERTY()
-	TWeakObjectPtr<const class ABaseBoxActor> TargetBox;
+	TObjectPtr<const AActor> TargetBox;
 
 	// 타이머
 	FTimerHandle DistanceCheckTimer;

@@ -11,6 +11,20 @@
 /**
  * 
  */
+class UBaseGECConfig;
+
+ UENUM(BlueprintType)
+ enum class EAdjustmentType : uint8 {
+     Add      UMETA(DisplayName = "Add"),
+     Subtract UMETA(DisplayName = "Subtract")
+ };
+
+ UENUM(BlueprintType)
+     enum class EDecreaseBy : uint8 {
+     Noting     UMETA(DisplayName = "True"),
+     Defense    UMETA(DisplayName = "Noraml"),
+     Tenacity   UMETA(DisplayName = "DecreaseStatus")
+ };
 
 USTRUCT(BlueprintType)
 struct FSkillAttributeData {
@@ -23,7 +37,7 @@ struct FSkillAttributeData {
     FScalableFloat BasedValues;//기본값
 
     UPROPERTY(EditDefaultsOnly)
-    FGameplayAttribute SourceAttribute; //계수값을 곱할 스텟값
+    FGameplayAttribute SourceAttribute; //계수값을 곱할 Attribute값
 };
 
 USTRUCT(BlueprintType)
@@ -35,6 +49,15 @@ struct FSkillEffectDefinition {
 
     UPROPERTY(EditDefaultsOnly)
     TArray<FSkillAttributeData> SkillAttributeData;
+
+    UPROPERTY(EditDefaultsOnly)
+    EAdjustmentType Adjustment = EAdjustmentType::Add;
+
+    UPROPERTY(EditDefaultsOnly)
+    EDecreaseBy DamageType = EDecreaseBy::Defense;
+
+    UPROPERTY(VisibleAnywhere, Instanced)
+    TObjectPtr<UBaseGECConfig> Config;
 };
 
 USTRUCT(BlueprintType)
@@ -63,7 +86,8 @@ public:
     FORCEINLINE FSkillEffectContainer GetData() const { return Data; }
     FORCEINLINE FGameplayAttribute GetTargetAttribute() const { return Data.TargetAttribute; }
 protected:
-    
+    virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+    void RefreshConfigsFromGE();
 private:
 
 public:

@@ -17,6 +17,7 @@ class UBaseMonsterAttributeSet;
 class UGameplayEffect;
 class ABaseCharacter;
 class UMonsterDataAsset;
+class ULootableComponent;
 struct FOnAttributeChangeData;
 
 UCLASS()
@@ -42,7 +43,7 @@ public:
 
 	void SetbIsDead(bool Target);
 	bool GetbIsDead();
-
+	// 몬스터 스폰 후 데이터를 초기화해주는 함수
 	void InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level);
 
 protected:
@@ -62,17 +63,24 @@ private:
 
 	UFUNCTION()
 	void OnRep_IsDead();
-
+	// HealthBar 변경용
 	UFUNCTION()
 	void OnHealthChangedHandle(float CurrentHP, float MaxHP);
-
+	// 이동 속도 변경값 적용
 	UFUNCTION()
 	void OnMoveSpeedChangedHandle(float OldSpeed, float NewSpeed);
-
+	// 몬스터 사망 후 충돌을 꺼주는 함수
 	UFUNCTION(NetMulticast, BlueprintCallable, Reliable)
 	void Multicast_SetDeathCollision();
 
 	void GiveRewardsToPlayer(AActor* Player);
+
+	void OnCooldown(FGameplayTag CooldownTag, float Cooldown);
+
+	void AddCooldownTag(FGameplayTag CooldownTag);
+
+	void RemoveCooldownTag(FGameplayTag CooldownTag);
+
 
 #pragma region Init
 
@@ -108,6 +116,9 @@ private:
 	UFUNCTION(BlueprintCallable)
 	void SendReturnSuccessEvent();
 
+	UFUNCTION()
+	void OnTargetLostHandle();
+
 #pragma endregion
 
 public:
@@ -117,7 +128,8 @@ public:
 	TObjectPtr<UMonsterDataAsset> MonsterData;
 
 	// 사망 시 들고있을 박스 컴포넌트 변수
-	// ABaseBoxComponent BoxComp;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item")
+	TObjectPtr<ULootableComponent> LootableComp;
 
 protected:
 
@@ -134,7 +146,11 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<UGameplayEffect> XPRewardEffect;
-    
+
+#pragma endregion
+
+#pragma region SetByCall Tag
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Status", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag IncomingXPTag;
 
@@ -162,6 +178,16 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag CombatAbilityTag;
+#pragma endregion
+
+#pragma region Cooldown Tag
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Cooldown", meta = (AllowPrivateAccess = "true"))
+	FGameplayTag AutoAttackCooldownTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Cooldown", meta = (AllowPrivateAccess = "true"))
+	FGameplayTag QSkillCooldownTag;
+
 #pragma endregion
 
 #pragma region Event Tag
@@ -223,10 +249,10 @@ private:
 #pragma region StateTree
 
 	// 서버만
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UStateTreeComponent> StateTreeComp;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UMonsterRangeComponent> MonsterRangeComp;
 
 	// 서버에서 복제
@@ -251,6 +277,14 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI", meta = (AllowprivateAccess = "true"))
 	TObjectPtr<UWidgetComponent> HPBarWidgetComp;
+
+#pragma endregion
+
+#pragma region Timer
+
+	FTimerHandle AutoAttackCooldownTimer;
+
+	FTimerHandle QSkillCooldownTimer;
 
 #pragma endregion
 

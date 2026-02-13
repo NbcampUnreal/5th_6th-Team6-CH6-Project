@@ -125,6 +125,7 @@ void UBaseExecutionCalculation::Execute_Implementation(const FGameplayEffectCust
     if (Container.SkillEffectDefinition.IsValidIndex(DataIndex))
     {
         const FSkillEffectDefinition& MyDef = Container.SkillEffectDefinition[DataIndex];
+        const EDecreaseBy DecreaseBy = MyDef.DamageType;
         float AbilityLevel = Spec.GetLevel();
         
         float TotalCalculatedValue = ReturnCalculatedValue(ExecutionParams, MyDef, AbilityLevel, AttributeStatics().SourceAttributeMap);
@@ -133,27 +134,35 @@ void UBaseExecutionCalculation::Execute_Implementation(const FGameplayEffectCust
         {
             float FinalValue = 0;
 
-            if (TargetAttr == UBaseAttributeSet::GetIncomingDamageAttribute())
+            switch (DecreaseBy)
+            {
+            case EDecreaseBy::Noting:
+            {
+                FinalValue = TotalCalculatedValue;
+                break;
+            }
+            case EDecreaseBy::Defense:
             {
                 float Defense = FindValueByAttribute(ExecutionParams, UBaseAttributeSet::GetDefenseAttribute(), AttributeStatics().TargetAttributeMap);
                 float Mitigation = 100.0f / (100.0f + Defense);
                 FinalValue = TotalCalculatedValue * Mitigation;
-               /* UE_LOG(LogTemp, Log, TEXT("=== Damage Execution Calculation ==="));
-                UE_LOG(LogTemp, Log, TEXT("Base Calculated Value: %f"), TotalCalculatedValue);
-                UE_LOG(LogTemp, Log, TEXT("Captured Defense: %f"), Defense);
-                UE_LOG(LogTemp, Log, TEXT("Calculated Mitigation: %f"), Mitigation);
-                UE_LOG(LogTemp, Log, TEXT("Final Damage: %f"), FinalValue);*/
+				break;
             }
-            else {
+            case EDecreaseBy::Tenacity:
+            {
                 float Tenacity = FindValueByAttribute(ExecutionParams, UBaseAttributeSet::GetTenacityAttribute(), AttributeStatics().TargetAttributeMap);
-                FinalValue = TotalCalculatedValue * Tenacity;
-                /*UE_LOG(LogTemp, Log, TEXT("=== Utility/CC Execution Calculation ==="));
-                UE_LOG(LogTemp, Log, TEXT("Base Calculated Value: %f"), TotalCalculatedValue);
-                UE_LOG(LogTemp, Log, TEXT("Captured Tenacity: %f"), Tenacity);
-                UE_LOG(LogTemp, Log, TEXT("Final Value: %f"), FinalValue);*/
+                float ResistanceMultiplier = FMath::Max<float>(1.0f - Tenacity, 0.0f);
+                FinalValue = TotalCalculatedValue * ResistanceMultiplier;
+				break;
+            }
+            default:
+                break;
             }
 
-            OutExecutionOutput.AddOutputModifier(FGameplayModifierEvaluatedData(Container.TargetAttribute, EGameplayModOp::Additive, TotalCalculatedValue));
+            //값을 더할건지 뺄건지 결정
+            const EAdjustmentType AdjustmentType = MyDef.Adjustment;
+            FinalValue *= AdjustmentType == EAdjustmentType::Add ? 1 : -1;
+            OutExecutionOutput.AddOutputModifier(FGameplayModifierEvaluatedData(Container.TargetAttribute, EGameplayModOp::Additive, FinalValue));
         }
     }
     else {

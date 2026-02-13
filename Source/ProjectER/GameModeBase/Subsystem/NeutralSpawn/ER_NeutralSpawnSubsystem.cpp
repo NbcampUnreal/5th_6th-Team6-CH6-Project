@@ -4,9 +4,9 @@
 #include "GameModeBase/Subsystem/NeutralSpawn/ER_NeutralSpawnSubsystem.h"
 #include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_GameState.h"
-#include "EngineUtils.h"
-#include "GameModeBase/TEMPNeutral.h"
 #include "Monster/BaseMonster.h"
+#include "Kismet/GameplayStatics.h"
+#include "EngineUtils.h"
 
 void UER_NeutralSpawnSubsystem::InitializeSpawnPoints(TMap<FName, FNeutralClassConfig>& NeutralClass)
 {

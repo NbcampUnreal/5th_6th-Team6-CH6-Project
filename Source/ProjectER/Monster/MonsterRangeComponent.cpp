@@ -4,7 +4,7 @@
 #include "Components/SphereComponent.h"
 #include "Components/StateTreeComponent.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
-
+#include "Monster/BaseMonster.h"
 
 UMonsterRangeComponent::UMonsterRangeComponent()
 {
@@ -29,7 +29,7 @@ void UMonsterRangeComponent::BeginPlay()
 	}
 	// 서버에서만 생성하여 체크
 	RangeSphere = NewObject<USphereComponent>(this);
-    RangeSphere->InitSphereRadius(SphereRadius);
+    RangeSphere->InitSphereRadius(PlayerCountSphereRadius);
     RangeSphere->SetCollisionProfileName(TEXT("PlayerCounter"));
     RangeSphere->SetGenerateOverlapEvents(true);
     RangeSphere->SetWorldLocation(GetOwner()->GetActorLocation());
@@ -39,6 +39,18 @@ void UMonsterRangeComponent::BeginPlay()
         this, &UMonsterRangeComponent::OnPlayerCountingBeginOverlap);
     RangeSphere->OnComponentEndOverlap.AddDynamic(
         this, &UMonsterRangeComponent::OnPlayerCountingEndOverlap);
+
+
+	// 서버에서만 생성하여 체크
+	OutSphere = NewObject<USphereComponent>(this);
+	OutSphere->InitSphereRadius(PlayerOutSphereRadius);
+	OutSphere->SetCollisionProfileName(TEXT("PlayerCounter"));
+	OutSphere->SetGenerateOverlapEvents(true);
+	OutSphere->SetWorldLocation(GetOwner()->GetActorLocation());
+	OutSphere->RegisterComponent();
+
+	OutSphere->OnComponentEndOverlap.AddDynamic(
+		this, &UMonsterRangeComponent::OnPlayerOutEndOverlap);
 }
 
 void UMonsterRangeComponent::SetPlayerCount(int32 Amount)
@@ -95,6 +107,34 @@ void UMonsterRangeComponent::OnPlayerCountingEndOverlap(UPrimitiveComponent* Ove
 				GetWorld(),
 				RangeSphere->GetComponentLocation(),
 				RangeSphere->GetScaledSphereRadius(),
+				8,
+				FColor::Green,
+				false,
+				1.f,
+				0,
+				1.f
+			);
+		}
+	}
+}
+
+void UMonsterRangeComponent::OnPlayerOutEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (OtherActor && OtherActor->IsA<ABaseCharacter>())
+	{
+		AActor* Target = Cast<ABaseMonster>(GetOwner())->GetTargetPlayer();
+		if (Target == OtherActor)
+		{
+			OnPlayerOut.Broadcast();
+		}
+
+		if (Debug)
+		{
+			DrawDebugSphere(
+				GetWorld(),
+				OutSphere->GetComponentLocation(),
+				OutSphere->GetScaledSphereRadius(),
 				8,
 				FColor::Green,
 				false,

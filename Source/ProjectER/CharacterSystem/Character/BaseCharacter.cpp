@@ -14,6 +14,8 @@
 #include "Net/UnrealNetwork.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Engine/World.h"
+#include "Engine/EngineTypes.h"
+#include "Engine/OverlapResult.h"
 #include "NavigationSystem.h"
 #include "NavigationPath.h"
 #include "GameplayEffect.h"
@@ -68,7 +70,7 @@ ABaseCharacter::ABaseCharacter()
 	/* === 팀 변수 초기화  === */
 	TeamID = ETeamType::None;
 
-
+	bIsAttackMoving = false;
 
 	// 26.01.29. mpyi
 	// 미니맵을 위한 씬 컴포넌트 2D <- 차후 '카메라' 시스템으로 이동할 예정
@@ -144,6 +146,11 @@ void ABaseCharacter::Tick(float DeltaTime)
 			CheckCombatTarget(DeltaTime);
 		}
 	}	
+	
+	if (HasAuthority() && bIsAttackMoving && !TargetActor)
+	{
+		ScanForEnemiesWhileMoving();
+	}
 }
 
 void ABaseCharacter::PossessedBy(AController* NewController)
@@ -380,7 +387,17 @@ void ABaseCharacter::InitAbilitySystem()
 		// 전민성 추가
 		FGameplayAbilitySpec Spec(OpenAbilityClass, 1);
 		ASC->GiveAbility(Spec);
-
+		
+		if (AliveStateEffectClass)
+		{
+			FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+			Context.AddSourceObject(this);
+			FGameplayEffectSpecHandle EffectSpec = AbilitySystemComponent->MakeOutgoingSpec(AliveStateEffectClass, 1.0f, Context);
+			if (EffectSpec.IsValid())
+			{
+				AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*EffectSpec.Data.Get());
+			}
+		}
 
 		// Attribute Set 초기화
 		InitAttributes();
@@ -608,6 +625,8 @@ void ABaseCharacter::StopMove()
 	{
 		Server_StopMove();
 	}
+	
+	bIsAttackMoving = false;
 }
 
 void ABaseCharacter::UpdatePathFollowing()
@@ -896,6 +915,18 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 	}
 }
 
+void ABaseCharacter::Server_AttackMoveToLocation_Implementation(FVector TargetLocation)
+{
+	// 기존 타겟 해제
+	SetTarget(nullptr);
+    
+	// 이동 상태를 '공격 명령'으로 설정
+	bIsAttackMoving = true;
+
+	// 이동 시작
+	MoveToLocation(TargetLocation);
+}
+
 void ABaseCharacter::OnRep_TargetActor()
 {
 	// 타겟 유무에 따라 Tick 활성화/비활성화
@@ -915,6 +946,62 @@ void ABaseCharacter::OnRep_TargetActor()
 			TargetActor ? *TargetActor->GetName() : TEXT("None"));
 	}
 #endif
+}
+
+void ABaseCharacter::ScanForEnemiesWhileMoving()
+{
+	// 주변 적 검색 로직 (SphereOverlap)
+	FVector MyLoc = GetActorLocation();
+	float ScanRange = GetAttackRange(); // 내 사거리만큼 검색 (혹은 시야거리)
+
+	TArray<FOverlapResult> OverlapResults;
+	FCollisionQueryParams QueryParams(NAME_None, false, this);
+    
+	bool bResult = GetWorld()->OverlapMultiByChannel(
+		OverlapResults,
+		MyLoc,
+		FQuat::Identity,
+		ECC_Pawn, // Pawn 채널 검색 (적 캐릭터)
+		FCollisionShape::MakeSphere(ScanRange),
+		QueryParams
+	);
+
+	if (bResult)
+	{
+		AActor* ClosestEnemy = nullptr;
+		float MinDistSq = FLT_MAX;
+
+		for (const FOverlapResult& Result : OverlapResults)
+		{
+			AActor* OtherActor = Result.GetActor();
+			if (!OtherActor || OtherActor == this) continue;
+
+			if (ITargetableInterface* TargetObj = Cast<ITargetableInterface>(OtherActor))
+			{
+				// 적군이고 타겟팅 가능한지 확인
+				if (TargetObj->GetTeamType() != GetTeamType() && TargetObj->IsTargetable())
+				{
+					float DistSq = FVector::DistSquared(MyLoc, OtherActor->GetActorLocation());
+					if (DistSq < MinDistSq)
+					{
+						MinDistSq = DistSq;
+						ClosestEnemy = OtherActor;
+					}
+				}
+			}
+		}
+
+		// 적을 찾았으면 타겟으로 설정하고 이동 중지 (자동 공격 시작됨)
+		if (ClosestEnemy)
+		{
+			SetTarget(ClosestEnemy);
+			bIsAttackMoving = false; // 어택 땅 모드 종료 -> 전투 모드 전환
+            
+			// 이동 멈춤 (Target이 생겼으므로 CheckCombatTarget에서 알아서 처리함)
+			StopPathFollowing(); 
+			GetCharacterMovement()->StopMovementImmediately();
+		}
+	}
 }
 
 void ABaseCharacter::Server_Revive_Implementation(FVector RespawnLocation)
@@ -941,7 +1028,8 @@ void ABaseCharacter::HandleDeath()
 		// 타겟 지정 해제 (나를 노리는 적들에게 "나 죽었어" 알림)
 		// (이 부분은 AI나 타겟팅 시스템에 따라 추가 구현 필요)
 		SetTarget(nullptr);
-		
+		// 사망 알림 델리게이트
+		OnDeath.Broadcast();
 		// 모든 클라이언트에게 연출 실행 명령
 		Multicast_Death();
 	}
@@ -950,13 +1038,36 @@ void ABaseCharacter::HandleDeath()
 void ABaseCharacter::Revive(FVector RespawnLocation)
 {
 	if (!HasAuthority()) return;
-
-	// 상태 태그 제거 (State.Life.Death)
+	
+	// 빈사 상태(Down) 제거 (추가 예정)
+	// 태그로 찾아서 GE 제거
+	// AbilitySystemComponent->RemoveActiveEffectsWithGrantedTags(FGameplayTagContainer(ProjectER::State::Life::Down));
+	
 	if (AbilitySystemComponent.IsValid())
 	{
-		FGameplayTag DeathTag = ProjectER::State::Life::Death;
-		AbilitySystemComponent->RemoveLooseGameplayTag(DeathTag);
+		// [상태 초기화] 사망(Death) 또는 빈사(Down) 태그를 가진 모든 GE 제거
+		FGameplayTagContainer BadStateTags;
+		BadStateTags.AddTag(ProjectER::State::Life::Death);
+		BadStateTags.AddTag(ProjectER::State::Life::Down);
 		
+		AbilitySystemComponent->RemoveActiveEffectsWithGrantedTags(BadStateTags);
+
+		// (안전장치) 혹시 Loose Tag로 남아있을 경우를 대비해 직접 제거 (기존 코드 호환용)
+		AbilitySystemComponent->RemoveLooseGameplayTag(ProjectER::State::Life::Death);
+		AbilitySystemComponent->RemoveLooseGameplayTag(ProjectER::State::Life::Down);
+
+		//  Alive GE 적용
+		if (AliveStateEffectClass)
+		{
+			FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+			Context.AddSourceObject(this);
+			
+			FGameplayEffectSpecHandle Spec = AbilitySystemComponent->MakeOutgoingSpec(AliveStateEffectClass, 1.0f, Context);
+			if (Spec.IsValid())
+			{
+				AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+			}
+		}
 	}
 
 	// 스탯 초기화
@@ -966,12 +1077,10 @@ void ABaseCharacter::Revive(FVector RespawnLocation)
 	if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
 	{
 		AS = ERPS->GetAttributeSet();
-		UE_LOG(LogTemp, Log, TEXT("[Revive] Found AttributeSet via AER_PlayerState"));
 	}
 	else if (ABasePlayerState* BasePS = GetPlayerState<ABasePlayerState>())
 	{
 		AS = BasePS->GetAttributeSet();
-		UE_LOG(LogTemp, Log, TEXT("[Revive] Found AttributeSet via BasePlayerState"));
 	}
 	
 	if (AS)
@@ -991,6 +1100,38 @@ void ABaseCharacter::Revive(FVector RespawnLocation)
 
 	// 클라이언트 동기화 (위치 이동 및 비주얼/물리 복구)
 	Multicast_Revive(RespawnLocation);
+}
+
+void ABaseCharacter::HandleDown()
+{
+	if (HasAuthority())
+	{
+		if (AbilitySystemComponent.IsValid())
+		{
+			// 1. 기존 진행 중인 모든 어빌리티 취소 (공격, 캐스팅 등)
+			AbilitySystemComponent->CancelAllAbilities();
+
+			// 2. GE_DownStatus 적용
+			if (DownStateEffectClass)
+			{
+				FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+				EffectContext.AddSourceObject(this);
+                
+				FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(DownStateEffectClass, GetCharacterLevel(), EffectContext);
+				if (SpecHandle.IsValid())
+				{
+					AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+				}
+			}
+		}
+        
+		// 3. 타겟 해제 (적들이 나를 더 이상 우선순위로 공격하지 않게 하려면)
+		// SetTarget(nullptr); 
+	}
+	
+	// (선택) 클라이언트 비주얼 처리 필요 시 Multicast_HandleDown() 추가 호출
+	// 이동 모드 변경 (예: 걷기 -> 기어가기 속도 제어는 GE에서 처리되므로 여기선 생략 가능)
+	UE_LOG(LogTemp, Warning, TEXT("[HandleDown] User is now Down-But-Not-Out!"));
 }
 
 void ABaseCharacter::Multicast_Revive_Implementation(FVector RespawnLocation)

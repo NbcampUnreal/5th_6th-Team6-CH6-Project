@@ -4,6 +4,8 @@
 #include "Monster/Data/MonsterDataAsset.h"
 #include "Monster/Data/BaseMonsterTableRow.h"
 #include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "CharacterSystem/Character/BaseCharacter.h"
+#include "ItemSystem/Data/BaseItemData.h"
 
 #include "Components/StateTreeComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -11,6 +13,7 @@
 #include "Monster/MonsterRangeComponent.h"
 #include "Components/ProgressBar.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "ItemSystem/Component/LootableComponent.h"
 
 #include "Net/UnrealNetwork.h"
 #include "AbilitySystemComponent.h"
@@ -61,6 +64,9 @@ ABaseMonster::ABaseMonster()
 	HPBarWidgetComp->SetVisibility(false);
 
 	TeamID = ETeamType::Neutral;
+
+	//ItemBox
+	LootableComp = CreateDefaultSubobject<ULootableComponent>(TEXT("LootableComponent"));
 }
 
 UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
@@ -100,9 +106,11 @@ void ABaseMonster::PossessedBy(AController* newController)
 	{
 		AttributeSet->OnMonsterHit.AddDynamic(this, &ABaseMonster::OnMonterHitHandle);
 		AttributeSet->OnMonsterDeath.AddDynamic(this, &ABaseMonster::OnMonterDeathHandle);
+		AttributeSet->OnMoveSpeedChanged.AddDynamic(this, &ABaseMonster::OnMoveSpeedChangedHandle);
 		MonsterRangeComp->OnPlayerCountOne.AddDynamic(this, &ABaseMonster::OnPlayerCountOneHandle);
 		MonsterRangeComp->OnPlayerCountZero.AddDynamic(this, &ABaseMonster::OnPlayerCountZeroHandle);
-		AttributeSet->OnMoveSpeedChanged.AddDynamic(this, &ABaseMonster::OnMoveSpeedChangedHandle);
+		MonsterRangeComp->OnPlayerOut.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
+		
 	}
 }
 
@@ -227,23 +235,24 @@ void ABaseMonster::InitAttributes(float Level)
 		{
 			AttributeSet->SetAttackPower(MonsterRow->BaseAttackPower + AttackPower->Eval(Level));
 		}
-		AttributeSet->SetAttackRange(MonsterRow->BaseAttackRange);
-		AttributeSet->SetCriticalChance(MonsterRow->BaseCriticalChance);
-		AttributeSet->SetCriticalDamage(MonsterRow->BaseCriticalDamage);
-		AttributeSet->SetMoveSpeed(MonsterRow->BaseMoveSpeed);
-		AttributeSet->SetCooldownReduction(MonsterRow->BaseCooldownReduction);
-		AttributeSet->SetTenacity(MonsterRow->BaseTenacity);
-		AttributeSet->SetAttackSpeed(MonsterRow->BaseAttackSpeed);
 		FRealCurve* SkillAmp = MonsterData->MonsterCurveTable->FindCurve(FName("SkillAmp"), TEXT("MonsterCurve"));
+		AttributeSet->SetAttackSpeed(MonsterRow->BaseAttackSpeed);
 		if (SkillAmp)
 		{
 			AttributeSet->SetSkillAmp(MonsterRow->BaseSkillAmp + SkillAmp->Eval(Level));
 		}
+		AttributeSet->SetAttackRange(MonsterRow->BaseAttackRange);
+		AttributeSet->SetCriticalChance(MonsterRow->BaseCriticalChance);
+		AttributeSet->SetCriticalDamage(MonsterRow->BaseCriticalDamage);
 		FRealCurve* Defense = MonsterData->MonsterCurveTable->FindCurve(FName("Defense"), TEXT("MonsterCurve"));
 		if (Defense)
 		{
 			AttributeSet->SetDefense(MonsterRow->BaseDefense + Defense->Eval(Level));
 		}
+		AttributeSet->SetMoveSpeed(MonsterRow->BaseMoveSpeed);
+		AttributeSet->SetCooldownReduction(MonsterRow->BaseCooldownReduction);
+		AttributeSet->SetTenacity(MonsterRow->BaseTenacity);
+		AttributeSet->SetAttackDelay(MonsterRow->BaseAttackDelay);
 	}
 }
 
@@ -322,7 +331,27 @@ void ABaseMonster::InitHPBar()
 // 서버에서만
 void ABaseMonster::OnMonterHitHandle(AActor* Target)
 {
-	SetTargetPlayer(Target);
+	if (TargetPlayer == nullptr)
+	{
+		ABaseCharacter* BC = Cast<ABaseCharacter>(Target);
+		if (bIsDead)
+		{
+			if (BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+			{
+				BC->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+			}
+			return;
+		}
+		else
+		{
+			SetTargetPlayer(Target);
+			if (!BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+			{
+				BC->OnDeath.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
+			}
+		}
+	}
+	
 	SetbIsCombat(true);
 
 	if (IsValid(StateTreeComp) == false)
@@ -362,8 +391,12 @@ void ABaseMonster::OnMonterDeathHandle(AActor* Target)
 	InGameMode->NotifyNeutralDied(this);
 	// Target에게 보상 지급
    
-	//BoxComp = 생성;
-	//BoxComp->InitBox(DataAsset->ItemList);
+	//아이템 박스 초기화;
+	if (MonsterData->ItemList.Num() <= 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ItemList Not"));
+	}
+	LootableComp->InitializeWithItems(MonsterData->ItemList);
 
 	GiveRewardsToPlayer(Target);
 }
@@ -395,6 +428,43 @@ void ABaseMonster::GiveRewardsToPlayer(AActor* Player)
 	);
 	UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::GiveRewardsToPlayer : XP %d"), MonsterData->Exp);
 	TargetASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
+}
+
+void ABaseMonster::OnCooldown(FGameplayTag CooldownTag, float Cooldown)
+{
+	// 쿨다운 태그 부착
+	AddCooldownTag(AutoAttackCooldownTag);
+	// 타이머로 일정시간후 쿨다운 태그 때기
+	GetWorld()->GetTimerManager().SetTimer(
+		AutoAttackCooldownTimer,
+		FTimerDelegate::CreateLambda([this]()
+			{
+				RemoveCooldownTag(AutoAttackCooldownTag);
+			}),
+		Cooldown,
+		false
+	);
+}
+
+void ABaseMonster::AddCooldownTag(FGameplayTag CooldownTag)
+{
+	ASC->AddLooseGameplayTag(CooldownTag);
+}
+
+void ABaseMonster::RemoveCooldownTag(FGameplayTag CooldownTag)
+{
+	ASC->RemoveLooseGameplayTag(CooldownTag);
+}
+
+void ABaseMonster::OnTargetLostHandle()
+{
+	ABaseCharacter* BC = Cast<ABaseCharacter>(TargetPlayer);
+	if (BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+	{
+		BC->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+	}
+	StateTreeComp->SendStateTreeEvent(FGameplayTag(TargetOffEventTag));
+	TargetPlayer = nullptr;
 }
 
 void ABaseMonster::OnPlayerCountOneHandle()
@@ -432,21 +502,22 @@ void ABaseMonster::SendAttackRangeEvent(float AttackRange)
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::SendAttackRangeEvent : Not Player"));
 		return;
 	}
-	const float Distance = 
-		FVector::DistSquared(
-			TargetPlayer->GetActorLocation(), 
-			GetActorLocation()
-		);
-
-	if (Distance <= AttackRange * AttackRange)
+	const float Distance = FVector::DistSquared(
+			TargetPlayer->GetActorLocation(), GetActorLocation());
+	bool AutoAttackCooldown = ASC->HasMatchingGameplayTag(AutoAttackCooldownTag);
+	
+	if (!AutoAttackCooldown && Distance <= AttackRange * AttackRange)
 	{
 		// 공격가능
-		StateTreeComp->SendStateTreeEvent(FGameplayTag(TargetOnEventTag));
+		StateTreeComp->SendStateTreeEvent(FGameplayTag(AttackEventTag));
+
+		float Cooldown = AttributeSet->GetAttackSpeed();
+		OnCooldown(AutoAttackCooldownTag, Cooldown);
 	}
 	else
 	{
 		// 공격불가능
-		StateTreeComp->SendStateTreeEvent(FGameplayTag(TargetOffEventTag));
+		StateTreeComp->SendStateTreeEvent(FGameplayTag(TargetOnEventTag));
 	}
 }
 

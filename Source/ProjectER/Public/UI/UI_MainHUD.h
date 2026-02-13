@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Abilities/GameplayAbilityTypes.h"
 #include "Containers/Array.h"
+#include "UI/UI_ToolTipManager.h" // 툴팁용
 #include "UI_MainHUD.generated.h"
 
 #define MAX_TEAMMATE	2
@@ -17,6 +18,7 @@ class UImage;
 class UUI_ToolTip;
 class UCharacterData;
 class UAbilitySystemComponent;
+
 
 UENUM(BlueprintType)
 enum class ECharacterStat : uint8
@@ -82,6 +84,9 @@ protected:
 	// 툴팁 인스턴스
 	UPROPERTY()
 	UUI_ToolTip* TooltipInstance;
+
+	UPROPERTY()
+	UUI_ToolTipManager* TooltipManager;
 
 	// --- 마우스 오버 이벤트 핸들러 ---
 	// 버튼용
@@ -229,6 +234,19 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* TeamLevel_02;
 
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* TextPhase;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* PhaseTimerMinTen;
+	UPROPERTY(meta = (BindWidget))
+	UImage* PhaseTimerMinOne;
+	UPROPERTY(meta = (BindWidget))
+	UImage* PhaseTimerSecTen;
+	UPROPERTY(meta = (BindWidget))
+	UImage* PhaseTimerSecOne;
+	UPROPERTY(meta = (BindWidget))
+	UImage* NowCurrentPhase;
 
 	UFUNCTION()
 	void OnSkillClicked_Q();
@@ -279,6 +297,12 @@ public :
 	void SetKillCount(int32 InKillCount);
 	void SetDeathCount(int32 InDeathCount);
 	void SetAssistCount(int32 InAssistCount);
+	void UpdatePhaseAndTimeText();
+	FTimerHandle PhaseAndTimeTimer;
+private:
+	UPROPERTY()
+	class AER_GameState* GS;
+
 
 	// DEBUG
 private:
