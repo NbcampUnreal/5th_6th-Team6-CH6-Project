@@ -29,6 +29,9 @@ void AER_PlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AER_PlayerState, bIsDead);
 	DOREPLIFETIME(AER_PlayerState, TeamType);
 	DOREPLIFETIME(AER_PlayerState, RespawnTime);
+	DOREPLIFETIME(AER_PlayerState, KillCount);
+	DOREPLIFETIME(AER_PlayerState, DeathCount);
+	DOREPLIFETIME(AER_PlayerState, AssistCount);
 
 }
 
