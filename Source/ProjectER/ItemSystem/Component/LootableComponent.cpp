@@ -15,7 +15,7 @@ ULootableComponent::ULootableComponent()
 	MaxSlots = 10;
 	MinLootCount = 1;
 	MaxLootCount = 3;
-	bAutoInitialize = false;
+	bAutoInitialize = true; // 클라이언트 테스트를 위해 기본값 true
 	bDestroyOwnerWhenEmpty = false;
 }
 
@@ -33,7 +33,6 @@ void ULootableComponent::BeginPlay()
 void ULootableComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
 	DOREPLIFETIME(ULootableComponent, CurrentItemList);
 }
 
@@ -47,23 +46,13 @@ void ULootableComponent::PickupItem()
 
 UBaseItemData* ULootableComponent::GetItemData(int32 SlotIndex) const
 {
-	if (SlotIndex < 0 || SlotIndex >= CurrentItemList.Num())
-	{
-		UE_LOG(LogTemp, Error, TEXT("[LootableComponent] GetItemData: Invalid SlotIndex %d"), SlotIndex);
-		return nullptr;
-	}
+	if (!CurrentItemList.IsValidIndex(SlotIndex)) return nullptr;
 
 	int32 ItemPoolIndex = CurrentItemList[SlotIndex].ItemId;
 
-	// 빈 슬롯 체크 (ItemId가 -1이거나 0이면 빈 슬롯)
-	if (ItemPoolIndex <= 0)
+	// -1은 빈 슬롯, 0 이상은 유효한 아이템
+	if (ItemPoolIndex < 0 || ItemPoolIndex >= ItemPool.Num())
 	{
-		return nullptr;
-	}
-
-	if (ItemPoolIndex >= ItemPool.Num())
-	{
-		UE_LOG(LogTemp, Error, TEXT("[LootableComponent] GetItemData: Invalid ItemPoolIndex %d"), ItemPoolIndex);
 		return nullptr;
 	}
 
@@ -86,8 +75,8 @@ void ULootableComponent::ReduceItem(int32 SlotIndex)
 
 	if (CurrentItemList[SlotIndex].Count - 1 <= 0)
 	{
-		// 아이템 완전 소진
-		CurrentItemList[SlotIndex].ItemId = 0;
+		// 아이템 완전 소진 - 빈 슬롯은 -1
+		CurrentItemList[SlotIndex].ItemId = -1;
 		CurrentItemList[SlotIndex].Count = 0;
 	}
 	else
@@ -97,6 +86,9 @@ void ULootableComponent::ReduceItem(int32 SlotIndex)
 	}
 
 	CompactItemList();
+
+	// 서버 측 UI 갱신을 위해 브로드캐스트
+	OnLootChanged.Broadcast();
 	GetOwner()->ForceNetUpdate();
 }
 
@@ -106,41 +98,38 @@ void ULootableComponent::ReduceItem(int32 SlotIndex)
 
 void ULootableComponent::InitializeRandomLoot()
 {
-	if (!GetOwner()->HasAuthority())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[LootableComponent] InitializeRandomLoot: Only call on server!"));
-		return;
-	}
+	if (!GetOwner()->HasAuthority()) return;
 
+	// [체크] 에디터에서 ItemPool에 아이템을 넣었는지 반드시 확인하세요!
 	if (ItemPool.Num() == 0)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[LootableComponent] InitializeRandomLoot: ItemPool is empty for %s"), *GetOwner()->GetName());
+		UE_LOG(LogTemp, Error, TEXT("[%s] ItemPool is EMPTY! 아이템을 생성할 수 없습니다."), *GetOwner()->GetName());
 		return;
 	}
 
 	CurrentItemList.Empty();
 	CurrentItemList.SetNum(MaxSlots);
 
+	// 최소~최대 개수 결정
 	int32 LootCount = FMath::RandRange(MinLootCount, FMath::Min(MaxLootCount, MaxSlots));
 
 	for (int32 i = 0; i < MaxSlots; ++i)
 	{
 		if (i < LootCount)
 		{
-			FLootSlot& Slot = CurrentItemList[i];
-			Slot.ItemId = FMath::RandRange(0, ItemPool.Num() - 1);
-			Slot.Count = 1;
+			CurrentItemList[i].ItemId = FMath::RandRange(0, ItemPool.Num() - 1);
+			CurrentItemList[i].Count = 1;
 		}
 		else
 		{
-			// 빈 슬롯
-			CurrentItemList[i].ItemId = 0;
+			CurrentItemList[i].ItemId = -1; // 빈 슬롯 명시
 			CurrentItemList[i].Count = 0;
 		}
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("[LootableComponent] InitializeRandomLoot: Created %d items for %s"),
-		LootCount, *GetOwner()->GetName());
+	// 서버 UI 갱신 및 복제 강제
+	OnLootChanged.Broadcast();
+	GetOwner()->ForceNetUpdate();
 }
 
 void ULootableComponent::InitializeWithItems(const TArray<UBaseItemData*>& Items)
@@ -169,6 +158,7 @@ void ULootableComponent::InitializeWithItems(const TArray<UBaseItemData*>& Items
 			else
 			{
 				UE_LOG(LogTemp, Warning, TEXT("[LootableComponent] InitializeWithItems: Item not found in ItemPool"));
+				CurrentItemList[i].ItemId = -1;
 			}
 		}
 	}
@@ -176,9 +166,11 @@ void ULootableComponent::InitializeWithItems(const TArray<UBaseItemData*>& Items
 	// 나머지는 빈 슬롯
 	for (int32 i = ItemCount; i < MaxSlots; ++i)
 	{
-		CurrentItemList[i].ItemId = 0;
+		CurrentItemList[i].ItemId = -1;
 		CurrentItemList[i].Count = 0;
 	}
+
+	OnLootChanged.Broadcast();
 
 	UE_LOG(LogTemp, Log, TEXT("[LootableComponent] InitializeWithItems: Created %d items for %s"),
 		ItemCount, *GetOwner()->GetName());
@@ -194,7 +186,7 @@ void ULootableComponent::ClearLoot()
 
 	for (int32 i = 0; i < MaxSlots; ++i)
 	{
-		CurrentItemList[i].ItemId = 0;
+		CurrentItemList[i].ItemId = -1;
 		CurrentItemList[i].Count = 0;
 	}
 
@@ -205,7 +197,8 @@ bool ULootableComponent::HasLootRemaining() const
 {
 	for (const FLootSlot& Slot : CurrentItemList)
 	{
-		if (Slot.ItemId > 0 && Slot.Count > 0)
+		// 0번 아이템도 유효하므로 >= 0 체크
+		if (Slot.ItemId >= 0 && Slot.Count > 0)
 		{
 			return true;
 		}
@@ -237,8 +230,8 @@ bool ULootableComponent::TakeItem(int32 SlotIndex, APawn* Taker)
 		return false;
 	}
 
-	// 빈 슬롯 체크
-	if (CurrentItemList[SlotIndex].ItemId <= 0 || CurrentItemList[SlotIndex].Count <= 0)
+	// 빈 슬롯 체크 (0번 아이템은 유효하므로 < 0일 때만 빈 슬롯)
+	if (CurrentItemList[SlotIndex].ItemId < 0 || CurrentItemList[SlotIndex].Count <= 0)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[LootableComponent] TakeItem: Empty slot at index %d"), SlotIndex);
 		return false;
@@ -282,44 +275,36 @@ void ULootableComponent::CompactItemList()
 	TArray<FLootSlot> ValidSlots;
 	for (const FLootSlot& Slot : CurrentItemList)
 	{
-		if (Slot.ItemId > 0 && Slot.Count > 0)
+		// 0번 아이템도 유효하므로 >= 0 체크
+		if (Slot.ItemId >= 0 && Slot.Count > 0)
 		{
 			ValidSlots.Add(Slot);
 		}
 	}
 
-	CurrentItemList.Empty();
-	CurrentItemList.SetNum(MaxSlots);
-
-	for (int32 i = 0; i < ValidSlots.Num(); ++i)
+	for (int32 i = 0; i < MaxSlots; ++i)
 	{
-		CurrentItemList[i] = ValidSlots[i];
-	}
-
-	for (int32 i = ValidSlots.Num(); i < MaxSlots; ++i)
-	{
-		CurrentItemList[i].ItemId = 0;
-		CurrentItemList[i].Count = 0;
-	}
-
-	UE_LOG(LogTemp, Log, TEXT("[LootableComponent] CompactItemList: %d items remaining"), ValidSlots.Num());
-
-	if (ValidSlots.Num() == 0)
-	{
-		OnLootDepleted.Broadcast();
-
-		if (bDestroyOwnerWhenEmpty)
+		if (i < ValidSlots.Num())
 		{
-			UE_LOG(LogTemp, Log, TEXT("[LootableComponent] Destroying owner actor (no items left)"));
-			GetOwner()->Destroy();
+			CurrentItemList[i] = ValidSlots[i];
+		}
+		else
+		{
+			CurrentItemList[i].ItemId = -1;
+			CurrentItemList[i].Count = 0;
 		}
 	}
+
+	OnLootChanged.Broadcast();
 }
 
 void ULootableComponent::OnRep_CurrentItemList()
 {
-	OnLootChanged.Broadcast();
-
+	// 클라이언트에서 복제된 데이터를 받았을 때 UI 갱신 알림
+	if (OnLootChanged.IsBound())
+	{
+		OnLootChanged.Broadcast();
+	}
 	UE_LOG(LogTemp, Log, TEXT("[LootableComponent] OnRep_CurrentItemList: Loot updated for %s"),
 		*GetOwner()->GetName());
 }

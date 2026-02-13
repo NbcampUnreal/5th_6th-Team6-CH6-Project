@@ -75,8 +75,8 @@ void UW_LootingPopup::UpdateLootingSlots(const AActor* Box)
 	if (LootComp)
 	{
 		// LootableComponent 사용
-		/*Items = LootComp->GetCurrentItemList();
-		ItemPool = LootComp->ItemPool;*/
+		Items = LootComp->GetCurrentItemList();
+		ItemPool = LootComp->ItemPool;
 	}
 	else
 	{
@@ -98,7 +98,7 @@ void UW_LootingPopup::UpdateLootingSlots(const AActor* Box)
 		UUserWidget* NewSlot = CreateWidget<UUserWidget>(GetOwningPlayer(), SlotWidgetClass);
 		if (NewSlot)
 		{
-			// ✅ [김현수 수정] 안전한 배열 접근
+			// 안전한 배열 접근
 			// i번째 칸에 아이템이 있는지 확인
 			int32 ItemIndex = (i < Items.Num()) ? Items[i].ItemId : -1;
 			bool bHasItem = (ItemIndex != -1) && (ItemIndex < ItemPool.Num());
