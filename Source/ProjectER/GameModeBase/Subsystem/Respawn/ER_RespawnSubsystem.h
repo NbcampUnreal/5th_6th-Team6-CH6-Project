@@ -17,7 +17,7 @@ class PROJECTER_API UER_RespawnSubsystem : public UWorldSubsystem
 	GENERATED_BODY()
 
 public:
-	void HandlePlayerDeath(AER_PlayerState& PS, AER_GameState& GS, AER_PlayerState& KillerPS);
+	void HandlePlayerDeath(AER_PlayerState& PS, AER_GameState& GS, AER_PlayerState& KillerPS, const TArray<APlayerState*>& Assists);
 	bool EvaluateTeamElimination(AER_PlayerState& PS, AER_GameState& GS);
 
 	// 패배 처리
