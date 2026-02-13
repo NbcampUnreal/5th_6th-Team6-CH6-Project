@@ -10,7 +10,8 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/KismetRenderingLibrary.h"
 #include "TopDownVisionDebug.h"//log
-#include "LineOfSight/Management/WorldObstacleSubsystem.h"
+
+#include "LineOfSight/Management/Subsystem/WorldObstacleSubsystem.h"
 
 #if WITH_EDITOR
 #include "EditorAssetLibrary.h"// this handles the asset management during the editor time

@@ -15,12 +15,7 @@ UVisionGameStateComp::UVisionGameStateComp()
 void UVisionGameStateComp::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (CanRunServerLogic())
-	{
-		// Initial vision update
-		UpdateVision();
-	}
+	
 }
 
 void UVisionGameStateComp::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -32,4 +27,12 @@ void UVisionGameStateComp::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void UVisionGameStateComp::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+}
+
+void UVisionGameStateComp::RegisterVisionProvider(TScriptInterface<IVisionProviderInterface> Provider)
+{
+}
+
+void UVisionGameStateComp::UnregisterVisionProvider(TScriptInterface<IVisionProviderInterface> Provider)
+{
 }

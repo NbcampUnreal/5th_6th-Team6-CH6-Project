@@ -15,7 +15,7 @@
 
 //Requirements
 
-USTRUCT()
+/*USTRUCT()
 struct FVisionVisibleEntry : public FFastArraySerializerItem
 {
 	GENERATED_BODY()
@@ -56,7 +56,7 @@ struct TStructOpsTypeTraits<FVisionVisibleContainer> : public TStructOpsTypeTrai
 	{
 		WithNetDeltaSerializer = true
 	};
-};
+};*/
 
 UCLASS(ClassGroup=(Vision), meta=(BlueprintSpawnableComponent))
 class TOPDOWNVISION_API UVisionGameStateComp : public UActorComponent
@@ -72,6 +72,18 @@ protected:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+
+
+
+
+
+public:	
+	// ---------------- Registration ----------------
+	UFUNCTION(BlueprintCallable, Category="LineOfSight")
+	void RegisterVisionProvider(TScriptInterface<IVisionProviderInterface> Provider);
+	UFUNCTION(BlueprintCallable, Category="LineOfSight")
+	void UnregisterVisionProvider(TScriptInterface<IVisionProviderInterface> Provider);
+	
 /*private:
 
 	//Entry helper function
@@ -99,11 +111,6 @@ public:
 	bool IsActorVisibleToTeam(uint8 TeamID, AActor* Target) const;
 
 	
-	// ---------------- Registration ----------------
-	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	void RegisterVisionProvider(TScriptInterface<IVisionProviderInterface> Provider);
-	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	void UnregisterVisionProvider(TScriptInterface<IVisionProviderInterface> Provider);
 
 
 private:

@@ -6,9 +6,7 @@
 #include "LineOfSight/VisionData.h"// now as enum
 #include "LineOfSightComponent.generated.h"
 
-class ULOSVisionSubsystem;
-class UVolumeVisibilityEvaluatorComp;
-class UVisionGameStateComp;
+
 //forwardDeclare
 class UTextureRenderTarget2D;// for locally capturing the environment data
 class ULocalTextureSampler;// for sampling pre-baked texture into local RT
@@ -21,6 +19,9 @@ class USphereComponent;
 class UShapeAwareVisibilityTracer;
 class UPrimitiveComponent;
 
+class ULOSVisionSubsystem;
+class UVolumeVisibilityEvaluatorComp;
+class UVisionGameStateComp;
 
 
 //LOG

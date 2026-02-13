@@ -21,6 +21,7 @@
 #include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
 #include "LineOfSight/Management/VisionGameStateComp.h"
+#include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
 
 
 ULineOfSightComponent::ULineOfSightComponent()
@@ -464,19 +465,29 @@ void ULineOfSightComponent::HandleTargetVisibilityChanged(AActor* DetectedTarget
     UVisionGameStateComp* VisionGSComp = GetVisionGameStateComp();
     if (!VisionGSComp)
         return;
+
+    //Get LOS Vision Subsystem
+    ULOSVisionSubsystem* VisionSubsystem=GetLOSVisionSubsystem();
+    if (!VisionSubsystem)
+        return;
     
     // Register / Unregister target visibility
     if (bIsVisible)
     {
-        VisionGSComp->RegisterVisionProvider(this); // assuming the LOS component itself is the provider
+        VisionGSComp->RegisterVisionProvider(this);//register to the GameStateComp
+        VisionSubsystem->RegisterProvider(this,VisionChannel);//Register to the Subsystem
+        
         UE_LOG(LOSVision, Log,
             TEXT("[%s] ULineOfSightComponent::HandleTargetVisibilityChanged >> Registered visible target: %s"),
             *TopDownVisionDebug::GetClientDebugName(GetOwner()),
             *DetectedTarget->GetName());
+        
     }
     else
     {
-        VisionGSComp->UnregisterVisionProvider(this);
+        VisionGSComp->UnregisterVisionProvider(this);//unregister from the GameStateComp
+        VisionSubsystem->UnregisterProvider(this,VisionChannel);//Unregister from the Subsystem
+        
         UE_LOG(LOSVision, Log,
             TEXT("[%s] ULineOfSightComponent::HandleTargetVisibilityChanged >> Unregistered target: %s"),
             *TopDownVisionDebug::GetClientDebugName(GetOwner()),
@@ -510,10 +521,14 @@ UVisionGameStateComp* ULineOfSightComponent::GetVisionGameStateComp()
 
 ULOSVisionSubsystem* ULineOfSightComponent::GetLOSVisionSubsystem()
 {
-    ULOSVisionSubsystem* VisionSubsystem;
+    if (!GetWorld())
+    {
+        return nullptr;
+    }
 
-    return nullptr;
+    return GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
 }
+
 #pragma endregion
 
 
