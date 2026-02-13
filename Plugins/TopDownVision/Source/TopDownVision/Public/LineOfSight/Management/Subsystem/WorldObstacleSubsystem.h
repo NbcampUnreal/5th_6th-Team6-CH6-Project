@@ -10,19 +10,6 @@
 #include "WorldObstacleSubsystem.generated.h"
 
 
-//forward declare
-class ULineOfSightComponent;// the source of the texture
-
-USTRUCT()
-struct FRegisteredProviders
-{
-	GENERATED_BODY()
-	
-	UPROPERTY()
-	TArray<ULineOfSightComponent*> RegisteredList;
-};
-
-
 //Delegates
 DECLARE_MULTICAST_DELEGATE_OneParam(
 	FOnObstacleBakeRequested,
@@ -47,12 +34,6 @@ public:
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 	
 
-	//Registration
-	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	bool RegisterProvider(ULineOfSightComponent* Provider, EVisionChannel InVisionChannel);
-	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	void UnregisterProvider(ULineOfSightComponent* Provider, EVisionChannel InVisionChannel);
-
 	//World Obstacle Tiles
 
 	UFUNCTION(BlueprintCallable, Category="LineOfSight|Obstacle")//!!! this should be called in the editor function!
@@ -73,9 +54,6 @@ public:
 		//out
 		TArray<int32>& OutIndices) const;
 	
-	// getter of same team+shared vision
-	TArray<ULineOfSightComponent*> GetProvidersForTeam(EVisionChannel TeamChannel) const;
-
 	//Getter for passing all tiles
 	const TArray<FObstacleMaskTile>& GetTiles() const{ return WorldTiles; }
 
@@ -89,10 +67,7 @@ public:
 	FOnObstacleBakeRequested OnObstacleBakeRequested;// for the delegate from subsystem
 	
 private:
-	// Registered actor-local LOS providers
-	UPROPERTY()
-	TMap<EVisionChannel, FRegisteredProviders> VisionMap;
-
+	
 	//Registered Tiles
 	UPROPERTY()
 	TArray<FObstacleMaskTile> WorldTiles;

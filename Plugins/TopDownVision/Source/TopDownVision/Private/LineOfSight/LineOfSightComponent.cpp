@@ -354,7 +354,7 @@ void ULineOfSightComponent::UpdateTargetDetection()
             continue;
         }
 
-        bool bCurrentlyVisible = VisibilityTracer->IsTargetVisible_ShadowCastableObject(
+        bool bCurrentlyVisible = VisibilityTracer->IsTargetVisible(
             GetWorld(),
             ObserverLocation,
             TargetShape,
@@ -391,47 +391,50 @@ void ULineOfSightComponent::UpdateTargetDetection()
 void ULineOfSightComponent::OnVisionSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-    if (!OtherActor || OtherActor == GetOwner())
+    if (!OtherActor || OtherActor == GetOwner() || !OtherComp)
         return;
 
-    if (!OtherComp)
-        return;
-
-    //filter by tag
-    if (!OtherActor->ActorHasTag(VisionTargetTag))
+    
+    // Only react to the tagged body component
+    if (!OtherComp->ComponentHasTag(VisionTargetTag))
     {
         UE_LOG(LOSVision, Verbose,
-            TEXT("[%s] ULineOfSightComponent::OnVisionSphereBeginOverlap >> OverlapBegin ignored (missing tag): %s"),
-            *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-            *OtherActor->GetName());
+            TEXT("[%s] ULineOfSightComponent::OnVisionSphereBeginOverlap >> OverlapBegin ignored (missing tag)"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
         return;
     }
+    
+    if (!TargetVisibilityMap.Contains(OtherActor))
+    {
+        TargetVisibilityMap.Add(OtherActor, false);
 
-    // Add to the map, initially not visible
-    TargetVisibilityMap.Add(OtherActor, false);
-
-    UE_LOG(LOSVision, Log,
-        TEXT("[%s] ULineOfSightComponent::OnVisionSphereBeginOverlap >> LOS overlap begin: %s"),
-        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-        *OtherActor->GetName());
+        UE_LOG(LOSVision, Log,
+            TEXT("[%s] ULineOfSightComponent::OnVisionSphereBeginOverlap >> LOS overlap begin (BodyComp validated): %s"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+            *OtherActor->GetName());
+    }
 }
 
 void ULineOfSightComponent::OnVisionSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-    if (!OtherActor)
+    if (!OtherActor || !OtherComp)
         return;
+    
+    if (!OtherComp->ComponentHasTag(VisionTargetTag))
+        return;
+    
+    if (TargetVisibilityMap.Contains(OtherActor))
+    {
+        TargetVisibilityMap.Remove(OtherActor);
 
-    // Remove from map
-    TargetVisibilityMap.Remove(OtherActor);
+        HandleTargetVisibilityChanged(OtherActor, false);
 
-    // Handle visibility reset
-    HandleTargetVisibilityChanged(OtherActor, false);
-
-    UE_LOG(LOSVision, Log,
-        TEXT("[%s] ULineOfSightComponent::OnVisionSphereEndOverlap >> LOS overlap end: %s"),
-        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-        *OtherActor->GetName());
+        UE_LOG(LOSVision, Log,
+            TEXT("[%s] ULineOfSightComponent::OnVisionSphereEndOverlap >> LOS overlap end (BodyComp validated): %s"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+            *OtherActor->GetName());
+    }
 }
 
 UPrimitiveComponent* ULineOfSightComponent::ResolveVisibilityShape(AActor* TargetActor) const
@@ -442,28 +445,13 @@ UPrimitiveComponent* ULineOfSightComponent::ResolveVisibilityShape(AActor* Targe
     TArray<UPrimitiveComponent*> Prims;
     TargetActor->GetComponents<UPrimitiveComponent>(Prims);
 
-    //priority of the returning primitive comp
-    //  Explicit tag wins
     for (UPrimitiveComponent* Comp : Prims)
     {
         if (Comp && Comp->ComponentHasTag(VisionTargetTag))
             return Comp;
     }
 
-    // Prefer common collision shapes
-    for (UPrimitiveComponent* Comp : Prims)
-    {
-        if (Comp && (
-            Comp->IsA<UCapsuleComponent>() ||
-            Comp->IsA<UBoxComponent>() ||
-            Comp->IsA<USphereComponent>()))
-        {
-            return Comp;
-        }
-    }
-
-    // Fallback to root primitive
-    return Cast<UPrimitiveComponent>(TargetActor->GetRootComponent());
+    return nullptr;
 }
 
 
@@ -518,6 +506,13 @@ UVisionGameStateComp* ULineOfSightComponent::GetVisionGameStateComp()
     }
 
     return CachedVisionGameStateComp;
+}
+
+ULOSVisionSubsystem* ULineOfSightComponent::GetLOSVisionSubsystem()
+{
+    ULOSVisionSubsystem* VisionSubsystem;
+
+    return nullptr;
 }
 #pragma endregion
 

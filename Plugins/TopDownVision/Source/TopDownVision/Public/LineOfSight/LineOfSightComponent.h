@@ -6,6 +6,8 @@
 #include "LineOfSight/VisionData.h"// now as enum
 #include "LineOfSightComponent.generated.h"
 
+class ULOSVisionSubsystem;
+class UVolumeVisibilityEvaluatorComp;
 class UVisionGameStateComp;
 //forwardDeclare
 class UTextureRenderTarget2D;// for locally capturing the environment data
@@ -65,6 +67,7 @@ public:
     //Switch function for update
     void ToggleLOSStampUpdate(bool bIsOn);
     bool IsUpdating() const{return ShouldUpdateLOSStamp;}
+
     
 protected:
     //========== Physical Detection =========//
@@ -99,6 +102,12 @@ private:
     //Helper for getting Vision GameStateComp from the Gamestate
     UVisionGameStateComp* GetVisionGameStateComp();
 
+    //Helper for getting LOSVisionSubsystem
+    ULOSVisionSubsystem* GetLOSVisionSubsystem();
+
+    //UVisibilityTargetComp* GetVisibilityTargetComp(AActor* OwnerActor);
+
+    //void OnVisibleStateChanged(bool bIsVisible);// this will trigger the VisibilityAlpha update using lerp
     
 protected:
     

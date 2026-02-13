@@ -8,8 +8,8 @@
 #include "Materials/MaterialParameterCollectionInstance.h"
 #include "TopDownVisionDebug.h"
 #include "LineOfSight/GPU/LOSStampPass.h"
-#include "LineOfSight/Management/WorldObstacleSubsystem.h"
-
+#include "LineOfSight/Management/Subsystem/WorldObstacleSubsystem.h"
+#include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
 
 //Internal helper
 
@@ -464,7 +464,7 @@ bool UCameraVisionManager::GetVisibleProviders(TArray<ULineOfSightComponent*>& O
 			TEXT("UCameraVisionManager::GetVisibleProviders >> Invalid VisionChannel"));*/
 		return false;
 	}
-	UWorldObstacleSubsystem* Subsystem = GetWorld()->GetSubsystem<UWorldObstacleSubsystem>();
+	ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
 	if (!Subsystem)
 	{
 		/*UE_LOG(LOSVision, Error,

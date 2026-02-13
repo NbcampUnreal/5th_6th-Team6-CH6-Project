@@ -10,7 +10,7 @@
 
 
 DEFINE_LOG_CATEGORY(LOSVision);
-
+DEFINE_LOG_CATEGORY(LOSTrace);
 DEFINE_LOG_CATEGORY(LOSWorldBaker);
 
 namespace TopDownVisionDebug
