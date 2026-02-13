@@ -9,7 +9,7 @@ class UBaseItemData;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryUpdatedSignature);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class PROJECTER_API UBaseInventoryComponent : public UActorComponent
+class PROJECTER_API UBaseInventoryComponent : public UActorComponent 
 {
 	GENERATED_BODY()
 
