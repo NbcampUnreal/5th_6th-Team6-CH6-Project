@@ -49,10 +49,9 @@ void UMouseClickSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle&
 	check(ASC);
 	if (!CommitAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo)) return;
 
-	FVector FinalLocation = DataHandle.Get(0)->GetEndPoint();
+	FinalLocation = DataHandle.Get(0)->GetEndPoint();
 
-	// 장판 소환!!
-	//SpawnSummonArea(FinalLocation);
+	PrepareToActiveSkill();
 
 	// 마무리 작업
 	ASC->AbilityTargetDataSetDelegate(CurrentSpecHandle, CurrentActivationInfo.GetActivationPredictionKey()).Remove(TargetDataDelegateHandle);
@@ -61,6 +60,8 @@ void UMouseClickSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle&
 
 void UMouseClickSkill::ExecuteSkill()
 {
+	Super::ExecuteSkill();
+
 
 }
 
@@ -77,13 +78,25 @@ void UMouseClickSkill::PrepareDataSetDelegate(const FGameplayAbilitySpecHandle H
 FVector UMouseClickSkill::GetMouseLocation() const
 {
 	APlayerController* PC = GetActorInfo().PlayerController.Get();
-	if (PC)
+	AActor* Avatar = GetAvatarActorFromActorInfo();
+	if (!PC || !Avatar) return FVector::ZeroVector;
+
+	FVector WorldLoc, WorldDir;
+	if (PC->DeprojectMousePositionToWorld(WorldLoc, WorldDir))
 	{
-		FHitResult Hit;
-		if (PC->GetHitResultUnderCursor(ECC_Visibility, false, Hit))
+		FVector PlaneOrigin = Avatar->GetActorLocation(); // 캐릭터 발밑 높이
+		FVector PlaneNormal = FVector::UpVector;
+		FVector LineEnd = WorldLoc + WorldDir * 10000.f;
+
+		// 1. 평행 체크 (분모가 0이 되는지 확인)
+		// 방향 벡터와 평면 법선 벡터의 내적을 구합니다.
+		float Denominator = FVector::DotProduct(WorldDir, PlaneNormal);
+
+		// 분모가 0에 가깝지 않을 때만 (즉, 평면을 향하고 있을 때만) 함수 호출
+		if (FMath::Abs(Denominator) > KINDA_SMALL_NUMBER)
 		{
-			return Hit.Location;
+			return FMath::LinePlaneIntersection(WorldLoc, LineEnd, PlaneOrigin, PlaneNormal);
 		}
 	}
-	return FVector::ZeroVector;
+	return Avatar->GetActorLocation();
 }

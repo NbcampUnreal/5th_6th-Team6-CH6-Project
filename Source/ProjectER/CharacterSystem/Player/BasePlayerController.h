@@ -155,7 +155,7 @@ public:
 	void Server_RequestPickup(class ABaseItemActor* Item);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_BeginLoot(ABaseBoxActor* Box);// 루팅 시작 요청
+	void Server_BeginLoot(AActor* Actor);// 루팅 시작 요청
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_EndLoot(ABaseBoxActor* Box); // 루팅 종료 요청(또는 거리 벗어남)
@@ -163,11 +163,20 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_TakeItem(ABaseBoxActor* Box, int32 SlotIndex); // 아이템 가져가기(핵심)
 
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_BeginLootFromActor(AActor* TargetActor);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_TakeItemFromActor(const AActor* TargetActor, int32 SlotIndex);
+
+
+
 	UFUNCTION(BlueprintCallable, Client, Reliable)
-	void Client_OpenLootUI(const ABaseBoxActor* Box); // UI 열기(로컬 전용)
+	void Client_OpenLootUI(const AActor* Box); // UI 열기(로컬 전용)
 
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 	void Client_CloseLootUI(); // UI 닫기(로컬 전용)
+
 	// 박스 아이템 루팅 RPC 끝
 
 

@@ -11,6 +11,8 @@
 /**
  * 
  */
+class UBaseGECConfig;
+
  UENUM(BlueprintType)
  enum class EAdjustmentType : uint8 {
      Add      UMETA(DisplayName = "Add"),
@@ -53,6 +55,9 @@ struct FSkillEffectDefinition {
 
     UPROPERTY(EditDefaultsOnly)
     EDecreaseBy DamageType = EDecreaseBy::Defense;
+
+    UPROPERTY(VisibleAnywhere, Instanced)
+    TObjectPtr<UBaseGECConfig> Config;
 };
 
 USTRUCT(BlueprintType)
@@ -81,7 +86,8 @@ public:
     FORCEINLINE FSkillEffectContainer GetData() const { return Data; }
     FORCEINLINE FGameplayAttribute GetTargetAttribute() const { return Data.TargetAttribute; }
 protected:
-    
+    virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+    void RefreshConfigsFromGE();
 private:
 
 public:

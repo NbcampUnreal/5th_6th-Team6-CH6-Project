@@ -32,5 +32,6 @@ public:
 
 protected:
 	FDelegateHandle TargetDataDelegateHandle;
+	FVector FinalLocation;
 private:
 };
