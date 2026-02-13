@@ -185,7 +185,7 @@ void AER_InGameMode::EndGame_Internal()
 	GetWorld()->ServerTravel(TEXT("/Game/Level/Level_Lobby"), true);
 }
 
-void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter)
+void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter, APlayerState* KillerPS, const TArray<APlayerState*>& Assists)
 {
 	if (!HasAuthority() || !VictimCharacter)
 		return;
@@ -193,14 +193,15 @@ void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter)
 	UE_LOG(LogTemp, Warning, TEXT("[GM] : Start NotifyPlayerDied"));
 
 	AER_PlayerState* ERPS = VictimCharacter->GetPlayerState<AER_PlayerState>();
+	AER_PlayerState* KillerERPS = Cast<AER_PlayerState>(KillerPS);
 	AER_GameState* ERGS = GetGameState<AER_GameState>();
 
-	if (!ERPS || !ERGS)
+	if (!ERPS || !ERGS || !KillerERPS)
 		return;
 
 	if (UER_RespawnSubsystem* RespawnSS = GetWorld()->GetSubsystem<UER_RespawnSubsystem>() )
 	{
-		RespawnSS->HandlePlayerDeath(*ERPS, *ERGS);
+		RespawnSS->HandlePlayerDeath(*ERPS, *ERGS, *KillerERPS, Assists);
 
 		// 탈락 방지 페이즈인지 확인
 		const int32 Phase = ERGS->GetCurrentPhase();

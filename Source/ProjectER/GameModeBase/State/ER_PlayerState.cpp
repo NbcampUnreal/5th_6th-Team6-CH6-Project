@@ -29,6 +29,9 @@ void AER_PlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AER_PlayerState, bIsDead);
 	DOREPLIFETIME(AER_PlayerState, TeamType);
 	DOREPLIFETIME(AER_PlayerState, RespawnTime);
+	DOREPLIFETIME(AER_PlayerState, KillCount);
+	DOREPLIFETIME(AER_PlayerState, DeathCount);
+	DOREPLIFETIME(AER_PlayerState, AssistCount);
 
 }
 
@@ -48,5 +51,42 @@ void AER_PlayerState::CopyProperties(APlayerState* PlayerState)
 UAbilitySystemComponent* AER_PlayerState::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
+}
+
+void AER_PlayerState::AddDamageContributor(APlayerState* AttackerPS, float Damage, float Now)
+{
+	if (!AttackerPS || Damage <= 0.f)
+        return;
+
+    FDamageContrib& E = DamageContribMap.FindOrAdd(AttackerPS);
+    E.AttackerPS = AttackerPS;
+    E.LastHitTime = Now;
+    E.TotalDamage += Damage;
+}
+
+void AER_PlayerState::GetAssists(float Now, float WindowSec, APlayerState* KillerPS, TArray<APlayerState*>& OutAssists) const
+{
+	OutAssists.Reset();
+
+	for (const auto& Pair : DamageContribMap)
+	{
+		const FDamageContrib& E = Pair.Value;
+		APlayerState* PS = E.AttackerPS.Get();
+		if (!PS) continue;
+
+		if (PS == KillerPS) continue;
+
+		if (Now - E.LastHitTime <= WindowSec)
+		{
+			// 옵션: 최소 누적 데미지 조건
+			if (E.TotalDamage > 0.f)
+				OutAssists.Add(PS);
+		}
+	}
+}
+
+void AER_PlayerState::ResetDamageContrib()
+{
+	DamageContribMap.Reset();
 }
 

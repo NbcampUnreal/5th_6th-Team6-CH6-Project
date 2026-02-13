@@ -1,11 +1,9 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
+﻿#include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Player/BasePlayerState.h"
 
 #include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "GameModeBase/State/ER_PlayerState.h"
 
 #include "GameplayEffect.h"
 #include "GameplayEffectExtension.h"
@@ -126,16 +124,56 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 			SetHealth(FMath::Clamp(NewHealth, 0.0f, GetMaxHealth()));
 			UE_LOG(LogTemp, Warning, TEXT("Hp %f / %f "),  GetHealth(), GetMaxHealth());
 
+			// [전민성] 어시스트, 사망 판정 추가
+			if (!GetWorld() || GetWorld()->GetNetMode() == NM_Client)
+				return;
+
+			// 피격자 및 공격자 PlayerState 획득
+			ABaseCharacter* TargetChar = Cast<ABaseCharacter>(Data.Target.GetAvatarActor());
+			if (!TargetChar)
+				return;
+
+			AER_PlayerState* TargetPS = Cast<AER_PlayerState>(TargetChar->GetPlayerState());
+			if (!TargetPS)
+				return;
+
+			AActor* AttackerActor = Data.EffectSpec.GetEffectContext().Get()->GetOriginalInstigator();
+			if (!AttackerActor)
+				return;
+
+			APlayerState* AttackerPS = Cast<APlayerState>(AttackerActor);
+			if (!AttackerPS)
+				return;
 			
+			const float Now = GetWorld()->GetTimeSeconds();
+
+			if (TargetPS && AttackerPS)
+			{
+				// 본인 필터
+				if (TargetPS != AttackerPS)
+				{
+					TargetPS->AddDamageContributor(AttackerPS, LocalDamage, Now);
+				}
+			}
+
 			if (OldHealth > 0.0f && NewHealth <= 0.0f)
 			{
-				if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(Data.Target.GetAvatarActor()))
+				TargetChar->HandleDeath(); 
+				auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
+				if (!InGameMode)
+					return;
+
+				TArray<APlayerState*> OutAssists;
+				if (TargetPS)
 				{
-					TargetChar->HandleDeath(); 
-					// [전민성] - 사망 시 gamemode에 알림 추가
-					auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
-					InGameMode->NotifyPlayerDied(TargetChar);
+					// 8초 안에 데미지를 줬으면 어시스트 판정
+					TargetPS->GetAssists(Now, 8.f, AttackerPS, OutAssists);
+
+					// 죽으면 기여 기록 초기화
+					TargetPS->ResetDamageContrib();
 				}
+
+				InGameMode->NotifyPlayerDied(TargetChar, AttackerPS, OutAssists);
 			}
 			else
 			{
