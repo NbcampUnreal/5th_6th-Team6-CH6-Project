@@ -20,10 +20,10 @@ void UGA_OpenBox::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 
 	UE_LOG(LogTemp, Log, TEXT("GA_OpenBox START"));
 
-	const ABaseBoxActor* Box = nullptr;
+	const AActor* Box = nullptr;
 	if (TriggerEventData)
 	{
-		Box = Cast<ABaseBoxActor>(TriggerEventData->Target.Get());
+        Box = TriggerEventData->Target;
 	}
 
 	if (!Box)
@@ -46,7 +46,7 @@ void UGA_OpenBox::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 void UGA_OpenBox::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
     StopDistanceCheck();
-    TargetBox.Reset();
+    //TargetBox.Reset();
 
     Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
@@ -87,7 +87,7 @@ void UGA_OpenBox::TickDistanceCheck()
         return;
 
     AActor* Avatar = ActorInfo->AvatarActor.Get();
-    const ABaseBoxActor* Box = TargetBox.Get();
+    const AActor* Box = TargetBox.Get();
 
     if (!Avatar || !Box)
     {

@@ -1,34 +1,13 @@
-﻿// LootableComponent.h
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "ItemSystem/Actor/BaseBoxActor.h"
+#include "ItemSystem/Interface/I_ItemInteractable.h"
 #include "LootableComponent.generated.h"
 
 class UBaseItemData;
 
-/**
- * FLootSlot
- * 루팅 슬롯 데이터 구조
- */
-USTRUCT(BlueprintType)
-struct FLootSlotData
-{
-	GENERATED_BODY()
-
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 ItemId = -1;         // ItemPool 인덱스 (-1이면 빈 슬롯)
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 Count = 0;           // 아이템 개수 (0이면 빈 슬롯)
-};
-
-/**
- * ULootableComponent
- * 어떤 액터든 루팅 가능하게 만들어주는 컴포넌트
- * 사용처: 몬스터 시체, 아이템 박스, 플레이어 시체 등
- */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class PROJECTER_API ULootableComponent : public UActorComponent
 {
@@ -41,21 +20,44 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	virtual void PickupItem();
+
+
 public:
+	// ========================================
+	// BaseBoxActor 호환 인터페이스
+	// ========================================
+
+	/**
+	 * 현재 루트 슬롯 리스트 가져오기
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Lootable")
+	TArray<FLootSlot> GetCurrentItemList() const { return CurrentItemList; }
+
+	/**
+	 * 특정 슬롯의 아이템 데이터 가져오기
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Lootable")
+	UBaseItemData* GetItemData(int32 SlotIndex) const;
+
+	/**
+	 * 슬롯 개수 감소 (BasePlayerController에서 호출)
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Lootable")
+	void ReduceItem(int32 SlotIndex);
+
 	// ========================================
 	// 루팅 초기화
 	// ========================================
 
 	/**
 	 * 랜덤 아이템으로 루트 테이블 생성
-	 * 몬스터 사망 시 호출
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Lootable")
 	void InitializeRandomLoot();
 
 	/**
 	 * 특정 아이템 리스트로 루트 테이블 생성
-	 * 커스텀 드롭 아이템용
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Lootable")
 	void InitializeWithItems(const TArray<UBaseItemData*>& Items);
@@ -66,16 +68,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Lootable")
 	void ClearLoot();
 
-	// ========================================
-	// 루팅 상호작용
-	// ========================================
-
 	/**
-	 * 루팅 UI 열기 요청
-	 * PlayerController에서 호출
+	 * 루트 가능한 아이템이 남아있는지 확인
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Lootable")
-	void BeginLoot(class APawn* Looter);
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Lootable")
+	bool HasLootRemaining() const;
+
+	// ========================================
+	// 아이템 가져가기
+	// ========================================
 
 	/**
 	 * 특정 슬롯의 아이템 가져가기
@@ -84,29 +85,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Lootable")
 	bool TakeItem(int32 SlotIndex, class APawn* Taker);
 
-	/**
-	 * 특정 슬롯의 아이템 데이터 가져오기
-	 */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Lootable")
-	UBaseItemData* GetItemData(int32 SlotIndex) const;
-
-	/**
-	 * 현재 루트 슬롯 리스트 가져오기
-	 */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Lootable")
-	TArray<FLootSlotData> GetCurrentLootSlots() const { return CurrentLootSlots; }
-
-	/**
-	 * 루트 가능한 아이템이 남아있는지 확인
-	 */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Lootable")
-	bool HasLootRemaining() const;
-
 	// ========================================
 	// 델리게이트
 	// ========================================
 
-	/** 루트 테이블이 변경될 때 브로드캐스트 (UI 업데이트용) */
+	/** 루트 테이블이 변경될 때 브로드캐스트 */
 	DECLARE_MULTICAST_DELEGATE(FOnLootChanged);
 	FOnLootChanged OnLootChanged;
 
@@ -115,25 +98,16 @@ public:
 	FOnLootDepleted OnLootDepleted;
 
 protected:
-	// ========================================
-	// 내부 함수
-	// ========================================
-
 	/**
 	 * 아이템 압축 정렬 (빈 슬롯을 뒤로)
 	 */
-	void CompactLootSlots();
-
-	/**
-	 * 슬롯 개수 감소 처리
-	 */
-	void ReduceSlot(int32 SlotIndex);
+	void CompactItemList();
 
 	/**
 	 * 리플리케이션 콜백
 	 */
 	UFUNCTION()
-	void OnRep_CurrentLootSlots();
+	void OnRep_CurrentItemList();
 
 public:
 	// ========================================
@@ -156,20 +130,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lootable|Setup")
 	int32 MaxLootCount = 3;
 
+	/** 자동 초기화 여부 (BeginPlay 시 InitializeRandomLoot 자동 호출) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lootable|Setup")
+	bool bAutoInitialize = false;
+
 	/** 루팅 완료 시 오너 액터 자동 삭제 여부 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lootable|Behavior")
 	bool bDestroyOwnerWhenEmpty = false;
 
-	/** 루팅 완료 시 컴포넌트 비활성화 여부 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lootable|Behavior")
-	bool bDeactivateWhenEmpty = true;
-
 protected:
 	/** 현재 루트 슬롯 리스트 (리플리케이션) */
-	UPROPERTY(ReplicatedUsing = OnRep_CurrentLootSlots, VisibleAnywhere, BlueprintReadOnly, Category = "Lootable|Runtime")
-	TArray<FLootSlotData> CurrentLootSlots;
-
-	/** 활성화 상태 (루팅 가능 여부) */
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Lootable|Runtime")
-	bool bCanLoot = false;
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentItemList, VisibleAnywhere, BlueprintReadOnly, Category = "Lootable|Runtime")
+	TArray<FLootSlot> CurrentItemList;
 };

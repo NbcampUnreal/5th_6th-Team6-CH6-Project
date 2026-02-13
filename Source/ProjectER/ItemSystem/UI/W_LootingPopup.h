@@ -17,12 +17,12 @@ class PROJECTER_API UW_LootingPopup : public UUserWidget
 public:
 
 	UFUNCTION(BlueprintCallable, Category = "Looting")
-	void UpdateLootingSlots(const ABaseBoxActor* Box);
+	void UpdateLootingSlots(const AActor* Box);
 
 	UFUNCTION(BlueprintCallable, Category = "Looting")
 	void TryLootItem(int32 ItemPoolIdx);
 
-	void InitPopup(const ABaseBoxActor* Box);
+	void InitPopup(const AActor* Box);
 
 	void Refresh();
 	//AActor* GetTargetBox() const { return TargetBox; }
@@ -37,7 +37,7 @@ protected:
 	TObjectPtr<UUniformGridPanel> ItemGridPanel;
 
 	UPROPERTY()
-	TWeakObjectPtr<const ABaseBoxActor> TargetBox = nullptr;
+	TObjectPtr<const AActor> TargetBox = nullptr;
 
 	UPROPERTY()
 	float MaxDistance = 300.f;

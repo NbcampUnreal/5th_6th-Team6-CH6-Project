@@ -23,6 +23,7 @@
 #include "ItemSystem/Actor/BaseBoxActor.h"
 #include "ItemSystem/UI/W_LootingPopup.h"
 #include "ItemSystem/Component/BaseInventoryComponent.h"
+#include "ItemSystem/Component/LootableComponent.h"
 
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/GameMode/ER_OutGameMode.h"
@@ -39,12 +40,12 @@ ABasePlayerController::ABasePlayerController()
 	bIsAttackInputMode = false;
 	LastRPCUpdateTime = 0.f;
 	CachedDestination = FVector::ZeroVector;
-	
+
 	AttackRangeDecal = CreateDefaultSubobject<UDecalComponent>(TEXT("AttackRangeDecal"));
 	AttackRangeDecal->SetupAttachment(RootComponent);
 	AttackRangeDecal->SetVisibility(false); // 평소엔 꺼둠
 	AttackRangeDecal->SetRelativeRotation(FRotator(-90.0f, 0.0f, 0.0f));
-	
+
 	// [김현수 추가분] 변수 초기화
 	InteractionTarget = nullptr;
 }
@@ -92,12 +93,12 @@ void ABasePlayerController::SetupInputComponent()
 	{
 		UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(InputComponent);
 		if (!EnhancedInputComponent || !InputConfig) return;
-		
+
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Started, this, &ABasePlayerController::OnMoveStarted);
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnMoveTriggered);
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Completed, this, &ABasePlayerController::OnMoveReleased);
 		EnhancedInputComponent->BindAction(InputConfig->InputMove, ETriggerEvent::Canceled, this, &ABasePlayerController::OnMoveReleased);
-		
+
 		EnhancedInputComponent->BindAction(InputConfig->InputAttack, ETriggerEvent::Started, this, &ABasePlayerController::OnAttackModePressed);
 		EnhancedInputComponent->BindAction(InputConfig->StopMove, ETriggerEvent::Triggered, this, &ABasePlayerController::OnStopTriggered);
 
@@ -137,7 +138,7 @@ void ABasePlayerController::PlayerTick(float DeltaTime)
 			LastRPCUpdateTime = GetWorld()->GetTimeSeconds();
 		}
 	}
-	
+
 	if (bIsAttackInputMode && ControlledBaseChar && AttackRangeDecal->IsVisible())
 	{
 		AttackRangeDecal->SetWorldLocation(ControlledBaseChar->GetActorLocation());
@@ -147,7 +148,7 @@ void ABasePlayerController::PlayerTick(float DeltaTime)
 void ABasePlayerController::OnRep_Pawn()
 {
 	Super::OnRep_Pawn();
-	
+
 	ControlledBaseChar = Cast<ABaseCharacter>(GetPawn());
 }
 
@@ -157,9 +158,9 @@ void ABasePlayerController::OnMoveStarted()
 	{
 		CancelAttackMode();
 	}
-	
+
 	bIsMousePressed = true;
-	MoveToMouseCursor(); 
+	MoveToMouseCursor();
 }
 
 void ABasePlayerController::OnMoveTriggered()
@@ -196,7 +197,7 @@ void ABasePlayerController::MoveToMouseCursor()
 		if (Hit.bBlockingHit)
 		{
 			AActor* HitActor = Hit.GetActor();
-			
+
 			// [디버깅] 클릭 대상 확인
 #if WITH_EDITOR
 			if (HitActor)
@@ -204,23 +205,23 @@ void ABasePlayerController::MoveToMouseCursor()
 				UE_LOG(LogTemp, Log, TEXT("Clicked Actor: %s"), *HitActor->GetName());
 			}
 #endif
-			
-			if (HitActor && HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
+
+			/*if (HitActor && HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
 			{
 				InteractionTarget = HitActor;
 			}
 			else
 			{
 				InteractionTarget = nullptr;
-			}
-			
+			}*/
+
 			if (ITargetableInterface* TargetObj = Cast<ITargetableInterface>(HitActor))
 			{
 				if (TargetObj->IsTargetable())
 				{
 					ETeamType MyTeam = ControlledBaseChar->GetTeamType();
 					ETeamType TargetTeam = TargetObj->GetTeamType();
-					
+
 					const UEnum* TeamEnumPtr = StaticEnum<ETeamType>();
 
 					if (TeamEnumPtr)
@@ -230,14 +231,14 @@ void ABasePlayerController::MoveToMouseCursor()
 						FString TargetTeamStr = TeamEnumPtr->GetValueAsString(TargetTeam);
 
 						// 3. 로그 출력 (* 연산자로 FString -> TCHAR* 변환)
-						UE_LOG(LogTemp, Warning, TEXT("My Team: [%s] , Target Team : [%s]"), 
-							*MyTeamStr, 
+						UE_LOG(LogTemp, Warning, TEXT("My Team: [%s] , Target Team : [%s]"),
+							*MyTeamStr,
 							*TargetTeamStr);
 					}
-					
-					bool bIsEnemy = (MyTeam != TargetTeam) && 
-									(MyTeam != ETeamType::None) && 
-									(TargetTeam != ETeamType::None);
+
+					bool bIsEnemy = (MyTeam != TargetTeam) &&
+						(MyTeam != ETeamType::None) &&
+						(TargetTeam != ETeamType::None);
 
 					if (bIsEnemy)
 					{
@@ -245,14 +246,14 @@ void ABasePlayerController::MoveToMouseCursor()
 						ControlledBaseChar->SetTarget(HitActor); // 타겟 지정
 #if WITH_EDITOR
 						UE_LOG(LogTemp, Warning, TEXT("[%s] Set Target Actor -> %s"),
-							*ControlledBaseChar->GetName() ,
+							*ControlledBaseChar->GetName(),
 							HitActor ? *HitActor->GetName() : TEXT("None"));
 #endif
-						return; 
+						return;
 					}
 				}
 			}
-			
+
 			if (Hit.bBlockingHit) // 바닥(또는 아군) 클릭 시 이동
 			{
 				// 일반 공격 중일 시 공격 취소 후 이동
@@ -263,11 +264,11 @@ void ABasePlayerController::MoveToMouseCursor()
 					CancelTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Action.AutoAttack")));
 					ASC->CancelAbilities(&CancelTags);
 				}
-				
+
 				ControlledBaseChar->SetTarget(nullptr);
 				ControlledBaseChar->MoveToLocation(Hit.Location);
 			}
-			
+
 			// SpawnDestinationEffect(Hit.Location);
 		}
 	}
@@ -289,14 +290,29 @@ void ABasePlayerController::ProcessMouseInteraction()
 		{
 			// 마우스 아래 액터가 인터페이스를 구현했는지 확인
 			AActor* HitActor = Hit.GetActor();
-			if (HitActor && HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
+
+			if (HitActor->GetComponentByClass<ULootableComponent>())
+			{
+				InteractionTarget = HitActor; // 박스, 플레이어, 몬스터 ( LootableComponent 내장하는 엑터들 ) 
+			}
+			else if (HitActor && HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
+			{
+				InteractionTarget = HitActor; // 바닥에 떨어진 아이템 줍는용도
+			}
+			else
+			{
+				InteractionTarget = nullptr;
+			}
+
+
+			/*if (HitActor && HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
 			{
 				InteractionTarget = HitActor;
 			}
 			else
 			{
 				InteractionTarget = nullptr;
-			}
+			}*/
 
 			ControlledBaseChar->MoveToLocation(Hit.Location);
 		}
@@ -318,19 +334,29 @@ void ABasePlayerController::CheckInteractionDistance()
 					AAA->PickupItem(ControlledBaseChar);
 					Server_RequestPickup(AAA);
 				}
-				else if (ABaseBoxActor* Box = Cast<ABaseBoxActor>(Interactable))
-				{
-					Server_BeginLoot(Box);
-					InteractionTarget = nullptr;
-				}
+				//else if (ABaseBoxActor* Box = Cast<ABaseBoxActor>(Interactable))
+				//{
+				//	Server_BeginLoot(Box);
+				//	// Server_BeginLootFromActor(Box);
+				//	InteractionTarget = nullptr;
+				//}
 
 			}
+			else // 플레이어, 박스, 시체, 땅바닥
+			{
+
+				Server_BeginLoot(InteractionTarget);
+				// Server_BeginLootFromActor(Box);
+
+				InteractionTarget = nullptr;
+			}
 			InteractionTarget = nullptr;
+
 		}
 	}
 }
 
-void ABasePlayerController::OnConfirm() 
+void ABasePlayerController::OnConfirm()
 {
 	if (!bIsAttackInputMode)
 	{
@@ -341,10 +367,10 @@ void ABasePlayerController::OnConfirm()
 		if (IsValid(ASC)) {
 			ASC->LocalInputConfirm();
 		}
-		
+
 		return;
 	}
-	
+
 	FHitResult Hit;
 	if (GetCurvedHitResultUnderCursor(ECC_Visibility, false, Hit))
 	{
@@ -353,7 +379,7 @@ void ABasePlayerController::OnConfirm()
 			RequestAttackMove(Hit);
 		}
 	}
-	
+
 	CancelAttackMode();
 }
 
@@ -376,10 +402,10 @@ void ABasePlayerController::OnAttackModePressed()
 
 	// 사거리 가져오기 (Stat 컴포넌트나 AttributeSet에서)
 	float AttackRange = ControlledBaseChar->GetAttackRange();
-    
+
 	// 데칼 크기 조절 (X, Y는 반지름, Z는 두께)
 	AttackRangeDecal->DecalSize = FVector(100.0f, AttackRange, AttackRange);
-    
+
 	// 캐릭터 위치로 데칼 이동 (바닥에 붙이기)
 	AttackRangeDecal->SetWorldLocation(ControlledBaseChar->GetActorLocation());
 	AttackRangeDecal->SetVisibility(true);
@@ -404,7 +430,7 @@ void ABasePlayerController::CancelAttackMode()
 void ABasePlayerController::RequestAttackMove(const FHitResult& Hit)
 {
 	if (!ControlledBaseChar) return;
-    
+
 	AActor* HitActor = Hit.GetActor();
 
 	// Case A: 적을 직접 클릭함 -> 타겟팅 공격
@@ -451,7 +477,7 @@ void ABasePlayerController::RequestAttackMove(const FHitResult& Hit)
 	if (ControlledBaseChar)
 	{
 		FVector CurrentLocation = ControlledBaseChar->GetActorLocation();
-		
+
 		// 서버에게 부활 요청
 		ControlledBaseChar->Server_Revive(CurrentLocation);
 	}
@@ -460,7 +486,7 @@ void ABasePlayerController::RequestAttackMove(const FHitResult& Hit)
 /*void ABasePlayerController::Test_GainXP()
 {
 	UE_LOG(LogTemp, Warning, TEXT("[Client] Zero Key Pressed!"));
-	
+
 	Server_TestGainXP();
 }*/
 
@@ -476,7 +502,7 @@ void ABasePlayerController::RequestAttackMove(const FHitResult& Hit)
 				if (AS)
 				{
 					ASC->ApplyModToAttribute(AS->GetIncomingXPAttribute(), EGameplayModOp::Additive, 100.0f);
-					
+
 					UE_LOG(LogTemp, Log, TEXT("[Server] Gained 100 XP"));
 				}
 			}
@@ -502,7 +528,7 @@ void ABasePlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
 {
 	APawn* ControlledPawn = GetPawn();
 	if (!ControlledPawn) return;
-	
+
 	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ControlledPawn);
 	if (!ASC) return;
 
@@ -582,8 +608,8 @@ void ABasePlayerController::Client_StopRespawnTimer_Implementation()
 void ABasePlayerController::Client_OutGameInputMode_Implementation()
 {
 	FInputModeUIOnly InputMode;
-    SetInputMode(InputMode);
-    bShowMouseCursor = true;
+	SetInputMode(InputMode);
+	bShowMouseCursor = true;
 }
 
 void ABasePlayerController::Client_InGameInputMode_Implementation()
@@ -647,9 +673,9 @@ void ABasePlayerController::Server_RequestPickup_Implementation(ABaseItemActor* 
 }
 
 // 박스 아이템 루팅 RPC 시작
-void ABasePlayerController::Server_BeginLoot_Implementation(ABaseBoxActor* Box)
+void ABasePlayerController::Server_BeginLoot_Implementation(AActor* Actor)
 {
-	if (!Box) return;
+	if (!Actor) return;
 
 	ABaseCharacter* Char = Cast<ABaseCharacter>(GetPawn());
 	if (!Char) return;
@@ -658,13 +684,13 @@ void ABasePlayerController::Server_BeginLoot_Implementation(ABaseBoxActor* Box)
 	if (!PS) return;
 
 	// 서버 권위 거리 검증 (치트 방지)
-	const float Dist = FVector::Dist(Char->GetActorLocation(), Box->GetActorLocation());
+	const float Dist = FVector::Dist(Char->GetActorLocation(), Actor->GetActorLocation());
 	if (Dist > 150.f) return;
 
-	// Target에 Box를 담는다
+	// Target에 Actor를 담는다
 	FGameplayEventData Payload;
 	Payload.Instigator = Char;
-	Payload.Target = Box;
+	Payload.Target = Actor;
 
 	const FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(TEXT("Event.Interact.OpenBox"));
 
@@ -754,7 +780,7 @@ void ABasePlayerController::Server_TakeItem_Implementation(ABaseBoxActor* Box, i
 	}
 }
 
-void ABasePlayerController::Client_OpenLootUI_Implementation(const ABaseBoxActor* Box)
+void ABasePlayerController::Client_OpenLootUI_Implementation(const AActor* Box)
 {
 	UE_LOG(LogTemp, Log, TEXT("Client_OpenLootUI START"));
 
@@ -773,7 +799,7 @@ void ABasePlayerController::Client_OpenLootUI_Implementation(const ABaseBoxActor
 	{
 		LootWidgetInstance->InitPopup(Box);
 		LootWidgetInstance->AddToViewport(10);
-		//LootWidgetInstance->UpdateLootingSlots(Box);
+		LootWidgetInstance->UpdateLootingSlots(Box);
 		LootWidgetInstance->Refresh();
 	}
 }
@@ -789,6 +815,79 @@ void ABasePlayerController::Client_CloseLootUI_Implementation()
 	LootWidgetInstance = nullptr;
 }
 
+void ABasePlayerController::Server_BeginLootFromActor_Implementation(AActor* TargetActor)
+{
+	if (!TargetActor)
+		return;
+
+	ABaseCharacter* Char = Cast<ABaseCharacter>(GetPawn());
+	if (!Char)
+		return;
+
+	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
+	if (!PS)
+		return;
+
+	// LootableComponent 찾기
+	ULootableComponent* LootComp = TargetActor->FindComponentByClass<ULootableComponent>();
+	if (!LootComp)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Server_BeginLootFromActor: No LootableComponent found"));
+		return;
+	}
+
+	// 거리 체크
+	const float Dist = FVector::Dist(Char->GetActorLocation(), TargetActor->GetActorLocation());
+	if (Dist > 500.f)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Server_BeginLootFromActor: Too far (%.1f)"), Dist);
+		return;
+	}
+
+	// 루팅 가능한지 확인
+	if (!LootComp->HasLootRemaining())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Server_BeginLootFromActor: No loot remaining"));
+		return;
+	}
+
+	// GA 트리거
+	FGameplayEventData Payload;
+	Payload.Instigator = Char;
+	Payload.Target = TargetActor;
+
+	const FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(TEXT("Event.Interact.OpenBox"));
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(PS, EventTag, Payload);
+
+	UE_LOG(LogTemp, Log, TEXT("Server_BeginLootFromActor: Opening loot for %s"), *TargetActor->GetName());
+}
+
+void ABasePlayerController::Server_TakeItemFromActor_Implementation(const AActor* TargetActor, int32 SlotIndex)
+{
+	if (!TargetActor || !GetPawn())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Server_TakeItemFromActor: Invalid actor or pawn"));
+		return;
+	}
+
+	// LootableComponent 찾기
+	ULootableComponent* LootComp = TargetActor->FindComponentByClass<ULootableComponent>();
+	if (!LootComp)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Server_TakeItemFromActor: No LootableComponent found"));
+		return;
+	}
+
+	// LootableComponent의 TakeItem 호출
+	if (LootComp->TakeItem(SlotIndex, GetPawn()))
+	{
+		UE_LOG(LogTemp, Log, TEXT("Server_TakeItemFromActor: Item taken successfully"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Server_TakeItemFromActor: Failed to take item"));
+	}
+}
 
 
 
