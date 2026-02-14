@@ -197,9 +197,6 @@ void ABaseMonster::InitGiveAbilities()
 
 void ABaseMonster::InitAttributes(float Level)
 {
-	//MonsterData->MonsterDataTable.LoadSynchronous();
-	//MonsterData->MonsterCurveTable.LoadSynchronous();
-
 	if (IsValid(MonsterData->MonsterDataTable) == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitAttributes : MonsterDataTable Not"));
@@ -258,9 +255,6 @@ void ABaseMonster::InitAttributes(float Level)
 
 void ABaseMonster::InitVisuals()
 {
-	//MonsterData->Mesh.LoadSynchronous();
-	//MonsterData->Anim.LoadSynchronous();
-
 	if (IsValid(MonsterData->Mesh) == false || !GetMesh())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitVisuals : MonsterData->Mesh Not"));
@@ -386,15 +380,14 @@ void ABaseMonster::OnMonterDeathHandle(AActor* Target)
 	// [전민성] - 사망 시 gamemode에 알림 추가
 	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
 	InGameMode->NotifyNeutralDied(this);
-	// Target에게 보상 지급
    
 	//아이템 박스 초기화;
 	LootableComp->InitializeWithItems(MonsterData->ItemList);
 	//보상 지급
-	GiveRewardsToPlayer(Target);
+	GameplayEffectSetByCaller(Target, XPRewardEffect, IncomingXPTag, MonsterData->Exp);
 }
 
-void ABaseMonster::GiveRewardsToPlayer(AActor* Player)
+void ABaseMonster::GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGameplayEffect> GE, FGameplayTag Tag, float Amount)
 {
 	if (IsValid(Player) == false)
 	{
@@ -411,28 +404,45 @@ void ABaseMonster::GiveRewardsToPlayer(AActor* Player)
 	FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
 	ContextHandle.AddSourceObject(this);
 	ContextHandle.AddInstigator(this, nullptr);
-	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(XPRewardEffect, 1, ContextHandle);
+	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(GE, 1, ContextHandle);
 	UAbilitySystemComponent* TargetASC =
 		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player);
 
 	SpecHandle.Data->SetSetByCallerMagnitude(
-		IncomingXPTag,
-		MonsterData->Exp
+		Tag,
+		Amount
 	);
-	UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::GiveRewardsToPlayer : XP %d"), MonsterData->Exp);
+	UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::GiveRewardsToPlayer : XP %f"), Amount);
 	TargetASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
+}
+
+void ABaseMonster::CooldownCheck()
+{
+	UE_LOG(LogTemp, Error, TEXT("ABaseMonster::CooldownCheck()"));
+	// 쿨타임 체크
+	bIsAttackOnCooldown = ASC->HasMatchingGameplayTag(AutoAttackCooldownTag);
+	if (bIsAttackOnCooldown)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Attack Cooldown"));
+	}
+	bIsQSkillOnCooldown = ASC->HasMatchingGameplayTag(QSkillCooldownTag);
+	if (bIsQSkillOnCooldown)
+	{
+		UE_LOG(LogTemp, Error, TEXT("QSkill Cooldown"));
+	}
 }
 
 void ABaseMonster::OnCooldown(FGameplayTag CooldownTag, float Cooldown)
 {
-	// 쿨다운 태그 부착
-	AddCooldownTag(AutoAttackCooldownTag);
-	// 타이머로 일정시간후 쿨다운 태그 때기
+	UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnCooldown"));
+	AddCooldownTag(CooldownTag);
+	FTimerHandle& TimerHandle = CooldownTimerMap.FindOrAdd(CooldownTag);
+
 	GetWorld()->GetTimerManager().SetTimer(
-		AutoAttackCooldownTimer,
-		FTimerDelegate::CreateLambda([this]()
+		TimerHandle,
+		FTimerDelegate::CreateLambda([this, CooldownTag]()
 			{
-				RemoveCooldownTag(AutoAttackCooldownTag);
+				RemoveCooldownTag(CooldownTag);
 			}),
 		Cooldown,
 		false
@@ -495,21 +505,20 @@ void ABaseMonster::SendAttackRangeEvent(float AttackRange)
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::SendAttackRangeEvent : Not Player"));
 		return;
 	}
+	
+	CooldownCheck();
+	
 	const float Distance = FVector::DistSquared(
 			TargetPlayer->GetActorLocation(), GetActorLocation());
-	bool AutoAttackCooldown = ASC->HasMatchingGameplayTag(AutoAttackCooldownTag);
-	
-	if (!AutoAttackCooldown && Distance <= AttackRange * AttackRange)
-	{
-		// 공격가능
-		StateTreeComp->SendStateTreeEvent(FGameplayTag(AttackEventTag));
 
-		float Cooldown = AttributeSet->GetAttackSpeed();
-		OnCooldown(AutoAttackCooldownTag, Cooldown);
+	if (Distance <= AttackRange * AttackRange)
+	{
+		// 공격
+		StateTreeComp->SendStateTreeEvent(FGameplayTag(AttackEventTag));
 	}
 	else
 	{
-		// 공격불가능
+		// 다시 체이스
 		StateTreeComp->SendStateTreeEvent(FGameplayTag(TargetOnEventTag));
 	}
 }

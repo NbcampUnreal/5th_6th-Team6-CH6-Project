@@ -33,19 +33,18 @@ public:
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	UStateTreeComponent* GetStateTreeComponent();
-
-	void SetTargetPlayer(AActor* Target);
-	AActor* GetTargetPlayer();
-
-	void SetbIsCombat(bool Target);
-	bool GetbIsCombat();
-
-	void SetbIsDead(bool Target);
-	bool GetbIsDead();
 	// 몬스터 스폰 후 데이터를 초기화해주는 함수
 	void InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level);
 
+	UStateTreeComponent* GetStateTreeComponent();
+	void SetTargetPlayer(AActor* Target);
+	AActor* GetTargetPlayer();
+	void SetbIsCombat(bool Target);
+	bool GetbIsCombat();
+	void SetbIsDead(bool Target);
+	bool GetbIsDead();
+
+	
 protected:
 
 	virtual void PossessedBy(AController* newController) override;
@@ -55,7 +54,6 @@ protected:
 	virtual void Tick(float DeltaTime) override;
 
 
-
 private:
 
 	UFUNCTION()
@@ -63,26 +61,43 @@ private:
 
 	UFUNCTION()
 	void OnRep_IsDead();
+	
+	UFUNCTION()
+	void OnMonterHitHandle(AActor* Target);
+
+	UFUNCTION()
+	void OnMonterDeathHandle(AActor* Target);
+
+	UFUNCTION()
+	void OnPlayerCountOneHandle();
+
+	UFUNCTION()
+	void OnPlayerCountZeroHandle();
+
+	UFUNCTION()
+	void OnTargetLostHandle();
 	// HealthBar 변경용
 	UFUNCTION()
 	void OnHealthChangedHandle(float CurrentHP, float MaxHP);
 	// 이동 속도 변경값 적용
 	UFUNCTION()
 	void OnMoveSpeedChangedHandle(float OldSpeed, float NewSpeed);
+
+#pragma region StateTree
+
+	UFUNCTION(BlueprintCallable)
+	void SendAttackRangeEvent(float AttackRange);
+
+	UFUNCTION(BlueprintCallable)
+	void SendReturnSuccessEvent();
+
+	UFUNCTION(BlueprintCallable)
+	void OnCooldown(FGameplayTag CooldownTag, float Cooldown);
 	// 몬스터 사망 후 충돌을 꺼주는 함수
 	UFUNCTION(NetMulticast, BlueprintCallable, Reliable)
 	void Multicast_SetDeathCollision();
 
-	void GiveRewardsToPlayer(AActor* Player);
-
-	void OnCooldown(FGameplayTag CooldownTag, float Cooldown);
-
-	void AddCooldownTag(FGameplayTag CooldownTag);
-
-	void RemoveCooldownTag(FGameplayTag CooldownTag);
-
-
-#pragma region Init
+#pragma endregion
 
 	void OnMonsterDataLoaded(FPrimaryAssetId LoadedId, float Level);
 
@@ -94,32 +109,14 @@ private:
 
 	void InitHPBar();
 
-#pragma endregion
+	void AddCooldownTag(FGameplayTag CooldownTag);
 
-#pragma region StateTree
-
-	UFUNCTION()
-	void OnMonterHitHandle(AActor* Target);
-
-	UFUNCTION()
-	void OnMonterDeathHandle(AActor* Target);
-	
-	UFUNCTION()
-	void OnPlayerCountOneHandle();
-
-	UFUNCTION()
-	void OnPlayerCountZeroHandle();
+	void RemoveCooldownTag(FGameplayTag CooldownTag);
 
 	UFUNCTION(BlueprintCallable)
-	void SendAttackRangeEvent(float AttackRange);
+	void GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGameplayEffect> GE, FGameplayTag Tag, float Amount);
 
-	UFUNCTION(BlueprintCallable)
-	void SendReturnSuccessEvent();
-
-	UFUNCTION()
-	void OnTargetLostHandle();
-
-#pragma endregion
+	void CooldownCheck();
 
 public:
 
@@ -165,9 +162,6 @@ private:
 	FGameplayTag ChaseAbilityTag;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag AttackAbilityTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag ReturnAbilityTag;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
@@ -178,6 +172,13 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag CombatAbilityTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
+	FGameplayTag AttackAbilityTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
+	FGameplayTag QSkillAbilityTag;
+
 #pragma endregion
 
 #pragma region Cooldown Tag
@@ -271,6 +272,12 @@ private:
 	UPROPERTY(ReplicatedUsing = OnRep_IsDead, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	bool bIsDead;
 
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	bool bIsAttackOnCooldown = true;
+
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	bool bIsQSkillOnCooldown = true;
+
 #pragma endregion
 
 #pragma region UI
@@ -282,9 +289,7 @@ private:
 
 #pragma region Timer
 
-	FTimerHandle AutoAttackCooldownTimer;
-
-	FTimerHandle QSkillCooldownTimer;
+	TMap<FGameplayTag, FTimerHandle> CooldownTimerMap;
 
 #pragma endregion
 
@@ -299,13 +304,12 @@ public:
 	// [인터페이스 구현] 하이라이트 (나중에 포스트 프로세스로 구현)
 	// virtual void HighlightActor(bool bIsHighlight) override;
 	
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_SetTeamID(ETeamType NewTeamID);
-	
-protected:
 	UFUNCTION()
 	void OnRep_TeamID();
-	
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_SetTeamID(ETeamType NewTeamID);
+
 protected:
 	// 팀 변수
 	UPROPERTY(ReplicatedUsing = OnRep_TeamID, EditAnywhere, BlueprintReadWrite, Category = "Team")
