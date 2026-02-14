@@ -44,11 +44,13 @@ void UBaseMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 			return;
 		}
 
-		OnMonsterHit.Broadcast(Target);
-		
 		if (GetHealth() <= 0.f)
 		{
 			OnMonsterDeath.Broadcast(Target);
+		}
+		else
+		{
+			OnMonsterHit.Broadcast(Target);
 		}
 	}
 }

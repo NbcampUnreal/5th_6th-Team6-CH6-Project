@@ -331,29 +331,15 @@ void ABaseMonster::InitHPBar()
 // 서버에서만
 void ABaseMonster::OnMonterHitHandle(AActor* Target)
 {
-	if (TargetPlayer == nullptr)
+	SetbIsCombat(true);
+	SetTargetPlayer(Target);
+
+	ABaseCharacter* BC = Cast<ABaseCharacter>(Target);
+	if (!BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
 	{
-		ABaseCharacter* BC = Cast<ABaseCharacter>(Target);
-		if (bIsDead)
-		{
-			if (BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
-			{
-				BC->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
-			}
-			return;
-		}
-		else
-		{
-			SetTargetPlayer(Target);
-			if (!BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
-			{
-				BC->OnDeath.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
-			}
-		}
+		BC->OnDeath.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
 	}
 	
-	SetbIsCombat(true);
-
 	if (IsValid(StateTreeComp) == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnMonterHitHandle : Not StateTree"));
@@ -370,9 +356,20 @@ void ABaseMonster::OnMonterHitHandle(AActor* Target)
 
 void ABaseMonster::OnMonterDeathHandle(AActor* Target)
 {
+	if (bIsDead)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Monster is already dead"));
+		return;
+	}
 	SetbIsDead(true);
 	SetTargetPlayer(nullptr);
 	SetbIsCombat(false);
+
+	ABaseCharacter* BC = Cast<ABaseCharacter>(Target);
+	if (BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+	{
+		BC->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+	}
 
 	if (IsValid(StateTreeComp) == false)
 	{
@@ -392,12 +389,8 @@ void ABaseMonster::OnMonterDeathHandle(AActor* Target)
 	// Target에게 보상 지급
    
 	//아이템 박스 초기화;
-	if (MonsterData->ItemList.Num() <= 0)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("ItemList Not"));
-	}
 	LootableComp->InitializeWithItems(MonsterData->ItemList);
-
+	//보상 지급
 	GiveRewardsToPlayer(Target);
 }
 
