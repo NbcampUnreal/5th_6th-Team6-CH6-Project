@@ -67,7 +67,7 @@ void UMouseClickSkill::ExecuteSkill()
 {
 	Super::ExecuteSkill();
 
-
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 
 

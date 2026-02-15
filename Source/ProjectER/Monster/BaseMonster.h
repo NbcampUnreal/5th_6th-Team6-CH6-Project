@@ -113,10 +113,14 @@ private:
 
 	void RemoveCooldownTag(FGameplayTag CooldownTag);
 
+	void CooldownCheck();
+
 	UFUNCTION(BlueprintCallable)
 	void GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGameplayEffect> GE, FGameplayTag Tag, float Amount);
 
-	void CooldownCheck();
+	UFUNCTION(BlueprintCallable)
+	void TryActivateByDynamicTag(FGameplayTag InputTag);
+
 
 public:
 

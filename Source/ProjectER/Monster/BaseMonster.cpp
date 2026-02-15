@@ -426,19 +426,23 @@ void ABaseMonster::GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGamepl
 	TargetASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
 }
 
+void ABaseMonster::TryActivateByDynamicTag(FGameplayTag InputTag)
+{
+	for (FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
+	{
+		if (Spec.DynamicAbilityTags.HasTagExact(InputTag))
+		{
+			ASC->TryActivateAbility(Spec.Handle);
+			break;
+		}
+	}
+}
+
 void ABaseMonster::CooldownCheck()
 {
 	// 쿨타임 체크
 	bIsAttackOnCooldown = ASC->HasMatchingGameplayTag(AutoAttackCooldownTag);
-	//if (bIsAttackOnCooldown)
-	//{
-	//	UE_LOG(LogTemp, Error, TEXT("Attack Cooldown"));
-	//}
 	bIsQSkillOnCooldown = ASC->HasMatchingGameplayTag(QSkillCooldownTag);
-	//if (bIsQSkillOnCooldown)
-	//{
-	//	UE_LOG(LogTemp, Error, TEXT("QSkill Cooldown"));
-	//}
 }
 
 void ABaseMonster::OnCooldown(FGameplayTag CooldownTag, float Cooldown)
