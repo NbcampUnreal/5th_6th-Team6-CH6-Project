@@ -6,6 +6,7 @@
 #include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "ItemSystem/Data/BaseItemData.h"
+#include "SkillSystem/SkillDataAsset.h"
 
 #include "Components/StateTreeComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -183,14 +184,22 @@ void ABaseMonster::InitGiveAbilities()
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitGiveAbilities - DefaultAbilities is Empty!"));
 		return;
 	}
-
+	//행동
 	for (auto& AbilityPtr : MonsterData->DefaultAbilities)
 	{
-		//AbilityPtr.LoadSynchronous();
-
 		if (IsValid(AbilityPtr) && ASC)
 		{
 			ASC->GiveAbility(FGameplayAbilitySpec(AbilityPtr.Get(), 1, 0));
+		}
+	}
+	//스킬
+	for (TObjectPtr<USkillDataAsset> SkillDataAsset : MonsterData->SkillDataAssets)
+	{
+		if (IsValid(SkillDataAsset) && ASC)
+		{
+			UE_LOG(LogTemp, Error, TEXT("SkillDataAsset : %s"), *SkillDataAsset->GetName())
+			FGameplayAbilitySpec Spec = SkillDataAsset->MakeSpec();
+			ASC->GiveAbility(Spec);
 		}
 	}
 }
@@ -250,6 +259,8 @@ void ABaseMonster::InitAttributes(float Level)
 		AttributeSet->SetCooldownReduction(MonsterRow->BaseCooldownReduction);
 		AttributeSet->SetTenacity(MonsterRow->BaseTenacity);
 		AttributeSet->SetAttackDelay(MonsterRow->BaseAttackDelay);
+		AttributeSet->SetQSkillCoolTime(MonsterRow->BaseQSkillCoolTime);
+		AttributeSet->SetQSkillDelay(MonsterRow->BaseQSkillDelay);
 	}
 }
 
@@ -418,23 +429,21 @@ void ABaseMonster::GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGamepl
 
 void ABaseMonster::CooldownCheck()
 {
-	UE_LOG(LogTemp, Error, TEXT("ABaseMonster::CooldownCheck()"));
 	// 쿨타임 체크
 	bIsAttackOnCooldown = ASC->HasMatchingGameplayTag(AutoAttackCooldownTag);
-	if (bIsAttackOnCooldown)
-	{
-		UE_LOG(LogTemp, Error, TEXT("Attack Cooldown"));
-	}
+	//if (bIsAttackOnCooldown)
+	//{
+	//	UE_LOG(LogTemp, Error, TEXT("Attack Cooldown"));
+	//}
 	bIsQSkillOnCooldown = ASC->HasMatchingGameplayTag(QSkillCooldownTag);
-	if (bIsQSkillOnCooldown)
-	{
-		UE_LOG(LogTemp, Error, TEXT("QSkill Cooldown"));
-	}
+	//if (bIsQSkillOnCooldown)
+	//{
+	//	UE_LOG(LogTemp, Error, TEXT("QSkill Cooldown"));
+	//}
 }
 
 void ABaseMonster::OnCooldown(FGameplayTag CooldownTag, float Cooldown)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnCooldown"));
 	AddCooldownTag(CooldownTag);
 	FTimerHandle& TimerHandle = CooldownTimerMap.FindOrAdd(CooldownTag);
 
