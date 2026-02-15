@@ -197,7 +197,6 @@ void ABaseMonster::InitGiveAbilities()
 	{
 		if (IsValid(SkillDataAsset) && ASC)
 		{
-			UE_LOG(LogTemp, Error, TEXT("SkillDataAsset : %s"), *SkillDataAsset->GetName())
 			FGameplayAbilitySpec Spec = SkillDataAsset->MakeSpec();
 			ASC->GiveAbility(Spec);
 		}
