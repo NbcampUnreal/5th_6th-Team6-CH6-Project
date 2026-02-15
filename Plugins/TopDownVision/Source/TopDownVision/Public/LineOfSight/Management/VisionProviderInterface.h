@@ -25,4 +25,6 @@ public:
 	virtual uint8 GetVisionTeam() const = 0;// no ufunction, but just pure virtual function
 	virtual FVector GetVisionOrigin() const = 0;
 	virtual float GetVisionRadius() const = 0;
+
+	virtual void GetVisibleActors(TArray<AActor*>& OutActors) const = 0;//get the actors visible to the local
 };

@@ -1,7 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "LineOfSight/Management/WorldObstacleSubsystem.h"
+#include "LineOfSight/Management/Subsystem/WorldObstacleSubsystem.h"
 #include "LineOfSight/LineOfSightComponent.h"
 
 //LOG
@@ -11,7 +11,8 @@ void UWorldObstacleSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 	
-	UE_LOG(ObstacleSubsystem, Log, TEXT("UVisionSubsystem::Initialize >> Vision Subsystem Initialized"));
+	UE_LOG(ObstacleSubsystem, Log,
+		TEXT("UWorldObstacleSubsystem::Initialize >> Vision Subsystem Initialized"));
 
 	//load from level data asset hub
 	LoadAndInitializeTiles();
@@ -20,7 +21,7 @@ void UWorldObstacleSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 void UWorldObstacleSubsystem::Deinitialize()
 {
 	UE_LOG(ObstacleSubsystem, Log,
-		TEXT("UVisionSubsystem::Deinitialize >> VisionSubsystem Deinitialize"));
+		TEXT("UWorldObstacleSubsystem::Deinitialize >> VisionSubsystem Deinitialize"));
 	
 	Super::Deinitialize();
 }
@@ -36,70 +37,6 @@ bool UWorldObstacleSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 	return false;
 }
 
-bool UWorldObstacleSubsystem::RegisterProvider(ULineOfSightComponent* Provider, EVisionChannel InVisionChannel)
-{
-	if (!Provider)
-	{
-		UE_LOG(ObstacleSubsystem, Error,
-			TEXT("UVisionSubsystem::RegisterProvider >>Invalid provider"));
-		return false;
-	}
-	if (InVisionChannel==EVisionChannel::None)
-	{
-		UE_LOG(ObstacleSubsystem, Error,
-			TEXT("UVisionSubsystem::RegisterProvider >>VisionChannel not settled"));
-		return false;
-	}
-
-	// Get or create the channel entry
-	FRegisteredProviders& ChannelEntry = VisionMap.FindOrAdd(InVisionChannel);
-	if (ChannelEntry.RegisteredList.Contains(Provider))
-	{
-		UE_LOG(ObstacleSubsystem, Warning,
-			TEXT("UVisionSubsystem::RegisterProvider >> Already registered provider[%s] in channel:%d"),
-			*Provider->GetOwner()->GetName(),
-			InVisionChannel);
-		return false;
-	}
-
-	// Add to the list
-	ChannelEntry.RegisteredList.Add(Provider);
-	UE_LOG(ObstacleSubsystem, Log,
-		TEXT("UVisionSubsystem::RegisterProvider >> Provider[%s] registered. channel:%d"),
-		*Provider->GetOwner()->GetName(),
-		InVisionChannel);
-
-	return true;
-}
-
-void UWorldObstacleSubsystem::UnregisterProvider(ULineOfSightComponent* Provider, EVisionChannel InVisionChannel)
-{
-	if (!Provider)
-	{
-		UE_LOG(ObstacleSubsystem, Error, TEXT("UVisionSubsystem::UnregisterProvider >> Invalid provider"));
-		return;
-	}
-
-	// Try to find channel
-	if (FRegisteredProviders* ChannelEntry = VisionMap.Find(InVisionChannel))
-	{
-		// Remove provider if it exists
-		if (ChannelEntry->RegisteredList.Remove(Provider) > 0)
-		{
-			UE_LOG(ObstacleSubsystem, Log,
-				TEXT("UVisionSubsystem::UnregisterProvider >> Provider[%s] unregistered from channel:%d"),
-				*Provider->GetOwner()->GetName(),
-				InVisionChannel);
-			return; // Success, stop
-		}
-	}
-
-	// Provider not found in channel
-	UE_LOG(ObstacleSubsystem, Warning,
-		TEXT("UVisionSubsystem::UnregisterProvider >> Could not find Provider[%s] in channel:%d"),
-		*Provider->GetOwner()->GetName(),
-		InVisionChannel);
-}
 
 void UWorldObstacleSubsystem::RequestObstacleBake(EObstacleBakeRequest Request)
 {
@@ -107,13 +44,13 @@ void UWorldObstacleSubsystem::RequestObstacleBake(EObstacleBakeRequest Request)
 	{
 		OnObstacleBakeRequested.Broadcast(Request);
 		UE_LOG(ObstacleSubsystem, Log,
-			TEXT(" UVisionSubsystem::RequestObstacleBake >> Broadcasted request %d"),
+			TEXT(" UWorldObstacleSubsystem::RequestObstacleBake >> Broadcasted request %d"),
 			static_cast<int32>(Request));
 	}
 	else
 	{
 		UE_LOG(ObstacleSubsystem, Warning,
-			TEXT(" UVisionSubsystem::RequestObstacleBake >> No listeners bound to delegate"));
+			TEXT(" UWorldObstacleSubsystem::RequestObstacleBake >> No listeners bound to delegate"));
 	}
 }
 
@@ -122,7 +59,7 @@ void UWorldObstacleSubsystem::RegisterObstacleTile(FObstacleMaskTile NewTile)
 	if (!NewTile.Mask)
 	{
 		UE_LOG(ObstacleSubsystem, Warning,
-			TEXT("UVisionSubsystem::RegisterObstacleTile >> "
+			TEXT("UWorldObstacleSubsystem::RegisterObstacleTile >> "
 		"Trying to register a tile without a valid mask"));
 		return;
 	}
@@ -131,7 +68,7 @@ void UWorldObstacleSubsystem::RegisterObstacleTile(FObstacleMaskTile NewTile)
 	WorldTiles.Add(NewTile);
 
 	UE_LOG(ObstacleSubsystem, Log,
-		TEXT("UVisionSubsystem::RegisterObstacleTile >> "
+		TEXT("UWorldObstacleSubsystem::RegisterObstacleTile >> "
 	   "Registered tile at bounds Min=(%.1f, %.1f) Max=(%.1f, %.1f)"),
 		NewTile.WorldBounds.Min.X,
 		NewTile.WorldBounds.Min.Y,
@@ -145,7 +82,7 @@ void UWorldObstacleSubsystem::ClearObstacleTiles()
 	WorldTiles.Reset();
 
 	UE_LOG(ObstacleSubsystem, Log,
-		TEXT("UVisionSubsystem::ClearObstacleTiles >> Cleared %d obstacle tiles"), NumTiles);
+		TEXT("UWorldObstacleSubsystem::ClearObstacleTiles >> Cleared %d obstacle tiles"), NumTiles);
 }
 
 void UWorldObstacleSubsystem::InitializeTilesFromDataAsset(ULevelObstacleData* TileDataForWorld)
@@ -153,7 +90,7 @@ void UWorldObstacleSubsystem::InitializeTilesFromDataAsset(ULevelObstacleData* T
 	if (!TileDataForWorld)
 	{
 		UE_LOG(ObstacleSubsystem, Warning,
-			TEXT("UVisionSubsystem::InitializeTilesFromDataAsset >> No TileData provided"));
+			TEXT("UWorldObstacleSubsystem::InitializeTilesFromDataAsset >> No TileData provided"));
 		return;
 	}
 
@@ -164,7 +101,7 @@ void UWorldObstacleSubsystem::InitializeTilesFromDataAsset(ULevelObstacleData* T
 		WorldTiles.Add(Tile);
 
 		UE_LOG(ObstacleSubsystem, Log,
-			TEXT("UVisionSubsystem::InitializeTilesFromDataAsset >> Loaded tile at bounds Min=(%.1f, %.1f) Max=(%.1f, %.1f)"),
+			TEXT("UWorldObstacleSubsystem::InitializeTilesFromDataAsset >> Loaded tile at bounds Min=(%.1f, %.1f) Max=(%.1f, %.1f)"),
 			Tile.WorldBounds.Min.X, Tile.WorldBounds.Min.Y,
 			Tile.WorldBounds.Max.X, Tile.WorldBounds.Max.Y);
 	}
@@ -182,7 +119,6 @@ void UWorldObstacleSubsystem::RemoveTileByTexture(UTexture2D* Texture)
 		}
 	}
 }
-
 
 void UWorldObstacleSubsystem::GetOverlappingTileIndices(const FBox2D& QueryBounds, TArray<int32>& OutIndices) const
 {
@@ -202,53 +138,21 @@ void UWorldObstacleSubsystem::GetOverlappingTileIndices(const FBox2D& QueryBound
 	}
 }
 
-TArray<ULineOfSightComponent*> UWorldObstacleSubsystem::GetProvidersForTeam(EVisionChannel TeamChannel) const
-{
-	TArray<ULineOfSightComponent*> OutProviders;
-
-	// Add providers from the requested team channel
-	if (const FRegisteredProviders* TeamEntry = VisionMap.Find(TeamChannel))
-	{
-		OutProviders.Append(TeamEntry->RegisteredList);
-	}
-	else
-	{
-		UE_LOG(ObstacleSubsystem, Error,
-			TEXT("UVisionSubsystem::GetProvidersForTeam >> No providers found for team channel:%d"),
-			TeamChannel);
-	}
-
-	// Add providers from shared vision channel
-	if (const FRegisteredProviders* SharedEntry = VisionMap.Find(EVisionChannel::SharedVision))
-	{
-		OutProviders.Append(SharedEntry->RegisteredList);
-	}
-	else
-	{
-		UE_LOG(ObstacleSubsystem, Error,
-			TEXT("UVisionSubsystem::GetProvidersForTeam >> No shared vision providers found"));
-	}
-
-	return OutProviders;
-}
-
-
-
 void UWorldObstacleSubsystem::LoadAndInitializeTiles()
 {
 	UE_LOG(ObstacleSubsystem, Warning,
-        TEXT("LoadAndInitializeTiles >> Starting tile load..."));
+        TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> Starting tile load..."));
 
     if (!LevelObstacleDataPath.IsValid())
     {
         UE_LOG(ObstacleSubsystem, Error,
-            TEXT("LoadAndInitializeTiles >> LevelObstacleDataPath is INVALID! Path: %s"),
+            TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> LevelObstacleDataPath is INVALID! Path: %s"),
             *LevelObstacleDataPath.ToString());
         return;
     }
 
     UE_LOG(ObstacleSubsystem, Warning,
-        TEXT("LoadAndInitializeTiles >> Attempting to load from path: %s"),
+        TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> Attempting to load from path: %s"),
         *LevelObstacleDataPath.ToString());
 
     UObject* LoadedObj = LevelObstacleDataPath.TryLoad();
@@ -256,13 +160,13 @@ void UWorldObstacleSubsystem::LoadAndInitializeTiles()
     if (!LoadedObj)
     {
         UE_LOG(ObstacleSubsystem, Error,
-            TEXT("LoadAndInitializeTiles >> TryLoad() FAILED! Asset not found at: %s"),
+            TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> TryLoad() FAILED! Asset not found at: %s"),
             *LevelObstacleDataPath.ToString());
         return;
     }
 
     UE_LOG(ObstacleSubsystem, Warning,
-        TEXT("LoadAndInitializeTiles >> Successfully loaded object: %s (Class: %s)"),
+        TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> Successfully loaded object: %s (Class: %s)"),
         *LoadedObj->GetName(),
         *LoadedObj->GetClass()->GetName());
 
@@ -271,45 +175,45 @@ void UWorldObstacleSubsystem::LoadAndInitializeTiles()
     if (!WorldReqList)
     {
         UE_LOG(ObstacleSubsystem, Error,
-            TEXT("LoadAndInitializeTiles >> Cast to UWorldRequirementList FAILED! "
+            TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> Cast to UWorldRequirementList FAILED! "
                  "Loaded object class: %s"),
             *LoadedObj->GetClass()->GetName());
         return;
     }
 
     UE_LOG(ObstacleSubsystem, Warning,
-        TEXT("LoadAndInitializeTiles >> Cast successful, WorldReqList has %d entries"),
+        TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> Cast successful, WorldReqList has %d entries"),
         WorldReqList->WorldRequirements.Num());
 
     // Debug: Print all available world names in the map
     for (const auto& Pair : WorldReqList->WorldRequirements)
     {
         UE_LOG(ObstacleSubsystem, Warning,
-            TEXT("LoadAndInitializeTiles >> Available world key: '%s'"),
+            TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> Available world key: '%s'"),
             *Pair.Key);
     }
 
     if (!GetWorld())
     {
         UE_LOG(ObstacleSubsystem, Error,
-            TEXT("LoadAndInitializeTiles >> GetWorld() returned NULL!"));
+            TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> GetWorld() returned NULL!"));
         return;
     }
     
     FString MapPackageLongName = GetWorld()->GetMapName();
     
     UE_LOG(ObstacleSubsystem, Warning,
-        TEXT("LoadAndInitializeTiles >> Current world name (before prefix removal): '%s'"),
+        TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> Current world name (before prefix removal): '%s'"),
         *MapPackageLongName);
     
     UE_LOG(ObstacleSubsystem, Warning,
-        TEXT("LoadAndInitializeTiles >> Streaming levels prefix: '%s'"),
+        TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> Streaming levels prefix: '%s'"),
         *GetWorld()->StreamingLevelsPrefix);
 
     MapPackageLongName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);
 
     UE_LOG(ObstacleSubsystem, Warning,
-        TEXT("LoadAndInitializeTiles >> Current world name (after prefix removal): '%s'"),
+        TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> Current world name (after prefix removal): '%s'"),
         *MapPackageLongName);
 
     if (TObjectPtr<ULevelObstacleData>* TileDataPtr = WorldReqList->WorldRequirements.Find(MapPackageLongName))
@@ -317,7 +221,7 @@ void UWorldObstacleSubsystem::LoadAndInitializeTiles()
         if (*TileDataPtr)
         {
             UE_LOG(ObstacleSubsystem, Warning,
-                TEXT("LoadAndInitializeTiles >> FOUND tile data for world: '%s' with %d tiles"),
+                TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> FOUND tile data for world: '%s' with %d tiles"),
                 *MapPackageLongName,
                 (*TileDataPtr)->Tiles.Num());
 
@@ -326,18 +230,18 @@ void UWorldObstacleSubsystem::LoadAndInitializeTiles()
         else
         {
             UE_LOG(ObstacleSubsystem, Error,
-                TEXT("LoadAndInitializeTiles >> TileData pointer is NULL for world: '%s'"),
+                TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> TileData pointer is NULL for world: '%s'"),
                 *MapPackageLongName);
         }
     }
     else
     {
         UE_LOG(ObstacleSubsystem, Error,
-            TEXT("LoadAndInitializeTiles >> NO MATCH FOUND for world name: '%s'"),
+            TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> NO MATCH FOUND for world name: '%s'"),
             *MapPackageLongName);
         
         UE_LOG(ObstacleSubsystem, Error,
-            TEXT("LoadAndInitializeTiles >> Available keys in WorldRequirements:"));
+            TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> Available keys in WorldRequirements:"));
         
         for (const auto& Pair : WorldReqList->WorldRequirements)
         {
@@ -348,3 +252,4 @@ void UWorldObstacleSubsystem::LoadAndInitializeTiles()
         }
     }
 }
+

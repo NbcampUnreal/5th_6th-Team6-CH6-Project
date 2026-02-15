@@ -8,7 +8,7 @@
 #include "Kismet/KismetRenderingLibrary.h"
 
 #include "Engine/World.h"
-#include "LineOfSight/Management/WorldObstacleSubsystem.h"
+#include "LineOfSight/Management/Subsystem/WorldObstacleSubsystem.h"
 #include "TopDownVisionDebug.h"//log
 
 

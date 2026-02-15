@@ -11,7 +11,7 @@
 // return CalculateCurvedWorldOffset(WorldPos, Origin, CurveX, CurveY, BendWeight, RightVector, ForwardVector);
 
 
-float3 CalculateCurvedWorldOffset(
+float3 CalculateCurvedWorldOffset_Simple(
 	float3 WorldPos,
 	float3 Origin,//world pos of the camera rig root
 	float CurveX,
@@ -45,3 +45,131 @@ float3 CalculateCurvedWorldOffset(
 	// Displacement is only along the World Z axis
 	return float3(0.0f, 0.0f, Total_Z_Bend);
 }
+
+float3 CalculateCurvedWorldOffset_V2(
+	float3 WorldPos,
+	float3 Origin,//world pos of the camera rig root
+	float CurveX,
+	float CurveY,
+	float BendWeight,
+	float3 RightVector,//camera right
+	float3 ForwardVector,//camera forward
+	float3 UpVector)//camera up
+{
+	// Calculate offset from origin
+	float3 Offset = WorldPos - Origin;
+    
+	// Project onto camera axes
+	float Offset_Camera_X = dot(Offset, RightVector);
+	float Offset_Camera_Y = dot(Offset, ForwardVector);
+	float Offset_Camera_Z = dot(Offset, UpVector);
+    
+	// ---- Height-based curve scaling ----
+	// Higher vertices should bend MORE than lower vertices
+	// This creates the "peeling away" curved world effect
+    
+	// Base curve strength from horizontal distance
+	float BaseCurve_X = Offset_Camera_X * Offset_Camera_X * CurveX;
+	float BaseCurve_Y = Offset_Camera_Y * Offset_Camera_Y * CurveY;
+    
+	// Height multiplier - vertices higher up bend more
+	// You can adjust the scaling factor (currently 1.0 means linear scaling with height)
+	float HeightMultiplier = 1.0 + (Offset_Camera_Z * 0.001); // Adjust 0.001 to control how much height affects bending
+    
+	// ---- Curvature calculations ----
+    
+	// Z bending (vertical drop - scaled by height)
+	float Z_Bend = (BaseCurve_X + BaseCurve_Y) * BendWeight * HeightMultiplier;
+    
+	// X bending (horizontal tilt away from center - scaled by height)
+	// Higher parts lean outward MORE than lower parts
+	float X_Bend = -Offset_Camera_X * abs(Offset_Camera_X) * CurveX * 0.5 * BendWeight * HeightMultiplier;
+    
+	// Y bending (forward/backward tilt - scaled by height)
+	// Higher parts lean back MORE than lower parts
+	float Y_Bend = -Offset_Camera_Y * abs(Offset_Camera_Y) * CurveY * 0.5 * BendWeight * HeightMultiplier;
+    
+	// Combine into world-space offset
+	float3 WPO = RightVector * X_Bend
+			   + ForwardVector * Y_Bend
+			   + UpVector * Z_Bend;
+    
+	return WPO;
+}
+float3 CalculateCurvedWorldOffset_Exponential(
+    float3 WorldPos,
+    float3 Origin,
+    float CurveX,
+    float CurveY,
+    float BendWeight,
+    float3 RightVector,
+    float3 ForwardVector,
+    float3 UpVector,
+    float HeightPower = 1.5) // Controls how aggressively height affects bending
+{
+    float3 Offset = WorldPos - Origin;
+    
+    float Offset_Camera_X = dot(Offset, RightVector);
+    float Offset_Camera_Y = dot(Offset, ForwardVector);
+    float Offset_Camera_Z = dot(Offset, UpVector);
+    
+    // Exponential height multiplier - creates more dramatic "peeling" effect
+    // Higher values of HeightPower = more dramatic difference between top and bottom
+    float NormalizedHeight = max(0.0, Offset_Camera_Z * 0.001); // Clamp to prevent negative heights
+    float HeightMultiplier = pow(1.0 + NormalizedHeight, HeightPower);
+    
+    float BaseCurve_X = Offset_Camera_X * Offset_Camera_X * CurveX;
+    float BaseCurve_Y = Offset_Camera_Y * Offset_Camera_Y * CurveY;
+    
+    float Z_Bend = (BaseCurve_X + BaseCurve_Y) * BendWeight * HeightMultiplier;
+    float X_Bend = -Offset_Camera_X * abs(Offset_Camera_X) * CurveX * 0.5 * BendWeight * HeightMultiplier;
+    float Y_Bend = -Offset_Camera_Y * abs(Offset_Camera_Y) * CurveY * 0.5 * BendWeight * HeightMultiplier;
+    
+    return RightVector * X_Bend + ForwardVector * Y_Bend + UpVector * Z_Bend;
+}
+
+
+// this is for UI only. Billboard effect+ vertex follows transform of the pivot only
+
+// Billboard effect for UI
+float3 ApplyBillboard(
+    float3 LocalPos,
+    float3 PivotWorldPos,
+    float3 CameraRight,
+    float3 CameraUp)
+{
+    return PivotWorldPos
+       + LocalPos.x * CameraRight
+       + LocalPos.y * CameraUp;
+}
+
+// UI version with full curve and height scaling
+float3 CalculateCurvedWorldOffset_UI(
+    float3 PivotWorldPos,
+    float3 Origin,
+    float CurveX,
+    float CurveY,
+    float BendWeight,
+    float3 RightVector,
+    float3 ForwardVector,
+    float3 UpVector)
+{
+    float3 Offset = PivotWorldPos - Origin;
+    
+    float Offset_Camera_X = dot(Offset, RightVector);
+    float Offset_Camera_Y = dot(Offset, ForwardVector);
+    float Offset_Camera_Z = dot(Offset, UpVector);
+    
+    // Height multiplier for UI elements
+    float HeightMultiplier = 1.0 + (Offset_Camera_Z * 0.001);
+    
+    float BaseCurve_X = Offset_Camera_X * Offset_Camera_X * CurveX;
+    float BaseCurve_Y = Offset_Camera_Y * Offset_Camera_Y * CurveY;
+    
+    float Z_Bend = (BaseCurve_X + BaseCurve_Y) * BendWeight * HeightMultiplier;
+    float X_Bend = -Offset_Camera_X * abs(Offset_Camera_X) * CurveX * 0.5 * BendWeight * HeightMultiplier;
+    float Y_Bend = -Offset_Camera_Y * abs(Offset_Camera_Y) * CurveY * 0.5 * BendWeight * HeightMultiplier;
+    
+    return RightVector * X_Bend + ForwardVector * Y_Bend + UpVector * Z_Bend;
+}
+

@@ -27,8 +27,8 @@ void UCurvedWorldSubsystem::Deinitialize()
 		TEXT("UCurvedWorldSubsystem::Deinitialize >> CurvedWorldSubsystem deinitialize"));
 }
 
-bool UCurvedWorldSubsystem::SetCurvedWorldMPC(UMaterialParameterCollection* InMPC, FName OriginName, FName RightName,
-	FName ForwardName, FName CurveXName, FName CurveYName, FName BendWeightName)
+bool UCurvedWorldSubsystem::SetCurvedWorldMPC(UMaterialParameterCollection* InMPC, FName OriginName, FName ForwardName,
+	FName RightName, FName UpName, FName CurveXName, FName CurveYName, FName BendWeightName)
 {
 	if (!InMPC)
 	{
@@ -56,8 +56,11 @@ bool UCurvedWorldSubsystem::SetCurvedWorldMPC(UMaterialParameterCollection* InMP
 	//Location
 	MPC_Param_Origin=OriginName;
 	//Directions
-	MPC_Param_RightVector=RightName;
-	MPC_Param_ForwardVector=ForwardName;
+	
+	MPC_Param_ForwardVector = ForwardName;
+	MPC_Param_RightVector = RightName;
+	MPC_Param_UpVector = UpName;
+	
 	//curves
 	MPC_Param_CurveX=CurveXName;
 	MPC_Param_CurveY=CurveYName;
@@ -70,12 +73,15 @@ bool UCurvedWorldSubsystem::SetCurvedWorldMPC(UMaterialParameterCollection* InMP
 	return true;
 }
 
-void UCurvedWorldSubsystem::UpdateCameraParameters(const FVector& InOrigin, const FVector& InRightVector,
-	const FVector& InForwardVector)
+void UCurvedWorldSubsystem::UpdateCameraParameters(const FVector& InOrigin, const FVector& InForwardVector,
+	const FVector& InRightVector, const FVector& InUpVector)
 {
-	Origin = InOrigin;
-	RightVector = InRightVector;
-	ForwardVector = InForwardVector;
+	Camera_Origin = InOrigin;
+	
+	Camera_ForwardVector = InForwardVector;
+	Camera_RightVector = InRightVector;
+	Camera_UpVector = InUpVector;
+	
 
 	// Sync to MPC for materials
 	SyncToMaterialParameterCollection();
@@ -91,33 +97,6 @@ void UCurvedWorldSubsystem::UpdateCurveParameters(float InCurveX, float InCurveY
 	SyncToMaterialParameterCollection();
 }
 
-FVector UCurvedWorldSubsystem::CalculateOffset(const FVector& WorldPos) const
-{
-	return FCurvedWorldUtil::CalculateCurvedWorldOffset(
-		WorldPos,
-		Origin,
-		CurveX,
-		CurveY,
-		BendWeight,
-		RightVector,
-		ForwardVector
-	);
-}
-
-void UCurvedWorldSubsystem::CalculateTransform(const FVector& WorldPos, FVector& OutOffset, FRotator& OutRotation) const
-{
-	FCurvedWorldUtil::CalculateCurvedWorldTransform(
-		WorldPos,
-		Origin,
-		CurveX,
-		CurveY,
-		BendWeight,
-		RightVector,
-		ForwardVector,
-		OutOffset,
-		OutRotation);
-}
-
 void UCurvedWorldSubsystem::SyncToMaterialParameterCollection()
 {
 	if (!MaterialParameterCollection)
@@ -126,9 +105,12 @@ void UCurvedWorldSubsystem::SyncToMaterialParameterCollection()
 	}
 
 	// Update MPC parameters (adjust parameter names to match your MPC)
-	MPCInstance->SetVectorParameterValue(MPC_Param_Origin, Origin);
-	MPCInstance->SetVectorParameterValue(MPC_Param_RightVector, RightVector);
-	MPCInstance->SetVectorParameterValue(MPC_Param_ForwardVector, ForwardVector);
+	MPCInstance->SetVectorParameterValue(MPC_Param_Origin, Camera_Origin);
+	
+	MPCInstance->SetVectorParameterValue(MPC_Param_ForwardVector, Camera_ForwardVector);
+	MPCInstance->SetVectorParameterValue(MPC_Param_RightVector, Camera_RightVector);
+	MPCInstance->SetVectorParameterValue(MPC_Param_UpVector, Camera_UpVector);
+	
 	MPCInstance->SetScalarParameterValue(MPC_Param_CurveX, CurveX);
 	MPCInstance->SetScalarParameterValue(MPC_Param_CurveY, CurveY);
 	MPCInstance->SetScalarParameterValue(MPC_Param_BendWeight, BendWeight);

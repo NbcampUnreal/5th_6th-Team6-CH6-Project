@@ -6,6 +6,7 @@
 #include "LineOfSight/VisionData.h"// now as enum
 #include "LineOfSightComponent.generated.h"
 
+
 //forwardDeclare
 class UTextureRenderTarget2D;// for locally capturing the environment data
 class ULocalTextureSampler;// for sampling pre-baked texture into local RT
@@ -18,6 +19,9 @@ class USphereComponent;
 class UShapeAwareVisibilityTracer;
 class UPrimitiveComponent;
 
+class ULOSVisionSubsystem;
+class UVolumeVisibilityEvaluatorComp;
+class UVisionGameStateComp;
 
 
 //LOG
@@ -62,8 +66,9 @@ public:
     void SetVisionChannel(EVisionChannel NewChannel) {VisionChannel = NewChannel;}
     
     //Switch function for update
-    void ToggleUpdate(bool bIsOn);
-    bool IsUpdating() const{return ShouldUpdate;}
+    void ToggleLOSStampUpdate(bool bIsOn);
+    bool IsUpdating() const{return ShouldUpdateLOSStamp;}
+
     
 protected:
     //========== Physical Detection =========//
@@ -93,7 +98,17 @@ private:
     /** Resolve which component represents the actor’s visibility shape */
     UPrimitiveComponent* ResolveVisibilityShape(AActor* TargetActor) const;
 
-   // void HandleTargetVisibilityChanged(AActor* DetectedTarget, bool bIsVisible);// this will be used for updating the visible actor
+   void HandleTargetVisibilityChanged(AActor* DetectedTarget, bool bIsVisible);// this will be used for updating the visible actor
+    
+    //Helper for getting Vision GameStateComp from the Gamestate
+    UVisionGameStateComp* GetVisionGameStateComp();
+
+    //Helper for getting LOSVisionSubsystem
+    ULOSVisionSubsystem* GetLOSVisionSubsystem();
+
+    //UVisibilityTargetComp* GetVisibilityTargetComp(AActor* OwnerActor);
+
+    //void OnVisibleStateChanged(bool bIsVisible);// this will trigger the VisibilityAlpha update using lerp
     
 protected:
     
@@ -147,6 +162,11 @@ protected:
     //============= Physical Detection ==========//
 #pragma region Detection
     //----------------------------------------------------------------------------------------------------------------//
+
+    //Debug
+    UPROPERTY(EditAnywhere, Category="LineOfSight|Detection")
+    bool bDrawDetectionDebug = true;
+
     UPROPERTY(EditAnywhere, Category="LineOfSight|Detection")
     bool bDetectionEnabled = true;
 
@@ -163,19 +183,21 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight|Detection")
     float DesiredAngleDegree=5.f;
     
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight|Debug")
-    bool bDrawVisibilityRays = false;
-    
     //Tag for the actor to be targeted
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight|Detection")
     FName VisionTargetTag = TEXT("VisionTarget");
 
-    
+    //detection state record
     UPROPERTY(Transient)
-    TSet<TWeakObjectPtr<AActor>> OverlappedTargetActors;//targets detected
+    TMap<AActor*, bool> TargetVisibilityMap;//targets detected
+
+private:
+    UPROPERTY(Transient)//cached statecomp
+    UVisionGameStateComp* CachedVisionGameStateComp = nullptr;
+    
     //----------------------------------------------------------------------------------------------------------------//
 #pragma endregion
     
 private:
-    bool ShouldUpdate=false;// only update when the camera vision capturing it
+    bool ShouldUpdateLOSStamp=false;// only update when the camera vision capturing it
 };

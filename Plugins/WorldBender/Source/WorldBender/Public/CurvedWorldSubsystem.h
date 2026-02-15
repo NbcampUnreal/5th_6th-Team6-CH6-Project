@@ -30,8 +30,9 @@ public:
 	bool SetCurvedWorldMPC(
 		UMaterialParameterCollection* InMPC,
 		FName OriginName,
-		FName RightName,
 		FName ForwardName,
+		FName RightName,
+		FName UpName,
 		FName CurveXName,
 		FName CurveYName,
 		FName BendWeightName);
@@ -39,20 +40,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Curved World")
 	void UpdateCameraParameters(
 		const FVector& InOrigin,
+		const FVector& InForwardVector,
 		const FVector& InRightVector,
-		const FVector& InForwardVector);
+		const FVector& InUpVector);
 
 	UFUNCTION(BlueprintCallable, Category = "Curved World")
 	void UpdateCurveParameters(
 		float InCurveX,
 		float InCurveY,
 		float InBendWeight);
-
-	UFUNCTION(BlueprintPure, Category = "Curved World")
-	FVector CalculateOffset(const FVector& WorldPos) const;
-
-	UFUNCTION(BlueprintCallable, Category = "Curved World")
-	void CalculateTransform(const FVector& WorldPos, FVector& OutOffset, FRotator& OutRotation) const;
 
 private:
 	// Sync parameters to Material Parameter Collection
@@ -63,11 +59,13 @@ public://variables
 	//Param Values
 	//continuous update
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
-	FVector Origin = FVector::ZeroVector;
+	FVector Camera_Origin = FVector::ZeroVector;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
-	FVector RightVector = FVector::RightVector;
+	FVector Camera_ForwardVector = FVector(1,0,0);
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
-	FVector ForwardVector = FVector::ForwardVector;
+	FVector Camera_RightVector = FVector(0,1,0);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
+	FVector Camera_UpVector = FVector(0,0,1);
 
 	//update when only needed
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
@@ -83,15 +81,22 @@ protected:
 	TObjectPtr<UMaterialParameterCollection> MaterialParameterCollection;
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialParameterCollectionInstance>MPCInstance;
-	//Param Names
+	
+	//=== Param Names ===//
+	
+	//CurveOrigin Location
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
 	FName MPC_Param_Origin=NAME_None;
+	
+	//Directions
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
 	FName MPC_Param_ForwardVector=NAME_None;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
 	FName MPC_Param_RightVector=NAME_None;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
+	FName MPC_Param_UpVector=NAME_None;
 	
-
+	//Curve Values
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
 	FName MPC_Param_CurveX=NAME_None;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Curved World")
