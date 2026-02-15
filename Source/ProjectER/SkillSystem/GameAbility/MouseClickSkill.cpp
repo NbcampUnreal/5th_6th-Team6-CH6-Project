@@ -4,18 +4,24 @@
 #include "SkillSystem/GameAbility/MouseClickSkill.h"
 #include "Abilities/Tasks/AbilityTask_WaitTargetData.h"
 #include "AbilitySystemComponent.h"
+#include "CharacterSystem/Character/BaseCharacter.h"
+#include "Monster/BaseMonster.h"
 
 void UMouseClickSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+	
 	PrepareDataSetDelegate(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
-	if (IsLocallyControlled())
+	AActor* Avatar = GetAvatarActorFromActorInfo();
+	if (IsValid(Avatar) == false) return;
+	ABaseMonster* IsMonster = Cast<ABaseMonster>(Avatar);
+	if (IsValid(IsMonster))
 	{
-		SendLocationData(GetMouseLocation());
+		SendLocationData(IsMonster->GetActorLocation());
 	}
 	else {
-		//DoNoting
+		SendLocationData(GetMouseLocation());
 	}
 }
 
@@ -31,7 +37,6 @@ void UMouseClickSkill::SendLocationData(FVector TargetLocation)
 
 	FScopedPredictionWindow ScopedPrediction(ASC, CurrentActorInfo->IsLocallyControlled());
 	ASC->CallServerSetReplicatedTargetData(CurrentSpecHandle, CurrentActivationInfo.GetActivationPredictionKey(), DataHandle, FGameplayTag(), ASC->ScopedPredictionKey);
-	//ASC->CallReplicatedTargetDataDelegatesIfSet(CurrentSpecHandle, CurrentActivationInfo.GetActivationPredictionKey());
 }
 
 bool UMouseClickSkill::IsInRange(const FVector& Location)
