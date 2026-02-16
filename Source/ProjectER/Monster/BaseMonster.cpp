@@ -438,6 +438,22 @@ void ABaseMonster::TryActivateByDynamicTag(FGameplayTag InputTag)
 	}
 }
 
+float ABaseMonster::GetAbilityDelayByTag(FGameplayTag InputTag)
+{
+	if (InputTag == AttackAbilityTag)
+	{
+		UE_LOG(LogTemp, Error, TEXT("AttackDelay : %f"), AttributeSet->GetAttackDelay());
+		return AttributeSet->GetAttackDelay();
+	}
+	else if (InputTag == QSkillAbilityTag)
+	{
+		UE_LOG(LogTemp, Error, TEXT("QSkillDelay : %f"), AttributeSet->GetAttackDelay());
+		return AttributeSet->GetQSkillDelay();
+	}
+	UE_LOG(LogTemp, Error, TEXT("Not GetAbilityDelayByTag"));
+	return 0.0f;
+}
+
 void ABaseMonster::CooldownCheck()
 {
 	// 쿨타임 체크

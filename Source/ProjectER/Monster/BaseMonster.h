@@ -121,6 +121,8 @@ private:
 	UFUNCTION(BlueprintCallable)
 	void TryActivateByDynamicTag(FGameplayTag InputTag);
 
+	UFUNCTION(BlueprintCallable)
+	float GetAbilityDelayByTag(FGameplayTag InputTag);
 
 public:
 
