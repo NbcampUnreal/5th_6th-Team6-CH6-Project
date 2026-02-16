@@ -6,6 +6,8 @@
 #include "SkillSystem/GameAbility/SkillBase.h"
 #include "MouseClickSkill.generated.h"
 
+class AMouseLocationTargetActor;
+
 /**
  * 
  */
@@ -14,28 +16,33 @@ class PROJECTER_API UMouseClickSkill : public USkillBase
 {
 	GENERATED_BODY()
 public:
+	UMouseClickSkill();
+
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
-	//void SendLocationData(FVector TargetLocation);
 	bool TryGetMouseLocationInRange(FVector& OutLocation) const;
+	bool ConsumePendingExternalTargetLocation(FVector& OutLocation);
+	bool IsTargetLocationInRange(const FVector& InLocation) const;
 protected:
 	virtual void ExecuteSkill() override;
-	//void PrepareDataSetDelegate(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData);
 	bool IsInRange(const FVector& Location) const;
 	void RotateToLocation(const FVector& Location);
 	void SetWaitTargetTask();
+	void SetWaitExternalTargetEventTask();
 	FVector GetMouseLocation() const;
-	/*UFUNCTION()
-	void OnTargetDataReady(const FGameplayAbilityTargetDataHandle& DataHandle, FGameplayTag ActivationTag);*/
+	void SubmitExternalTargetLocation(const FVector& InLocation);
 	UFUNCTION()
 	void OnTargetDataReady(const FGameplayAbilityTargetDataHandle& DataHandle);
 	UFUNCTION()
 	void OnTargetCancelled(const FGameplayAbilityTargetDataHandle& DataHandle);
+	UFUNCTION()
+	void OnExternalTargetLocationReceived(FGameplayEventData Payload);
 private:
 
 public:
 
 protected:
-	FDelegateHandle TargetDataDelegateHandle;
-	FVector FinalLocation;
+	TWeakObjectPtr<AMouseLocationTargetActor> CurrentMouseLocationTargetActor;
+	TOptional<FVector> PendingExternalTargetLocation;
+	FGameplayTag ExternalTargetLocationEventTag;
 private:
 };

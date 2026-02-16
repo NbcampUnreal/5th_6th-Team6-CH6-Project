@@ -18,4 +18,5 @@ public:
 public:
 	virtual void ConfirmTargetingAndContinue() override;
 	bool TryConfirmMouseLocation();
+	bool SubmitExternalLocation(const FVector& InLocation);
 };

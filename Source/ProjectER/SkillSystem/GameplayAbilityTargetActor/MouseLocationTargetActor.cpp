@@ -5,6 +5,19 @@
 #include "SkillSystem/GameAbility/MouseClickSkill.h"
 #include "Abilities/GameplayAbilityTargetTypes.h"
 
+namespace
+{
+	FGameplayAbilityTargetDataHandle MakeLocationTargetData(const FVector& Location)
+	{
+		FGameplayAbilityTargetDataHandle DataHandle;
+		FGameplayAbilityTargetData_LocationInfo* LocData = new FGameplayAbilityTargetData_LocationInfo();
+		LocData->TargetLocation.LiteralTransform = FTransform(Location);
+		DataHandle.Add(LocData);
+		return DataHandle;
+	}
+}
+
+
 void AMouseLocationTargetActor::ConfirmTargetingAndContinue()
 {
 	if (TryConfirmMouseLocation() == false)
@@ -28,5 +41,15 @@ bool AMouseLocationTargetActor::TryConfirmMouseLocation()
 	DataHandle.Add(LocData);
 
 	TargetDataReadyDelegate.Broadcast(DataHandle);
+	return true;
+}
+
+bool AMouseLocationTargetActor::SubmitExternalLocation(const FVector& InLocation)
+{
+	UMouseClickSkill* MouseClickSkill = Cast<UMouseClickSkill>(OwningAbility);
+	if (!IsValid(MouseClickSkill)) return false;
+	if (!MouseClickSkill->IsTargetLocationInRange(InLocation)) return false;
+
+	TargetDataReadyDelegate.Broadcast(MakeLocationTargetData(InLocation));
 	return true;
 }
