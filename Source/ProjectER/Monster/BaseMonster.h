@@ -124,6 +124,10 @@ private:
 	UFUNCTION(BlueprintCallable)
 	float GetAbilityDelayByTag(FGameplayTag InputTag);
 
+	UFUNCTION(BlueprintCallable)
+	float GetAbilityCoolTimeByTag(FGameplayTag InputTag);
+
+
 public:
 
 	// 몬스터 데이터 로드해서 참조
