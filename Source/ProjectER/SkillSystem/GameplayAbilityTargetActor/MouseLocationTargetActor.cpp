@@ -35,12 +35,12 @@ bool AMouseLocationTargetActor::TryConfirmMouseLocation()
 	FVector MouseLocation = FVector::ZeroVector;
 	if (!MouseClickSkill->TryGetMouseLocationInRange(MouseLocation)) return false;
 
-	FGameplayAbilityTargetDataHandle DataHandle;
-	FGameplayAbilityTargetData_LocationInfo* LocData = new FGameplayAbilityTargetData_LocationInfo();
-	LocData->TargetLocation.LiteralTransform = FTransform(MouseLocation);
-	DataHandle.Add(LocData);
+	//FGameplayAbilityTargetDataHandle DataHandle;
+	//FGameplayAbilityTargetData_LocationInfo* LocData = new FGameplayAbilityTargetData_LocationInfo();
+	//LocData->TargetLocation.LiteralTransform = FTransform(MouseLocation);
+	//DataHandle.Add(LocData);
 
-	TargetDataReadyDelegate.Broadcast(DataHandle);
+	TargetDataReadyDelegate.Broadcast(MakeLocationTargetData(MouseLocation));
 	return true;
 }
 
