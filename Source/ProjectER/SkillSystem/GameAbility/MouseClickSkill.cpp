@@ -78,7 +78,21 @@ void UMouseClickSkill::ExecuteSkill()
 {
 	Super::ExecuteSkill();
 
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+	FinishSkill();
+}
+
+void UMouseClickSkill::FinishSkill()
+{
+	TargetLocationEffectContext = FGameplayEffectContextHandle();
+	CurrentMouseLocationTargetActor = nullptr;
+	Super::FinishSkill();
+}
+
+void UMouseClickSkill::OnCancelAbility()
+{
+	TargetLocationEffectContext = FGameplayEffectContextHandle();
+	CurrentMouseLocationTargetActor = nullptr;
+	Super::OnCancelAbility();
 }
 
 void UMouseClickSkill::SetWaitExternalTargetEventTask()
@@ -136,7 +150,7 @@ void UMouseClickSkill::SetWaitTargetTask()
 
 void UMouseClickSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle& DataHandle) 
 {
-	if (!DataHandle.IsValid(0) || !CommitAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo)) return;
+	if (!DataHandle.IsValid(0) /*|| !CommitAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo) */ ) return;
 
 	FVector Location(DataHandle.Get(0)->GetEndPoint());
 
@@ -145,6 +159,13 @@ void UMouseClickSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle&
 		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 		return;
 	}
+
+	FGameplayEffectContext* EffectContext = new FGameplayEffectContext();
+	EffectContext->SetAbility(this);
+	EffectContext->AddInstigator(GetAvatarActorFromActorInfo(), GetAvatarActorFromActorInfo());
+	EffectContext->AddSourceObject(CachedConfig);
+	EffectContext->AddOrigin(Location);
+	TargetLocationEffectContext = FGameplayEffectContextHandle(EffectContext);
 
 	RotateToLocation(Location);
 	PrepareToActiveSkill();
