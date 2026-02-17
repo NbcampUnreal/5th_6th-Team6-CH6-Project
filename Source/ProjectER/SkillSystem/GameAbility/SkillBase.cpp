@@ -161,7 +161,7 @@ void USkillBase::PrepareToActiveSkill()
 	if (IsLocallyControlled()) PlayAnimMontage();
 }
 
-void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets)
+void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContext* InEffectContext)
 {
 	if (Actors.Num() <= 0 || SkillEffectDataAssets.Num() <= 0) return;
 
@@ -182,7 +182,7 @@ void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TAr
 	for (USkillEffectDataAsset* EffectData : SkillEffectDataAssets)
 	{
 		if (!EffectData) continue;
-		TArray<FGameplayEffectSpecHandle> SpecHandles = EffectData->MakeSpecs(InstigatorASC, this, GetAvatarActorFromActorInfo());
+		TArray<FGameplayEffectSpecHandle> SpecHandles = EffectData->MakeSpecs(InstigatorASC, this, GetAvatarActorFromActorInfo(), InEffectContext);
 		for (FGameplayEffectSpecHandle& SpecHandle : SpecHandles)
 		{
 			if (SpecHandle.IsValid())
@@ -199,14 +199,14 @@ void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TAr
 	}
 }
 
-void USkillBase::ApplyEffectsToActor(AActor* Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets)
+void USkillBase::ApplyEffectsToActor(AActor* Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContext* InEffectContext)
 {
 	if (IsValid(Actors) == false) return;
 
 	TSet<TObjectPtr<AActor>> TargetSet;
 	TargetSet.Add(Actors);
 
-	ApplyEffectsToActors(TargetSet, SkillEffectDataAssets);
+	ApplyEffectsToActors(TargetSet, SkillEffectDataAssets, InEffectContext);
 }
 
 FGameplayTag USkillBase::GetInputTag()
