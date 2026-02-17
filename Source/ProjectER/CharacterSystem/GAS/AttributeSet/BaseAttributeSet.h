@@ -134,9 +134,6 @@ class PROJECTER_API UBaseAttributeSet : public UAttributeSet
 	FGameplayAttributeData Tenacity;
 	ATTRIBUTE_ACCESSORS(UBaseAttributeSet, Tenacity)
 
-	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Combat", ReplicatedUsing = OnRep_AttackDelay)
-	FGameplayAttributeData AttackDelay;
-	ATTRIBUTE_ACCESSORS(UBaseAttributeSet, AttackDelay)
 	
 #pragma endregion
 	
@@ -206,6 +203,5 @@ protected:
 	virtual void OnRep_CooldownReduction(const FGameplayAttributeData& OldCooldownReduction);
 	UFUNCTION() 
 	virtual void OnRep_Tenacity(const FGameplayAttributeData& OldTenacity);
-	UFUNCTION()
-	virtual void OnRep_AttackDelay(const FGameplayAttributeData& OldTenacity);
+	
 };

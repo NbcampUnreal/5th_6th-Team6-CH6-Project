@@ -59,4 +59,10 @@ public:
 
 	UPROPERTY(EditAnywhere)
 	float BaseAttackDelay = 0;
+
+	UPROPERTY(EditAnywhere)
+	float BaseQSkillCoolTime = 0;
+
+	UPROPERTY(EditAnywhere)
+	float BaseQSkillDelay = 0;
 };

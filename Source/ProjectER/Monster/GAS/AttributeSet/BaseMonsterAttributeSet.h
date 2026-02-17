@@ -40,6 +40,8 @@ protected:
 	) override;
 
 
+
+	
 private:
 
 #pragma region OnRep
@@ -48,10 +50,31 @@ private:
 
 	virtual void OnRep_MoveSpeed(const FGameplayAttributeData& OldHealth) override;
 
+	UFUNCTION()
+	virtual void OnRep_AttackDelay(const FGameplayAttributeData& OldTenacity);
+
+	UFUNCTION()
+	virtual void OnRep_QSkillCoolTime(const FGameplayAttributeData& OldTenacity);
+
+	UFUNCTION()
+	virtual void OnRep_QSkillDelay(const FGameplayAttributeData& OldTenacity);
+
 #pragma endregion
 
 
 public:
+
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Combat", ReplicatedUsing = OnRep_AttackDelay)
+	FGameplayAttributeData AttackDelay;
+	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, AttackDelay)
+
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Combat", ReplicatedUsing = OnRep_QSkillCoolTime)
+	FGameplayAttributeData QSkillCoolTime;
+	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, QSkillCoolTime)
+
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Combat", ReplicatedUsing = OnRep_QSkillDelay)
+	FGameplayAttributeData QSkillDelay;
+	ATTRIBUTE_ACCESSORS(UBaseMonsterAttributeSet, QSkillDelay)
 
 	UPROPERTY()
 	FOnAttributeChanged OnMaxHealthChanged;

@@ -7,6 +7,7 @@
 
 class UGameplayAbility;
 class UBaseItemData;
+class USkillDataAsset;
 struct FGameplayTag;
 
 // 몬스터 데이터
@@ -33,7 +34,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|GAS")
 	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
 
-	
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|GAS")
+	TArray<TObjectPtr<USkillDataAsset>> SkillDataAssets;
+
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
 	TObjectPtr<UAnimMontage> AttackMontage;
 
@@ -48,6 +52,9 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
 	TObjectPtr<UAnimMontage> SitMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
+	TObjectPtr<UAnimMontage> QSkillMontage;
 
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
