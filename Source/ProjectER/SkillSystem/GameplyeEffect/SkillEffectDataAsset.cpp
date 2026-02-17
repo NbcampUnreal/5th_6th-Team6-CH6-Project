@@ -5,6 +5,7 @@
 #include "AbilitySystemComponent.h"
 #include "SkillSystem/GameAbility/SkillBase.h"
 #include "GameplayEffect.h"
+#include "GameplayEffectTypes.h"
 #include "GameplayEffectComponent.h"
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGEC.h"
@@ -16,7 +17,7 @@ USkillEffectDataAsset::USkillEffectDataAsset()
 	IndexTag = FGameplayTag::RequestGameplayTag(FName("Skill.Data.EffectIndex"));
 }
 
-TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySystemComponent* InstigatorASC, USkillBase* InstigatorSkill, AActor* InEffectCauser)
+TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySystemComponent* InstigatorASC, USkillBase* InstigatorSkill, AActor* InEffectCauser, const FGameplayEffectContext* InEffectContext)
 {
 	TArray<FGameplayEffectSpecHandle> OutSpecs;
 
@@ -27,6 +28,12 @@ TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySyste
 	AActor* AvatarActor = InstigatorASC->GetAvatarActor();
 	AActor* FinalCauser = (InEffectCauser != nullptr) ? InEffectCauser : InstigatorASC->GetAvatarActor();
 
+    
+    FGameplayEffectContext* SharedEffectContext = InEffectContext != nullptr ? static_cast<FGameplayEffectContext*>(InEffectContext->Duplicate()) : new FGameplayEffectContext();
+    FGameplayEffectContextHandle SharedContextHandle(SharedEffectContext);
+    SharedContextHandle.AddSourceObject(this);
+    SharedContextHandle.AddInstigator(AvatarActor, FinalCauser);
+
 	int32 Level = InstigatorSkill->GetAbilityLevel();
 
 	for (int32 i = 0; i < Data.SkillEffectDefinition.Num(); ++i)
@@ -34,11 +41,7 @@ TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySyste
 		const FSkillEffectDefinition& Def = Data.SkillEffectDefinition[i];
 		if (Def.SkillEffectClass == nullptr) continue;
 
-		FGameplayEffectContextHandle ContextHandle = InstigatorASC->MakeEffectContext();
-		ContextHandle.AddSourceObject(this);
-		ContextHandle.AddInstigator(AvatarActor, FinalCauser);
-
-		FGameplayEffectSpecHandle SpecHandle = InstigatorASC->MakeOutgoingSpec(Def.SkillEffectClass, Level, ContextHandle);
+		FGameplayEffectSpecHandle SpecHandle = InstigatorASC->MakeOutgoingSpec(Def.SkillEffectClass, Level, SharedContextHandle);
 		if (SpecHandle.IsValid())
 		{
 			SpecHandle.Data->SetSetByCallerMagnitude(IndexTag, static_cast<float>(i));
