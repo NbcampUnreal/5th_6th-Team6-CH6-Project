@@ -14,12 +14,6 @@ void UAnimNotify_AddTagSkillCasting::Notify(USkeletalMeshComponent* MeshComp, UA
 {
 	Super::Notify(MeshComp, Animation, EventReference);
 
-	if (MeshComp && MeshComp->GetWorld())
-	{
-		FString NetMode = MeshComp->GetWorld()->IsNetMode(NM_DedicatedServer) ? TEXT("Dedicated Server") : TEXT("Client/ListenServer");
-		UE_LOG(LogTemp, Warning, TEXT("Notify Executed on: %s"), *NetMode);
-	}
-
 	if (!MeshComp) return;
 
 	AActor* OwnerActor = MeshComp->GetOwner();
