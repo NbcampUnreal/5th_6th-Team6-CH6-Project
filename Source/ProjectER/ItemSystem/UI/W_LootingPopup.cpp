@@ -72,6 +72,17 @@ void UW_LootingPopup::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	Super::NativeTick(MyGeometry, InDeltaTime);
 }
 
+/// <summary>
+/// mpyi _ 툴팁 정상 해제를 위해 소멸자 추가
+/// </summary>
+void UW_LootingPopup::NativeDestruct()
+{
+	Super::NativeDestruct();
+
+	TooltipInstance->RemoveFromParent();
+	TooltipInstance = nullptr;
+}
+
 
 void UW_LootingPopup::UpdateLootingSlots(const AActor* Box)
 {
