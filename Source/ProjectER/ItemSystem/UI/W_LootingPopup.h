@@ -31,6 +31,7 @@ public:
 
 protected:
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+	virtual void NativeDestruct() override; // 팝업 클래스 소멸 처리를 위해 소멸자 추가
 
 	UPROPERTY(EditDefaultsOnly, Category = "Looting")
 	TSubclassOf<UUserWidget> SlotWidgetClass;
@@ -68,6 +69,7 @@ protected:
 
 	UFUNCTION()
 	void OnItemHovered();
+public:
 	UFUNCTION()
 	void HideTooltip();
 #pragma endregion
