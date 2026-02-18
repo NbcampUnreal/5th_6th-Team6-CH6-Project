@@ -159,6 +159,8 @@ void ABasePlayerController::OnMoveStarted()
 		CancelAttackMode();
 	}
 
+	Client_CloseLootUI();
+
 	bIsMousePressed = true;
 	MoveToMouseCursor();
 }
@@ -293,10 +295,14 @@ void ABasePlayerController::ProcessMouseInteraction()
 
 			if (HitActor->GetComponentByClass<ULootableComponent>())
 			{
+				// 멀리서 클릭해도 상호작용되도록 목표 거리 계산
+				InteractionTargetDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
 				InteractionTarget = HitActor; // 박스, 플레이어, 몬스터 ( LootableComponent 내장하는 엑터들 ) 
 			}
 			else if (HitActor && HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
 			{
+				// 멀리서 클릭해도 상호작용되도록 목표 거리 계산
+				InteractionTargetDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
 				InteractionTarget = HitActor; // 바닥에 떨어진 아이템 줍는용도
 			}
 			else
@@ -324,34 +330,32 @@ void ABasePlayerController::CheckInteractionDistance()
 {
 	if (InteractionTarget && ControlledBaseChar)
 	{
-		float Distance = FVector::Dist(ControlledBaseChar->GetActorLocation(), InteractionTarget->GetActorLocation());
-		if (Distance <= 500.f)
+		float CurrentDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), InteractionTarget->GetActorLocation());
+		
+
+		// InteractionTargetDistance는 처음 클릭했을 때의 거리
+		if (CurrentDistance <= 150.f || CurrentDistance <= (InteractionTargetDistance * 0.3f)) // 거리에 따라서, 박스에 닿기 직전에 멈추는 현상이 남아 있음 수정 필요
 		{
+			if (ControlledBaseChar)
+			{
+				ControlledBaseChar->StopMove();
+			}
+
 			if (II_ItemInteractable* Interactable = Cast<II_ItemInteractable>(InteractionTarget))
 			{
+				// 땅바닥 아이템 (BaseItemActor)
 				if (ABaseItemActor* AAA = Cast<ABaseItemActor>(Interactable))
 				{
 					AAA->PickupItem(ControlledBaseChar);
 					Server_RequestPickup(AAA);
+					InteractionTarget = nullptr;
 				}
-				//else if (ABaseBoxActor* Box = Cast<ABaseBoxActor>(Interactable))
-				//{
-				//	Server_BeginLoot(Box);
-				//	// Server_BeginLootFromActor(Box);
-				//	InteractionTarget = nullptr;
-				//}
-
 			}
-			else // 플레이어, 박스, 시체, 땅바닥
+			else // LootableComponent가 있는 액터 (박스, 플레이어 시체, 몬스터 시체 등)
 			{
-
 				Server_BeginLoot(InteractionTarget);
-				// Server_BeginLootFromActor(Box);
-
 				InteractionTarget = nullptr;
 			}
-			InteractionTarget = nullptr;
-
 		}
 	}
 }
@@ -687,6 +691,9 @@ void ABasePlayerController::Server_BeginLoot_Implementation(AActor* Actor)
 	const float Dist = FVector::Dist(Char->GetActorLocation(), Actor->GetActorLocation());
 	if (Dist > 150.f) return;
 
+	// 루팅 시작 시 캐릭터 정지
+	Char->StopMove();
+
 	// Target에 Actor를 담는다
 	FGameplayEventData Payload;
 	Payload.Instigator = Char;
@@ -811,6 +818,8 @@ void ABasePlayerController::Client_CloseLootUI_Implementation()
 		return;
 	}
 
+	/// 25.02.18. mpyi _ 루팅창 꺼질 때 툴팁도 꺼지도록 추가
+	LootWidgetInstance->HideTooltip();
 	LootWidgetInstance->RemoveFromParent();
 	LootWidgetInstance = nullptr;
 }
@@ -850,6 +859,9 @@ void ABasePlayerController::Server_BeginLootFromActor_Implementation(AActor* Tar
 		UE_LOG(LogTemp, Warning, TEXT("Server_BeginLootFromActor: No loot remaining"));
 		return;
 	}
+
+	// 루팅 시작 시 캐릭터 정지
+	Char->StopMove();
 
 	// GA 트리거
 	FGameplayEventData Payload;
