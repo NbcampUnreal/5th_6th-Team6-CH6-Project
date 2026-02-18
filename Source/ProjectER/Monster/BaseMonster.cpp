@@ -10,6 +10,7 @@
 
 #include "Components/StateTreeComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/BoxComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Monster/MonsterRangeComponent.h"
 #include "Components/ProgressBar.h"
@@ -42,6 +43,9 @@ ABaseMonster::ABaseMonster()
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Pawn"));
+
+	HitBoxComp = CreateDefaultSubobject<UBoxComponent>(TEXT("HitBoxComponent"));
+	HitBoxComp->SetupAttachment(RootComponent);
 
 	// ASC 복제, 데이터 Minimal로 되는지 확인 필요
 	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -80,13 +84,13 @@ void ABaseMonster::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABaseMonster, MonsterId);
-	DOREPLIFETIME(ABaseMonster, TargetPlayer);
-	DOREPLIFETIME(ABaseMonster, StartLocation);
-	DOREPLIFETIME(ABaseMonster, StartRotator);
+	//DOREPLIFETIME(ABaseMonster, TargetPlayer);
+	//DOREPLIFETIME(ABaseMonster, StartLocation);
+	//DOREPLIFETIME(ABaseMonster, StartRotator);
 	DOREPLIFETIME(ABaseMonster, bIsCombat);
 	DOREPLIFETIME(ABaseMonster, bIsDead);
-	DOREPLIFETIME(ABaseMonster, bIsAttackOnCooldown);
-	DOREPLIFETIME(ABaseMonster, bIsQSkillOnCooldown);
+	//DOREPLIFETIME(ABaseMonster, bIsAttackOnCooldown);
+	//DOREPLIFETIME(ABaseMonster, bIsQSkillOnCooldown);
 	DOREPLIFETIME(ABaseMonster, TeamID);
 }
 
@@ -144,7 +148,6 @@ void ABaseMonster::Tick(float DeltaTime)
 
 void ABaseMonster::InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level)
 {
-	//Multicast_InitMonsterData(MonsterAssetId, Level);
 	InitMonsterDataLoading(MonsterAssetId, Level);
 	MonsterLevel = Level;
 	MonsterId = MonsterAssetId;
@@ -182,16 +185,13 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitMonsterData - MonsterData is Not Valid!"));
 	}
 
+	InitVisuals();
 	if (HasAuthority())
 	{
 		InitAttributes(Level);
 		InitGiveAbilities();
 		// 데이터 로드 완료 후 실행
 		StateTreeComp->StartLogic();
-	}
-	else
-	{
-		InitVisuals();
 	}
 }
 
@@ -295,6 +295,9 @@ void ABaseMonster::InitVisuals()
 		return;
 	}
 	GetMesh()->SetSkeletalMesh(MonsterData->Mesh.Get());
+	GetMesh()->SetRelativeScale3D(MonsterData->MeshScale);
+	GetCapsuleComponent()->SetCapsuleSize(MonsterData->CollisionRadius, MonsterData->CapsuleHalfHeight);
+	HitBoxComp->SetBoxExtent(MonsterData->HitBoxExtent);
 
 	if (IsValid(MonsterData->Anim) == false || !GetMesh())
 	{
