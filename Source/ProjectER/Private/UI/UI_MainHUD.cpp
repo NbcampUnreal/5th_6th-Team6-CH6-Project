@@ -269,16 +269,16 @@ void UUI_MainHUD::NativeConstruct()
         true);
 
     // 디버그용
-    SetKillCount(0);
-    SetDeathCount(41);
-    SetAssistCount(411);
+    //SetKillCount(0);
+    //SetDeathCount(41);
+    //SetAssistCount(411);
 
-    GetWorld()->GetTimerManager().SetTimer(
-        KillTimerHandle,
-        this,
-        &UUI_MainHUD::AddKillPerSecond,
-        1.0f,
-        true);
+    //GetWorld()->GetTimerManager().SetTimer(
+    //    KillTimerHandle,
+    //    this,
+    //    &UUI_MainHUD::AddKillPerSecond,
+    //    1.0f,
+    //    true);
 }
 
 /// 마우스 이벤트!
