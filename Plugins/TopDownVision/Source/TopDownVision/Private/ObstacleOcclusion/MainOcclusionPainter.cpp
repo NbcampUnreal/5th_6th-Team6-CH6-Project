@@ -24,13 +24,13 @@ void UMainOcclusionPainter::BeginPlay()
 	
 }
 
-
-// Called every frame
-void UMainOcclusionPainter::TickComponent(float DeltaTime, ELevelTick TickType,
-                                          FActorComponentTickFunction* ThisTickFunction)
+void UMainOcclusionPainter::UpdateOcclusionRT()
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// ...
 }
+
+void UMainOcclusionPainter::DrawProviderArea()
+{
+}
+
+
 

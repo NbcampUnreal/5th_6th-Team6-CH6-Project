@@ -51,6 +51,11 @@ ABaseCharacter::ABaseCharacter()
 	GetCharacterMovement()->bConstrainToPlane = true;
 	GetCharacterMovement()->bSnapToPlaneAtStart = true;
 
+
+	//now the camera and camera boom is managed in the MainCameraComp.
+	//Dynamically created at runtime only for the local-controlled pawn
+	
+	/*
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 
 	CameraBoom->SetupAttachment(RootComponent);
@@ -62,7 +67,7 @@ ABaseCharacter::ABaseCharacter()
 	TopDownCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
 
 	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
-	TopDownCameraComponent->bUsePawnControlRotation = false;
+	TopDownCameraComponent->bUsePawnControlRotation = false;*/
 
 	/* === 경로 설정 인덱스 초기화  === */
 	CurrentPathIndex = INDEX_NONE;
