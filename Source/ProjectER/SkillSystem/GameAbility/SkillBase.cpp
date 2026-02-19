@@ -154,6 +154,7 @@ void USkillBase::OnCastingTagEventReceived(FGameplayEventData Payload)
 
 void USkillBase::PlayAnimMontage()
 {
+	if (!IsValid(CachedConfig) || !IsValid(CachedConfig->Data.AnimMontage)) return;
 	UAbilityTask_PlayMontageAndWait* PlayTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, TEXT("SkillAnimation"), CachedConfig->Data.AnimMontage);
 	PlayTask->ReadyForActivation();
 }
@@ -176,7 +177,13 @@ void USkillBase::PrepareToActiveSkill()
 {
 	SetWaitEventActiveTag();
 	if (CachedConfig->Data.bIsUseCasting) SetWaitEventCastingTag();
-	PlayAnimMontage();
+
+	const bool bShouldPlayPredictedMontage = CurrentActorInfo && CurrentActorInfo->IsLocallyControlledPlayer();
+	const bool bShouldPlayServerMontage = HasAuthority(&CurrentActivationInfo);
+	if (bShouldPlayPredictedMontage || bShouldPlayServerMontage)
+	{
+		PlayAnimMontage();
+	}
 }
 
 void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle)
