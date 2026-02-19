@@ -25,6 +25,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Stat")
 	FName TableRowName; // 해당 몬스터 Row 이름
 
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Stat", meta = (Categories = "Unit.AttackType"))
+	FGameplayTag AttackType;
+
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Stat")
 	TObjectPtr<UDataTable> MonsterDataTable;
 
