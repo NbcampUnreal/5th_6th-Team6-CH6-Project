@@ -99,6 +99,6 @@ private:
     UPROPERTY(EditDefaultsOnly)
     FSkillEffectContainer Data;
 
-    UPROPERTY(EditDefaultsOnly)
+    UPROPERTY(VisibleAnywhere)
     FGameplayTag IndexTag;
 };
