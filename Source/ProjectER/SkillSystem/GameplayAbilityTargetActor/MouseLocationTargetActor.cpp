@@ -11,6 +11,7 @@ namespace
 	{
 		FGameplayAbilityTargetDataHandle DataHandle;
 		FGameplayAbilityTargetData_LocationInfo* LocData = new FGameplayAbilityTargetData_LocationInfo();
+		LocData->TargetLocation.LocationType = EGameplayAbilityTargetingLocationType::LiteralTransform;
 		LocData->TargetLocation.LiteralTransform = FTransform(Location);
 		DataHandle.Add(LocData);
 		return DataHandle;
