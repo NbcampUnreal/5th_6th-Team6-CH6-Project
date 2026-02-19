@@ -56,8 +56,8 @@ ABaseCharacter::ABaseCharacter()
 	//now the camera and camera boom is managed in the MainCameraComp.
 	//Dynamically created at runtime only for the local-controlled pawn
 	
-	/*
-	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
+	
+	/*CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->SetUsingAbsoluteRotation(true);
@@ -71,8 +71,10 @@ ABaseCharacter::ABaseCharacter()
 	TopDownCameraComponent->bUsePawnControlRotation = false;*/
 
 	//new camera
-	TopDownCameraComp = CreateDefaultSubobject<UTopDownCameraComp>(TEXT("TopDownCameraComp"));
-	TopDownCameraComp->SetupAttachment(RootComponent);
+	/*TopDownCameraComp = CreateDefaultSubobject<UTopDownCameraComp>(TEXT("TopDownCameraComp"));
+	TopDownCameraComp->SetupAttachment(RootComponent);*/
+
+	TopDownCameraComp=nullptr;//temp
 
 	/* === 경로 설정 인덱스 초기화  === */
 	CurrentPathIndex = INDEX_NONE;
@@ -113,6 +115,8 @@ void ABaseCharacter::BeginPlay()
 	{
 		InitVisuals();
 	}
+
+	TopDownCameraComp=FindComponentByClass<UTopDownCameraComp>();//find and set the topdown comp
 
 }
 

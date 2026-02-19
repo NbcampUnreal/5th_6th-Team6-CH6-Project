@@ -22,16 +22,17 @@ UTopDownCameraComp::UTopDownCameraComp()
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(this);
-	SpringArm->TargetArmLength = ArmLength;
+	/*SpringArm->TargetArmLength = ArmLength;
 	SpringArm->bDoCollisionTest = false;
 	SpringArm->bEnableCameraLag = false; //handle lag manually because of the curve world update
 	SpringArm->bInheritPitch = false;
 	SpringArm->bInheritYaw  = false;
-	SpringArm->bInheritRoll = false;
+	SpringArm->bInheritRoll = false;*/
 	
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
-	CameraComp->SetupAttachment(SpringArm, USpringArmComponent::SocketName);// attach here
-	CameraComp->bUsePawnControlRotation = false;
+	//CameraComp->SetupAttachment(SpringArm, USpringArmComponent::SocketName);// attach here
+	CameraComp->SetupAttachment(SpringArm);// attach here
+	//CameraComp->bUsePawnControlRotation = false;
 
 	UE_LOG(MainCameraComp, Log,
 		TEXT("[TopDownCameraComp] Constructor called"));
