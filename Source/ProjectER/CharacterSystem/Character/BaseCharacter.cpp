@@ -844,8 +844,8 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 		if (LogTimer > 0.5f)
 		{
 			LogTimer = 0.0f;
-			UE_LOG(LogTemp, Warning, TEXT("[%s] Dist: %.2f / Range: %.2f"), 
-				*GetName(), Distance, GetAttackRange());
+			/*UE_LOG(LogTemp, Warning, TEXT("[%s] Dist: %.2f / Range: %.2f"), 
+				*GetName(), Distance, GetAttackRange());*/
 		}
 	}
 #endif
