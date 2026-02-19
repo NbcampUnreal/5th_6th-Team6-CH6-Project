@@ -17,7 +17,7 @@ USkillEffectDataAsset::USkillEffectDataAsset()
 	IndexTag = FGameplayTag::RequestGameplayTag(FName("Skill.Data.EffectIndex"));
 }
 
-TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySystemComponent* InstigatorASC, USkillBase* InstigatorSkill, AActor* InEffectCauser, const FGameplayEffectContextHandle InEffectContextHandle)
+TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySystemComponent* InstigatorASC, USkillBase* InstigatorSkill, AActor* InEffectCauser, const FGameplayEffectContextHandle InEffectContextHandle) const
 {
     TArray<FGameplayEffectSpecHandle> OutSpecs;
 

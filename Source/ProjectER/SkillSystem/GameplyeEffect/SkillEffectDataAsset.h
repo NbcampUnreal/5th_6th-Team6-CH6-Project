@@ -81,7 +81,7 @@ class PROJECTER_API USkillEffectDataAsset : public UDataAsset
 public:
     USkillEffectDataAsset();
 
-    TArray<FGameplayEffectSpecHandle> MakeSpecs(UAbilitySystemComponent* InstigatorASC, USkillBase* InstigatorSkill, AActor* InEffectCauser, const FGameplayEffectContextHandle InEffectContextHandle = FGameplayEffectContextHandle());
+    TArray<FGameplayEffectSpecHandle> MakeSpecs(UAbilitySystemComponent* InstigatorASC, USkillBase* InstigatorSkill, AActor* InEffectCauser, const FGameplayEffectContextHandle InEffectContextHandle = FGameplayEffectContextHandle()) const;
     FORCEINLINE FGameplayTag GetIndexTag() const { return IndexTag; }
     FORCEINLINE FSkillEffectContainer GetData() const { return Data; }
     FORCEINLINE FGameplayAttribute GetTargetAttribute() const { return Data.TargetAttribute; }
