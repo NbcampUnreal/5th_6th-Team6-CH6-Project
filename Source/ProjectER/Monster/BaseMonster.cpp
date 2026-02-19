@@ -10,6 +10,7 @@
 
 #include "Components/StateTreeComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/BoxComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Monster/MonsterRangeComponent.h"
 #include "Components/ProgressBar.h"
@@ -42,6 +43,9 @@ ABaseMonster::ABaseMonster()
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Pawn"));
+
+	HitBoxComp = CreateDefaultSubobject<UBoxComponent>(TEXT("HitBoxComponent"));
+	HitBoxComp->SetupAttachment(RootComponent);
 
 	// ASC 복제, 데이터 Minimal로 되는지 확인 필요
 	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -78,12 +82,16 @@ UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
 void ABaseMonster::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(ABaseMonster, MonsterData);
-	DOREPLIFETIME(ABaseMonster, TargetPlayer);
-	DOREPLIFETIME(ABaseMonster, StartLocation);
-	DOREPLIFETIME(ABaseMonster, StartRotator);
+
+	DOREPLIFETIME(ABaseMonster, MonsterId);
+	//DOREPLIFETIME(ABaseMonster, TargetPlayer);
+	//DOREPLIFETIME(ABaseMonster, StartLocation);
+	//DOREPLIFETIME(ABaseMonster, StartRotator);
 	DOREPLIFETIME(ABaseMonster, bIsCombat);
 	DOREPLIFETIME(ABaseMonster, bIsDead);
+	//DOREPLIFETIME(ABaseMonster, bIsAttackOnCooldown);
+	//DOREPLIFETIME(ABaseMonster, bIsQSkillOnCooldown);
+	DOREPLIFETIME(ABaseMonster, TeamID);
 }
 
 void ABaseMonster::PossessedBy(AController* newController)
@@ -121,13 +129,10 @@ void ABaseMonster::BeginPlay()
 	
 	if (HasAuthority())
 	{
-		//테스트용 스폰
-		//FPrimaryAssetId MonsterAssetId(TEXT("Monster"), TEXT("DA_Monster_Orc"));
-		//InitMonsterData(MonsterAssetId, 1);
 		StartLocation = GetActorLocation();
 		StartRotator = GetActorRotation();
 	}
-	if (!HasAuthority())
+	else
 	{
 		// UI 로직
 		InitHPBar();
@@ -143,6 +148,23 @@ void ABaseMonster::Tick(float DeltaTime)
 
 void ABaseMonster::InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level)
 {
+	InitMonsterDataLoading(MonsterAssetId, Level);
+	MonsterLevel = Level;
+	MonsterId = MonsterAssetId;
+}
+
+void ABaseMonster::InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float Level)
+{
+	if (GetNetMode() == ENetMode::NM_Client)
+	{
+		UE_LOG(LogTemp, Error, TEXT("InitMonsterData : Client"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("InitMonsterData : Server"));
+	}
+
+	// 멀티케스트로 전체에서 로드
 	UAssetManager::Get().LoadPrimaryAsset(MonsterAssetId,
 		TArray<FName>(),
 		FStreamableDelegate::CreateUObject(
@@ -150,10 +172,9 @@ void ABaseMonster::InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level)
 			&ABaseMonster::OnMonsterDataLoaded,
 			MonsterAssetId,
 			Level
-		))
-		;
+		));
 }
-
+// 모든곳에서 호출
 void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Level)
 {
 	MonsterData = Cast<UMonsterDataAsset>(
@@ -165,10 +186,13 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 	}
 
 	InitVisuals();
-	InitAttributes(Level);
-	InitGiveAbilities();
-	// 데이터 로드 완료 후 실행
-	StateTreeComp->StartLogic();
+	if (HasAuthority())
+	{
+		InitAttributes(Level);
+		InitGiveAbilities();
+		// 데이터 로드 완료 후 실행
+		StateTreeComp->StartLogic();
+	}
 }
 
 void ABaseMonster::InitGiveAbilities()
@@ -271,6 +295,9 @@ void ABaseMonster::InitVisuals()
 		return;
 	}
 	GetMesh()->SetSkeletalMesh(MonsterData->Mesh.Get());
+	GetMesh()->SetRelativeScale3D(MonsterData->MeshScale);
+	GetCapsuleComponent()->SetCapsuleSize(MonsterData->CollisionRadius, MonsterData->CapsuleHalfHeight);
+	HitBoxComp->SetBoxExtent(MonsterData->HitBoxExtent);
 
 	if (IsValid(MonsterData->Anim) == false || !GetMesh())
 	{
@@ -294,6 +321,11 @@ void ABaseMonster::OnRep_IsDead()
 	{
 		HPBarWidgetComp->SetVisibility(false);
 	}
+}
+
+void ABaseMonster::OnRep_MonsterId()
+{
+	InitMonsterDataLoading(MonsterId, MonsterLevel);
 }
 
 void ABaseMonster::OnHealthChangedHandle(float CurrentHP, float MaxHP)

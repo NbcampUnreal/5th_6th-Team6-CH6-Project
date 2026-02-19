@@ -10,6 +10,7 @@
 class UGameplayAbility;
 class UStateTreeComponent;
 class USphereComponent;
+class UBoxComponent;
 class UMonsterRangeComponent;
 class UWidgetComponent;
 class UUserWidget;
@@ -32,9 +33,6 @@ public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-	// 몬스터 스폰 후 데이터를 초기화해주는 함수
-	void InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level);
 
 	UStateTreeComponent* GetStateTreeComponent();
 	void SetTargetPlayer(AActor* Target);
@@ -61,43 +59,49 @@ private:
 
 	UFUNCTION()
 	void OnRep_IsDead();
-	
+
 	UFUNCTION()
+	void OnRep_MonsterId();
+
+	
+	// 이벤트 태그
+	UFUNCTION() // SendHitEvent()
 	void OnMonterHitHandle(AActor* Target);
 
-	UFUNCTION()
+	UFUNCTION() // SendDeathEvent()
 	void OnMonterDeathHandle(AActor* Target);
 
-	UFUNCTION()
+	UFUNCTION() // SendBeginSearchEvent();
 	void OnPlayerCountOneHandle();
 
-	UFUNCTION()
+	UFUNCTION() // SendEndSearchEvent()
 	void OnPlayerCountZeroHandle();
 
-	UFUNCTION()
+	UFUNCTION() // SendTargetOffEvent()
 	void OnTargetLostHandle();
+
+	UFUNCTION(BlueprintCallable) // SendAttackRangeEvent();
+	void SendAttackRangeEvent(float AttackRange);
+
+	UFUNCTION(BlueprintCallable) // SendReturnSuccessEvent();
+	void SendReturnSuccessEvent();
+	//
+
 	// HealthBar 변경용
 	UFUNCTION()
 	void OnHealthChangedHandle(float CurrentHP, float MaxHP);
 	// 이동 속도 변경값 적용
 	UFUNCTION()
 	void OnMoveSpeedChangedHandle(float OldSpeed, float NewSpeed);
-
-#pragma region StateTree
-
-	UFUNCTION(BlueprintCallable)
-	void SendAttackRangeEvent(float AttackRange);
-
-	UFUNCTION(BlueprintCallable)
-	void SendReturnSuccessEvent();
-
-	UFUNCTION(BlueprintCallable)
-	void OnCooldown(FGameplayTag CooldownTag, float Cooldown);
 	// 몬스터 사망 후 충돌을 꺼주는 함수
-	UFUNCTION(NetMulticast, BlueprintCallable, Reliable)
-	void Multicast_SetDeathCollision();
+	
 
-#pragma endregion
+public:
+	// 몬스터 스폰 후 데이터를 초기화해주는 함수
+	void InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level);
+private:
+	// 초기화 
+	void InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float Level);
 
 	void OnMonsterDataLoaded(FPrimaryAssetId LoadedId, float Level);
 
@@ -108,12 +112,21 @@ private:
 	void InitVisuals();
 
 	void InitHPBar();
+	//
+
+	// 쿨다운 태그 관련
+	UFUNCTION(BlueprintCallable)
+	void OnCooldown(FGameplayTag CooldownTag, float Cooldown);
 
 	void AddCooldownTag(FGameplayTag CooldownTag);
 
 	void RemoveCooldownTag(FGameplayTag CooldownTag);
 
 	void CooldownCheck();
+	//
+
+	UFUNCTION(NetMulticast, BlueprintCallable, Reliable)
+	void Multicast_SetDeathCollision();
 
 	UFUNCTION(BlueprintCallable)
 	void GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGameplayEffect> GE, FGameplayTag Tag, float Amount);
@@ -129,21 +142,27 @@ private:
 
 
 public:
-
-	// 몬스터 데이터 로드해서 참조
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "MonsterData")
+	// 블루프린트에서 사용중
+	UPROPERTY(/*Replicated, */BlueprintReadOnly, Category = "MonsterData")
 	TObjectPtr<UMonsterDataAsset> MonsterData;
-
-	// 사망 시 들고있을 박스 컴포넌트 변수
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item")
-	TObjectPtr<ULootableComponent> LootableComp;
-
-protected:
-
-
 private:
+	// 해당값이 복제되면 클라이언트에서 데이터에셋 로드
+	UPROPERTY(ReplicatedUsing = OnRep_MonsterId)
+	FPrimaryAssetId MonsterId;
 
-#pragma region GAS
+	float MonsterLevel;
+
+
+
+public:
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<ULootableComponent> LootableComp;
+private:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UStateTreeComponent> StateTreeComp;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UMonsterRangeComponent> MonsterRangeComp;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UAbilitySystemComponent> ASC;
@@ -151,15 +170,20 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UBaseMonsterAttributeSet> AttributeSet;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
-	TSubclassOf<UGameplayEffect> XPRewardEffect;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI", meta = (AllowprivateAccess = "true"))
+	TObjectPtr<UWidgetComponent> HPBarWidgetComp;
 
-#pragma endregion
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Collision", meta = (AllowprivateAccess = "true"))
+	TObjectPtr<UBoxComponent> HitBoxComp;
+
 
 #pragma region SetByCall Tag
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Status", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag IncomingXPTag;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UGameplayEffect> XPRewardEffect;
 
 #pragma endregion
 
@@ -259,21 +283,14 @@ private:
 
 #pragma region StateTree
 
-	// 서버만
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UStateTreeComponent> StateTreeComp;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UMonsterRangeComponent> MonsterRangeComp;
-
 	// 서버에서 복제
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	FVector StartLocation;
 
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	FRotator StartRotator;
 
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<AActor> TargetPlayer;
 
 	UPROPERTY(ReplicatedUsing = OnRep_IsCombat, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
@@ -282,18 +299,11 @@ private:
 	UPROPERTY(ReplicatedUsing = OnRep_IsDead, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	bool bIsDead;
 
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	bool bIsAttackOnCooldown = true;
 
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	bool bIsQSkillOnCooldown = true;
-
-#pragma endregion
-
-#pragma region UI
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI", meta = (AllowprivateAccess = "true"))
-	TObjectPtr<UWidgetComponent> HPBarWidgetComp;
 
 #pragma endregion
 
