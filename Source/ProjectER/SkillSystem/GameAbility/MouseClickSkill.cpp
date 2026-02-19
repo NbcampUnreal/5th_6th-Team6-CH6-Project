@@ -9,6 +9,7 @@
 #include "SkillSystem/GameplayAbilityTargetActor/MouseLocationTargetActor.h"
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "AbilitySystemComponent.h"
 
 UMouseClickSkill::UMouseClickSkill()
 {
@@ -76,7 +77,50 @@ void UMouseClickSkill::RotateToLocation(const FVector& Location)
 
 void UMouseClickSkill::ExecuteSkill()
 {
-	Super::ExecuteSkill();
+	if (IsValid(CachedConfig) == false || CachedConfig->GetExcutionEffects().Num() <= 0) return;
+
+	AActor* Avatar = GetAvatarActorFromActorInfo();
+	if (IsValid(Avatar) == false) return;
+
+	if (HasAuthority(&CurrentActivationInfo))
+	{
+		FGameplayEffectContext* EffectContext = TargetLocationEffectContext.Get();
+		UE_LOG(LogTemp, Warning, TEXT("ExecuteSkill Location : %s"), *EffectContext->GetOrigin().ToString());
+		if (EffectContext == nullptr || !EffectContext->HasOrigin())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("ExecuteSkill::TargetLocationEffectContext has no valid origin"));
+			FinishSkill();
+			return;
+		}
+
+		UAbilitySystemComponent* InstigatorASC = GetAbilitySystemComponentFromActorInfo();
+		if (!IsValid(InstigatorASC))
+		{
+			FinishSkill();
+			return;
+		}
+
+		const TArray<TObjectPtr<USkillEffectDataAsset>>& ExecutionEffects = CachedConfig->GetExcutionEffects();
+		for (USkillEffectDataAsset* EffectData : ExecutionEffects)
+		{
+			if (!EffectData) continue;
+
+			TArray<FGameplayEffectSpecHandle> SpecHandles = EffectData->MakeSpecs(InstigatorASC, this, Avatar, TargetLocationEffectContext);
+			for (FGameplayEffectSpecHandle& SpecHandle : SpecHandles)
+			{
+				if (!SpecHandle.IsValid()) continue;
+				InstigatorASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get(), InstigatorASC->GetPredictionKeyForNewAction());
+			}
+		}
+
+		ABaseCharacter* Character = Cast<ABaseCharacter>(Avatar);
+		if (Character) Character->StopMove();
+	}
+
+	if (IsLocallyControlled())
+	{
+		OnExecuteSkill_InClient();
+	}
 
 	FinishSkill();
 }
@@ -108,6 +152,7 @@ void UMouseClickSkill::SetWaitExternalTargetEventTask()
 
 void UMouseClickSkill::SetWaitTargetTask()
 {
+	UE_LOG(LogTemp, Warning, TEXT("UMouseClickSkill::SetWaitTargetTask"));
 	UAbilityTask_WaitTargetData* WaitTargetTask = UAbilityTask_WaitTargetData::WaitTargetData(
 		this,
 		TEXT("WaitMouseLocationTargetTask"),
@@ -152,7 +197,17 @@ void UMouseClickSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle&
 {
 	if (!DataHandle.IsValid(0) /*|| !CommitAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo) */ ) return;
 
-	FVector Location(DataHandle.Get(0)->GetEndPoint());
+	FVector Location = FVector::ZeroVector;
+	const FGameplayAbilityTargetData* TargetData = DataHandle.Get(0);
+	if (TargetData && TargetData->GetScriptStruct() == FGameplayAbilityTargetData_LocationInfo::StaticStruct())
+	{
+		const FGameplayAbilityTargetData_LocationInfo* LocationData = static_cast<const FGameplayAbilityTargetData_LocationInfo*>(TargetData);
+		Location = LocationData->TargetLocation.GetTargetingTransform().GetLocation();
+	}
+	else if (TargetData)
+	{
+		Location = TargetData->GetEndPoint();
+	}
 
 	if (IsInRange(Location) == false)
 	{
@@ -160,12 +215,12 @@ void UMouseClickSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle&
 		return;
 	}
 
-	FGameplayEffectContext* EffectContext = new FGameplayEffectContext();
-	EffectContext->SetAbility(this);
-	EffectContext->AddInstigator(GetAvatarActorFromActorInfo(), GetAvatarActorFromActorInfo());
-	EffectContext->AddSourceObject(CachedConfig);
-	EffectContext->AddOrigin(Location);
-	TargetLocationEffectContext = FGameplayEffectContextHandle(EffectContext);
+	FGameplayEffectContextHandle ContextHandle = GetAbilitySystemComponentFromActorInfo()->MakeEffectContext();
+	ContextHandle.AddOrigin(Location);
+	ContextHandle.AddSourceObject(this);
+	TargetLocationEffectContext = ContextHandle;
+	
+	UE_LOG(LogTemp, Warning, TEXT("OnTargetDataReady Location : %s"), *Location.ToString());
 
 	RotateToLocation(Location);
 	PrepareToActiveSkill();
