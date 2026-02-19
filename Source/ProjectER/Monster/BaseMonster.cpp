@@ -155,14 +155,14 @@ void ABaseMonster::InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level)
 
 void ABaseMonster::InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float Level)
 {
-	//if (GetNetMode() == ENetMode::NM_Client)
-	//{
-	//	UE_LOG(LogTemp, Error, TEXT("InitMonsterData : Client"));
-	//}
-	//else
-	//{
-	//	UE_LOG(LogTemp, Error, TEXT("InitMonsterData : Server"));
-	//}
+	////if (GetNetMode() == ENetMode::NM_Client)
+	////{
+	////	UE_LOG(LogTemp, Error, TEXT("InitMonsterData : Client"));
+	////}
+	////else
+	////{
+	////	UE_LOG(LogTemp, Error, TEXT("InitMonsterData : Server"));
+	////}
 
 	UAssetManager::Get().LoadPrimaryAsset(MonsterAssetId,
 		TArray<FName>(),
