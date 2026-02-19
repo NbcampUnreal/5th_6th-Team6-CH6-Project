@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "ItemSystem/Interface/I_ItemInteractable.h" // [김현수 추가분]
 
@@ -126,6 +126,10 @@ protected:
 	// 상호작용 타겟 캐싱
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "ProjectER|Item")
 	TObjectPtr<AActor> InteractionTarget;
+
+	// 상호작용 거리 저장
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "ProjectER|Item")
+	float InteractionTargetDistance = 500.f;
 
 	// 거리 체크 로직 (PlayerTick에서 호출)
 	void CheckInteractionDistance();

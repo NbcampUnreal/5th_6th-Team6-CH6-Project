@@ -5,6 +5,7 @@
 #include "AbilitySystemComponent.h"
 #include "SkillSystem/GameAbility/SkillBase.h"
 #include "GameplayEffect.h"
+#include "GameplayEffectTypes.h"
 #include "GameplayEffectComponent.h"
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGEC.h"
@@ -16,37 +17,54 @@ USkillEffectDataAsset::USkillEffectDataAsset()
 	IndexTag = FGameplayTag::RequestGameplayTag(FName("Skill.Data.EffectIndex"));
 }
 
-TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySystemComponent* InstigatorASC, USkillBase* InstigatorSkill, AActor* InEffectCauser)
+TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySystemComponent* InstigatorASC, USkillBase* InstigatorSkill, AActor* InEffectCauser, const FGameplayEffectContextHandle InEffectContextHandle) const
 {
-	TArray<FGameplayEffectSpecHandle> OutSpecs;
+    TArray<FGameplayEffectSpecHandle> OutSpecs;
 
-	if (!IsValid(InstigatorASC) || !IsValid(InstigatorSkill)) {
-		return OutSpecs;
-	}
+    if (!IsValid(InstigatorASC) || !IsValid(InstigatorSkill)) {
+        return OutSpecs;
+    }
 
-	AActor* AvatarActor = InstigatorASC->GetAvatarActor();
-	AActor* FinalCauser = (InEffectCauser != nullptr) ? InEffectCauser : InstigatorASC->GetAvatarActor();
+    // 2. 새로운 컨텍스트 핸들 준비 (전달받은 게 유효하면 복사본 생성, 없으면 신규 생성)
+    FGameplayEffectContextHandle SharedContextHandle;
 
-	int32 Level = InstigatorSkill->GetAbilityLevel();
+    if (InEffectContextHandle.IsValid())
+    {
+        // Duplicate()를 직접 호출하지 마세요. 핸들을 대입하면 엔진이 안전하게 복제합니다.
+        SharedContextHandle = InEffectContextHandle;
+    }
+    else
+    {
+        SharedContextHandle = InstigatorASC->MakeEffectContext();
+    }
 
-	for (int32 i = 0; i < Data.SkillEffectDefinition.Num(); ++i)
-	{
-		const FSkillEffectDefinition& Def = Data.SkillEffectDefinition[i];
-		if (Def.SkillEffectClass == nullptr) continue;
+    // 3. 공통 정보 설정
+    AActor* AvatarActor = InstigatorASC->GetAvatarActor();
+    AActor* FinalCauser = (InEffectCauser != nullptr) ? InEffectCauser : AvatarActor;
 
-		FGameplayEffectContextHandle ContextHandle = InstigatorASC->MakeEffectContext();
-		ContextHandle.AddSourceObject(this);
-		ContextHandle.AddInstigator(AvatarActor, FinalCauser);
+    SharedContextHandle.AddSourceObject(this);
+    SharedContextHandle.AddInstigator(AvatarActor, FinalCauser);
 
-		FGameplayEffectSpecHandle SpecHandle = InstigatorASC->MakeOutgoingSpec(Def.SkillEffectClass, Level, ContextHandle);
-		if (SpecHandle.IsValid())
-		{
-			SpecHandle.Data->SetSetByCallerMagnitude(IndexTag, static_cast<float>(i));
-			OutSpecs.Add(SpecHandle);
-		}
-	}
+    int32 Level = InstigatorSkill->GetAbilityLevel();
 
-	return OutSpecs;
+    for (int32 i = 0; i < Data.SkillEffectDefinition.Num(); ++i)
+    {
+        const FSkillEffectDefinition& Def = Data.SkillEffectDefinition[i];
+        if (Def.SkillEffectClass == nullptr) continue;
+
+        // 4. 준비된 핸들로 Spec 생성
+        FGameplayEffectSpecHandle SpecHandle = InstigatorASC->MakeOutgoingSpec(Def.SkillEffectClass, Level, SharedContextHandle);
+
+        if (SpecHandle.IsValid())
+        {
+            // 로그 확인을 위해 핸들 다시 가져오기
+            const FGameplayEffectContextHandle& SpecContextHandle = SpecHandle.Data->GetContext();
+            SpecHandle.Data->SetSetByCallerMagnitude(IndexTag, static_cast<float>(i));
+            OutSpecs.Add(SpecHandle);
+        }
+    }
+
+    return OutSpecs;
 }
 
 #if WITH_EDITOR
@@ -117,7 +135,6 @@ void USkillEffectDataAsset::RefreshConfigsFromGE()
                 }
 
                 // 현재 구조가 Def 하나당 Config 하나라면 첫 번째 유효한 GEC에서 중단
-                // 만약 여러 개를 담아야 한다면 Def.Config를 TArray로 바꾸고 Add 하시면 됩니다.
                 if (Def.Config) break;
             }
         }

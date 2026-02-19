@@ -36,7 +36,7 @@ void UW_LootingPopup::InitPopup(const AActor* Box)
 
 
 	// 
-	
+
 	// 툴팁용 공간
 	// ※☆★☆★☆★툴팁은 Refresh() 이전에 설정되어야 함!!!!☆★☆★☆★※
 	// Refresh에서 버튼을 생성하는 과정에 툴팁 바인드가 포함되어 있기 때문
@@ -270,4 +270,3 @@ void UW_LootingPopup::HideTooltip()
 }
 
 #pragma endregion
-

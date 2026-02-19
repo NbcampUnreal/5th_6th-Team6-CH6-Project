@@ -25,6 +25,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Stat")
 	FName TableRowName; // 해당 몬스터 Row 이름
 
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Stat", meta = (Categories = "Unit.AttackType"))
+	FGameplayTag AttackType;
+
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Stat")
 	TObjectPtr<UDataTable> MonsterDataTable;
 
@@ -59,6 +62,18 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
 	TObjectPtr<USkeletalMesh> Mesh;
+
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
+	FVector MeshScale;
+
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
+	float CollisionRadius;
+
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
+	float CapsuleHalfHeight;
+
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
+	FVector HitBoxExtent;
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
 	TSubclassOf<UAnimInstance> Anim;
