@@ -24,6 +24,8 @@ public:
 	bool IsTargetLocationInRange(const FVector& InLocation) const;
 protected:
 	virtual void ExecuteSkill() override;
+	virtual void FinishSkill() override;
+	virtual void OnCancelAbility() override;
 	bool IsInRange(const FVector& Location) const;
 	void RotateToLocation(const FVector& Location);
 	void SetWaitTargetTask();
@@ -43,6 +45,7 @@ public:
 protected:
 	TWeakObjectPtr<AMouseLocationTargetActor> CurrentMouseLocationTargetActor;
 	TOptional<FVector> PendingExternalTargetLocation;
+	FGameplayEffectContextHandle TargetLocationEffectContext;
 	FGameplayTag ExternalTargetLocationEventTag;
 private:
 };

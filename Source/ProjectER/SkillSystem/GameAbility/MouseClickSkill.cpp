@@ -9,6 +9,7 @@
 #include "SkillSystem/GameplayAbilityTargetActor/MouseLocationTargetActor.h"
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "AbilitySystemComponent.h"
 
 UMouseClickSkill::UMouseClickSkill()
 {
@@ -76,9 +77,66 @@ void UMouseClickSkill::RotateToLocation(const FVector& Location)
 
 void UMouseClickSkill::ExecuteSkill()
 {
-	Super::ExecuteSkill();
+	if (IsValid(CachedConfig) == false || CachedConfig->GetExcutionEffects().Num() <= 0) return;
 
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+	AActor* Avatar = GetAvatarActorFromActorInfo();
+	if (IsValid(Avatar) == false) return;
+
+	if (HasAuthority(&CurrentActivationInfo))
+	{
+		FGameplayEffectContext* EffectContext = TargetLocationEffectContext.Get();
+
+		if (EffectContext == nullptr || !EffectContext->HasOrigin())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("ExecuteSkill::TargetLocationEffectContext has no valid origin"));
+			FinishSkill();
+			return;
+		}
+
+		UAbilitySystemComponent* InstigatorASC = GetAbilitySystemComponentFromActorInfo();
+		if (!IsValid(InstigatorASC))
+		{
+			FinishSkill();
+			return;
+		}
+
+		const TArray<TObjectPtr<USkillEffectDataAsset>>& ExecutionEffects = CachedConfig->GetExcutionEffects();
+		for (USkillEffectDataAsset* EffectData : ExecutionEffects)
+		{
+			if (!EffectData) continue;
+
+			TArray<FGameplayEffectSpecHandle> SpecHandles = EffectData->MakeSpecs(InstigatorASC, this, Avatar, TargetLocationEffectContext);
+			for (FGameplayEffectSpecHandle& SpecHandle : SpecHandles)
+			{
+				if (!SpecHandle.IsValid()) continue;
+				InstigatorASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get(), InstigatorASC->GetPredictionKeyForNewAction());
+			}
+		}
+
+		ABaseCharacter* Character = Cast<ABaseCharacter>(Avatar);
+		if (Character) Character->StopMove();
+	}
+
+	if (IsLocallyControlled())
+	{
+		OnExecuteSkill_InClient();
+	}
+
+	FinishSkill();
+}
+
+void UMouseClickSkill::FinishSkill()
+{
+	TargetLocationEffectContext = FGameplayEffectContextHandle();
+	CurrentMouseLocationTargetActor = nullptr;
+	Super::FinishSkill();
+}
+
+void UMouseClickSkill::OnCancelAbility()
+{
+	TargetLocationEffectContext = FGameplayEffectContextHandle();
+	CurrentMouseLocationTargetActor = nullptr;
+	Super::OnCancelAbility();
 }
 
 void UMouseClickSkill::SetWaitExternalTargetEventTask()
@@ -136,15 +194,30 @@ void UMouseClickSkill::SetWaitTargetTask()
 
 void UMouseClickSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle& DataHandle) 
 {
-	if (!DataHandle.IsValid(0) || !CommitAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo)) return;
+	if (!DataHandle.IsValid(0) /*|| !CommitAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo) */ ) return;
 
-	FVector Location(DataHandle.Get(0)->GetEndPoint());
+	FVector Location = FVector::ZeroVector;
+	const FGameplayAbilityTargetData* TargetData = DataHandle.Get(0);
+	if (TargetData && TargetData->GetScriptStruct() == FGameplayAbilityTargetData_LocationInfo::StaticStruct())
+	{
+		const FGameplayAbilityTargetData_LocationInfo* LocationData = static_cast<const FGameplayAbilityTargetData_LocationInfo*>(TargetData);
+		Location = LocationData->TargetLocation.GetTargetingTransform().GetLocation();
+	}
+	else if (TargetData)
+	{
+		Location = TargetData->GetEndPoint();
+	}
 
 	if (IsInRange(Location) == false)
 	{
 		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 		return;
 	}
+
+	FGameplayEffectContextHandle ContextHandle = GetAbilitySystemComponentFromActorInfo()->MakeEffectContext();
+	ContextHandle.AddOrigin(Location);
+	ContextHandle.AddSourceObject(this);
+	TargetLocationEffectContext = ContextHandle;
 
 	RotateToLocation(Location);
 	PrepareToActiveSkill();
@@ -171,18 +244,15 @@ void UMouseClickSkill::SubmitExternalTargetLocation(const FVector& InLocation)
 {
 	if (!IsInRange(InLocation))
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("SubmitExternalTargetLocation::false"));
+		UE_LOG(LogTemp, Warning, TEXT("SubmitExternalTargetLocation::false"));
 		return;
 	}
 
 	if (CurrentMouseLocationTargetActor.IsValid())
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("CurrentMouseLocationTargetActor.IsValid()"));
+		UE_LOG(LogTemp, Warning, TEXT("CurrentMouseLocationTargetActor.IsValid()"));
 		CurrentMouseLocationTargetActor->SubmitExternalLocation(InLocation);
 		return;
-	}
-	else {
-		//UE_LOG(LogTemp, Warning, TEXT("CurrentMouseLocationTargetActor.IsNotValid()"));
 	}
 
 	PendingExternalTargetLocation = InLocation;

@@ -44,7 +44,8 @@ void UAbilityTask_WaitGameplayEventSyn::OnClientEventTriggered(const FGameplayEv
         ASC->CallServerSetReplicatedTargetData(GetAbilitySpecHandle(), GetActivationPredictionKey(), DataHandle, TagToWait, GetActivationPredictionKey());
     }
 
-    OnEventReceived.Broadcast(*EventData);
+    OnEventReceived.Broadcast(*EventData); 
+    EndTask();
 }
 
 void UAbilityTask_WaitGameplayEventSyn::OnTargetDataReplicated(const FGameplayAbilityTargetDataHandle& DataHandle, FGameplayTag ActivationTag)
@@ -57,6 +58,7 @@ void UAbilityTask_WaitGameplayEventSyn::OnTargetDataReplicated(const FGameplayAb
     FGameplayEventData DummyData;
     DummyData.EventTag = TagToWait;
     OnEventReceived.Broadcast(DummyData);
+    EndTask();
 }
 
 void UAbilityTask_WaitGameplayEventSyn::OnDestroy(bool bInOwnerFinished)

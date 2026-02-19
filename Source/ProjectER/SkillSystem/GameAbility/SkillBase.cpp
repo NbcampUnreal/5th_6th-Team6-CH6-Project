@@ -99,7 +99,25 @@ void USkillBase::ExecuteSkill()
 
 	if (HasAuthority(&CurrentActivationInfo))
 	{
-		ApplyEffectsToActor(Avatar, CachedConfig->GetExcutionEffects());
+		UAbilitySystemComponent* InstigatorASC = GetAbilitySystemComponentFromActorInfo();
+		if (!IsValid(InstigatorASC))
+		{
+			FinishSkill();
+			return;
+		}
+
+		const TArray<TObjectPtr<USkillEffectDataAsset>>& ExecutionEffects = CachedConfig->GetExcutionEffects();
+		for (USkillEffectDataAsset* EffectData : ExecutionEffects)
+		{
+			if (!EffectData) continue;
+
+			TArray<FGameplayEffectSpecHandle> SpecHandles = EffectData->MakeSpecs(InstigatorASC, this, Avatar);
+			for (FGameplayEffectSpecHandle& SpecHandle : SpecHandles)
+			{
+				if (!SpecHandle.IsValid()) continue;
+				InstigatorASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get(), InstigatorASC->GetPredictionKeyForNewAction());
+			}
+		}
 
 		ABaseCharacter* Character = Cast<ABaseCharacter>(Avatar);
 		if (Character) Character->StopMove();
@@ -161,7 +179,7 @@ void USkillBase::PrepareToActiveSkill()
 	if (IsLocallyControlled()) PlayAnimMontage();
 }
 
-void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets)
+void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle)
 {
 	if (Actors.Num() <= 0 || SkillEffectDataAssets.Num() <= 0) return;
 
@@ -175,38 +193,34 @@ void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TAr
 			NewData->TargetActorArray.Add(Target);
 		}
 	}
-
 	TargetDataHandle.Add(NewData);
 
 	UAbilitySystemComponent* InstigatorASC = GetAbilitySystemComponentFromActorInfo();
+	if (!InstigatorASC) return;
+
 	for (USkillEffectDataAsset* EffectData : SkillEffectDataAssets)
 	{
 		if (!EffectData) continue;
-		TArray<FGameplayEffectSpecHandle> SpecHandles = EffectData->MakeSpecs(InstigatorASC, this, GetAvatarActorFromActorInfo());
+		TArray<FGameplayEffectSpecHandle> SpecHandles = EffectData->MakeSpecs(InstigatorASC, this, GetAvatarActorFromActorInfo(), InEffectContextHandle);
+
 		for (FGameplayEffectSpecHandle& SpecHandle : SpecHandles)
 		{
 			if (SpecHandle.IsValid())
 			{
-				ApplyGameplayEffectSpecToTarget(
-					CurrentSpecHandle,
-					CurrentActorInfo,
-					CurrentActivationInfo,
-					SpecHandle,
-					TargetDataHandle
-				);
+				ApplyGameplayEffectSpecToTarget(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, SpecHandle, TargetDataHandle);
 			}
 		}
 	}
 }
 
-void USkillBase::ApplyEffectsToActor(AActor* Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets)
+void USkillBase::ApplyEffectsToActor(AActor* Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle)
 {
 	if (IsValid(Actors) == false) return;
 
 	TSet<TObjectPtr<AActor>> TargetSet;
 	TargetSet.Add(Actors);
 
-	ApplyEffectsToActors(TargetSet, SkillEffectDataAssets);
+	ApplyEffectsToActors(TargetSet, SkillEffectDataAssets, InEffectContextHandle);
 }
 
 FGameplayTag USkillBase::GetInputTag()
