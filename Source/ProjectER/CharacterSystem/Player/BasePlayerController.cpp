@@ -817,7 +817,6 @@ void ABasePlayerController::Client_CloseLootUI_Implementation()
 	{
 		return;
 	}
-
 	/// 25.02.18. mpyi _ 루팅창 꺼질 때 툴팁도 꺼지도록 추가
 	LootWidgetInstance->HideTooltip();
 	LootWidgetInstance->RemoveFromParent();
