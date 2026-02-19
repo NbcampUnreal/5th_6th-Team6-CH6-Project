@@ -81,7 +81,7 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 
 	if (!ControlledBaseChar)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("OnPossess: ControlledBaseChar is Null!"));
+		// UE_LOG(LogTemp, Warning, TEXT("OnPossess: ControlledBaseChar is Null!"));
 	}
 }
 
