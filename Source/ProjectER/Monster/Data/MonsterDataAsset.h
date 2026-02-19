@@ -61,6 +61,18 @@ public:
 	TObjectPtr<USkeletalMesh> Mesh;
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
+	FVector MeshScale;
+
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
+	float CollisionRadius;
+
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
+	float CapsuleHalfHeight;
+
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
+	FVector HitBoxExtent;
+
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
 	TSubclassOf<UAnimInstance> Anim;
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Reward")
