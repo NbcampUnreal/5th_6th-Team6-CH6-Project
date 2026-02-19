@@ -194,6 +194,7 @@ void UW_LootingPopup::OnSlotButtonClicked()
 		if (Btn && (Btn->IsPressed() || Btn->IsHovered()))
 		{
 			TryLootItem(Elem.Value);
+			HideTooltip();	// 아이템 먹으면 툴팁 안보이게
 			return;
 		}
 	}
