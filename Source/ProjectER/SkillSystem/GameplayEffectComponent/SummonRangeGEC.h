@@ -11,6 +11,9 @@
  * 
  */
 
+class ABaseRangeOverlapEffectActor;
+class USkillEffectDataAsset;
+
 UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced)
 class PROJECTER_API USummonRangeByWorldOriginGECConfig : public UBaseGECConfig
 {
@@ -18,7 +21,7 @@ class PROJECTER_API USummonRangeByWorldOriginGECConfig : public UBaseGECConfig
 
 public:
 	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
-	TSubclassOf<AActor> RangeActorClass;
+	TSubclassOf<ABaseRangeOverlapEffectActor> RangeActorClass;
 
 	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
 	float LifeSpan = 1.0f;
@@ -28,6 +31,15 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
 	FRotator SpawnRotation = FRotator::ZeroRotator;
+
+	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
+	float CollisionRadius = 100.0f;
+
+	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
+	bool bHitOncePerTarget = true;
+
+	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
+	TArray<TObjectPtr<USkillEffectDataAsset>> Applied;
 };
 
 UCLASS()
