@@ -55,7 +55,7 @@ ABasePlayerController::ABasePlayerController()
 	// [김현수 추가분] 변수 초기화
 	InteractionTarget = nullptr;
 	
-	//Camera comp as null in the constructor. the creation will be done in the runtime --> on possess
+	//Camera comp as null in the constructor. the caching will be done in the runtime --> on possess
 	TopDownCameraComp = nullptr;
 }
 
@@ -93,18 +93,7 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 		UE_LOG(LogTemp, Warning, TEXT("OnPossess: ControlledBaseChar is Null!"));
 	}
 
-	// [카메라 추가] 로컬 컨트롤러일 때만 카메라 생성 및 부착
-	if (IsLocalController() && InPawn)
-	{
-		UE_LOG(Controller_Camera, Warning,
-			TEXT("ABasePlayerController::OnPossess >>CreateAndAttachCamera is called"));
-		CreateAndAttachCamera(InPawn);
-	}
-	else
-	{
-		UE_LOG(Controller_Camera, Error,
-			TEXT("ABasePlayerController::OnPossess >>Failed to attach camera"));
-	}
+	
 }
 
 void ABasePlayerController::SetupInputComponent()
@@ -200,6 +189,7 @@ void ABasePlayerController::OnRep_Pawn()
 	Super::OnRep_Pawn();
 
 	ControlledBaseChar = Cast<ABaseCharacter>(GetPawn());
+
 }
 
 void ABasePlayerController::OnMoveStarted()
@@ -544,63 +534,6 @@ void ABasePlayerController::OnCameraToggle()
 	}
 }
 
-void ABasePlayerController::CreateAndAttachCamera(APawn* InPawn)
-{
-	if (!InPawn)
-	{
-		UE_LOG(Controller_Camera, Warning,
-			TEXT("ABasePlayerController::CreateAndAttachCamera >> InPawn is NULL, aborting"));
-		return;
-	}
-
-	// Already exists — reattach to new pawn (respawn case)
-	if (IsValid(TopDownCameraComp))
-	{
-		UE_LOG(Controller_Camera, Log,
-			TEXT("ABasePlayerController::CreateAndAttachCamera >> Camera already exists, reattaching to: %s"),
-			*InPawn->GetName());
-
-		TopDownCameraComp->AttachToComponent(
-			InPawn->GetRootComponent(),
-			FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-
-		TopDownCameraComp->InitializeCamera();
-		SetViewTarget(InPawn);
-		return;
-	}
-
-	// First time — create fresh
-	UE_LOG(Controller_Camera, Log,
-		TEXT("ABasePlayerController::CreateAndAttachCamera >> Creating new camera for: %s"),
-		*InPawn->GetName());
-
-	TopDownCameraComp = NewObject<UTopDownCameraComp>(InPawn, TEXT("TopDownCameraComp"));
-
-	if (!TopDownCameraComp)
-	{
-		UE_LOG(Controller_Camera, Error,
-			TEXT("ABasePlayerController::CreateAndAttachCamera >> NewObject FAILED"));
-		return;
-	}
-
-	TopDownCameraComp->AttachToComponent(
-		InPawn->GetRootComponent(),
-		FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-
-	TopDownCameraComp->RegisterComponent();
-
-	// Manually initialize since BeginPlay is not guaranteed after RegisterComponent
-	TopDownCameraComp->InitializeCamera();
-
-	// Set as active view
-	SetViewTarget(InPawn);
-
-	UE_LOG(Controller_Camera, Log,
-		TEXT("ABasePlayerController::CreateAndAttachCamera >> Camera initialized and view target set"));
-
-	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Green,
-		TEXT("[Controller_Camera] Camera initialized and view target set"));
-}
 
 /*void ABasePlayerController::Test_ChangeTeamToA()
 {

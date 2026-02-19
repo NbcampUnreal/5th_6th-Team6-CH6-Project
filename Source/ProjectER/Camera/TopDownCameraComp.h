@@ -4,20 +4,19 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
-#include "GameFramework/SpringArmComponent.h"
-#include "Camera/CameraComponent.h"
 #include "TopDownCameraComp.generated.h"
 
 /**
  *  this is for camera comp. the location will be used for RT and also curved World Origin Param value
  */
 
+//Forward
+class USpringArmComponent;
+class UCameraComponent;
 
 PROJECTER_API DECLARE_LOG_CATEGORY_EXTERN(MainCameraComp, Log, All);
 
-//UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-
-UCLASS(ClassGroup=(Custom), Blueprintable, BlueprintType, meta=(BlueprintSpawnableComponent))//-->for BP child class
+UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class PROJECTER_API UTopDownCameraComp : public USceneComponent
 {
 	GENERATED_BODY()
@@ -27,17 +26,15 @@ public:
 	UTopDownCameraComp();
 
 protected:
-	// Called when the game starts
-	virtual void BeginPlay() override;
+	
+	virtual void TickComponent(
+		float DeltaTime,
+		ELevelTick TickType,
+		FActorComponentTickFunction* ThisTickFunction) override;
+
+	virtual void OnRegister() override;
 
 public:
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
-	                           FActorComponentTickFunction* ThisTickFunction) override;
-
-	//camera setting
-	void InitializeCamera();
-	
 	//Control Inputs
 	void AddKeyPanInput(FVector2D Input);
 	void ToggleCameraMode();

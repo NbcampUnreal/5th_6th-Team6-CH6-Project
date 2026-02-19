@@ -13,6 +13,8 @@ class UBaseAttributeSet;
 class UGameplayEffect;
 class UCharacterData;
 
+class UTopDownCameraComp;//main camera comp
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
 
 UCLASS()
@@ -52,6 +54,10 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USpringArmComponent> CameraBoom;*/
+
+	//replacement for camera comp
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess="true"))
+	TObjectPtr<UTopDownCameraComp> TopDownCameraComp;
 	
 	UPROPERTY()
 	TWeakObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;

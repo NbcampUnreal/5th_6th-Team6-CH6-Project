@@ -3,10 +3,12 @@
 
 #include "TopDownCameraComp.h"
 
+#include "Camera/CameraComponent.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
+#include "GameFramework/SpringArmComponent.h"
 
 //Log
 DEFINE_LOG_CATEGORY(MainCameraComp);
@@ -14,7 +16,9 @@ DEFINE_LOG_CATEGORY(MainCameraComp);
 // Sets default values for this component's properties
 UTopDownCameraComp::UTopDownCameraComp()
 {
-	PrimaryComponentTick.bCanEverTick = true;
+	// default false for tick -> only activate the tick for the locally controlled pawn's comp
+	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bStartWithTickEnabled = false;
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(this);
@@ -24,9 +28,9 @@ UTopDownCameraComp::UTopDownCameraComp()
 	SpringArm->bInheritPitch = false;
 	SpringArm->bInheritYaw  = false;
 	SpringArm->bInheritRoll = false;
-
+	
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
-	CameraComp->SetupAttachment(SpringArm, USpringArmComponent::SocketName); // attach here
+	CameraComp->SetupAttachment(SpringArm, USpringArmComponent::SocketName);// attach here
 	CameraComp->bUsePawnControlRotation = false;
 
 	UE_LOG(MainCameraComp, Log,
@@ -34,26 +38,12 @@ UTopDownCameraComp::UTopDownCameraComp()
 }
 
 
-// Called when the camera comp is created(when possessed)
-void UTopDownCameraComp::BeginPlay()
-{
-	Super::BeginPlay();
-
-	if (!bInitialized)
-	{
-		InitializeCamera();
-	}
-	
-}
-
 
 // Called every frame
 void UTopDownCameraComp::TickComponent(float DeltaTime, ELevelTick TickType,
                                        FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	if (!bInitialized) return;
 
 	if (bIsFreeCamMode)
 	{
@@ -68,31 +58,21 @@ void UTopDownCameraComp::TickComponent(float DeltaTime, ELevelTick TickType,
 	PendingKeyInput = FVector2D::ZeroVector;
 }
 
-void UTopDownCameraComp::InitializeCamera()
+void UTopDownCameraComp::OnRegister()
 {
-	// Arm length
-	SpringArm->TargetArmLength = ArmLength;
+	Super::OnRegister();
 
-	// Use relative rotation with inherit flags disabled
-	// This works regardless of world transform readiness
-	// unlike SetUsingAbsoluteRotation + SetWorldRotation which
-	// depends on a valid world transform being present
-	SpringArm->SetUsingAbsoluteRotation(false);
-	SpringArm->SetRelativeRotation(FRotator(ArmPitch, 0.f, 0.f));
-	SpringArm->bInheritPitch = false;
-	SpringArm->bInheritYaw   = false;
-	SpringArm->bInheritRoll  = false;
-
-	// Activate camera
-	CameraComp->SetActive(true);
-
-	UE_LOG(MainCameraComp, Log,
-		TEXT("[TopDownCameraComp] InitializeCamera — ArmLength: %.1f | ArmPitch: %.1f | SpringArm RelRot: %s"),
-		ArmLength, ArmPitch,
-		*SpringArm->GetRelativeRotation().ToString());
-
-	bInitialized = true;
+	if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
+	{
+		if (OwnerPawn->IsLocallyControlled())
+		{
+			SetComponentTickEnabled(true);
+			SmoothedFollowLocation = OwnerPawn->GetActorLocation();
+			FreeCamPivotLocation = SmoothedFollowLocation;
+		}
+	}
 }
+
 
 void UTopDownCameraComp::AddKeyPanInput(FVector2D Input)
 {
