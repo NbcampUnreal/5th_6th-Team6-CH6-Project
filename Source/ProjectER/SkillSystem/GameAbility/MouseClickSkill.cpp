@@ -85,6 +85,7 @@ void UMouseClickSkill::ExecuteSkill()
 	if (HasAuthority(&CurrentActivationInfo))
 	{
 		FGameplayEffectContext* EffectContext = TargetLocationEffectContext.Get();
+		EffectContext->SetAbility(this);
 
 		if (EffectContext == nullptr || !EffectContext->HasOrigin())
 		{
