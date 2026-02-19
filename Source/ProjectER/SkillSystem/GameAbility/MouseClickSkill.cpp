@@ -85,7 +85,7 @@ void UMouseClickSkill::ExecuteSkill()
 	if (HasAuthority(&CurrentActivationInfo))
 	{
 		FGameplayEffectContext* EffectContext = TargetLocationEffectContext.Get();
-		UE_LOG(LogTemp, Warning, TEXT("ExecuteSkill Location : %s"), *EffectContext->GetOrigin().ToString());
+
 		if (EffectContext == nullptr || !EffectContext->HasOrigin())
 		{
 			UE_LOG(LogTemp, Warning, TEXT("ExecuteSkill::TargetLocationEffectContext has no valid origin"));
@@ -152,7 +152,6 @@ void UMouseClickSkill::SetWaitExternalTargetEventTask()
 
 void UMouseClickSkill::SetWaitTargetTask()
 {
-	UE_LOG(LogTemp, Warning, TEXT("UMouseClickSkill::SetWaitTargetTask"));
 	UAbilityTask_WaitTargetData* WaitTargetTask = UAbilityTask_WaitTargetData::WaitTargetData(
 		this,
 		TEXT("WaitMouseLocationTargetTask"),
@@ -219,8 +218,6 @@ void UMouseClickSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle&
 	ContextHandle.AddOrigin(Location);
 	ContextHandle.AddSourceObject(this);
 	TargetLocationEffectContext = ContextHandle;
-	
-	UE_LOG(LogTemp, Warning, TEXT("OnTargetDataReady Location : %s"), *Location.ToString());
 
 	RotateToLocation(Location);
 	PrepareToActiveSkill();
@@ -247,18 +244,15 @@ void UMouseClickSkill::SubmitExternalTargetLocation(const FVector& InLocation)
 {
 	if (!IsInRange(InLocation))
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("SubmitExternalTargetLocation::false"));
+		UE_LOG(LogTemp, Warning, TEXT("SubmitExternalTargetLocation::false"));
 		return;
 	}
 
 	if (CurrentMouseLocationTargetActor.IsValid())
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("CurrentMouseLocationTargetActor.IsValid()"));
+		UE_LOG(LogTemp, Warning, TEXT("CurrentMouseLocationTargetActor.IsValid()"));
 		CurrentMouseLocationTargetActor->SubmitExternalLocation(InLocation);
 		return;
-	}
-	else {
-		//UE_LOG(LogTemp, Warning, TEXT("CurrentMouseLocationTargetActor.IsNotValid()"));
 	}
 
 	PendingExternalTargetLocation = InLocation;

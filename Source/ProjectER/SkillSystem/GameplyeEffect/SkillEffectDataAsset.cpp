@@ -59,15 +59,6 @@ TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySyste
         {
             // 로그 확인을 위해 핸들 다시 가져오기
             const FGameplayEffectContextHandle& SpecContextHandle = SpecHandle.Data->GetContext();
-
-            UE_LOG(LogTemp, Warning, TEXT("MakeSpecs:: GE=%s SourceObject=%s HasOrigin=%d Origin=%s DataIndex=%d"),
-                *GetNameSafe(Def.SkillEffectClass),
-                *GetNameSafe(SpecContextHandle.GetSourceObject()),
-                SpecContextHandle.HasOrigin() ? 1 : 0,
-                *SpecContextHandle.GetOrigin().ToString(),
-                i
-            );
-
             SpecHandle.Data->SetSetByCallerMagnitude(IndexTag, static_cast<float>(i));
             OutSpecs.Add(SpecHandle);
         }
