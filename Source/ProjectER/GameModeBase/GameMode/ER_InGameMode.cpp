@@ -196,12 +196,12 @@ void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter, APlayerState*
 	AER_PlayerState* KillerERPS = Cast<AER_PlayerState>(KillerPS);
 	AER_GameState* ERGS = GetGameState<AER_GameState>();
 
-	if (!ERPS || !ERGS || !KillerERPS)
+	if (!ERPS || !ERGS)
 		return;
 
 	if (UER_RespawnSubsystem* RespawnSS = GetWorld()->GetSubsystem<UER_RespawnSubsystem>() )
 	{
-		RespawnSS->HandlePlayerDeath(*ERPS, *ERGS, *KillerERPS, Assists);
+		RespawnSS->HandlePlayerDeath(*ERPS, *ERGS, KillerERPS, Assists);
 
 		// 탈락 방지 페이즈인지 확인
 		const int32 Phase = ERGS->GetCurrentPhase();
