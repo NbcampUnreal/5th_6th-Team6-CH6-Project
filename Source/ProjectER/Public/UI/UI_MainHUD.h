@@ -248,6 +248,9 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UImage* NowCurrentPhase;
 
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* NowRespawnTime;
+
 	UFUNCTION()
 	void OnSkillClicked_Q();
 	UFUNCTION()

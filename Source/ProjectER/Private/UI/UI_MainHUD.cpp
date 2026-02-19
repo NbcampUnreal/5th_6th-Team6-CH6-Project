@@ -269,16 +269,16 @@ void UUI_MainHUD::NativeConstruct()
         true);
 
     // 디버그용
-    //SetKillCount(0);
-    //SetDeathCount(41);
-    //SetAssistCount(411);
+    SetKillCount(0);
+    SetDeathCount(41);
+    SetAssistCount(411);
 
-    //GetWorld()->GetTimerManager().SetTimer(
-    //    KillTimerHandle,
-    //    this,
-    //    &UUI_MainHUD::AddKillPerSecond,
-    //    1.0f,
-    //    true);
+    GetWorld()->GetTimerManager().SetTimer(
+        KillTimerHandle,
+        this,
+        &UUI_MainHUD::AddKillPerSecond,
+        1.0f,
+        true);
 }
 
 /// 마우스 이벤트!
@@ -839,6 +839,11 @@ void UUI_MainHUD::AddKillPerSecond()
     LastHP_02 = 1000.f;
 	UpdateTeamHP(0, debugHP_01, 1000.f);
     UpdateTeamHP(1, debugHP_02, 1000.f);
+
+    // 리스폰 타임 테스트용
+	AER_PlayerState* PS = Cast<AER_PlayerState>(GetOwningPlayerState());
+    float a = PS->RespawnTime;
+	// UE_LOG(LogTemp, Error, TEXT("RespawnTime : %f"), a);
 }
 
 void UUI_MainHUD::UpdateTeamHP(int32 TeamIndex, float CurrentHP, float MaxHP)
