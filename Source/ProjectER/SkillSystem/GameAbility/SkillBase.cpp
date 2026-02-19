@@ -99,7 +99,25 @@ void USkillBase::ExecuteSkill()
 
 	if (HasAuthority(&CurrentActivationInfo))
 	{
-		ApplyEffectsToActor(Avatar, CachedConfig->GetExcutionEffects());
+		UAbilitySystemComponent* InstigatorASC = GetAbilitySystemComponentFromActorInfo();
+		if (!IsValid(InstigatorASC))
+		{
+			FinishSkill();
+			return;
+		}
+
+		const TArray<TObjectPtr<USkillEffectDataAsset>>& ExecutionEffects = CachedConfig->GetExcutionEffects();
+		for (USkillEffectDataAsset* EffectData : ExecutionEffects)
+		{
+			if (!EffectData) continue;
+
+			TArray<FGameplayEffectSpecHandle> SpecHandles = EffectData->MakeSpecs(InstigatorASC, this, Avatar);
+			for (FGameplayEffectSpecHandle& SpecHandle : SpecHandles)
+			{
+				if (!SpecHandle.IsValid()) continue;
+				InstigatorASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get(), InstigatorASC->GetPredictionKeyForNewAction());
+			}
+		}
 
 		ABaseCharacter* Character = Cast<ABaseCharacter>(Avatar);
 		if (Character) Character->StopMove();
@@ -161,10 +179,11 @@ void USkillBase::PrepareToActiveSkill()
 	if (IsLocallyControlled()) PlayAnimMontage();
 }
 
-void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContext* InEffectContext)
+void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle)
 {
 	if (Actors.Num() <= 0 || SkillEffectDataAssets.Num() <= 0) return;
 
+	// TargetData 생성 (기존 로직 유지)
 	FGameplayAbilityTargetDataHandle TargetDataHandle;
 	FGameplayAbilityTargetData_ActorArray* NewData = new FGameplayAbilityTargetData_ActorArray();
 
@@ -175,18 +194,39 @@ void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TAr
 			NewData->TargetActorArray.Add(Target);
 		}
 	}
-
 	TargetDataHandle.Add(NewData);
 
 	UAbilitySystemComponent* InstigatorASC = GetAbilitySystemComponentFromActorInfo();
+	if (!InstigatorASC) return;
+
 	for (USkillEffectDataAsset* EffectData : SkillEffectDataAssets)
 	{
 		if (!EffectData) continue;
-		TArray<FGameplayEffectSpecHandle> SpecHandles = EffectData->MakeSpecs(InstigatorASC, this, GetAvatarActorFromActorInfo(), InEffectContext);
+
+		// 2. MakeSpecs 내부에서도 핸들을 사용하도록 수정되었는지 확인 필요 (아래 팁 참조)
+		// 만약 MakeSpecs가 여전히 포인터를 받는다면 핸들의 .Get()을 넘기되, 최종적으로 여기서 SetContext를 다시 해주는 게 안전합니다.
+		TArray<FGameplayEffectSpecHandle> SpecHandles = EffectData->MakeSpecs(InstigatorASC, this, GetAvatarActorFromActorInfo(), InEffectContextHandle);
+
 		for (FGameplayEffectSpecHandle& SpecHandle : SpecHandles)
 		{
 			if (SpecHandle.IsValid())
 			{
+				// 3. [핵심] 수동으로 AddOrigin 하지 말고, 미리 준비된 핸들을 통째로 덮어씌웁니다.
+				// 이렇게 하면 Origin뿐만 아니라 SourceObject, Instigator 등 모든 정보가 한 번에 복사됩니다.
+				if (InEffectContextHandle.IsValid())
+				{
+					SpecHandle.Data->SetContext(InEffectContextHandle);
+				}
+
+				// 로그 확인용
+				const FGameplayEffectContextHandle& AppliedContextHandle = SpecHandle.Data->GetContext();
+				UE_LOG(LogTemp, Warning, TEXT("ApplyEffectsToActors:: GE=%s SourceObject=%s HasOrigin=%d Origin=%s"),
+					*GetNameSafe(SpecHandle.Data->Def),
+					*GetNameSafe(AppliedContextHandle.GetSourceObject()),
+					AppliedContextHandle.HasOrigin() ? 1 : 0,
+					*AppliedContextHandle.GetOrigin().ToString()
+				);
+
 				ApplyGameplayEffectSpecToTarget(
 					CurrentSpecHandle,
 					CurrentActorInfo,
@@ -199,14 +239,14 @@ void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TAr
 	}
 }
 
-void USkillBase::ApplyEffectsToActor(AActor* Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContext* InEffectContext)
+void USkillBase::ApplyEffectsToActor(AActor* Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle)
 {
 	if (IsValid(Actors) == false) return;
 
 	TSet<TObjectPtr<AActor>> TargetSet;
 	TargetSet.Add(Actors);
 
-	ApplyEffectsToActors(TargetSet, SkillEffectDataAssets, InEffectContext);
+	ApplyEffectsToActors(TargetSet, SkillEffectDataAssets, InEffectContextHandle);
 }
 
 FGameplayTag USkillBase::GetInputTag()
