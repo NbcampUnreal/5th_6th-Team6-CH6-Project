@@ -93,15 +93,18 @@ void USummonRangeGEC::OnGameplayEffectExecuted(FActiveGameplayEffectsContainer& 
 	if (!IsValid(DeferredSpawnedActor)) return;
 	ABaseRangeOverlapEffectActor* RangeActor = Cast<ABaseRangeOverlapEffectActor>(DeferredSpawnedActor);
 
+	USummonRangeByWorldOriginGECConfig* Cached = Cast<USummonRangeByWorldOriginGECConfig>(GetConfig());
+
 	if (IsValid(RangeActor))
 	{
-		const TArray<FGameplayEffectSpecHandle> GameplayEffectSpecHandles = SkillDataAsset->MakeSpecs(CauserASC, NonConstInstigatorSkill, EffectCauser, EffectContext);
-		RangeActor->InitializeEffectData(GameplayEffectSpecHandles, EffectCauser, SpawnConfig->CollisionRadius, SpawnConfig->bHitOncePerTarget);
-	}
-
-	if (SpawnConfig->LifeSpan > 0.0f)
-	{
-		DeferredSpawnedActor->SetLifeSpan(SpawnConfig->LifeSpan);
+		TArray<FGameplayEffectSpecHandle> InitGEHandles;
+		for (USkillEffectDataAsset* SkillEffectDataAsset : SpawnConfig->Applied)
+		{
+			const TArray<FGameplayEffectSpecHandle> GameplayEffectSpecHandles = SkillEffectDataAsset->MakeSpecs(CauserASC, NonConstInstigatorSkill, EffectCauser, EffectContext);
+			InitGEHandles.Append(GameplayEffectSpecHandles);
+		}
+		RangeActor->InitializeEffectData(InitGEHandles, EffectCauser, SpawnConfig->CollisionRadius, SpawnConfig->bHitOncePerTarget);
+		RangeActor->SetLifeSpan(SpawnConfig->LifeSpan);
 	}
 
 	DeferredSpawnedActor->FinishSpawning(SpawnTransform);
