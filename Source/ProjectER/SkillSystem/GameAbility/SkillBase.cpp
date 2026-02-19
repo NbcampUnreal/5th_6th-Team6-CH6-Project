@@ -176,7 +176,7 @@ void USkillBase::PrepareToActiveSkill()
 {
 	SetWaitEventActiveTag();
 	if (CachedConfig->Data.bIsUseCasting) SetWaitEventCastingTag();
-	if (IsLocallyControlled()) PlayAnimMontage();
+	PlayAnimMontage();
 }
 
 void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle)
