@@ -155,16 +155,15 @@ void ABaseMonster::InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level)
 
 void ABaseMonster::InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float Level)
 {
-	if (GetNetMode() == ENetMode::NM_Client)
-	{
-		UE_LOG(LogTemp, Error, TEXT("InitMonsterData : Client"));
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("InitMonsterData : Server"));
-	}
+	//if (GetNetMode() == ENetMode::NM_Client)
+	//{
+	//	UE_LOG(LogTemp, Error, TEXT("InitMonsterData : Client"));
+	//}
+	//else
+	//{
+	//	UE_LOG(LogTemp, Error, TEXT("InitMonsterData : Server"));
+	//}
 
-	// 멀티케스트로 전체에서 로드
 	UAssetManager::Get().LoadPrimaryAsset(MonsterAssetId,
 		TArray<FName>(),
 		FStreamableDelegate::CreateUObject(
@@ -188,6 +187,7 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 	InitVisuals();
 	if (HasAuthority())
 	{
+		ASC->AddLooseGameplayTag(MonsterData->AttackType);
 		InitAttributes(Level);
 		InitGiveAbilities();
 		// 데이터 로드 완료 후 실행
@@ -241,7 +241,9 @@ void ABaseMonster::InitAttributes(float Level)
 	}
 	//Level로 CurveTable 적용 
 	
-	FBaseMonsterTableRow* MonsterRow = MonsterData->MonsterDataTable->FindRow<FBaseMonsterTableRow>(MonsterData->TableRowName, TEXT("MonsterData"));
+	FBaseMonsterTableRow* MonsterRow = 
+		MonsterData->MonsterDataTable
+		->FindRow<FBaseMonsterTableRow>(MonsterData->TableRowName, TEXT("MonsterData"));
 
 	if (MonsterRow)
 	{
@@ -397,9 +399,6 @@ void ABaseMonster::OnMonterDeathHandle(AActor* Target)
 		UE_LOG(LogTemp, Warning, TEXT("Monster is already dead"));
 		return;
 	}
-	SetbIsDead(true);
-	SetTargetPlayer(nullptr);
-	SetbIsCombat(false);
 
 	ABaseCharacter* BC = Cast<ABaseCharacter>(Target);
 	if (BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
@@ -407,22 +406,7 @@ void ABaseMonster::OnMonterDeathHandle(AActor* Target)
 		BC->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
 	}
 
-	if (IsValid(StateTreeComp) == false)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnMonterDeathHandle : Not StateTree"));
-		return;
-	}
-	if (DeathEventTag.IsValid() == false)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnMonterDeathHandle : Not DeathEventTag"));
-		return;
-	}
-	StateTreeComp->SendStateTreeEvent(FStateTreeEvent(DeathEventTag));
-
-	// [전민성] - 사망 시 gamemode에 알림 추가
-	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
-	InGameMode->NotifyNeutralDied(this);
-   
+	Death(); 
 	//아이템 박스 초기화;
 	LootableComp->InitializeWithItems(MonsterData->ItemList);
 	//보상 지급
@@ -498,12 +482,12 @@ float ABaseMonster::GetAbilityCoolTimeByTag(FGameplayTag InputTag)
 	return 0.0f;
 }
 
-void ABaseMonster::CooldownCheck()
-{
-	// 쿨타임 체크
-	bIsAttackOnCooldown = ASC->HasMatchingGameplayTag(AutoAttackCooldownTag);
-	bIsQSkillOnCooldown = ASC->HasMatchingGameplayTag(QSkillCooldownTag);
-}
+//void ABaseMonster::CooldownCheck()
+//{
+//	// 쿨타임 체크
+//	bIsAttackOnCooldown = ASC->HasMatchingGameplayTag(AutoAttackCooldownTag);
+//	bIsQSkillOnCooldown = ASC->HasMatchingGameplayTag(QSkillCooldownTag);
+//}
 
 void ABaseMonster::OnCooldown(FGameplayTag CooldownTag, float Cooldown)
 {
@@ -578,7 +562,7 @@ void ABaseMonster::SendAttackRangeEvent(float AttackRange)
 		return;
 	}
 	
-	CooldownCheck();
+	//CooldownCheck();
 	
 	const float Distance = FVector::DistSquared(
 			TargetPlayer->GetActorLocation(), GetActorLocation());
@@ -593,6 +577,11 @@ void ABaseMonster::SendAttackRangeEvent(float AttackRange)
 		// 다시 체이스
 		StateTreeComp->SendStateTreeEvent(FGameplayTag(TargetOnEventTag));
 	}
+}
+
+bool ABaseMonster::HasASCTag(FGameplayTag Tag)
+{
+	return ASC && ASC->HasMatchingGameplayTag(Tag);
 }
 
 void ABaseMonster::SendReturnSuccessEvent()
@@ -668,14 +657,29 @@ void ABaseMonster::OnRep_TeamID()
 	UE_LOG(LogTemp, Warning, TEXT("%s"), *Message);*/
 }
 
-/// [전민성 추가분]
 void ABaseMonster::Death()
 {
 	if (!HasAuthority())
 		return;
 
+	SetbIsDead(true);
+	SetTargetPlayer(nullptr);
+	SetbIsCombat(false);
+
 	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
 	InGameMode->NotifyNeutralDied(this);
 
-	SetLifeSpan(0.1f);
+	SetLifeSpan(20.f);
+
+	if (IsValid(StateTreeComp) == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnMonterDeathHandle : Not StateTree"));
+		return;
+	}
+	if (DeathEventTag.IsValid() == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnMonterDeathHandle : Not DeathEventTag"));
+		return;
+	}
+	StateTreeComp->SendStateTreeEvent(FStateTreeEvent(DeathEventTag));
 }
