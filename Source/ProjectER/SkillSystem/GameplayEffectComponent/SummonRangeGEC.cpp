@@ -3,10 +3,15 @@
 
 #include "SkillSystem/GameplayEffectComponent/SummonRangeGEC.h"
 #include "Abilities/GameplayAbilityTypes.h"
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "GameplayEffect.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/Pawn.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGECConfig.h"
+#include "SkillSystem/Actor/BaseRangeOverlapEffectActor.h"
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
+#include "SkillSystem/GameAbility/SkillBase.h"
 
 USummonRangeGEC::USummonRangeGEC()
 {
@@ -24,19 +29,33 @@ void USummonRangeGEC::OnGameplayEffectExecuted(FActiveGameplayEffectsContainer& 
 
 	const FGameplayEffectContextHandle& EffectContext = GESpec.GetEffectContext();
 	const FGameplayEffectContext* EffectContextData = EffectContext.Get();
-	const UObject* SourceObject = EffectContext.GetSourceObject();
-	const USkillEffectDataAsset* SkillDataAsset = Cast<USkillEffectDataAsset>(SourceObject);
-	const FGameplayTag IndexTag = SkillDataAsset ? SkillDataAsset->GetIndexTag() : FGameplayTag();
-	const float DataIndex = IndexTag.IsValid() ? GESpec.GetSetByCallerMagnitude(IndexTag, false, -1.f) : -1.f;
-
 	if (EffectContextData == nullptr || !EffectContextData->HasOrigin())
 	{
 		return;
 	}
 
-	const FSkillEffectDefinition& SkillDef = SkillDataAsset->GetData().SkillEffectDefinition[DataIndex];
-	USummonRangeByWorldOriginGECConfig* SpawnConfig = Cast<USummonRangeByWorldOriginGECConfig>(SkillDef.Config);
+	const USkillEffectDataAsset* SkillDataAsset = Cast<USkillEffectDataAsset>(EffectContext.GetSourceObject());
+	if (!IsValid(SkillDataAsset))
+	{
+		return;
+	}
 
+	const FGameplayTag IndexTag = SkillDataAsset->GetIndexTag();
+	if (!IndexTag.IsValid())
+	{
+		return;
+	}
+
+	const int32 DataIndex = FMath::RoundToInt(GESpec.GetSetByCallerMagnitude(IndexTag, false, -1.f));
+	const FSkillEffectContainer SkillContainer = SkillDataAsset->GetData();
+	if (!SkillContainer.SkillEffectDefinition.IsValidIndex(DataIndex))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("USummonRangeGEC::OnGameplayEffectExecuted invalid DataIndex: %d"), DataIndex);
+		return;
+	}
+
+	const FSkillEffectDefinition& SkillDef = SkillContainer.SkillEffectDefinition[DataIndex];
+	const USummonRangeByWorldOriginGECConfig* SpawnConfig = Cast<USummonRangeByWorldOriginGECConfig>(SkillDef.Config);
 	if (!IsValid(SpawnConfig) || !IsValid(SpawnConfig->RangeActorClass))
 	{
 		return;
@@ -53,22 +72,40 @@ void USummonRangeGEC::OnGameplayEffectExecuted(FActiveGameplayEffectsContainer& 
 	{
 		return;
 	}
+	
+	UAbilitySystemComponent* CauserASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(EffectCauser);
+	if (!IsValid(CauserASC))
+	{
+		return;
+	}
 
 	FVector SpawnLocation = EffectContextData->GetOrigin();
 	SpawnLocation.Z += SpawnConfig->ZOffset;
 
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	FTransform SpawnTransform(SpawnConfig->SpawnRotation, SpawnLocation);
+	APawn* SpawnInstigator = Cast<APawn>(EffectContext.GetInstigator());
 
-	AActor* SpawnedActor = World->SpawnActor<AActor>(
-		SpawnConfig->RangeActorClass,
-		SpawnLocation,
-		SpawnConfig->SpawnRotation,
-		SpawnParams
-	);
+	AActor* DeferredSpawnedActor = World->SpawnActorDeferred<AActor>(SpawnConfig->RangeActorClass, SpawnTransform, EffectCauser, SpawnInstigator, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 
-	if (IsValid(SpawnedActor) && SpawnConfig->LifeSpan > 0.0f)
+	USkillBase* NonConstInstigatorSkill = const_cast<USkillBase*>(Cast<USkillBase>(EffectContext.GetAbility()));
+	if (!IsValid(NonConstInstigatorSkill)) return;
+
+	if (!IsValid(DeferredSpawnedActor)) return;
+	ABaseRangeOverlapEffectActor* RangeActor = Cast<ABaseRangeOverlapEffectActor>(DeferredSpawnedActor);
+
+	USummonRangeByWorldOriginGECConfig* Cached = Cast<USummonRangeByWorldOriginGECConfig>(GetConfig());
+
+	if (IsValid(RangeActor))
 	{
-		SpawnedActor->SetLifeSpan(SpawnConfig->LifeSpan);
+		TArray<FGameplayEffectSpecHandle> InitGEHandles;
+		for (USkillEffectDataAsset* SkillEffectDataAsset : SpawnConfig->Applied)
+		{
+			const TArray<FGameplayEffectSpecHandle> GameplayEffectSpecHandles = SkillEffectDataAsset->MakeSpecs(CauserASC, NonConstInstigatorSkill, EffectCauser, EffectContext);
+			InitGEHandles.Append(GameplayEffectSpecHandles);
+		}
+		RangeActor->InitializeEffectData(InitGEHandles, EffectCauser, SpawnConfig->CollisionRadius, SpawnConfig->bHitOncePerTarget);
+		RangeActor->SetLifeSpan(SpawnConfig->LifeSpan);
 	}
+
+	DeferredSpawnedActor->FinishSpawning(SpawnTransform);
 }

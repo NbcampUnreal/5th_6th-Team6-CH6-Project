@@ -291,10 +291,10 @@ bool USkillBase::IsValidRelationship(AActor* Target)
 	}
 	else if (SkillTargetRelationship == ETargetRelationship::Enemy)
 	{
-		/*if (bIsSameTeam == false && TargetInterface->IsTargetable() == false)
+		if (bIsSameTeam == false && TargetInterface->IsTargetable() == false)
 		{
 			return false;
-		}*/
+		}
 
 		return !bIsSameTeam;
 	}
