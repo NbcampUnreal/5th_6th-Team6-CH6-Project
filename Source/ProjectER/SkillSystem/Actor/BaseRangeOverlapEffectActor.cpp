@@ -15,9 +15,9 @@ ABaseRangeOverlapEffectActor::ABaseRangeOverlapEffectActor()
 	bReplicates = true;
 }
 
-void ABaseRangeOverlapEffectActor::InitializeEffectData(const FGameplayEffectSpecHandle& InEffectSpecHandle, AActor* InInstigatorActor, float InCollisionSize, bool bInHitOncePerTarget)
+void ABaseRangeOverlapEffectActor::InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, float InCollisionSize, bool bInHitOncePerTarget)
 {
-	EffectSpecHandle = InEffectSpecHandle;
+	EffectSpecHandles = InEffectSpecHandles;
 	InstigatorActor = InInstigatorActor;
 	bHitOncePerTarget = bInHitOncePerTarget;
 
@@ -78,12 +78,18 @@ void ABaseRangeOverlapEffectActor::OnShapeBeginOverlap(UPrimitiveComponent* Over
 	}
 
 	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor);
-	if (!IsValid(TargetASC) || !EffectSpecHandle.IsValid())
+	if (!IsValid(TargetASC) || EffectSpecHandles.Num() <= 0)
 	{
 		return;
 	}
 
-	TargetASC->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
+	for (const FGameplayEffectSpecHandle& EffectSpecHandle : EffectSpecHandles)
+	{
+		if (EffectSpecHandle.IsValid())
+		{
+			TargetASC->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
+		}
+	}
 
 	if (bHitOncePerTarget)
 	{

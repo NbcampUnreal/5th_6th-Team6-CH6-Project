@@ -21,7 +21,7 @@ public:
 	// Sets default values for this actor's properties
 	ABaseRangeOverlapEffectActor();
 
-	void InitializeEffectData(const FGameplayEffectSpecHandle& InEffectSpecHandle, AActor* InInstigatorActor, float InCollisionSize, bool bInHitOncePerTarget);
+	void InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, float InCollisionSize, bool bInHitOncePerTarget);
 
 protected:
 	virtual void BeginPlay() override;
@@ -37,7 +37,7 @@ protected:
 	TObjectPtr<UShapeComponent> CollisionComponent;
 
 	UPROPERTY()
-	FGameplayEffectSpecHandle EffectSpecHandle;
+	TArray<FGameplayEffectSpecHandle> EffectSpecHandles;
 
 	UPROPERTY()
 	TObjectPtr<AActor> InstigatorActor;
