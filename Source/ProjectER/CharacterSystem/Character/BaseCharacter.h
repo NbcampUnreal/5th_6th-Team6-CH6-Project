@@ -4,6 +4,7 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
+#include "GameplayEffectTypes.h"
 #include "BaseCharacter.generated.h"
 
 class UCameraComponent;
@@ -110,6 +111,9 @@ public:
 	float GetAttackRange() const;
 	
 protected:
+	// 이동 속도 스탯 변경 감지 델리게이트
+	virtual void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
+	
 	UFUNCTION()
 	void OnRep_HeroData();
 
@@ -132,10 +136,21 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Life")
 	TSubclassOf<UGameplayEffect> DownStateEffectClass;
 	
+	// 사망 상태(Death) 이펙트 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Life")
+	TSubclassOf<UGameplayEffect> DeathStateEffectClass;
+	
+	// 사망 상태(Death) 이펙트 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|State")
+	TSubclassOf<UGameplayEffect> MovingStateEffectClass;
+	
 	// 전민성 추가
 	UPROPERTY(EditAnywhere, Category = "GAS")
 	TSubclassOf<class UGameplayAbility> OpenAbilityClass;
 	
+protected:
+	// GE_Moving 핸들 (추적용)
+	FActiveGameplayEffectHandle MovingEffectHandle;
 #pragma endregion 
 
 #pragma region MoveToLocation
@@ -234,6 +249,10 @@ protected:
 	// 부활 상태 동기화
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_Revive(FVector RespawnLocation);
+	
+	// 빈사 상태 동기화
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_HandleDown();
 	
 protected:
 	// 사망 모션 몽타주 : 내부 캐싱용

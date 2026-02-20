@@ -134,6 +134,7 @@ void UER_RespawnSubsystem::StartRespawnTimer(AER_PlayerState& PS, AER_GameState&
 	if (ABasePlayerController* PC = Cast<ABasePlayerController>(PS.GetOwner()))
 	{
 		PC->Client_StartRespawnTimer();
+		PC->UI_RespawnStart(RespawnTime);
 	}
 
 	// 리스폰 타이머 시작

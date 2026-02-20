@@ -33,6 +33,9 @@
 //Camera comp added
 #include "Camera/TopDownCameraComp.h"
 
+// UI System
+#include "UI/UI_MainHUD.h"
+
 
 //Log
 DEFINE_LOG_CATEGORY(Controller_Camera);
@@ -90,7 +93,7 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 
 	if (!ControlledBaseChar)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("OnPossess: ControlledBaseChar is Null!"));
+		// UE_LOG(LogTemp, Warning, TEXT("OnPossess: ControlledBaseChar is Null!"));
 	}
 
 	
@@ -983,6 +986,14 @@ void ABasePlayerController::Server_TakeItemFromActor_Implementation(const AActor
 
 
 
+
+void ABasePlayerController::UI_RespawnStart(float RespawnTime)
+{
+	if (IsValid(MainHUD))
+	{
+		MainHUD->StartRespawn(RespawnTime);
+	}
+}
 
 void ABasePlayerController::ShowWinUI()
 {

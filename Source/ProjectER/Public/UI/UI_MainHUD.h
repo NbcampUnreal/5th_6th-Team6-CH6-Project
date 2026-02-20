@@ -71,6 +71,8 @@ public:
 	UFUNCTION()
 	void InitASCHud(UAbilitySystemComponent* _ASC);
 
+	UFUNCTION()
+	void StartRespawn(float _RespawnTime);
 
 protected:
 	// 마우스 우클릭 확인용
@@ -247,6 +249,9 @@ protected:
 	UImage* PhaseTimerSecOne;
 	UPROPERTY(meta = (BindWidget))
 	UImage* NowCurrentPhase;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* NowRespawnTime;
 
 	UFUNCTION()
 	void OnSkillClicked_Q();
