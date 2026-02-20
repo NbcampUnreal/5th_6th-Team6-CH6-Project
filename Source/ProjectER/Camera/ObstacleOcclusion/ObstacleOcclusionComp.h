@@ -15,6 +15,7 @@
  *
  *  also, this will not use capsule but array of sphere collisions because of the curve made by curved world bender shader.
  */
+
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class PROJECTER_API UObstacleOcclusionComp : public USceneComponent
 {

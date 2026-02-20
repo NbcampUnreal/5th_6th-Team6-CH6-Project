@@ -58,10 +58,10 @@ protected:
 
 	//replacement for camera comp
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess="true"))
-	TObjectPtr<UTopDownCameraComp> TopDownCameraComp;
+	TObjectPtr<UTopDownCameraComp> TopDownCameraComp=nullptr;
 	
 	UPROPERTY()
-	TWeakObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
+	TWeakObjectPtr<UAbilitySystemComponent> AbilitySystemComponent=nullptr;
 	
 #pragma endregion
 
