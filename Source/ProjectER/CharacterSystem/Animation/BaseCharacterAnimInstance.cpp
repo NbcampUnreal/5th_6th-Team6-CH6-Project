@@ -12,6 +12,7 @@ UBaseCharacterAnimInstance::UBaseCharacterAnimInstance()
 	bIsFalling = false;
 	bShouldMove = false;
 	bIsDead = false;
+	bIsDown = false;
 }
 
 void UBaseCharacterAnimInstance::NativeInitializeAnimation()
@@ -49,13 +50,13 @@ void UBaseCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	// 공중에 뜸 판별
 	bIsFalling = MovementComponent->IsFalling();
 	
-	// 사망 태그(State.Life.Death)가 있는지 확인
+	// 사망 혹은 빈사 태그가 있는지 확인
 	if (IAbilitySystemInterface* ASCInterface = Cast<IAbilitySystemInterface>(Character))
 	{
 		if (UAbilitySystemComponent* ASC = ASCInterface->GetAbilitySystemComponent())
 		{
-			FGameplayTag DeathTag = ProjectER::State::Life::Death;
-			bIsDead = ASC->HasMatchingGameplayTag(DeathTag);
+			bIsDead = ASC->HasMatchingGameplayTag(ProjectER::State::Life::Death);
+			bIsDown = ASC->HasMatchingGameplayTag(ProjectER::State::Life::Down);
 		}
 	}
 }

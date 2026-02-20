@@ -346,6 +346,21 @@ float ABaseCharacter::GetAttackRange() const
 	return 150.0f;
 }
 
+void ABaseCharacter::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
+{
+	if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
+	{
+		MovementComp->MaxWalkSpeed = Data.NewValue;
+        
+#if WITH_EDITOR
+		if (bShowDebug)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[%s] 이동 속도 변경됨: %f"), *GetName(), Data.NewValue);
+		}
+#endif
+	}
+}
+
 void ABaseCharacter::OnRep_HeroData()
 {
 	// 비주엃 초기화 (클라이언트)
@@ -385,7 +400,12 @@ void ABaseCharacter::InitAbilitySystem()
 		AbilitySystemComponent = ASC;
 		ASC->InitAbilityActorInfo(PS, this);
 	}
-
+	
+	// 스탯 변경 감지 델리게이트 연결
+	if (AbilitySystemComponent.IsValid())
+	{
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBaseAttributeSet::GetMoveSpeedAttribute()).AddUObject(this, &ABaseCharacter::OnMoveSpeedChanged);
+	}
 
 	if (HasAuthority() && HeroData)
 	{
@@ -877,8 +897,8 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 		if (LogTimer > 0.5f)
 		{
 			LogTimer = 0.0f;
-			UE_LOG(LogTemp, Warning, TEXT("[%s] Dist: %.2f / Range: %.2f"), 
-				*GetName(), Distance, GetAttackRange());
+			/*UE_LOG(LogTemp, Warning, TEXT("[%s] Dist: %.2f / Range: %.2f"), 
+				*GetName(), Distance, GetAttackRange());*/
 		}
 	}
 #endif
@@ -1051,10 +1071,22 @@ void ABaseCharacter::HandleDeath()
 			FGameplayTag DeathTag = ProjectER::State::Life::Death;
 			if (AbilitySystemComponent->HasMatchingGameplayTag(DeathTag))
 			{
-				return;
+				return; // 중복 사망 방지
 			}
 			
-			AbilitySystemComponent->AddLooseGameplayTag(DeathTag);
+			// [추가] GE_State_Dead 적용 방식
+			if (DeathStateEffectClass)
+			{
+				FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+				Context.AddSourceObject(this);
+                
+				FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(DeathStateEffectClass, 1.0f, Context);
+				if (SpecHandle.IsValid())
+				{
+					AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+				}
+			}
+			
 			AbilitySystemComponent->CancelAllAbilities();
 		}
 
@@ -1141,10 +1173,10 @@ void ABaseCharacter::HandleDown()
 	{
 		if (AbilitySystemComponent.IsValid())
 		{
-			// 1. 기존 진행 중인 모든 어빌리티 취소 (공격, 캐스팅 등)
+			// 기존 진행 중인 모든 어빌리티 취소 (공격, 캐스팅 등)
 			AbilitySystemComponent->CancelAllAbilities();
 
-			// 2. GE_DownStatus 적용
+			// GE_DownStatus 적용
 			if (DownStateEffectClass)
 			{
 				FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
@@ -1154,17 +1186,17 @@ void ABaseCharacter::HandleDown()
 				if (SpecHandle.IsValid())
 				{
 					AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+					UE_LOG(LogTemp, Warning, TEXT("[%s] Apply GE_State_Down Success!"), *GetName());
 				}
 			}
 		}
         
-		// 3. 타겟 해제 (적들이 나를 더 이상 우선순위로 공격하지 않게 하려면)
-		// SetTarget(nullptr); 
+		// 타겟 해제 
+		SetTarget(nullptr); 
 	}
 	
-	// (선택) 클라이언트 비주얼 처리 필요 시 Multicast_HandleDown() 추가 호출
-	// 이동 모드 변경 (예: 걷기 -> 기어가기 속도 제어는 GE에서 처리되므로 여기선 생략 가능)
-	UE_LOG(LogTemp, Warning, TEXT("[HandleDown] User is now Down-But-Not-Out!"));
+	// 클라이언트 연출 동기화
+	Multicast_HandleDown();
 }
 
 void ABaseCharacter::Multicast_Revive_Implementation(FVector RespawnLocation)
@@ -1242,6 +1274,21 @@ void ABaseCharacter::Multicast_Death_Implementation()
 void ABaseCharacter::Server_SetTarget_Implementation(AActor* NewTarget)
 {
 	SetTarget(NewTarget);
+}
+
+void ABaseCharacter::Multicast_HandleDown_Implementation()
+{
+	StopAnimMontage();
+	if (GetMesh() && GetMesh()->GetAnimInstance())
+	{
+		GetMesh()->GetAnimInstance()->Montage_Stop(0.0f);
+	}
+
+	// (선택) 캡슐 콜리전 처리
+	// 기어다닐 때 다른 유저의 길을 막지 않게 하려면 여기서 Collision Response를 수정할 수 있습니다.
+	// GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+
+	UE_LOG(LogTemp, Warning, TEXT("[%s] 빈사 상태(Down) 진입!"), *GetName());
 }
 
 void ABaseCharacter::InitUI()

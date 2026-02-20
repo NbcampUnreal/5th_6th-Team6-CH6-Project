@@ -7,6 +7,7 @@
 
 #include "GameplayEffect.h"
 #include "GameplayEffectExtension.h"
+#include "CharacterSystem/GameplayTags/GameplayTags.h"
 #include "Net/UnrealNetwork.h"
 
 UBaseAttributeSet::UBaseAttributeSet()
@@ -107,7 +108,7 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 	// Health 속성이 변경되었는지 확인
 	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("!!! HP 변경 감지됨 !!! 현재 HP: %f / %f"), GetHealth(), GetMaxHealth());
+		// UE_LOG(LogTemp, Warning, TEXT("!!! HP 변경 감지됨 !!! 현재 HP: %f / %f"), GetHealth(), GetMaxHealth());
 	}
 	// 데미지(Damage : Data.Amount.Damage) 처리
 	if (Data.EvaluatedData.Attribute == GetIncomingDamageAttribute())
@@ -128,7 +129,7 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 			const float NewHealth = OldHealth - LocalDamage;
 			
 			SetHealth(FMath::Clamp(NewHealth, 0.0f, GetMaxHealth()));
-			UE_LOG(LogTemp, Warning, TEXT("Hp %f / %f "),  GetHealth(), GetMaxHealth());
+			// UE_LOG(LogTemp, Warning, TEXT("Hp %f / %f "),  GetHealth(), GetMaxHealth());
 
 			// [전민성] 어시스트, 사망 판정 추가
 			if (!GetWorld() || GetWorld()->GetNetMode() == NM_Client)
@@ -182,22 +183,36 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 
 			if (OldHealth > 0.0f && NewHealth <= 0.0f)
 			{
-				TargetChar->HandleDeath(); 
-				auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
-				if (!InGameMode)
-					return;
-
-				TArray<APlayerState*> OutAssists;
-				if (TargetPS)
+				UAbilitySystemComponent* TargetASC = TargetChar->GetAbilitySystemComponent();
+				
+				// 이미 빈사 상태(Down)였다면 -> 진짜 사망(Death)
+				if (TargetASC && TargetASC->HasMatchingGameplayTag(ProjectER::State::Life::Down))
 				{
-					// 8초 안에 데미지를 줬으면 어시스트 판정
-					TargetPS->GetAssists(Now, 8.f, AttackerPS, OutAssists);
+					TargetChar->HandleDeath(); 
+        
+					// 기존 킬 로그 및 어시스트 처리 유지
+					auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
+					if (!InGameMode) return;
 
-					// 죽으면 기여 기록 초기화
-					TargetPS->ResetDamageContrib();
+					TArray<APlayerState*> OutAssists;
+					if (TargetPS)
+					{
+						// 8초 안에 데미지를 줬으면 어시스트 판정
+						TargetPS->GetAssists(Now, 8.f, AttackerPS, OutAssists);
+
+						// 죽으면 기여 기록 초기화
+						TargetPS->ResetDamageContrib();
+					}
+					InGameMode->NotifyPlayerDied(TargetChar, AttackerPS, OutAssists);
 				}
+				else // 살아있는 상태(Alive)였다면 -> 빈사 상태(Down) 진입
+				{
+					// 빈사 상태 전용 체력으로 세팅 (GetMaxHealth() * 0.5f 설정)
+					SetHealth(GetMaxHealth() * 0.5f); 
 
-				InGameMode->NotifyPlayerDied(TargetChar, AttackerPS, OutAssists);
+					// 빈사 로직 실행 (상태 변환 및 GE 적용)
+					TargetChar->HandleDown();
+				}
 			}
 			else
 			{

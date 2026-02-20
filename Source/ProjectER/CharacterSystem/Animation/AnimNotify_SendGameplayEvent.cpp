@@ -26,7 +26,7 @@ void UAnimNotify_SendGameplayEvent::Notify(USkeletalMeshComponent* MeshComp, UAn
 	Payload.EventMagnitude = EventMagnitude;
 
 #if WITH_EDITOR
-	UE_LOG(LogTemp, Warning, TEXT("[AnimNotify] Activate SendGamePlayEvent.!!!"));
+	// UE_LOG(LogTemp, Warning, TEXT("[AnimNotify] Activate SendGamePlayEvent.!!!"));
 #endif
 	
 	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(OwnerActor, EventTag, Payload);
