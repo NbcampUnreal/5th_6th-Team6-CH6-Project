@@ -10,7 +10,7 @@
 #include "CharacterSystem/Character/BaseCharacter.h"
 
 
-void UER_RespawnSubsystem::HandlePlayerDeath(AER_PlayerState& PS, AER_GameState& GS, AER_PlayerState& KillerPS, const TArray<APlayerState*>& Assists)
+void UER_RespawnSubsystem::HandlePlayerDeath(AER_PlayerState& PS, AER_GameState& GS, AER_PlayerState* KillerPS, const TArray<APlayerState*>& Assists)
 {
 	if (!GS.HasAuthority())
 		return;
@@ -26,14 +26,19 @@ void UER_RespawnSubsystem::HandlePlayerDeath(AER_PlayerState& PS, AER_GameState&
 	PS.ForceNetUpdate();
 	UE_LOG(LogTemp, Warning, TEXT("Death.PS  K : %d, D : %d, A : %d"), PS.GetKillCount(), PS.GetDeathCount(), PS.GetAssistCount());
 	//PS.FlushNetDormancy();
-	KillerPS.AddKillCount();
-	KillerPS.ForceNetUpdate();
-	UE_LOG(LogTemp, Warning, TEXT("Kill.PS K : %d, D : %d, A : %d"), KillerPS.GetKillCount(), KillerPS.GetDeathCount(), KillerPS.GetAssistCount());
+	if (KillerPS != nullptr)
+	{
+		KillerPS->AddKillCount();
+		KillerPS->ForceNetUpdate();
+		UE_LOG(LogTemp, Warning, TEXT("Kill.PS K : %d, D : %d, A : %d"), KillerPS->GetKillCount(), KillerPS->GetDeathCount(), KillerPS->GetAssistCount());
+	}
+
+	
 
 	for (auto& AssistPS : Assists)
 	{
 		AER_PlayerState* AssistERPS = Cast<AER_PlayerState>(AssistPS);
-		if (AssistERPS && AssistERPS != &KillerPS)
+		if (AssistERPS && AssistERPS != KillerPS)
 		{
 			AssistERPS->AddAssistCount();
 			AssistERPS->ForceNetUpdate();
@@ -129,6 +134,7 @@ void UER_RespawnSubsystem::StartRespawnTimer(AER_PlayerState& PS, AER_GameState&
 	if (ABasePlayerController* PC = Cast<ABasePlayerController>(PS.GetOwner()))
 	{
 		PC->Client_StartRespawnTimer();
+		PC->UI_RespawnStart(RespawnTime);
 	}
 
 	// 리스폰 타이머 시작

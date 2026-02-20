@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "ItemSystem/Interface/I_ItemInteractable.h" // [김현수 추가분]
 
@@ -20,7 +20,15 @@ class UInputAction;
 class UDecalComponent;
 class ABaseCharacter;
 
+class UTopDownCameraComp; //Camera Added
+
+class UUI_MainHUD; // UI시스템 관리자
+
 struct FInputActionValue;
+
+
+//Log
+DECLARE_LOG_CATEGORY_EXTERN(Controller_Camera, Log, All);
 
 UCLASS()
 class PROJECTER_API ABasePlayerController : public APlayerController
@@ -43,6 +51,8 @@ protected:
 	
 	virtual void OnRep_Pawn() override;
 	
+	
+	
 	// 우클릭 이동 / 공격
 	void OnMoveStarted();
 	void OnMoveTriggered();
@@ -62,6 +72,12 @@ protected:
 
 	// 공격 명령 (Attack Move) 로직 요청
 	void RequestAttackMove(const FHitResult& Hit);
+
+
+	//Camera Movement Added(handler)
+	void OnCameraPanX(const FInputActionValue& Value);
+	void OnCameraPanY(const FInputActionValue& Value);
+	void OnCameraToggle();
 	
 protected:
 	// 입력 매핑 컨텍스트 (IMC)
@@ -79,6 +95,10 @@ protected:
 	// 커서 클릭 이펙트 (FX Class)
 	UPROPERTY(EditAnywhere, Category="Input")
 	TObjectPtr<UNiagaraSystem> FXCursor;
+
+	//Main Camera Added here
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	TObjectPtr<UTopDownCameraComp> TopDownCameraComp;
 	
 private:
 	// 마우스 입력 키다운 플래그
@@ -99,6 +119,9 @@ private:
 
 	// RPC 전송 간격 (0.1 = 초당 10번)
 	const float RPCUpdateInterval = 0.1f;
+
+	/*// Camera Comp Added to the pawn character
+	void CreateAndAttachCamera(APawn* InPawn);*/
 
 /// [김현수 추가분] - 시작
 protected:
@@ -183,6 +206,19 @@ public:
 
 	// 박스 아이템 루팅 RPC 끝
 
+	//	mpyi 추가분 _ UI SYSTEM
+public:
+	UFUNCTION()
+	void setMainHud(UUI_MainHUD* InMainHUD) { MainHUD = InMainHUD; }
+
+	UFUNCTION()
+	void UI_RespawnStart(float RespawnTime);
+
+private:
+	UPROPERTY()
+	UUI_MainHUD* MainHUD;
+
+	//
 
 private:
 	// UI 출력

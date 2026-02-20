@@ -4,6 +4,7 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
+#include "GameplayEffectTypes.h"
 #include "BaseCharacter.generated.h"
 
 class UCameraComponent;
@@ -12,6 +13,8 @@ class UAbilitySystemComponent;
 class UBaseAttributeSet;
 class UGameplayEffect;
 class UCharacterData;
+
+class UTopDownCameraComp;//main camera comp
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
 
@@ -23,9 +26,11 @@ class PROJECTER_API ABaseCharacter : public ACharacter,  public IAbilitySystemIn
 public:
 	ABaseCharacter();
 	
-	FORCEINLINE UCameraComponent* GetTopDownCameraComponent() const { return TopDownCameraComponent.Get(); }
+	// no more camera and camera spring arm.
+	/*FORCEINLINE UCameraComponent* GetTopDownCameraComponent() const { return TopDownCameraComponent.Get(); }
 	
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom.Get(); }
+	*/
 
 protected:
 	virtual void BeginPlay() override;
@@ -45,11 +50,15 @@ public:
 	
 #pragma region Component
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	/*UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCameraComponent> TopDownCameraComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<USpringArmComponent> CameraBoom;
+	TObjectPtr<USpringArmComponent> CameraBoom;*/
+
+	//replacement for camera comp
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess="true"))
+	TObjectPtr<UTopDownCameraComp> TopDownCameraComp;
 	
 	UPROPERTY()
 	TWeakObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
@@ -102,6 +111,9 @@ public:
 	float GetAttackRange() const;
 	
 protected:
+	// 이동 속도 스탯 변경 감지 델리게이트
+	virtual void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
+	
 	UFUNCTION()
 	void OnRep_HeroData();
 
@@ -123,6 +135,10 @@ public:
 	// 빈사 상태(Down) 이펙트 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Life")
 	TSubclassOf<UGameplayEffect> DownStateEffectClass;
+	
+	// 사망 상태(Death) 이펙트 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Life")
+	TSubclassOf<UGameplayEffect> DeathStateEffectClass;
 	
 	// 전민성 추가
 	UPROPERTY(EditAnywhere, Category = "GAS")
@@ -226,6 +242,10 @@ protected:
 	// 부활 상태 동기화
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_Revive(FVector RespawnLocation);
+	
+	// 빈사 상태 동기화
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_HandleDown();
 	
 protected:
 	// 사망 모션 몽타주 : 내부 캐싱용

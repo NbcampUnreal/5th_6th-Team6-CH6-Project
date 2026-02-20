@@ -1,0 +1,12 @@
+﻿#pragma once
+
+
+//this is for making radial mask to be used for OcclusionRT as a brush
+
+// simple Gradient Mask -> stylized
+
+
+//Stylization function
+
+//Bitmap Dithering Shader
+
