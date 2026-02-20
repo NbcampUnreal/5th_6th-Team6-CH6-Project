@@ -50,4 +50,18 @@ public:
 	// 스킬 입력 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilitiy", meta = (TitleProperty = "InputTag"))
 	TArray<FInputData> AbilityInputAction;
+
+
+
+	//Camera Control input
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera")
+	TObjectPtr<UInputAction> InputCameraPanX;//(A/D, Left/Right Arrow)
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera")
+	TObjectPtr<UInputAction> InputCameraPanY;//(W/S, Up/Down Arrow)
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera")
+	TObjectPtr<UInputAction> InputCameraToggle;//Toggle
+
+	
 };
