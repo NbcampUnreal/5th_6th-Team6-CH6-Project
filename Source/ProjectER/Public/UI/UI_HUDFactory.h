@@ -37,6 +37,9 @@ public:
     UFUNCTION()
     void InitASCFactory(UAbilitySystemComponent* _ASC);
 
+    UFUNCTION()
+    UUI_MainHUD* getMainHUD();
+
 
 private:
     // 1. 위젯 클래스를 담을 변수 (에디터에서 선택 가능하게)

@@ -199,6 +199,11 @@ void UUI_MainHUD::InitASCHud(UAbilitySystemComponent* _ASC)
     
 }
 
+void UUI_MainHUD::StartRespawn(float _RespawnTime)
+{
+	UE_LOG(LogTemp, Error, TEXT("StartRespawn called with time: %f"), _RespawnTime);
+}
+
 void UUI_MainHUD::NativeConstruct()
 {
     Super::NativeConstruct();

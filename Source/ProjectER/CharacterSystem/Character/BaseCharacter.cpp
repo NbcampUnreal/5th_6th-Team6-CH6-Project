@@ -1293,7 +1293,7 @@ void ABaseCharacter::Multicast_HandleDown_Implementation()
 
 void ABaseCharacter::InitUI()
 {
-	APlayerController* PC = Cast<APlayerController>(GetController());
+	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 	if (IsValid(PC) && PC->IsLocalController())
 	{
 		AHUD* GenericHUD = PC->GetHUD();
@@ -1317,6 +1317,8 @@ void ABaseCharacter::InitUI()
 			HUD->InitMinimapComponent(MinimapCaptureComponent);
 			HUD->InitHeroDataFactory(HeroData);
 			HUD->InitASCFactory(GetAbilitySystemComponent());
+			PC->setMainHud(HUD->getMainHUD());
+			
 			UE_LOG(LogTemp, Warning, TEXT("HUD InitOverlay Success!"));
 		}
 		else
