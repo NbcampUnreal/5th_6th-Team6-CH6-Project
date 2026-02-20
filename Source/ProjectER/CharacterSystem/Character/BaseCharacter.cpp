@@ -350,7 +350,7 @@ void ABaseCharacter::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
 {
 	if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
 	{
-		MovementComp->MaxWalkSpeed = Data.NewValue;
+		// MovementComp->MaxWalkSpeed = Data.NewValue;
         
 #if WITH_EDITOR
 		if (bShowDebug)
@@ -404,7 +404,7 @@ void ABaseCharacter::InitAbilitySystem()
 	// 스탯 변경 감지 델리게이트 연결
 	if (AbilitySystemComponent.IsValid())
 	{
-		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBaseAttributeSet::GetMoveSpeedAttribute()).AddUObject(this, &ABaseCharacter::OnMoveSpeedChanged);
+		// AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBaseAttributeSet::GetMoveSpeedAttribute()).AddUObject(this, &ABaseCharacter::OnMoveSpeedChanged);
 	}
 
 	if (HasAuthority() && HeroData)
