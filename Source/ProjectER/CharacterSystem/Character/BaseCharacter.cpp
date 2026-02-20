@@ -179,13 +179,13 @@ void ABaseCharacter::PossessedBy(AController* NewController)
 		InitVisuals();
 	}
 
-	// UI 초기화
-	InitUI();
-
 	if (TopDownCameraComp)//disable the tick for the server
 	{
 		TopDownCameraComp->SetComponentTickEnabled(false);
 	}
+
+	// UI 초기화
+	InitUI();
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
