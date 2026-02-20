@@ -208,24 +208,34 @@ void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter, APlayerState*
 		const bool bCanEliminationProtect = (Phase == 1 || Phase == 2);
 
 		// 전멸 판정
-		if (RespawnSS->EvaluateTeamElimination(*ERPS, *ERGS) && !bCanEliminationProtect)
+		if (!bCanEliminationProtect)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[GM] : NotifyPlayerDied , EvaluateTeamElimination = true"));
-
-			// 전멸 판정 true -> 해당 유저의 팀 사출 실행
-			const int32 TeamIdx = static_cast<int32>(ERPS->TeamType);
-
-			// 해당 팀의 리스폰 타이머 정지
-			RespawnSS->StopResapwnTimer(*ERGS, TeamIdx);
-
-			// 해당 팀 패배 처리
-			RespawnSS->SetTeamLose(*ERGS, TeamIdx);
-
-			// 승리 팀 체크
-			int32 LastTeamIdx = RespawnSS->CheckIsLastTeam(*ERGS);
-			if (LastTeamIdx != -1)
+			if (RespawnSS->EvaluateTeamElimination(*ERPS, *ERGS))
 			{
-				RespawnSS->SetTeamWin(*ERGS, LastTeamIdx);
+				UE_LOG(LogTemp, Warning, TEXT("[GM] : NotifyPlayerDied , EvaluateTeamElimination = true"));
+
+				// 전멸 판정 true -> 해당 유저의 팀 사출 실행
+				const int32 TeamIdx = static_cast<int32>(ERPS->TeamType);
+
+				// 해당 팀의 리스폰 타이머 정지
+				RespawnSS->StopResapwnTimer(*ERGS, TeamIdx);
+
+				// 해당 팀 패배 처리
+				RespawnSS->SetTeamLose(*ERGS, TeamIdx);
+
+				// 승리 팀 체크
+				int32 LastTeamIdx = RespawnSS->CheckIsLastTeam(*ERGS);
+				if (LastTeamIdx != -1)
+				{
+					RespawnSS->SetTeamWin(*ERGS, LastTeamIdx);
+				}
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[GM] : NotifyPlayerDied , EvaluateTeamElimination = false"));
+
+				// 전멸 판정 false -> 리스폰 함수 실행
+				RespawnSS->StartRespawnTimer(*ERPS, *ERGS);
 			}
 		}
 		else
