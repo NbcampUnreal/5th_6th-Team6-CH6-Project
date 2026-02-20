@@ -31,8 +31,6 @@ void AER_InGameMode::PostSeamlessTravel()
 {
 	Super::PostSeamlessTravel();
 
-	PlayersInitialized = 0;
-
 	UE_LOG(LogTemp, Warning, TEXT("[GM] PostSeamlessTravel - Expecting %d players"), ExpectedPlayers);
 }
 
@@ -88,7 +86,9 @@ void AER_InGameMode::HandleStartingNewPlayer_Implementation(APlayerController* N
 	{
 		PC->Client_InGameInputMode();
 	}
-
+	UE_LOG(LogTemp, Warning, TEXT("[GM] HSNPlayer this=%p world=%p map=%s PI=%d/%d"),
+		this, GetWorld(), *GetWorld()->GetMapName(), PlayersInitialized, ExpectedPlayers);
+	UE_LOG(LogTemp, Warning, TEXT("[GM] HandleStartingNewPlayer_Implementation"));
 	PlayersInitialized++;
 
 	UE_LOG(LogTemp, Warning, TEXT("[GM] HandleStartingNewPlayer %d/%d"), PlayersInitialized, ExpectedPlayers);
@@ -96,6 +96,7 @@ void AER_InGameMode::HandleStartingNewPlayer_Implementation(APlayerController* N
 	if (!bIsGameStarted && PlayersInitialized >= ExpectedPlayers)
 	{
 		// 모든 플레이어가 준비된 상황에서 실행
+		UE_LOG(LogTemp, Warning, TEXT("[GM] HandleStartingNewPlayer_Implementation -> StartGame"));
 		StartGame();
 	}
 }
@@ -179,6 +180,8 @@ void AER_InGameMode::EndGame_Internal()
 	{
 		ERGS->RemoveTeamCache();
 	}
+
+	PlayersInitialized = 0;
 
 	UE_LOG(LogTemp, Warning, TEXT("[GM] Player is Zero -> ServerTravel to Lobby"));
 
