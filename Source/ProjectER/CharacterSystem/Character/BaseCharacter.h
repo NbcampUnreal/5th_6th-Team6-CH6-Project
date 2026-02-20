@@ -14,6 +14,8 @@ class UBaseAttributeSet;
 class UGameplayEffect;
 class UCharacterData;
 
+class UTopDownCameraComp;//main camera comp
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
 
 UCLASS()
@@ -24,9 +26,11 @@ class PROJECTER_API ABaseCharacter : public ACharacter,  public IAbilitySystemIn
 public:
 	ABaseCharacter();
 	
-	FORCEINLINE UCameraComponent* GetTopDownCameraComponent() const { return TopDownCameraComponent.Get(); }
+	// no more camera and camera spring arm.
+	/*FORCEINLINE UCameraComponent* GetTopDownCameraComponent() const { return TopDownCameraComponent.Get(); }
 	
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom.Get(); }
+	*/
 
 protected:
 	virtual void BeginPlay() override;
@@ -46,11 +50,15 @@ public:
 	
 #pragma region Component
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	/*UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCameraComponent> TopDownCameraComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<USpringArmComponent> CameraBoom;
+	TObjectPtr<USpringArmComponent> CameraBoom;*/
+
+	//replacement for camera comp
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess="true"))
+	TObjectPtr<UTopDownCameraComp> TopDownCameraComp;
 	
 	UPROPERTY()
 	TWeakObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;

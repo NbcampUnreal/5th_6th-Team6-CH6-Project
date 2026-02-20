@@ -8,7 +8,6 @@
 #include "Materials/MaterialParameterCollectionInstance.h"
 #include "TopDownVisionDebug.h"
 #include "LineOfSight/GPU/LOSStampPass.h"
-#include "LineOfSight/Management/Subsystem/WorldObstacleSubsystem.h"
 #include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
 
 //Internal helper

@@ -24,17 +24,17 @@ public:
 
 	virtual TSubclassOf<UBaseGECConfig> GetRequiredConfigClass() const;
 protected:
-	UPROPERTY()
-	TObjectPtr<UBaseGECConfig> CachedConfig;
-
-	UPROPERTY()
-	TSubclassOf<UBaseGECConfig> ConfigClass;
+	virtual void OnGameplayEffectExecuted(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const override;
 private:
 
 public:
 
 protected:
+	UPROPERTY()
+	TObjectPtr<UBaseGECConfig> CachedConfig;
 
+	UPROPERTY()
+	TSubclassOf<UBaseGECConfig> ConfigClass;
 private:
 	
 };

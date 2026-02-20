@@ -30,6 +30,12 @@
 #include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "Blueprint/UserWidget.h"
 
+//Camera comp added
+#include "Camera/TopDownCameraComp.h"
+
+
+//Log
+DEFINE_LOG_CATEGORY(Controller_Camera);
 
 ABasePlayerController::ABasePlayerController()
 {
@@ -48,6 +54,9 @@ ABasePlayerController::ABasePlayerController()
 
 	// [김현수 추가분] 변수 초기화
 	InteractionTarget = nullptr;
+	
+	//Camera comp as null in the constructor. the caching will be done in the runtime --> on possess
+	TopDownCameraComp = nullptr;
 }
 
 void ABasePlayerController::BeginPlay()
@@ -83,6 +92,8 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 	{
 		// UE_LOG(LogTemp, Warning, TEXT("OnPossess: ControlledBaseChar is Null!"));
 	}
+
+	
 }
 
 void ABasePlayerController::SetupInputComponent()
@@ -115,6 +126,34 @@ void ABasePlayerController::SetupInputComponent()
 				// Released 바인딩 (차징 스킬 등을 위해 필요)
 				EnhancedInputComponent->BindAction(Action.InputAction, ETriggerEvent::Completed, this, &ABasePlayerController::AbilityInputTagReleased, Action.InputTag);
 			}
+		}
+
+		//Camera Control binding
+		
+		//   InputCameraPanX  (Axis1D) — A/D, Left/Right Arrow
+		//   InputCameraPanY  (Axis1D) — W/S, Up/Down Arrow
+		//   InputCameraToggle (Digital) — Y key
+		if (InputConfig->InputCameraPanX)
+		{
+			EnhancedInputComponent->BindAction(
+				InputConfig->InputCameraPanX,
+				ETriggerEvent::Triggered,
+				this,
+				&ABasePlayerController::OnCameraPanX);
+		}
+		if (InputConfig->InputCameraPanY)
+		{
+			EnhancedInputComponent->BindAction(
+				InputConfig->InputCameraPanY,
+				ETriggerEvent::Triggered,
+				this, &ABasePlayerController::OnCameraPanY);
+		}
+		if (InputConfig->InputCameraToggle)
+		{
+			EnhancedInputComponent->BindAction(
+				InputConfig->InputCameraToggle,
+				ETriggerEvent::Started,
+				this, &ABasePlayerController::OnCameraToggle);
 		}
 	}
 }
@@ -150,6 +189,7 @@ void ABasePlayerController::OnRep_Pawn()
 	Super::OnRep_Pawn();
 
 	ControlledBaseChar = Cast<ABaseCharacter>(GetPawn());
+
 }
 
 void ABasePlayerController::OnMoveStarted()
@@ -457,6 +497,47 @@ void ABasePlayerController::RequestAttackMove(const FHitResult& Hit)
 	// 기존 MoveToLocation은 무시하고 이동만 하므로, 새로운 함수 필요
 	ControlledBaseChar->Server_AttackMoveToLocation(Hit.Location);
 }
+
+void ABasePlayerController::OnCameraPanX(const FInputActionValue& Value)
+{
+	if (IsValid(TopDownCameraComp))
+	{
+		FVector2D PanXValue=FVector2D(Value.Get<float>(), 0.f);
+		TopDownCameraComp->AddKeyPanInput(PanXValue);
+		
+		UE_LOG(Controller_Camera, Warning,
+			TEXT("ABasePlayerController::OnCameraPanX >> CameraPanX[%s]"),
+			*PanXValue.ToString());
+	}
+}
+
+void ABasePlayerController::OnCameraPanY(const FInputActionValue& Value)
+{
+	if (IsValid(TopDownCameraComp))
+	{
+		FVector2D PanXValue=FVector2D(0.f, Value.Get<float>());
+		TopDownCameraComp->AddKeyPanInput(PanXValue);
+
+		UE_LOG(Controller_Camera, Warning,
+			TEXT("ABasePlayerController::OnCameraPanY >> CameraPanX[%s]"),
+			*PanXValue.ToString());
+	}
+}
+
+void ABasePlayerController::OnCameraToggle()
+{
+	if (IsValid(TopDownCameraComp))
+	{
+		TopDownCameraComp->ToggleCameraMode();
+
+		FString ModeString=TopDownCameraComp->IsCameraPanFreeMode()? TEXT("Free") : TEXT("AttachedMode");
+		
+		UE_LOG(Controller_Camera, Warning,
+			TEXT("ABasePlayerController::OnCameraToggle >> Toggled to %s"),
+			*ModeString);
+	}
+}
+
 
 /*void ABasePlayerController::Test_ChangeTeamToA()
 {

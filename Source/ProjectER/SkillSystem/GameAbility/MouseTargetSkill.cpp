@@ -24,7 +24,6 @@ UMouseTargetSkill::UMouseTargetSkill()
 void UMouseTargetSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-	
 	SetWaitTargetTask();
 
 	//if (IsLocallyControlled())

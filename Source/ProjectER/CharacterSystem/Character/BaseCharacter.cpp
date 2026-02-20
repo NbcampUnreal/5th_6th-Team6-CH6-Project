@@ -23,6 +23,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "GameplayAbilitySpec.h"
 #include "DrawDebugHelpers.h"
+#include "Camera/TopDownCameraComp.h"
 
 #include "UI/UI_HUDFactory.h" // UI시스템 관리자
 
@@ -51,7 +52,12 @@ ABaseCharacter::ABaseCharacter()
 	GetCharacterMovement()->bConstrainToPlane = true;
 	GetCharacterMovement()->bSnapToPlaneAtStart = true;
 
-	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
+
+	//now the camera and camera boom is managed in the MainCameraComp.
+	//Dynamically created at runtime only for the local-controlled pawn
+	
+	
+	/*CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->SetUsingAbsoluteRotation(true);
@@ -62,7 +68,13 @@ ABaseCharacter::ABaseCharacter()
 	TopDownCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
 
 	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
-	TopDownCameraComponent->bUsePawnControlRotation = false;
+	TopDownCameraComponent->bUsePawnControlRotation = false;*/
+
+	//new camera
+	//TopDownCameraComp = CreateDefaultSubobject<UTopDownCameraComp>(TEXT("TopDownCameraComp"));
+	//TopDownCameraComp->SetupAttachment(RootComponent);
+
+	TopDownCameraComp=nullptr;//temp
 
 	/* === 경로 설정 인덱스 초기화  === */
 	CurrentPathIndex = INDEX_NONE;
@@ -104,6 +116,7 @@ void ABaseCharacter::BeginPlay()
 		InitVisuals();
 	}
 
+	//TopDownCameraComp=FindComponentByClass<UTopDownCameraComp>();//find and set the topdown comp
 }
 
 void ABaseCharacter::Tick(float DeltaTime)
@@ -168,6 +181,11 @@ void ABaseCharacter::PossessedBy(AController* NewController)
 
 	// UI 초기화
 	InitUI();
+
+	if (TopDownCameraComp)//disable the tick for the server
+	{
+		TopDownCameraComp->SetComponentTickEnabled(false);
+	}
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -233,6 +251,21 @@ void ABaseCharacter::OnRep_PlayerState()
 	InitAbilitySystem();
 	// UI 초기화
 	InitUI();
+
+	//Camera Setting for local player pawn
+	if (TopDownCameraComp)
+	{
+		if (IsLocallyControlled())
+		{
+			TopDownCameraComp->Activate();
+			TopDownCameraComp->SetComponentTickEnabled(true);
+		}
+		else
+		{
+			TopDownCameraComp->Deactivate();
+			TopDownCameraComp->SetComponentTickEnabled(false);
+		}
+	}
 }
 
 void ABaseCharacter::HandleLevelUp()

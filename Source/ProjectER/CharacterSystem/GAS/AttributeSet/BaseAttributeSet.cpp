@@ -144,23 +144,41 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 			if (!TargetPS)
 				return;
 
-			AActor* AttackerActor = Data.EffectSpec.GetEffectContext().Get()->GetOriginalInstigator();
-			if (!AttackerActor)
-				return;
+			APlayerState* AttackerPS = nullptr;
+			if (const FGameplayEffectContext* Ctx = Data.EffectSpec.GetEffectContext().Get())
+			{
+				if (AActor* InstigatorActor = Ctx->GetOriginalInstigator())
+				{
+					// Instigator가 Pawn/Character라면 PlayerState로
+					if (APawn* Pawn = Cast<APawn>(InstigatorActor))
+					{
+						AttackerPS = Pawn->GetPlayerState();
+					}
+					else
+					{
+						// 혹시 PlayerState가 직접 들어오는 이상한 케이스면
+						AttackerPS = Cast<APlayerState>(InstigatorActor);
+					}
+				}
 
-			APlayerState* AttackerPS = Cast<APlayerState>(AttackerActor);
-			if (!AttackerPS)
-				return;
+				// 2) 그래도 없으면 EffectCauser에서 한번 더 시도 (투사체/스킬 액터 등)
+				if (!AttackerPS)
+				{
+					if (AActor* Causer = Ctx->GetEffectCauser())
+					{
+						if (APawn* Pawn = Cast<APawn>(Causer))
+						{
+							AttackerPS = Pawn->GetPlayerState();
+						}
+					}
+				}
+			}
 			
 			const float Now = GetWorld()->GetTimeSeconds();
 
-			if (TargetPS && AttackerPS)
+			if (AttackerPS && TargetPS && TargetPS != AttackerPS)
 			{
-				// 본인 필터
-				if (TargetPS != AttackerPS)
-				{
-					TargetPS->AddDamageContributor(AttackerPS, LocalDamage, Now);
-				}
+				TargetPS->AddDamageContributor(AttackerPS, LocalDamage, Now);
 			}
 
 			if (OldHealth > 0.0f && NewHealth <= 0.0f)

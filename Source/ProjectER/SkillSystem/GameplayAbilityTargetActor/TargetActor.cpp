@@ -46,9 +46,6 @@ bool ATargetActor::TryConfirmMouseTarget()
         TargetDataReadyDelegate.Broadcast(Handle);
         return true;
     }
-    else {
-        UE_LOG(LogTemp, Warning, TEXT("TryConfirmMouseTarget is false"));
-    }
 
     return false;
 }

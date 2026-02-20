@@ -122,8 +122,11 @@ private:
 
 	void RemoveCooldownTag(FGameplayTag CooldownTag);
 
-	void CooldownCheck();
+	//void CooldownCheck();
 	//
+
+	UFUNCTION(BlueprintCallable)
+	bool HasASCTag(FGameplayTag Tag);
 
 	UFUNCTION(NetMulticast, BlueprintCallable, Reliable)
 	void Multicast_SetDeathCollision();
@@ -299,11 +302,11 @@ private:
 	UPROPERTY(ReplicatedUsing = OnRep_IsDead, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	bool bIsDead;
 
-	UPROPERTY(BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
-	bool bIsAttackOnCooldown = true;
+	//UPROPERTY(BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	//bool bIsAttackOnCooldown = true;
 
-	UPROPERTY(BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
-	bool bIsQSkillOnCooldown = true;
+	//UPROPERTY(BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	//bool bIsQSkillOnCooldown = true;
 
 #pragma endregion
 
