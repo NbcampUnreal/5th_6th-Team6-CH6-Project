@@ -177,6 +177,9 @@ void UTopDownCameraComp::TickFollowMode(float DeltaTime)
 
 	// Keep free cam pivot in sync so switching modes has no jump
 	FreeCamPivotLocation = SmoothedFollowLocation;
+
+	UE_LOG(MainCameraComp, Verbose,
+		TEXT("UTopDownCameraComp::TickFollowMode >> Lag_Following"));
 }
 
 void UTopDownCameraComp::TickFreeCamMode(float DeltaTime)
@@ -191,6 +194,9 @@ void UTopDownCameraComp::TickFreeCamMode(float DeltaTime)
 
 	// Drive this component to the new pivot location
 	SetWorldLocation(FreeCamPivotLocation);
+
+	UE_LOG(MainCameraComp, Verbose,
+		TEXT("UTopDownCameraComp::TickFreeCamMode >> FreeMoving"));
 }
 
 void UTopDownCameraComp::PrepareRequirements()
