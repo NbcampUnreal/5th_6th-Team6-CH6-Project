@@ -641,6 +641,20 @@ void ABaseCharacter::MoveToLocation(FVector TargetLocation)
 		PathPoints = NavPath->PathPoints;
 		CurrentPathIndex = 1;
 		SetActorTickEnabled(true);
+		
+		FGameplayTag MoveTag = FGameplayTag::RequestGameplayTag(FName("State.Action.Move"));
+		if (!AbilitySystemComponent->HasMatchingGameplayTag(MoveTag))
+		{
+			FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+			Context.AddSourceObject(this);
+                
+			FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(MovingStateEffectClass, 1.0f, Context);
+			if (SpecHandle.IsValid())
+			{
+				// Handle 저장
+				MovingEffectHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+			}
+		}
 	}
 	else
 	{
@@ -671,6 +685,13 @@ void ABaseCharacter::StopMove()
 		CancelTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Action.AutoAttack")));
 		
 		AbilitySystemComponent->CancelAbilities(&CancelTags);
+		
+		// 이동 정지 시 GE_Moving 제거
+		if (HasAuthority() && MovingEffectHandle.IsValid())
+		{
+			AbilitySystemComponent->RemoveActiveGameplayEffect(MovingEffectHandle);
+			MovingEffectHandle.Invalidate(); // 핸들 초기화
+		}
 	}
 	
 	// 서버 동기화
@@ -795,6 +816,16 @@ void ABaseCharacter::StopPathFollowing()
 	if (TargetActor == nullptr)
 	{
 		SetActorTickEnabled(false);
+	}
+	
+	// 목적지 도착 시 GE_Moving 제거
+	if (HasAuthority() && AbilitySystemComponent.IsValid())
+	{
+		if (MovingEffectHandle.IsValid())
+		{
+			AbilitySystemComponent->RemoveActiveGameplayEffect(MovingEffectHandle);
+			MovingEffectHandle.Invalidate();
+		}
 	}
 }
 

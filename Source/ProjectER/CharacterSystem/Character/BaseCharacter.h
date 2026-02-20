@@ -140,10 +140,17 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Life")
 	TSubclassOf<UGameplayEffect> DeathStateEffectClass;
 	
+	// 사망 상태(Death) 이펙트 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|State")
+	TSubclassOf<UGameplayEffect> MovingStateEffectClass;
+	
 	// 전민성 추가
 	UPROPERTY(EditAnywhere, Category = "GAS")
 	TSubclassOf<class UGameplayAbility> OpenAbilityClass;
 	
+protected:
+	// GE_Moving 핸들 (추적용)
+	FActiveGameplayEffectHandle MovingEffectHandle;
 #pragma endregion 
 
 #pragma region MoveToLocation
