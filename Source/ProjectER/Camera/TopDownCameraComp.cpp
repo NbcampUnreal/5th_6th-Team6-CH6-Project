@@ -1,6 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "TopDownCameraComp.h"
 
 #include "CurvedWorldSubsystem.h"
@@ -12,111 +11,104 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "LineOfSight/CameraVisionManager.h"
 
+#include "LogHelper/DebugLogHelper.h"
+
 //Log
 DEFINE_LOG_CATEGORY(MainCameraComp);
 
 // Sets default values for this component's properties
 UTopDownCameraComp::UTopDownCameraComp()
 {
-	// default false for tick -> only activate the tick for the locally controlled pawn's comp
-	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bStartWithTickEnabled = false;
 
+	// Create but DO NOT attach here
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
-    SpringArm->SetupAttachment(this);
-    SpringArm->TargetArmLength = ArmLength;
-    SpringArm->bDoCollisionTest = false;
-    SpringArm->bEnableCameraLag = false;
-    SpringArm->bInheritPitch = false;
-    SpringArm->bInheritYaw  = false;
-    SpringArm->bInheritRoll = false;
-    SpringArm->SetRelativeRotation(FRotator(ArmPitch, 0.f, 0.f));
+	SpringArm->TargetArmLength = ArmLength;
+	SpringArm->bDoCollisionTest = false;
+	SpringArm->bEnableCameraLag = false;
+	SpringArm->bInheritPitch = false;
+	SpringArm->bInheritYaw  = false;
+	SpringArm->bInheritRoll = false;
+	SpringArm->SetRelativeRotation(FRotator(ArmPitch, 0.f, 0.f));
 
-    CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
-    CameraComp->SetupAttachment(SpringArm, USpringArmComponent::SocketName); // <-- the fix
-    CameraComp->bUsePawnControlRotation = false;
+	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
+	CameraComp->bUsePawnControlRotation = false;
 
-	//Main RT manager
-	CameraVisionManager=CreateDefaultSubobject<UCameraVisionManager>(TEXT("CameraVisionManager"));
+	CameraVisionManager = CreateDefaultSubobject<UCameraVisionManager>(TEXT("CameraVisionManager"));
 
 	UE_LOG(MainCameraComp, Log,
-		TEXT("[TopDownCameraComp] Constructor called"));
+		TEXT("%s UTopDownCameraComp::Constructor >> Component created"),
+		*DebugLogHelper::GetClientDebugName(this));
 }
 
-
-
-// Called every frame
 void UTopDownCameraComp::TickComponent(float DeltaTime, ELevelTick TickType,
                                        FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	
-	UE_LOG(MainCameraComp, Verbose,
-		TEXT("UTopDownCameraComp::TickComponent >> Ticking"));
 
-	//Movement update
-	if (bIsFreeCamMode)// panning move by the direction key or cursor edge
+	UE_LOG(MainCameraComp, Verbose,
+		TEXT("%s UTopDownCameraComp::TickComponent >> Ticking | FreeCamMode:%d | CurveSubSystem:%s | CurrentLoc:%s"),
+		*DebugLogHelper::GetClientDebugName(this),
+		bIsFreeCamMode,
+		CurveSubSystem ? TEXT("Valid") : TEXT("NULL"),
+		*GetComponentLocation().ToString());
+
+	if (bIsFreeCamMode)
 	{
 		TickFreeCamMode(DeltaTime);
 	}
-	else// following the character
+	else
 	{
 		TickFollowMode(DeltaTime);
 	}
 
-	// Always clear key input at end of tick
 	PendingKeyInput = FVector2D::ZeroVector;
-
-	//update CurveWorld
 
 	UpdateCameraTransform();
 
-	//Update MainRT
-	if (CameraVisionManager)//only update when valid
+	if (CameraVisionManager)
 	{
-		
 		CameraVisionManager->UpdateCameraLOS();
 	}
-	
 }
 
 void UTopDownCameraComp::OnRegister()
 {
 	Super::OnRegister();
 
-	if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
+	//attatch in here
+	if (SpringArm && !SpringArm->GetAttachParent())
 	{
-		if (OwnerPawn->IsLocallyControlled())
-		{
-			SetComponentTickEnabled(true);
-			SmoothedFollowLocation = OwnerPawn->GetActorLocation();
-			FreeCamPivotLocation = SmoothedFollowLocation;
-		}
+		SpringArm->SetupAttachment(this);
+		UE_LOG(MainCameraComp, Log,
+			TEXT("%s UTopDownCameraComp::OnRegister >> SpringArm attached to root"),
+			*DebugLogHelper::GetClientDebugName(this));
 	}
-	//Prepare the required classes
-	PrepareRequirements();
-	
-	//CurveUpdate
-	//onetime forced update
-	UpdateCameraCurveValues(CurveBendWeight);//curve
-	UpdateCameraTransform();//location,directions
-}
 
+	if (CameraComp && !CameraComp->GetAttachParent())
+	{
+		CameraComp->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
+		UE_LOG(MainCameraComp, Log,
+			TEXT("%s UTopDownCameraComp::OnRegister >> CameraComp attached to SpringArm"),
+			*DebugLogHelper::GetClientDebugName(this));
+	}
+}
 
 void UTopDownCameraComp::AddKeyPanInput(FVector2D Input)
 {
-	if (Input.IsNearlyZero()) return;// no meaningful input
+	if (Input.IsNearlyZero()) return;
 
 	PendingKeyInput += Input;
 
-	// Auto-enter free cam on first key press
 	if (!bIsFreeCamMode)
 	{
 		bIsFreeCamMode = true;
 		FreeCamPivotLocation = GetComponentLocation();
 
 		UE_LOG(MainCameraComp, Log,
-			TEXT("[TopDownCameraComp] AddKeyPanInput — Entered FREE CAM mode | Pivot: %s"),
+			TEXT("%s UTopDownCameraComp::AddKeyPanInput >> Entered FREE CAM mode | Pivot: %s"),
+			*DebugLogHelper::GetClientDebugName(this),
 			*FreeCamPivotLocation.ToString());
 	}
 }
@@ -126,7 +118,9 @@ void UTopDownCameraComp::ToggleCameraMode()
 	if (bIsFreeCamMode)
 	{
 		UE_LOG(MainCameraComp, Log,
-			TEXT("[TopDownCameraComp] ToggleCameraMode — FREE CAM -> FOLLOW"));
+			TEXT("%s UTopDownCameraComp::ToggleCameraMode >> FREE CAM -> FOLLOW"),
+			*DebugLogHelper::GetClientDebugName(this));
+
 		RecenterOnPawn();
 	}
 	else
@@ -135,27 +129,89 @@ void UTopDownCameraComp::ToggleCameraMode()
 		FreeCamPivotLocation = GetComponentLocation();
 
 		UE_LOG(MainCameraComp, Log,
-			TEXT("[TopDownCameraComp] ToggleCameraMode — FOLLOW -> FREE CAM | Pivot: %s"),
+			TEXT("%s UTopDownCameraComp::ToggleCameraMode >> FOLLOW -> FREE CAM | Pivot: %s"),
+			*DebugLogHelper::GetClientDebugName(this),
 			*FreeCamPivotLocation.ToString());
 	}
 }
 
+void UTopDownCameraComp::InitializeCompRequirements()
+{
+	const FString DebugName = DebugLogHelper::GetClientDebugName(this);
+
+	UE_LOG(MainCameraComp, Log,
+		TEXT("%s UTopDownCameraComp::InitializeCompRequirements >> Called"),
+		*DebugName);
+
+	if (GetNetMode() == NM_DedicatedServer)
+	{
+		UE_LOG(MainCameraComp, Log,
+			TEXT("%s UTopDownCameraComp::InitializeCompRequirements >> Dedicated server, skipping"),
+			*DebugName);
+		return;
+	}
+
+	APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	if (!OwnerPawn)
+	{
+		UE_LOG(MainCameraComp, Error,
+			TEXT("%s UTopDownCameraComp::InitializeCompRequirements >> Owner is not a Pawn, aborting"),
+			*DebugName);
+		return;
+	}
+
+	if (!OwnerPawn->IsLocallyControlled())
+	{
+		UE_LOG(MainCameraComp, Warning,
+			TEXT("%s UTopDownCameraComp::InitializeCompRequirements >> Pawn is not locally controlled, skipping"),
+			*DebugName);
+		return;
+	}
+
+	UE_LOG(MainCameraComp, Log,
+		TEXT("%s UTopDownCameraComp::InitializeCompRequirements >> Locally controlled Pawn confirmed, activating tick"),
+		*DebugName);
+
+	SetComponentTickEnabled(true);
+	SmoothedFollowLocation = OwnerPawn->GetActorLocation();
+	FreeCamPivotLocation   = SmoothedFollowLocation;
+
+	UE_LOG(MainCameraComp, Log,
+		TEXT("%s UTopDownCameraComp::InitializeCompRequirements >> Initial locations set | SmoothedFollow:%s | FreePivot:%s"),
+		*DebugName,
+		*SmoothedFollowLocation.ToString(),
+		*FreeCamPivotLocation.ToString());
+
+	PrepareRequirements();
+
+	UpdateCameraCurveValues(CurveBendWeight);
+	UpdateCameraTransform();
+
+	UE_LOG(MainCameraComp, Log,
+		TEXT("%s UTopDownCameraComp::InitializeCompRequirements >> Initialization complete"),
+		*DebugName);
+}
+
 void UTopDownCameraComp::RecenterOnPawn()
 {
+	const FString DebugName = DebugLogHelper::GetClientDebugName(this);
+
 	if (APawn* Owner = Cast<APawn>(GetOwner()))
 	{
 		const FVector PawnLoc = Owner->GetActorLocation();
-		FreeCamPivotLocation = PawnLoc;
+		FreeCamPivotLocation   = PawnLoc;
 		SmoothedFollowLocation = PawnLoc;
 
 		UE_LOG(MainCameraComp, Log,
-			TEXT("[TopDownCameraComp] RecenterOnPawn — Snapped to: %s"),
+			TEXT("%s UTopDownCameraComp::RecenterOnPawn >> Snapped to pawn location: %s"),
+			*DebugName,
 			*PawnLoc.ToString());
 	}
 	else
 	{
 		UE_LOG(MainCameraComp, Warning,
-			TEXT("[TopDownCameraComp] RecenterOnPawn — Owner is not a Pawn!"));
+			TEXT("%s UTopDownCameraComp::RecenterOnPawn >> Owner is not a Pawn!"),
+			*DebugName);
 	}
 
 	bIsFreeCamMode = false;
@@ -164,68 +220,112 @@ void UTopDownCameraComp::RecenterOnPawn()
 void UTopDownCameraComp::TickFollowMode(float DeltaTime)
 {
 	APawn* Owner = Cast<APawn>(GetOwner());
-	if (!Owner) return;
+	if (!Owner)
+	{
+		UE_LOG(MainCameraComp, Warning,
+			TEXT("%s UTopDownCameraComp::TickFollowMode >> Owner is not a Pawn, skipping"),
+			*DebugLogHelper::GetClientDebugName(this));
+		return;
+	}
 
-	// Smooth lerp toward pawn position
+	const FVector PawnLoc     = Owner->GetActorLocation();
+	const FVector PrevSmoothed = SmoothedFollowLocation;
+
 	SmoothedFollowLocation = FMath::VInterpTo(
 		SmoothedFollowLocation,
-		Owner->GetActorLocation(),
+		PawnLoc,
 		DeltaTime,
 		FollowLagSpeed);
 
 	SetWorldLocation(SmoothedFollowLocation);
-
-	// Keep free cam pivot in sync so switching modes has no jump
 	FreeCamPivotLocation = SmoothedFollowLocation;
 
 	UE_LOG(MainCameraComp, Verbose,
-		TEXT("UTopDownCameraComp::TickFollowMode >> Lag_Following"));
+		TEXT("%s UTopDownCameraComp::TickFollowMode >> PawnLoc:%s | PrevSmoothed:%s | NewSmoothed:%s | CompLoc:%s"),
+		*DebugLogHelper::GetClientDebugName(this),
+		*PawnLoc.ToString(),
+		*PrevSmoothed.ToString(),
+		*SmoothedFollowLocation.ToString(),
+		*GetComponentLocation().ToString());
 }
 
 void UTopDownCameraComp::TickFreeCamMode(float DeltaTime)
 {
-	// Gather edge scroll input (mouse near screen edges)
-	const FVector2D EdgeInput = GatherEdgeScrollInput();
-
-	// Combine key input and edge scroll input, then move pivot
-	// Both are just directional values — same movement logic handles them
+	const FVector2D EdgeInput    = GatherEdgeScrollInput();
 	const FVector2D CombinedInput = PendingKeyInput + EdgeInput;
+
+	UE_LOG(MainCameraComp, Verbose,
+		TEXT("%s UTopDownCameraComp::TickFreeCamMode >> KeyInput:%s | EdgeInput:%s | CombinedInput:%s"),
+		*DebugLogHelper::GetClientDebugName(this),
+		*PendingKeyInput.ToString(),
+		*EdgeInput.ToString(),
+		*CombinedInput.ToString());
+
 	ApplyPanInput(CombinedInput, DeltaTime);
 
-	// Drive this component to the new pivot location
 	SetWorldLocation(FreeCamPivotLocation);
 
 	UE_LOG(MainCameraComp, Verbose,
-		TEXT("UTopDownCameraComp::TickFreeCamMode >> FreeMoving"));
+		TEXT("%s UTopDownCameraComp::TickFreeCamMode >> NewFreePivot:%s | CompLoc:%s"),
+		*DebugLogHelper::GetClientDebugName(this),
+		*FreeCamPivotLocation.ToString(),
+		*GetComponentLocation().ToString());
 }
 
 void UTopDownCameraComp::PrepareRequirements()
 {
+	UE_LOG(MainCameraComp, Log,
+		TEXT("%s UTopDownCameraComp::PrepareRequirements >> Caching subsystems"),
+		*DebugLogHelper::GetClientDebugName(this));
+
 	CacheCurveWorldSubsystem();
 
 	if (CameraVisionManager)
 	{
 		CameraVisionManager->Initialize();
+
+		UE_LOG(MainCameraComp, Log,
+			TEXT("%s UTopDownCameraComp::PrepareRequirements >> CameraVisionManager initialized"),
+			*DebugLogHelper::GetClientDebugName(this));
 	}
-	
+	else
+	{
+		UE_LOG(MainCameraComp, Error,
+			TEXT("%s UTopDownCameraComp::PrepareRequirements >> CameraVisionManager is NULL"),
+			*DebugLogHelper::GetClientDebugName(this));
+	}
 }
 
 void UTopDownCameraComp::CacheCurveWorldSubsystem()
 {
-	UCurvedWorldSubsystem* CurveSub=GetWorld()->GetSubsystem<UCurvedWorldSubsystem>();
+	const FString DebugName = DebugLogHelper::GetClientDebugName(this);
 
+	UCurvedWorldSubsystem* CurveSub = GetWorld()->GetSubsystem<UCurvedWorldSubsystem>();
 	if (!CurveSub)
 	{
-		//error, failed to get valid subsystem
+		UE_LOG(MainCameraComp, Error,
+			TEXT("%s UTopDownCameraComp::CacheCurveWorldSubsystem >> Failed to get UCurvedWorldSubsystem — UpdateCameraTransform will be skipped every tick!"),
+			*DebugName);
+		return;
 	}
-	
-	CurveSubSystem=CurveSub;//cache
+
+	CurveSubSystem = CurveSub;
+
+	UE_LOG(MainCameraComp, Log,
+		TEXT("%s UTopDownCameraComp::CacheCurveWorldSubsystem >> UCurvedWorldSubsystem cached successfully"),
+		*DebugName);
 }
 
 FVector2D UTopDownCameraComp::GatherEdgeScrollInput() const
 {
 	APlayerController* PC = GetOwnerPlayerController();
-	if (!PC) return FVector2D::ZeroVector;
+	if (!PC)
+	{
+		UE_LOG(MainCameraComp, Verbose,
+			TEXT("%s UTopDownCameraComp::GatherEdgeScrollInput >> No PlayerController, skipping edge scroll"),
+			*DebugLogHelper::GetClientDebugName(this));
+		return FVector2D::ZeroVector;
+	}
 
 	UGameViewportClient* Viewport = GetWorld()->GetGameViewport();
 	if (!Viewport) return FVector2D::ZeroVector;
@@ -239,25 +339,24 @@ FVector2D UTopDownCameraComp::GatherEdgeScrollInput() const
 
 	FVector2D EdgeInput = FVector2D::ZeroVector;
 
-	// Horizontal
 	if (MouseX < EdgeScrollMargin)
-	{
 		EdgeInput.X = -1.f;
-	}
 	else if (MouseX > ViewportSize.X - EdgeScrollMargin)
-	{
 		EdgeInput.X =  1.f;
-	}
 
-
-	// Vertical (screen Y up = world forward)
-	if(MouseY < EdgeScrollMargin)
-	{
+	if (MouseY < EdgeScrollMargin)
 		EdgeInput.Y =  1.f;
-	}
 	else if (MouseY > ViewportSize.Y - EdgeScrollMargin)
-	{
 		EdgeInput.Y = -1.f;
+
+	if (!EdgeInput.IsNearlyZero())
+	{
+		UE_LOG(MainCameraComp, Verbose,
+			TEXT("%s UTopDownCameraComp::GatherEdgeScrollInput >> Edge scroll triggered | Mouse:(%f,%f) | Viewport:(%f,%f) | EdgeInput:%s"),
+			*DebugLogHelper::GetClientDebugName(this),
+			MouseX, MouseY,
+			ViewportSize.X, ViewportSize.Y,
+			*EdgeInput.ToString());
 	}
 
 	return EdgeInput * EdgeScrollSpeedMultiplier;
@@ -267,13 +366,19 @@ void UTopDownCameraComp::ApplyPanInput(FVector2D Direction, float DeltaTime)
 {
 	if (Direction.IsNearlyZero()) return;
 
-	// Fixed top-down pitch-only camera, no yaw — world axes are constant:
-	// Screen right = World X+ (RightVector)
-	// Screen up = World Y+ (ForwardVector, derived from Z-up / neg gravity direction)
-	// No rotation needed, axes never change
-	
+	const FVector PrevPivot = FreeCamPivotLocation;
+
 	FreeCamPivotLocation += FVector::RightVector   * Direction.X * PanSpeed * DeltaTime;
 	FreeCamPivotLocation += FVector::ForwardVector * Direction.Y * PanSpeed * DeltaTime;
+
+	UE_LOG(MainCameraComp, Verbose,
+		TEXT("%s UTopDownCameraComp::ApplyPanInput >> Direction:%s | DeltaTime:%f | PanSpeed:%f | PrevPivot:%s | NewPivot:%s"),
+		*DebugLogHelper::GetClientDebugName(this),
+		*Direction.ToString(),
+		DeltaTime,
+		PanSpeed,
+		*PrevPivot.ToString(),
+		*FreeCamPivotLocation.ToString());
 }
 
 APlayerController* UTopDownCameraComp::GetOwnerPlayerController() const
@@ -286,58 +391,59 @@ APlayerController* UTopDownCameraComp::GetOwnerPlayerController() const
 
 void UTopDownCameraComp::UpdateCameraTransform()
 {
-	//Get Camera directions, locations of comp
-
 	if (!CurveSubSystem)
 	{
-		//invalid curve subsystem. get it first
-		return;	
+		UE_LOG(MainCameraComp, Verbose,
+			TEXT("%s UTopDownCameraComp::UpdateCameraTransform >> CurveSubSystem is NULL, skipping"),
+			*DebugLogHelper::GetClientDebugName(this));
+		return;
 	}
-	
-	FVector WorldLocation=GetComponentLocation();//location
 
-	FRotator CamRotation = CameraComp->GetComponentRotation();
-	FVector RawForward = CamRotation.Vector();
+	const FVector WorldLocation = GetComponentLocation();
+	const FRotator CamRotation = CameraComp->GetComponentRotation();
+	const FVector  RawForward = CamRotation.Vector();
+	const FVector  UpDirection = FVector::UpVector;
 
-	FVector UpDirection = FVector::UpVector;
+	const FVector ForwardDirection = FVector::VectorPlaneProject(RawForward, UpDirection).GetSafeNormal();
+	const FVector RightDirection = FVector::CrossProduct(UpDirection, ForwardDirection).GetSafeNormal();
 
-	// Project onto horizontal plane and normalize
-	FVector ForwardDirection =
-		FVector::VectorPlaneProject(RawForward, UpDirection).GetSafeNormal();
+	UE_LOG(MainCameraComp, Verbose,
+		TEXT("%s UTopDownCameraComp::UpdateCameraTransform >> Loc:%s | Forward:%s | Right:%s | Up:%s"),
+		*DebugLogHelper::GetClientDebugName(this),
+		*WorldLocation.ToString(),
+		*ForwardDirection.ToString(),
+		*RightDirection.ToString(),
+		*UpDirection.ToString());
 
-	// Recalculate right
-	FVector RightDirection =
-		FVector::CrossProduct(UpDirection, ForwardDirection).GetSafeNormal();
-
-	//update location + world aligned directions
-	CurveSubSystem->UpdateCameraParameters(
-		WorldLocation,
-		ForwardDirection,
-		RightDirection,
-		UpDirection);
+	CurveSubSystem->UpdateCameraParameters(WorldLocation, ForwardDirection, RightDirection, UpDirection);
 }
 
 void UTopDownCameraComp::UpdateCameraCurveValues(float RadialCurveStrength)
 {
 	if (!CurveSubSystem)
 	{
-		//invalid curve subsystem. get it first
-		return;	
+		UE_LOG(MainCameraComp, Warning,
+			TEXT("%s UTopDownCameraComp::UpdateCameraCurveValues >> CurveSubSystem is NULL, cannot update curve values"),
+			*DebugLogHelper::GetClientDebugName(this));
+		return;
 	}
 
-	CurveSubSystem->UpdateCurveParameters(
-		-0.001f,-0.001f,
-		 RadialCurveStrength);
+	UE_LOG(MainCameraComp, Log,
+		TEXT("%s UTopDownCameraComp::UpdateCameraCurveValues >> Applying RadialCurveStrength:%f"),
+		*DebugLogHelper::GetClientDebugName(this),
+		RadialCurveStrength);
+
+	CurveSubSystem->UpdateCurveParameters(-0.001f, -0.001f, RadialCurveStrength);
 }
 
 bool UTopDownCameraComp::ShouldUseClientLogic()
 {
-	if (GetNetMode() == NM_DedicatedServer)
-	{
-		return false;
-	}
-	
-	return true;
+	const bool bIsClient = GetNetMode() != NM_DedicatedServer;
+
+	UE_LOG(MainCameraComp, Verbose,
+		TEXT("%s UTopDownCameraComp::ShouldUseClientLogic >> Result:%d"),
+		*DebugLogHelper::GetClientDebugName(this),
+		bIsClient);
+
+	return bIsClient;
 }
-
-

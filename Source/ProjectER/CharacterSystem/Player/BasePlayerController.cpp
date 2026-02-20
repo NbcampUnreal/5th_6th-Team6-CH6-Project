@@ -60,6 +60,7 @@ ABasePlayerController::ABasePlayerController()
 	
 	//Camera comp as null in the constructor. the caching will be done in the runtime --> on possess
 	TopDownCameraComp = nullptr;
+	
 }
 
 void ABasePlayerController::BeginPlay()
@@ -95,7 +96,7 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 	{
 		// UE_LOG(LogTemp, Warning, TEXT("OnPossess: ControlledBaseChar is Null!"));
 	}
-
+	
 	
 }
 

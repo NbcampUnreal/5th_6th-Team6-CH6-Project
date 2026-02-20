@@ -54,11 +54,8 @@ ABaseCharacter::ABaseCharacter()
 
 
 	//now the camera and camera boom is managed in the MainCameraComp.
-	//Dynamically created at runtime only for the local-controlled pawn
-	
 	
 	/*CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->SetUsingAbsoluteRotation(true);
 	CameraBoom->TargetArmLength = 800.f;
