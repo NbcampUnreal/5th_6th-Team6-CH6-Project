@@ -632,6 +632,14 @@ ETeamType ABaseMonster::GetTeamType() const
 
 bool ABaseMonster::IsTargetable() const
 {
+	if (IsValid(ASC))
+	{
+		if (ASC->HasMatchingGameplayTag(DeathStateTag))
+		{
+			return false;
+		}
+	}
+
 	return true;
 }
 
