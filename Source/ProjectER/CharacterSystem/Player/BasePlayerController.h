@@ -118,8 +118,8 @@ private:
 	// RPC 전송 간격 (0.1 = 초당 10번)
 	const float RPCUpdateInterval = 0.1f;
 
-	// Camera Comp Added to the pawn character
-	void CreateAndAttachCamera(APawn* InPawn);
+	/*// Camera Comp Added to the pawn character
+	void CreateAndAttachCamera(APawn* InPawn);*/
 
 /// [김현수 추가분] - 시작
 protected:

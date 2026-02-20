@@ -10,9 +10,14 @@
  *  this is for camera comp. the location will be used for RT and also curved World Origin Param value
  */
 
+class UCurvedWorldSubsystem;
 //Forward
+//Camera View
 class USpringArmComponent;
 class UCameraComponent;
+// RT
+class UCameraVisionManager;
+class UCurvedWorldSubsystem;
 
 PROJECTER_API DECLARE_LOG_CATEGORY_EXTERN(MainCameraComp, Log, All);
 
@@ -47,11 +52,18 @@ public:
 	USpringArmComponent* GetCameraBoomComp()const {return SpringArm;}
 
 	bool IsCameraPanFreeMode()const {return bIsFreeCamMode;}
+
 	
 private:
 	//internal tick helpers
 	void TickFollowMode(float DeltaTime);
 	void TickFreeCamMode(float DeltaTime);
+
+
+	void PrepareRequirements();//wrapper for cacheing
+	
+	void CacheCurveWorldSubsystem();
+	
 
 	//EdgeHelper
 	FVector2D GatherEdgeScrollInput() const;
@@ -60,6 +72,16 @@ private:
 
 	//GetterHelper
 	APlayerController* GetOwnerPlayerController() const;
+
+
+	// update for curve world value
+
+	void UpdateCameraTransform();
+
+	void UpdateCameraCurveValues(float RadialCurveStrength);
+
+	//ServerClient gate
+	bool ShouldUseClientLogic();
 
 	
 
@@ -71,9 +93,18 @@ protected:
 	TObjectPtr<UCameraComponent> CameraComp;
 
 	//RT
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera|Components")
+	TObjectPtr<UCameraVisionManager> CameraVisionManager;
+	
 
+	//CurveWorldSubsystem
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera|Components")
+	UCurvedWorldSubsystem* CurveSubSystem=nullptr;
 
-
+	//
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Curve")
+	float CurveBendWeight=1.5f;
+	
 	//movement settings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Settings")
 	float ArmLength = 2000.f;

@@ -3,12 +3,14 @@
 
 #include "TopDownCameraComp.h"
 
+#include "CurvedWorldSubsystem.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "LineOfSight/CameraVisionManager.h"
 
 //Log
 DEFINE_LOG_CATEGORY(MainCameraComp);
@@ -21,18 +23,21 @@ UTopDownCameraComp::UTopDownCameraComp()
 	PrimaryComponentTick.bStartWithTickEnabled = false;
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
-	SpringArm->SetupAttachment(this);
-	/*SpringArm->TargetArmLength = ArmLength;
-	SpringArm->bDoCollisionTest = false;
-	SpringArm->bEnableCameraLag = false; //handle lag manually because of the curve world update
-	SpringArm->bInheritPitch = false;
-	SpringArm->bInheritYaw  = false;
-	SpringArm->bInheritRoll = false;*/
-	
-	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
-	//CameraComp->SetupAttachment(SpringArm, USpringArmComponent::SocketName);// attach here
-	CameraComp->SetupAttachment(SpringArm);// attach here
-	//CameraComp->bUsePawnControlRotation = false;
+    SpringArm->SetupAttachment(this);
+    SpringArm->TargetArmLength = ArmLength;
+    SpringArm->bDoCollisionTest = false;
+    SpringArm->bEnableCameraLag = false;
+    SpringArm->bInheritPitch = false;
+    SpringArm->bInheritYaw  = false;
+    SpringArm->bInheritRoll = false;
+    SpringArm->SetRelativeRotation(FRotator(ArmPitch, 0.f, 0.f));
+
+    CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
+    CameraComp->SetupAttachment(SpringArm, USpringArmComponent::SocketName); // <-- the fix
+    CameraComp->bUsePawnControlRotation = false;
+
+	//Main RT manager
+	CameraVisionManager=CreateDefaultSubobject<UCameraVisionManager>(TEXT("CameraVisionManager"));
 
 	UE_LOG(MainCameraComp, Log,
 		TEXT("[TopDownCameraComp] Constructor called"));
@@ -45,18 +50,34 @@ void UTopDownCameraComp::TickComponent(float DeltaTime, ELevelTick TickType,
                                        FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	
+	UE_LOG(MainCameraComp, Verbose,
+		TEXT("UTopDownCameraComp::TickComponent >> Ticking"));
 
-	if (bIsFreeCamMode)
+	//Movement update
+	if (bIsFreeCamMode)// panning move by the direction key or cursor edge
 	{
 		TickFreeCamMode(DeltaTime);
 	}
-	else
+	else// following the character
 	{
 		TickFollowMode(DeltaTime);
 	}
 
 	// Always clear key input at end of tick
 	PendingKeyInput = FVector2D::ZeroVector;
+
+	//update CurveWorld
+
+	UpdateCameraTransform();
+
+	//Update MainRT
+	if (CameraVisionManager)//only update when valid
+	{
+		
+		CameraVisionManager->UpdateCameraLOS();
+	}
+	
 }
 
 void UTopDownCameraComp::OnRegister()
@@ -72,6 +93,13 @@ void UTopDownCameraComp::OnRegister()
 			FreeCamPivotLocation = SmoothedFollowLocation;
 		}
 	}
+	//Prepare the required classes
+	PrepareRequirements();
+	
+	//CurveUpdate
+	//onetime forced update
+	UpdateCameraCurveValues(CurveBendWeight);//curve
+	UpdateCameraTransform();//location,directions
 }
 
 
@@ -165,6 +193,29 @@ void UTopDownCameraComp::TickFreeCamMode(float DeltaTime)
 	SetWorldLocation(FreeCamPivotLocation);
 }
 
+void UTopDownCameraComp::PrepareRequirements()
+{
+	CacheCurveWorldSubsystem();
+
+	if (CameraVisionManager)
+	{
+		CameraVisionManager->Initialize();
+	}
+	
+}
+
+void UTopDownCameraComp::CacheCurveWorldSubsystem()
+{
+	UCurvedWorldSubsystem* CurveSub=GetWorld()->GetSubsystem<UCurvedWorldSubsystem>();
+
+	if (!CurveSub)
+	{
+		//error, failed to get valid subsystem
+	}
+	
+	CurveSubSystem=CurveSub;//cache
+}
+
 FVector2D UTopDownCameraComp::GatherEdgeScrollInput() const
 {
 	APlayerController* PC = GetOwnerPlayerController();
@@ -226,4 +277,61 @@ APlayerController* UTopDownCameraComp::GetOwnerPlayerController() const
 
 	return nullptr;
 }
+
+void UTopDownCameraComp::UpdateCameraTransform()
+{
+	//Get Camera directions, locations of comp
+
+	if (!CurveSubSystem)
+	{
+		//invalid curve subsystem. get it first
+		return;	
+	}
+	
+	FVector WorldLocation=GetComponentLocation();//location
+
+	FRotator CamRotation = CameraComp->GetComponentRotation();
+	FVector RawForward = CamRotation.Vector();
+
+	FVector UpDirection = FVector::UpVector;
+
+	// Project onto horizontal plane and normalize
+	FVector ForwardDirection =
+		FVector::VectorPlaneProject(RawForward, UpDirection).GetSafeNormal();
+
+	// Recalculate right
+	FVector RightDirection =
+		FVector::CrossProduct(UpDirection, ForwardDirection).GetSafeNormal();
+
+	//update location + world aligned directions
+	CurveSubSystem->UpdateCameraParameters(
+		WorldLocation,
+		ForwardDirection,
+		RightDirection,
+		UpDirection);
+}
+
+void UTopDownCameraComp::UpdateCameraCurveValues(float RadialCurveStrength)
+{
+	if (!CurveSubSystem)
+	{
+		//invalid curve subsystem. get it first
+		return;	
+	}
+
+	CurveSubSystem->UpdateCurveParameters(
+		-0.001f,-0.001f,
+		 RadialCurveStrength);
+}
+
+bool UTopDownCameraComp::ShouldUseClientLogic()
+{
+	if (GetNetMode() == NM_DedicatedServer)
+	{
+		return false;
+	}
+	
+	return true;
+}
+
 
