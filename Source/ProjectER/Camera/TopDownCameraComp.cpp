@@ -19,7 +19,7 @@ DEFINE_LOG_CATEGORY(MainCameraComp);
 // Sets default values for this component's properties
 UTopDownCameraComp::UTopDownCameraComp()
 {
-	PrimaryComponentTick.bCanEverTick = true;
+	//PrimaryComponentTick.bCanEverTick = false; // this is only for when the tick is never be used. not for switchable case
 	PrimaryComponentTick.bStartWithTickEnabled = false;
 
 	// Create but DO NOT attach here
@@ -77,7 +77,7 @@ void UTopDownCameraComp::OnRegister()
 {
 	Super::OnRegister();
 
-	//attatch in here
+	//attach in here
 	if (SpringArm && !SpringArm->GetAttachParent())
 	{
 		SpringArm->SetupAttachment(this);
