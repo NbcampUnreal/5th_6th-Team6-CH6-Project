@@ -60,6 +60,8 @@ private:
 	UFUNCTION()
 	void OnRep_IsDead();
 
+	UFUNCTION()
+	void OnRep_MonsterData();
 	
 	// 이벤트 태그
 	UFUNCTION() // SendHitEvent()
@@ -98,8 +100,7 @@ public:
 	void InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level);
 private:
 	// 초기화 
-	UFUNCTION(NetMulticast, Reliable)
-	void Muticast_InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float Level);
+	void InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float Level);
 
 	void OnMonsterDataLoaded(FPrimaryAssetId LoadedId, float Level);
 
@@ -146,6 +147,12 @@ public:
 	// 블루프린트에서 사용중
 	UPROPERTY(BlueprintReadOnly, Category = "MonsterData")
 	TObjectPtr<UMonsterDataAsset> MonsterData;
+private:
+	UPROPERTY(ReplicatedUsing = OnRep_MonsterData)
+	FPrimaryAssetId MonsterId;
+
+	UPROPERTY(Replicated)
+	float MonsterLevel;
 
 
 public:
@@ -292,12 +299,6 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_IsDead, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	bool bIsDead;
-
-	//UPROPERTY(BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
-	//bool bIsAttackOnCooldown = true;
-
-	//UPROPERTY(BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
-	//bool bIsQSkillOnCooldown = true;
 
 #pragma endregion
 

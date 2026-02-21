@@ -87,6 +87,8 @@ void ABaseMonster::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(ABaseMonster, bIsCombat);
 	DOREPLIFETIME(ABaseMonster, bIsDead);
 	DOREPLIFETIME(ABaseMonster, TeamID);
+	DOREPLIFETIME(ABaseMonster, MonsterId);
+	DOREPLIFETIME(ABaseMonster, MonsterLevel);
 }
 
 void ABaseMonster::PossessedBy(AController* newController)
@@ -143,11 +145,14 @@ void ABaseMonster::Tick(float DeltaTime)
 
 void ABaseMonster::InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level)
 {
-	Muticast_InitMonsterDataLoading(MonsterAssetId, Level);
+	MonsterId = MonsterAssetId;
+	MonsterLevel = Level;
+	InitMonsterDataLoading(MonsterAssetId, Level);
 }
 
-void ABaseMonster::Muticast_InitMonsterDataLoading_Implementation(FPrimaryAssetId MonsterAssetId, float Level)
+void ABaseMonster::InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float Level)
 {
+	UE_LOG(LogTemp, Error, TEXT("ABaseMonster::InitMonsterDataLoading"));
 	UAssetManager::Get().LoadPrimaryAsset(MonsterAssetId,
 		TArray<FName>(),
 		FStreamableDelegate::CreateUObject(
@@ -165,13 +170,11 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 	);
 	if (IsValid(MonsterData) == false)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitMonsterData - MonsterData is Not Valid!"));
+		UE_LOG(LogTemp, Error, TEXT("ABaseMonster::InitMonsterData - MonsterData is Not Valid!"));
 	}
-
-	if (HasAuthority())
+	else
 	{
-		InitAttributes(Level);
-		InitGiveAbilities();
+		UE_LOG(LogTemp, Error, TEXT("ABaseMonster::OnMonsterDataLoaded"));
 	}
 
 	InitVisuals();
@@ -179,6 +182,9 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 
 	if (HasAuthority())
 	{
+		ASC->AddLooseGameplayTag(MonsterData->AttackType);
+		InitAttributes(Level);
+		InitGiveAbilities();
 		StateTreeComp->StartLogic();
 	}
 }
@@ -317,6 +323,11 @@ void ABaseMonster::OnRep_IsDead()
 	{
 		HPBarWidgetComp->SetVisibility(false);
 	}
+}
+
+void ABaseMonster::OnRep_MonsterData()
+{
+	InitMonsterDataLoading(MonsterId, MonsterLevel);
 }
 
 void ABaseMonster::OnHealthChangedHandle(float CurrentHP, float MaxHP)
