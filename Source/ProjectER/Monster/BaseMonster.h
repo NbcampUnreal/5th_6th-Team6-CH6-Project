@@ -60,9 +60,6 @@ private:
 	UFUNCTION()
 	void OnRep_IsDead();
 
-	UFUNCTION()
-	void OnRep_MonsterId();
-
 	
 	// 이벤트 태그
 	UFUNCTION() // SendHitEvent()
@@ -101,7 +98,8 @@ public:
 	void InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level);
 private:
 	// 초기화 
-	void InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float Level);
+	UFUNCTION(NetMulticast, Reliable)
+	void Muticast_InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float Level);
 
 	void OnMonsterDataLoaded(FPrimaryAssetId LoadedId, float Level);
 
@@ -110,6 +108,8 @@ private:
 	void InitAttributes(float Level);
 
 	void InitVisuals();
+
+	void InitCollision();
 
 	void InitHPBar();
 	//
@@ -121,8 +121,6 @@ private:
 	void AddCooldownTag(FGameplayTag CooldownTag);
 
 	void RemoveCooldownTag(FGameplayTag CooldownTag);
-
-	//void CooldownCheck();
 	//
 
 	UFUNCTION(BlueprintCallable)
@@ -146,15 +144,8 @@ private:
 
 public:
 	// 블루프린트에서 사용중
-	UPROPERTY(/*Replicated, */BlueprintReadOnly, Category = "MonsterData")
+	UPROPERTY(BlueprintReadOnly, Category = "MonsterData")
 	TObjectPtr<UMonsterDataAsset> MonsterData;
-private:
-	// 해당값이 복제되면 클라이언트에서 데이터에셋 로드
-	UPROPERTY(ReplicatedUsing = OnRep_MonsterId)
-	FPrimaryAssetId MonsterId;
-
-	float MonsterLevel;
-
 
 
 public:

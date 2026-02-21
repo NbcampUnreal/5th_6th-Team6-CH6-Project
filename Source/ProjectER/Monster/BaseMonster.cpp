@@ -42,10 +42,11 @@ ABaseMonster::ABaseMonster()
 	// Collision 설정
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Pawn"));
+	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Spectator"));
 
 	HitBoxComp = CreateDefaultSubobject<UBoxComponent>(TEXT("HitBoxComponent"));
 	HitBoxComp->SetupAttachment(RootComponent);
+	HitBoxComp->SetCollisionProfileName(TEXT("Spectator"));
 
 	// ASC 복제, 데이터 Minimal로 되는지 확인 필요
 	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -83,14 +84,8 @@ void ABaseMonster::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(ABaseMonster, MonsterId);
-	//DOREPLIFETIME(ABaseMonster, TargetPlayer);
-	//DOREPLIFETIME(ABaseMonster, StartLocation);
-	//DOREPLIFETIME(ABaseMonster, StartRotator);
 	DOREPLIFETIME(ABaseMonster, bIsCombat);
 	DOREPLIFETIME(ABaseMonster, bIsDead);
-	//DOREPLIFETIME(ABaseMonster, bIsAttackOnCooldown);
-	//DOREPLIFETIME(ABaseMonster, bIsQSkillOnCooldown);
 	DOREPLIFETIME(ABaseMonster, TeamID);
 }
 
@@ -148,22 +143,11 @@ void ABaseMonster::Tick(float DeltaTime)
 
 void ABaseMonster::InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level)
 {
-	InitMonsterDataLoading(MonsterAssetId, Level);
-	MonsterLevel = Level;
-	MonsterId = MonsterAssetId;
+	Muticast_InitMonsterDataLoading(MonsterAssetId, Level);
 }
 
-void ABaseMonster::InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float Level)
+void ABaseMonster::Muticast_InitMonsterDataLoading_Implementation(FPrimaryAssetId MonsterAssetId, float Level)
 {
-	////if (GetNetMode() == ENetMode::NM_Client)
-	////{
-	////	UE_LOG(LogTemp, Error, TEXT("InitMonsterData : Client"));
-	////}
-	////else
-	////{
-	////	UE_LOG(LogTemp, Error, TEXT("InitMonsterData : Server"));
-	////}
-
 	UAssetManager::Get().LoadPrimaryAsset(MonsterAssetId,
 		TArray<FName>(),
 		FStreamableDelegate::CreateUObject(
@@ -173,7 +157,7 @@ void ABaseMonster::InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float 
 			Level
 		));
 }
-// 모든곳에서 호출
+
 void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Level)
 {
 	MonsterData = Cast<UMonsterDataAsset>(
@@ -184,13 +168,17 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitMonsterData - MonsterData is Not Valid!"));
 	}
 
-	InitVisuals();
 	if (HasAuthority())
 	{
-		ASC->AddLooseGameplayTag(MonsterData->AttackType);
 		InitAttributes(Level);
 		InitGiveAbilities();
-		// 데이터 로드 완료 후 실행
+	}
+
+	InitVisuals();
+	InitCollision();
+
+	if (HasAuthority())
+	{
 		StateTreeComp->StartLogic();
 	}
 }
@@ -297,9 +285,6 @@ void ABaseMonster::InitVisuals()
 		return;
 	}
 	GetMesh()->SetSkeletalMesh(MonsterData->Mesh.Get());
-	GetMesh()->SetRelativeScale3D(MonsterData->MeshScale);
-	GetCapsuleComponent()->SetCapsuleSize(MonsterData->CollisionRadius, MonsterData->CapsuleHalfHeight);
-	HitBoxComp->SetBoxExtent(MonsterData->HitBoxExtent);
 
 	if (IsValid(MonsterData->Anim) == false || !GetMesh())
 	{
@@ -307,6 +292,15 @@ void ABaseMonster::InitVisuals()
 		return;
 	}
 	GetMesh()->SetAnimInstanceClass(MonsterData->Anim.Get());
+}
+
+void ABaseMonster::InitCollision()
+{
+	GetMesh()->SetRelativeScale3D(MonsterData->MeshScale);
+	GetCapsuleComponent()->SetCapsuleSize(MonsterData->CollisionRadius, MonsterData->CapsuleHalfHeight);
+	GetCapsuleComponent()->SetCollisionProfileName("MonsterObjectCollision");
+	HitBoxComp->SetBoxExtent(MonsterData->HitBoxExtent);
+	HitBoxComp->SetCollisionProfileName("MonsterTraceCollision");
 }
 
 void ABaseMonster::OnRep_IsCombat()
@@ -325,11 +319,6 @@ void ABaseMonster::OnRep_IsDead()
 	}
 }
 
-void ABaseMonster::OnRep_MonsterId()
-{
-	InitMonsterDataLoading(MonsterId, MonsterLevel);
-}
-
 void ABaseMonster::OnHealthChangedHandle(float CurrentHP, float MaxHP)
 {
 	// UpdateHP
@@ -345,7 +334,8 @@ void ABaseMonster::OnMoveSpeedChangedHandle(float OldSpeed, float NewSpeed)
 
 void ABaseMonster::Multicast_SetDeathCollision_Implementation()
 {
-	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+	// WorldStatic하고만 충돌
+	GetCapsuleComponent()->SetCollisionProfileName("Spectator");
 }
 
 void ABaseMonster::InitHPBar()
@@ -363,8 +353,6 @@ void ABaseMonster::InitHPBar()
 
 	HPBar->SetPercent(1.f);
 }
-
-
 
 // 서버에서만
 void ABaseMonster::OnMonterHitHandle(AActor* Target)
@@ -438,7 +426,7 @@ void ABaseMonster::GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGamepl
 		Tag,
 		Amount
 	);
-	UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::GiveRewardsToPlayer : XP %f"), Amount);
+
 	TargetASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
 }
 
@@ -481,13 +469,6 @@ float ABaseMonster::GetAbilityCoolTimeByTag(FGameplayTag InputTag)
 	UE_LOG(LogTemp, Error, TEXT("Not GetAbilityDelayByTag"));
 	return 0.0f;
 }
-
-//void ABaseMonster::CooldownCheck()
-//{
-//	// 쿨타임 체크
-//	bIsAttackOnCooldown = ASC->HasMatchingGameplayTag(AutoAttackCooldownTag);
-//	bIsQSkillOnCooldown = ASC->HasMatchingGameplayTag(QSkillCooldownTag);
-//}
 
 void ABaseMonster::OnCooldown(FGameplayTag CooldownTag, float Cooldown)
 {
@@ -561,8 +542,6 @@ void ABaseMonster::SendAttackRangeEvent(float AttackRange)
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::SendAttackRangeEvent : Not Player"));
 		return;
 	}
-	
-	//CooldownCheck();
 	
 	const float Distance = FVector::DistSquared(
 			TargetPlayer->GetActorLocation(), GetActorLocation());
