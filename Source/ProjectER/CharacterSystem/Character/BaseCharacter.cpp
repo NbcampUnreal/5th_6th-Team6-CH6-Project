@@ -520,23 +520,13 @@ void ABaseCharacter::InitAttributes()
 		{
 			// MaxXP 커브 찾기
 			FString RowNameStr = HeroData->StatusRowName.ToString() + TEXT("_MaxXp");
-			FRealCurve* FoundCurve = Table->FindCurve(FName(*RowNameStr), FString());
-			
-			// [로그 추가] 커브를 찾았는지 확인
-			if (FoundCurve)
-			{
-				UE_LOG(LogTemp, Log, TEXT("[InitAttributes] Found MaxXP Curve: %s"), *RowNameStr);
-			}
-			else
-			{
-				UE_LOG(LogTemp, Error, TEXT("[InitAttributes] FAILED to find Curve: %s !!! Check RowName in DataTable."), *RowNameStr);
-			}
+			FName RowName = FName(*RowNameStr);
 			
 			if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
 			{
 				if (UBaseAttributeSet* AS = PS->GetAttributeSet())
 				{
-					AS->SetMaxXPCurve(FoundCurve);
+					AS->SetMaxXPCurve(Table, RowName);
 				}
 			}
 			// 혹은 AER_PlayerState 사용 시
@@ -544,7 +534,7 @@ void ABaseCharacter::InitAttributes()
 			{
 				if (UBaseAttributeSet* AS = ERPS->GetAttributeSet())
 				{
-					AS->SetMaxXPCurve(FoundCurve);
+					AS->SetMaxXPCurve(Table, RowName);
 				}
 			}
 		}
@@ -601,6 +591,22 @@ void ABaseCharacter::Server_MoveToLocation_Implementation(FVector TargetLocation
 		PathPoints = NavPath->PathPoints;
 		CurrentPathIndex = 1;
 		SetActorTickEnabled(true);
+		
+		if (AbilitySystemComponent.IsValid() && MovingStateEffectClass)
+		{
+			FGameplayTag MoveTag = FGameplayTag::RequestGameplayTag(FName("State.Action.Move"));
+			if (!AbilitySystemComponent->HasMatchingGameplayTag(MoveTag))
+			{
+				FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+				Context.AddSourceObject(this);
+                
+				FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(MovingStateEffectClass, 1.0f, Context);
+				if (SpecHandle.IsValid())
+				{
+					MovingEffectHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+				}
+			}
+		}
 	}
 	else
 	{

@@ -275,6 +275,15 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 	}
 }
 
+void UBaseAttributeSet::SetMaxXPCurve(UCurveTable* InTable, FName InRowName)
+{
+	SafeMaxXPCurveTable = InTable;
+	if (SafeMaxXPCurveTable)
+	{
+		CachedMaxXPCurve = SafeMaxXPCurveTable->FindCurve(InRowName, FString());
+	}
+}
+
 void UBaseAttributeSet::OnRep_Level(const FGameplayAttributeData& OldLevel)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, Level, OldLevel);
