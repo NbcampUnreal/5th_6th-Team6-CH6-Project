@@ -58,6 +58,8 @@ public:
 
 	void HandlePhaseTimeUp();
 
+	void HandleObjectNoticeTimeUp();
+
 
 	UFUNCTION(BlueprintCallable)
 	void TEMP_SpawnNeutrals();
