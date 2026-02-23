@@ -289,14 +289,24 @@ void AER_InGameMode::HandlePhaseTimeUp()
 			// (항공 보급 생성)
 			ObjectSS->SpawnSupplyOjbect();
 			// (오브젝트 스폰)
-		}
-		 
 
+		}
+		
 	}
 
-	
 	// 이후에 10초에서 180초로 수정
 	PhaseSS->StartPhaseTimer(*ERGS, PhaseDuration);
+	PhaseSS->StartNoticeTimer(PhaseDuration);
+}
+
+void AER_InGameMode::HandleObjectNoticeTimeUp()
+{
+	UER_ObjectSubsystem* ObjectSS = GetWorld()->GetSubsystem<UER_ObjectSubsystem>();
+	if (ObjectSS)
+	{
+		// 항공 보급 생성 위치 알림
+		ObjectSS->PickSupplySpawnIndex();
+	}
 }
 
 void AER_InGameMode::TEMP_SpawnNeutrals()
