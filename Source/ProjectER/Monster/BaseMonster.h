@@ -6,7 +6,6 @@
 #include "GameplayTagContainer.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
 #include "Monster/Data/MonsterTags.h"
-//#include "Monster/Data/MonsterDataAsset.h"
 #include "BaseMonster.generated.h"
 
 class UGameplayAbility;
@@ -22,6 +21,7 @@ class ABaseCharacter;
 class UMonsterDataAsset;
 class ULootableComponent;
 struct FOnAttributeChangeData;
+struct FGameplayEventData;
 
 UCLASS()
 class PROJECTER_API ABaseMonster : public ACharacter, public IAbilitySystemInterface, public ITargetableInterface
@@ -54,6 +54,13 @@ protected:
 	virtual void Tick(float DeltaTime) override;
 
 
+public:
+	UFUNCTION(BlueprintCallable) // SendReturnSuccessEvent();
+	void SendStateTreeEvent(FGameplayTag InputTag);
+
+	UFUNCTION(BlueprintCallable) // SendReturnSuccessEvent();
+	void SendAbilitySystemComponentEvent(FGameplayTag EventTag, const FGameplayEventData& Payload);
+
 private:
 
 	UFUNCTION()
@@ -84,9 +91,11 @@ private:
 	UFUNCTION(BlueprintCallable) // SendAttackRangeEvent();
 	void SendAttackRangeEvent(float AttackRange);
 
-	UFUNCTION(BlueprintCallable) // SendReturnSuccessEvent();
-	void SendReturnSuccessEvent();
-	//
+	//UFUNCTION(BlueprintCallable) // SendReturnSuccessEvent();
+	//void SendReturnSuccessEvent();
+
+
+
 
 	// HealthBar 변경용
 	UFUNCTION()
@@ -117,7 +126,7 @@ private:
 	void InitHPBar();
 	//
 
-	// 쿨다운 태그 관련
+	// 임시 쿨타임 적용, GE로 변경 필요
 	UFUNCTION(BlueprintCallable)
 	void OnCooldown(FGameplayTag CooldownTag, float Cooldown);
 
@@ -137,12 +146,6 @@ private:
 
 	UFUNCTION(BlueprintCallable)
 	void TryActivateByDynamicTag(FGameplayTag InputTag);
-
-	UFUNCTION(BlueprintCallable)
-	float GetAbilityDelayByTag(FGameplayTag InputTag);
-
-	UFUNCTION(BlueprintCallable)
-	float GetAbilityCoolTimeByTag(FGameplayTag InputTag);
 
 
 public:
