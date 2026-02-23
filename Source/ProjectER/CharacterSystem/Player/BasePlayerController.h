@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "ItemSystem/Interface/I_ItemInteractable.h" // [김현수 추가분]
 
@@ -21,6 +21,8 @@ class UDecalComponent;
 class ABaseCharacter;
 
 class UTopDownCameraComp; //Camera Added
+
+class UUI_MainHUD; // UI시스템 관리자
 
 struct FInputActionValue;
 
@@ -118,8 +120,8 @@ private:
 	// RPC 전송 간격 (0.1 = 초당 10번)
 	const float RPCUpdateInterval = 0.1f;
 
-	// Camera Comp Added to the pawn character
-	void CreateAndAttachCamera(APawn* InPawn);
+	/*// Camera Comp Added to the pawn character
+	void CreateAndAttachCamera(APawn* InPawn);*/
 
 /// [김현수 추가분] - 시작
 protected:
@@ -204,6 +206,19 @@ public:
 
 	// 박스 아이템 루팅 RPC 끝
 
+	//	mpyi 추가분 _ UI SYSTEM
+public:
+	UFUNCTION()
+	void setMainHud(UUI_MainHUD* InMainHUD) { MainHUD = InMainHUD; }
+
+	UFUNCTION()
+	void UI_RespawnStart(float RespawnTime);
+
+private:
+	UPROPERTY()
+	UUI_MainHUD* MainHUD;
+
+	//
 
 private:
 	// UI 출력

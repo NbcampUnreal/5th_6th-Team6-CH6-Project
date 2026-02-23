@@ -54,11 +54,8 @@ ABaseCharacter::ABaseCharacter()
 
 
 	//now the camera and camera boom is managed in the MainCameraComp.
-	//Dynamically created at runtime only for the local-controlled pawn
-	
 	
 	/*CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->SetUsingAbsoluteRotation(true);
 	CameraBoom->TargetArmLength = 800.f;
@@ -71,10 +68,9 @@ ABaseCharacter::ABaseCharacter()
 	TopDownCameraComponent->bUsePawnControlRotation = false;*/
 
 	//new camera
-	/*TopDownCameraComp = CreateDefaultSubobject<UTopDownCameraComp>(TEXT("TopDownCameraComp"));
-	TopDownCameraComp->SetupAttachment(RootComponent);*/
+	TopDownCameraComp = CreateDefaultSubobject<UTopDownCameraComp>(TEXT("TopDownCameraComp"));
+	TopDownCameraComp->SetupAttachment(RootComponent);//temp attatchement-> it should follow the owner with lag
 
-	TopDownCameraComp=nullptr;//temp
 
 	/* === 경로 설정 인덱스 초기화  === */
 	CurrentPathIndex = INDEX_NONE;
@@ -115,9 +111,6 @@ void ABaseCharacter::BeginPlay()
 	{
 		InitVisuals();
 	}
-
-	TopDownCameraComp=FindComponentByClass<UTopDownCameraComp>();//find and set the topdown comp
-
 }
 
 void ABaseCharacter::Tick(float DeltaTime)
@@ -180,13 +173,13 @@ void ABaseCharacter::PossessedBy(AController* NewController)
 		InitVisuals();
 	}
 
-	// UI 초기화
-	InitUI();
-
 	if (TopDownCameraComp)//disable the tick for the server
 	{
 		TopDownCameraComp->SetComponentTickEnabled(false);
 	}
+
+	// UI 초기화
+	InitUI();
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -347,6 +340,21 @@ float ABaseCharacter::GetAttackRange() const
 	return 150.0f;
 }
 
+void ABaseCharacter::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
+{
+	if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
+	{
+		// MovementComp->MaxWalkSpeed = Data.NewValue;
+        
+#if WITH_EDITOR
+		if (bShowDebug)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[%s] 이동 속도 변경됨: %f"), *GetName(), Data.NewValue);
+		}
+#endif
+	}
+}
+
 void ABaseCharacter::OnRep_HeroData()
 {
 	// 비주엃 초기화 (클라이언트)
@@ -386,7 +394,12 @@ void ABaseCharacter::InitAbilitySystem()
 		AbilitySystemComponent = ASC;
 		ASC->InitAbilityActorInfo(PS, this);
 	}
-
+	
+	// 스탯 변경 감지 델리게이트 연결
+	if (AbilitySystemComponent.IsValid())
+	{
+		// AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBaseAttributeSet::GetMoveSpeedAttribute()).AddUObject(this, &ABaseCharacter::OnMoveSpeedChanged);
+	}
 
 	if (HasAuthority() && HeroData)
 	{
@@ -507,23 +520,13 @@ void ABaseCharacter::InitAttributes()
 		{
 			// MaxXP 커브 찾기
 			FString RowNameStr = HeroData->StatusRowName.ToString() + TEXT("_MaxXp");
-			FRealCurve* FoundCurve = Table->FindCurve(FName(*RowNameStr), FString());
-			
-			// [로그 추가] 커브를 찾았는지 확인
-			if (FoundCurve)
-			{
-				UE_LOG(LogTemp, Log, TEXT("[InitAttributes] Found MaxXP Curve: %s"), *RowNameStr);
-			}
-			else
-			{
-				UE_LOG(LogTemp, Error, TEXT("[InitAttributes] FAILED to find Curve: %s !!! Check RowName in DataTable."), *RowNameStr);
-			}
+			FName RowName = FName(*RowNameStr);
 			
 			if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
 			{
 				if (UBaseAttributeSet* AS = PS->GetAttributeSet())
 				{
-					AS->SetMaxXPCurve(FoundCurve);
+					AS->SetMaxXPCurve(Table, RowName);
 				}
 			}
 			// 혹은 AER_PlayerState 사용 시
@@ -531,7 +534,7 @@ void ABaseCharacter::InitAttributes()
 			{
 				if (UBaseAttributeSet* AS = ERPS->GetAttributeSet())
 				{
-					AS->SetMaxXPCurve(FoundCurve);
+					AS->SetMaxXPCurve(Table, RowName);
 				}
 			}
 		}
@@ -588,6 +591,22 @@ void ABaseCharacter::Server_MoveToLocation_Implementation(FVector TargetLocation
 		PathPoints = NavPath->PathPoints;
 		CurrentPathIndex = 1;
 		SetActorTickEnabled(true);
+		
+		if (AbilitySystemComponent.IsValid() && MovingStateEffectClass)
+		{
+			FGameplayTag MoveTag = FGameplayTag::RequestGameplayTag(FName("State.Action.Move"));
+			if (!AbilitySystemComponent->HasMatchingGameplayTag(MoveTag))
+			{
+				FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+				Context.AddSourceObject(this);
+                
+				FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(MovingStateEffectClass, 1.0f, Context);
+				if (SpecHandle.IsValid())
+				{
+					MovingEffectHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+				}
+			}
+		}
 	}
 	else
 	{
@@ -622,6 +641,20 @@ void ABaseCharacter::MoveToLocation(FVector TargetLocation)
 		PathPoints = NavPath->PathPoints;
 		CurrentPathIndex = 1;
 		SetActorTickEnabled(true);
+		
+		FGameplayTag MoveTag = FGameplayTag::RequestGameplayTag(FName("State.Action.Move"));
+		if (!AbilitySystemComponent->HasMatchingGameplayTag(MoveTag))
+		{
+			FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+			Context.AddSourceObject(this);
+                
+			FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(MovingStateEffectClass, 1.0f, Context);
+			if (SpecHandle.IsValid())
+			{
+				// Handle 저장
+				MovingEffectHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+			}
+		}
 	}
 	else
 	{
@@ -652,6 +685,13 @@ void ABaseCharacter::StopMove()
 		CancelTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Action.AutoAttack")));
 		
 		AbilitySystemComponent->CancelAbilities(&CancelTags);
+		
+		// 이동 정지 시 GE_Moving 제거
+		if (HasAuthority() && MovingEffectHandle.IsValid())
+		{
+			AbilitySystemComponent->RemoveActiveGameplayEffect(MovingEffectHandle);
+			MovingEffectHandle.Invalidate(); // 핸들 초기화
+		}
 	}
 	
 	// 서버 동기화
@@ -777,6 +817,16 @@ void ABaseCharacter::StopPathFollowing()
 	{
 		SetActorTickEnabled(false);
 	}
+	
+	// 목적지 도착 시 GE_Moving 제거
+	if (HasAuthority() && AbilitySystemComponent.IsValid())
+	{
+		if (MovingEffectHandle.IsValid())
+		{
+			AbilitySystemComponent->RemoveActiveGameplayEffect(MovingEffectHandle);
+			MovingEffectHandle.Invalidate();
+		}
+	}
 }
 
 FRotator ABaseCharacter::GetCombatGazeRotation(FName SocketName)
@@ -878,8 +928,8 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 		if (LogTimer > 0.5f)
 		{
 			LogTimer = 0.0f;
-			UE_LOG(LogTemp, Warning, TEXT("[%s] Dist: %.2f / Range: %.2f"), 
-				*GetName(), Distance, GetAttackRange());
+			/*UE_LOG(LogTemp, Warning, TEXT("[%s] Dist: %.2f / Range: %.2f"), 
+				*GetName(), Distance, GetAttackRange());*/
 		}
 	}
 #endif
@@ -1052,10 +1102,22 @@ void ABaseCharacter::HandleDeath()
 			FGameplayTag DeathTag = ProjectER::State::Life::Death;
 			if (AbilitySystemComponent->HasMatchingGameplayTag(DeathTag))
 			{
-				return;
+				return; // 중복 사망 방지
 			}
 			
-			AbilitySystemComponent->AddLooseGameplayTag(DeathTag);
+			// [추가] GE_State_Dead 적용 방식
+			if (DeathStateEffectClass)
+			{
+				FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+				Context.AddSourceObject(this);
+                
+				FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(DeathStateEffectClass, 1.0f, Context);
+				if (SpecHandle.IsValid())
+				{
+					AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+				}
+			}
+			
 			AbilitySystemComponent->CancelAllAbilities();
 		}
 
@@ -1142,10 +1204,10 @@ void ABaseCharacter::HandleDown()
 	{
 		if (AbilitySystemComponent.IsValid())
 		{
-			// 1. 기존 진행 중인 모든 어빌리티 취소 (공격, 캐스팅 등)
+			// 기존 진행 중인 모든 어빌리티 취소 (공격, 캐스팅 등)
 			AbilitySystemComponent->CancelAllAbilities();
 
-			// 2. GE_DownStatus 적용
+			// GE_DownStatus 적용
 			if (DownStateEffectClass)
 			{
 				FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
@@ -1155,17 +1217,17 @@ void ABaseCharacter::HandleDown()
 				if (SpecHandle.IsValid())
 				{
 					AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+					UE_LOG(LogTemp, Warning, TEXT("[%s] Apply GE_State_Down Success!"), *GetName());
 				}
 			}
 		}
         
-		// 3. 타겟 해제 (적들이 나를 더 이상 우선순위로 공격하지 않게 하려면)
-		// SetTarget(nullptr); 
+		// 타겟 해제 
+		SetTarget(nullptr); 
 	}
 	
-	// (선택) 클라이언트 비주얼 처리 필요 시 Multicast_HandleDown() 추가 호출
-	// 이동 모드 변경 (예: 걷기 -> 기어가기 속도 제어는 GE에서 처리되므로 여기선 생략 가능)
-	UE_LOG(LogTemp, Warning, TEXT("[HandleDown] User is now Down-But-Not-Out!"));
+	// 클라이언트 연출 동기화
+	Multicast_HandleDown();
 }
 
 void ABaseCharacter::Multicast_Revive_Implementation(FVector RespawnLocation)
@@ -1245,9 +1307,24 @@ void ABaseCharacter::Server_SetTarget_Implementation(AActor* NewTarget)
 	SetTarget(NewTarget);
 }
 
+void ABaseCharacter::Multicast_HandleDown_Implementation()
+{
+	StopAnimMontage();
+	if (GetMesh() && GetMesh()->GetAnimInstance())
+	{
+		GetMesh()->GetAnimInstance()->Montage_Stop(0.0f);
+	}
+
+	// (선택) 캡슐 콜리전 처리
+	// 기어다닐 때 다른 유저의 길을 막지 않게 하려면 여기서 Collision Response를 수정할 수 있습니다.
+	// GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+
+	UE_LOG(LogTemp, Warning, TEXT("[%s] 빈사 상태(Down) 진입!"), *GetName());
+}
+
 void ABaseCharacter::InitUI()
 {
-	APlayerController* PC = Cast<APlayerController>(GetController());
+	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 	if (IsValid(PC) && PC->IsLocalController())
 	{
 		AHUD* GenericHUD = PC->GetHUD();
@@ -1271,6 +1348,8 @@ void ABaseCharacter::InitUI()
 			HUD->InitMinimapComponent(MinimapCaptureComponent);
 			HUD->InitHeroDataFactory(HeroData);
 			HUD->InitASCFactory(GetAbilitySystemComponent());
+			PC->setMainHud(HUD->getMainHUD());
+			
 			UE_LOG(LogTemp, Warning, TEXT("HUD InitOverlay Success!"));
 		}
 		else

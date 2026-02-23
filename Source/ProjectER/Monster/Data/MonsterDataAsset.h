@@ -10,6 +10,18 @@ class UBaseItemData;
 class USkillDataAsset;
 struct FGameplayTag;
 
+UENUM(BlueprintType)
+enum class EMonsterMontageType : uint8
+{
+	Idle,
+	Move,
+	Attack,
+	QSkill,
+	Sit,
+	Dead
+};
+
+
 // 몬스터 데이터
 UCLASS()
 class PROJECTER_API UMonsterDataAsset : public UPrimaryDataAsset
@@ -37,27 +49,14 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|GAS")
 	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
 
+	// 스킬 시스템이 완성되면 사용
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|GAS")
 	TArray<TObjectPtr<USkillDataAsset>> SkillDataAssets;
 
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
-	TObjectPtr<UAnimMontage> AttackMontage;
+	TMap<EMonsterMontageType, TObjectPtr<UAnimMontage>> Montages;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
-	TObjectPtr<UAnimMontage> DeadMontage;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
-	TObjectPtr<UAnimMontage> IdleMontage;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
-	TObjectPtr<UAnimMontage> MoveMontage;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
-	TObjectPtr<UAnimMontage> SitMontage;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
-	TObjectPtr<UAnimMontage> QSkillMontage;
 
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
@@ -78,9 +77,12 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
 	TSubclassOf<UAnimInstance> Anim;
 
+
+
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Reward")
 	int Exp;
 
+	// 안씀
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Reward")
 	int Gold;
 

@@ -108,15 +108,15 @@ protected:
 	
 	//MPC Param for PostProcess Material
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="MPC")
-	FName MPCLocationParam=NAME_None;
+	FName MPCLocationParam=TEXT("VisionCenterLocation");
 	
 	/*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="MPC")// tuned out, the material doesn't need to know the resoultion. just size is enough
 	FName MPCTextureSizeParam=NAME_None;*/
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="MPC")
-	FName MPCVisibleRangeParam=NAME_None;
+	FName MPCVisibleRangeParam=TEXT("VisibleRange");
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="MPC")
-	FName MPCNearSightRangeParam=NAME_None;
+	FName MPCNearSightRangeParam=TEXT("NearSightRange");
 	
 	/** Material used for stamping LOS sources */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
@@ -133,7 +133,7 @@ protected:
 	UMaterialInstanceDynamic* LayeredLOSInterfaceMID = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
-	FName LayeredLOSTextureParam = NAME_None;
+	FName LayeredLOSTextureParam = TEXT("RenderTarget");
 
 
 	//Gpu method requirement

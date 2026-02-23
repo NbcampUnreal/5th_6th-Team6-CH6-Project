@@ -91,3 +91,13 @@ void AUI_HUDFactory::InitASCFactory(UAbilitySystemComponent* _ASC)
         MainWidget->InitASCHud(_ASC);
     }
 }
+
+UUI_MainHUD* AUI_HUDFactory::getMainHUD()
+{    
+    if (IsValid(MainWidget))
+    {
+        return MainWidget;
+    }
+
+    return nullptr;
+}
