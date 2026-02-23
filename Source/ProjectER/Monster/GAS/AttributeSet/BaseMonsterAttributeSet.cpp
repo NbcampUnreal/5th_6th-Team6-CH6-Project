@@ -7,18 +7,18 @@
 
 UBaseMonsterAttributeSet::UBaseMonsterAttributeSet()
 {
-	//InitAttackDelay(0.0f);
-	//InitQSkillCoolTime(0.0f);
-	//InitQSkillDelay(0.0f);
+	InitAttackDelay(0.0f);
+	InitQSkillCoolTime(0.0f);
+	InitQSkillDelay(0.0f);
 }
 
 void UBaseMonsterAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	//DOREPLIFETIME_CONDITION_NOTIFY(UBaseMonsterAttributeSet, AttackDelay, COND_None, REPNOTIFY_Always);
-	//DOREPLIFETIME_CONDITION_NOTIFY(UBaseMonsterAttributeSet, QSkillCoolTime, COND_None, REPNOTIFY_Always);
-	//DOREPLIFETIME_CONDITION_NOTIFY(UBaseMonsterAttributeSet, QSkillDelay, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UBaseMonsterAttributeSet, AttackDelay, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UBaseMonsterAttributeSet, QSkillCoolTime, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UBaseMonsterAttributeSet, QSkillDelay, COND_None, REPNOTIFY_Always);
 }
 
 void UBaseMonsterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -76,17 +76,17 @@ void UBaseMonsterAttributeSet::OnRep_MoveSpeed(const FGameplayAttributeData& Old
 	OnMoveSpeedChanged.Broadcast(OldHealth.GetBaseValue(), GetMoveSpeed());
 }
 
-//void UBaseMonsterAttributeSet::OnRep_AttackDelay(const FGameplayAttributeData& OldTenacity)
-//{
-//	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseMonsterAttributeSet, AttackDelay, OldTenacity);
-//}
-//
-//void UBaseMonsterAttributeSet::OnRep_QSkillCoolTime(const FGameplayAttributeData& OldTenacity)
-//{
-//	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseMonsterAttributeSet, QSkillCoolTime, OldTenacity);
-//}
-//
-//void UBaseMonsterAttributeSet::OnRep_QSkillDelay(const FGameplayAttributeData& OldTenacity)
-//{
-//	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseMonsterAttributeSet, QSkillDelay, OldTenacity);
-//}
+void UBaseMonsterAttributeSet::OnRep_AttackDelay(const FGameplayAttributeData& OldTenacity)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseMonsterAttributeSet, AttackDelay, OldTenacity);
+}
+
+void UBaseMonsterAttributeSet::OnRep_QSkillCoolTime(const FGameplayAttributeData& OldTenacity)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseMonsterAttributeSet, QSkillCoolTime, OldTenacity);
+}
+
+void UBaseMonsterAttributeSet::OnRep_QSkillDelay(const FGameplayAttributeData& OldTenacity)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseMonsterAttributeSet, QSkillDelay, OldTenacity);
+}
