@@ -36,6 +36,16 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	// ✅ Rep 되면 클라에서 데칼 토글
+	UFUNCTION()
+	void OnRep_Selected();
+
+public:
+	UFUNCTION(BlueprintCallable)
+	void SetSelectedVisual(bool bOn);
+
 public:	
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -44,4 +54,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	ERegionType RegionType = ERegionType::None;
 
+
+private:
+	// 루트
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<USceneComponent> Root;
+
+	// ✅ 선택 표시 데칼
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UDecalComponent> SelectedDecal;
+
+	// ✅ 선택 상태(Rep)
+	UPROPERTY(ReplicatedUsing = OnRep_Selected)
+	bool bSelected = false;
 };
