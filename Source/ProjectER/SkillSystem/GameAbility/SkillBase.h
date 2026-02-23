@@ -34,6 +34,7 @@ protected:
 	void AddTagToOwner(FGameplayTag Tag);
 	void RemoveTagFromOwner(FGameplayTag Tag);
 	void PlayAnimMontage();
+	void StopMontage();
 	void SetWaitEventActiveTag();
 	void SetWaitEventCastingTag();
 	void PrepareToActiveSkill();
@@ -48,6 +49,12 @@ protected:
 
 	UFUNCTION()
 	void OnCastingTagEventReceived(FGameplayEventData Payload);
+
+	UFUNCTION()
+	void OnMontageInterrupted();
+
+	UFUNCTION()
+	void OnMontageCancelled();
 //private:
 
 public:

@@ -27,29 +27,13 @@ USkillBase::USkillBase()
 	ReplicationPolicy = EGameplayAbilityReplicationPolicy::ReplicateYes;
 	CastingTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Casting"));
 	ActiveTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Active"));
+	ActivationBlockedTags.AddTag(CastingTag);
+	ActivationBlockedTags.AddTag(ActiveTag);
 }
 
 void USkillBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
-	//ENetMode NetMode = (GetWorld() != nullptr) ? GetWorld()->GetNetMode() : NM_Standalone;
-
-	//FString NetModeStr;
-	//switch (NetMode)
-	//{
-	//case NM_Client: NetModeStr = TEXT("Client"); break;
-	//case NM_DedicatedServer: NetModeStr = TEXT("DedicatedServer"); break;
-	//case NM_ListenServer: NetModeStr = TEXT("ListenServer"); break;
-	//case NM_Standalone: NetModeStr = TEXT("Standalone"); break;
-	//default: NetModeStr = TEXT("Unknown"); break;
-	//}
-	//FString SideStr = HasAuthority(&ActivationInfo) ? TEXT("SERVER") : TEXT("CLIENT");
-	//FString ActorName = (ActorInfo && ActorInfo->AvatarActor.IsValid()) ? ActorInfo->AvatarActor->GetName() : TEXT("Unknown");
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-	if (CommitAbility(Handle, ActorInfo, ActivationInfo) == false)
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
 }
 
 void USkillBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
@@ -88,11 +72,13 @@ void USkillBase::ExecuteSkill()
 {
 	if (IsValid(CachedConfig) == false || CachedConfig->GetExcutionEffects().Num() <= 0) return;
 
-	/*if (CommitAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo) == false)
+	if (CanActivateAbility(CurrentSpecHandle, CurrentActorInfo))
 	{
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 		return;
-	}*/
+	}
+
+	AddTagToOwner(ActiveTag);
 
 	AActor* Avatar = GetAvatarActorFromActorInfo();
 	if (IsValid(Avatar) == false) return;
@@ -138,6 +124,7 @@ void USkillBase::OnActiveTagEventReceived(FGameplayEventData Payload)
 			EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 			return;
 		}
+
 		RemoveTagFromOwner(CastingTag);
 	}
 
@@ -146,17 +133,50 @@ void USkillBase::OnActiveTagEventReceived(FGameplayEventData Payload)
 
 void USkillBase::OnCastingTagEventReceived(FGameplayEventData Payload)
 {
-	AddTagToOwner(CastingTag);
+	if (CachedConfig && CachedConfig->Data.bIsUseCasting)
+	{
+		AddTagToOwner(CastingTag);
+	}
+}
 
-	/*UAbilityTask_SendServerEvent* SendEvnet = UAbilityTask_SendServerEvent::SendServerEvent(this, CastingTag);
-	SendEvnet->ReadyForActivation();*/
+void USkillBase::OnMontageInterrupted()
+{
+	const bool IsActive = GetAbilitySystemComponentFromActorInfo()->HasMatchingGameplayTag(ActiveTag);
+
+	if (CachedConfig && CachedConfig->Data.bIsUseCasting && IsActive == false)
+	{
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+		//FinishSkill();
+		return;
+	}
+
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+}
+
+void USkillBase::OnMontageCancelled()
+{
+
 }
 
 void USkillBase::PlayAnimMontage()
 {
 	if (!IsValid(CachedConfig) || !IsValid(CachedConfig->Data.AnimMontage)) return;
 	UAbilityTask_PlayMontageAndWait* PlayTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, TEXT("SkillAnimation"), CachedConfig->Data.AnimMontage);
+	if (!IsValid(PlayTask)) return;
+
+	PlayTask->OnInterrupted.AddDynamic(this, &USkillBase::OnMontageInterrupted);
+	PlayTask->OnCancelled.AddDynamic(this, &USkillBase::OnMontageCancelled);
 	PlayTask->ReadyForActivation();
+}
+
+void USkillBase::StopMontage()
+{
+	const FGameplayAbilityActorInfo* AI = GetCurrentActorInfo();
+	UAbilitySystemComponent* ASC = AI->AbilitySystemComponent.Get();
+	if (AI && IsValid(ASC))
+	{
+		ASC->CurrentMontageStop(0.2f);
+	}
 }
 
 void USkillBase::SetWaitEventActiveTag()
@@ -175,6 +195,12 @@ void USkillBase::SetWaitEventCastingTag()
 
 void USkillBase::PrepareToActiveSkill()
 {
+	if (!CommitAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo))
+	{
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+		return;
+	}
+
 	SetWaitEventActiveTag();
 	if (CachedConfig->Data.bIsUseCasting) SetWaitEventCastingTag();
 
@@ -269,9 +295,6 @@ bool USkillBase::IsValidRelationship(AActor* Target)
 	const ITargetableInterface* InstigatorInterface = Cast<ITargetableInterface>(Instigator);
 	const ITargetableInterface* TargetInterface = Cast<ITargetableInterface>(Target);
 
-	//ETeamType InstigatorTeam = ITargetableInterface::Execute_GetTeamType(Instigator);
-	//ETeamType TargetTeam = ITargetableInterface::Execute_GetTeamType(Target);
-
 	// 3. 인터페이스 구현 여부 확인 및 로그 출력
 	if (InstigatorInterface == nullptr)
 	{
@@ -306,7 +329,6 @@ bool USkillBase::IsValidRelationship(AActor* Target)
 		return !bIsSameTeam;
 	}
 
-	//기본은 false
 	return false;
 }
 
@@ -318,7 +340,7 @@ void USkillBase::FinishSkill()
 
 void USkillBase::OnCancelAbility()
 {
-
+	StopMontage();
 }
 
 void USkillBase::OnExecuteSkill_InClient()

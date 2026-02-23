@@ -15,14 +15,29 @@ ABaseRangeOverlapEffectActor::ABaseRangeOverlapEffectActor()
 	bReplicates = true;
 }
 
-void ABaseRangeOverlapEffectActor::InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, float InCollisionSize, bool bInHitOncePerTarget)
+void ABaseRangeOverlapEffectActor::InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget)
 {
 	EffectSpecHandles = InEffectSpecHandles;
 	InstigatorActor = InInstigatorActor;
 	bHitOncePerTarget = bInHitOncePerTarget;
 
-	ApplyCollisionSize(InCollisionSize);
+	PendingCollisionSize = InCollisionSize;
+	bHasPendingCollisionSize = true;
+	ApplyCollisionSize(PendingCollisionSize);
 }
+
+//void ABaseRangeOverlapEffectActor::InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, bool bInHitOncePerTarget)
+//{
+//	EffectSpecHandles = InEffectSpecHandles;
+//	InstigatorActor = InInstigatorActor;
+//	bHitOncePerTarget = bInHitOncePerTarget;
+//	bHasPendingCollisionSize = true;
+//}
+
+//void ABaseRangeOverlapEffectActor::SetCollisionSize(const FVector& InCollisionSize)
+//{
+//	ApplyCollisionSize(InCollisionSize);
+//}
 
 // Called when the game starts or when spawned
 void ABaseRangeOverlapEffectActor::BeginPlay()
@@ -35,7 +50,7 @@ void ABaseRangeOverlapEffectActor::BeginPlay()
 	}
 }
 
-void ABaseRangeOverlapEffectActor::ApplyCollisionSize(float InCollisionSize)
+void ABaseRangeOverlapEffectActor::ApplyCollisionSize(const FVector& InCollisionSize)
 {
 	//
 }
@@ -47,11 +62,25 @@ void ABaseRangeOverlapEffectActor::SetCollisionComponent(UShapeComponent* InColl
 		return;
 	}
 
+	// 1. 멤버 변수 할당
 	CollisionComponent = InCollisionComponent;
+
+	// 2. 물리 및 충돌 설정 (공통)
 	CollisionComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	CollisionComponent->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
 	CollisionComponent->SetGenerateOverlapEvents(true);
-	RootComponent = CollisionComponent;
+
+	if (GetRootComponent() != CollisionComponent)
+	{
+		SetRootComponent(CollisionComponent);
+	}
+
+	if (CollisionComponent->IsRegistered())
+	{
+		CollisionComponent->UpdateBounds();
+		CollisionComponent->MarkRenderStateDirty();
+		CollisionComponent->UpdateBodySetup(); // 물리 모양 갱신
+	}
 }
 
 void ABaseRangeOverlapEffectActor::OnShapeBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
