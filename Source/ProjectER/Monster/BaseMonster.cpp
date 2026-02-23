@@ -244,8 +244,8 @@ void ABaseMonster::InitAttributes(float Level)
 		if (MaxHealth)
 		{
 			AttributeSet->SetMaxHealth(MonsterRow->BaseMaxHealth + MaxHealth->Eval(Level));
+			AttributeSet->SetHealth(MonsterRow->BaseMaxHealth + MaxHealth->Eval(Level));
 		}
-		AttributeSet->SetHealth(MonsterRow->BaseMaxHealth);
 		AttributeSet->SetHealthRegen(MonsterRow->BaseHealthRegen);
 		AttributeSet->SetStamina(MonsterRow->BaseMaxStamina);
 		AttributeSet->SetMaxStamina(MonsterRow->BaseMaxStamina);
