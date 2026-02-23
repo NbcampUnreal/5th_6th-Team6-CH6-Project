@@ -337,11 +337,30 @@ void ABasePlayerController::ProcessMouseInteraction()
 			// 마우스 아래 액터가 인터페이스를 구현했는지 확인
 			AActor* HitActor = Hit.GetActor();
 
-			if (HitActor->GetComponentByClass<ULootableComponent>())
+			// LootableComponent가 있고 상호작용 가능한지 체크
+			if (ULootableComponent* LootComp = HitActor->GetComponentByClass<ULootableComponent>())
 			{
-				// 멀리서 클릭해도 상호작용되도록 목표 거리 계산
-				InteractionTargetDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
-				InteractionTarget = HitActor; // 박스, 플레이어, 몬스터 ( LootableComponent 내장하는 엑터들 ) 
+				// 몬스터인 경우 IsTargetable 체크 (살아있으면 루팅 불가)
+				if (ITargetableInterface* TargetableActor = Cast<ITargetableInterface>(HitActor))
+				{
+					if (TargetableActor->IsTargetable())
+					{
+						// 몬스터가 살아있음 - 루팅 불가
+						InteractionTarget = nullptr;
+					}
+					else
+					{
+						// 몬스터가 사망함 - 루팅 가능
+						InteractionTargetDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
+						InteractionTarget = HitActor;
+					}
+				}
+				else
+				{
+					// 몬스터가 아닌 경우 (박스, 플레이어 시체 등) - 루팅 가능
+					InteractionTargetDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
+					InteractionTarget = HitActor;
+				}
 			}
 			else if (HitActor && HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
 			{

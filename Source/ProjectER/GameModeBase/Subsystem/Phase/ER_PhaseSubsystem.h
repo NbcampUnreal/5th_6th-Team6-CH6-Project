@@ -16,10 +16,14 @@ class PROJECTER_API UER_PhaseSubsystem : public UWorldSubsystem
 
 public:
 	void StartPhaseTimer(AER_GameState& GS, float Duration);
+	void StartNoticeTimer(float Duration);
 	void ClearPhaseTimer();
+
 	void OnPhaseTimeUp();
+	void OnNoticeTimeUp();
 
 
 private:
 	FTimerHandle PhaseTimer;
+	FTimerHandle NoticeTimer;
 };
