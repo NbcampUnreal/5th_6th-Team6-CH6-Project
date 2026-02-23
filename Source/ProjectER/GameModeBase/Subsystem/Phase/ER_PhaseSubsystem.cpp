@@ -22,7 +22,25 @@ void UER_PhaseSubsystem::StartPhaseTimer(AER_GameState& GS, float Duration)
         Duration,
         false
     );
+}
 
+void UER_PhaseSubsystem::StartNoticeTimer(float Duration)
+{
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    if (World->GetNetMode() == NM_Client)
+        return;
+
+    float HalfDuration = Duration / 2;
+
+    GetWorld()->GetTimerManager().SetTimer(
+        NoticeTimer,
+        this,
+        &UER_PhaseSubsystem::OnNoticeTimeUp,
+        HalfDuration,
+        false
+    );
 }
 
 void UER_PhaseSubsystem::ClearPhaseTimer()
@@ -48,5 +66,20 @@ void UER_PhaseSubsystem::OnPhaseTimeUp()
     if (AGameModeBase* GM = World->GetAuthGameMode())
     {
         Cast<AER_InGameMode>(GM)->HandlePhaseTimeUp();
+    }
+}
+
+void UER_PhaseSubsystem::OnNoticeTimeUp()
+{
+    UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    if (World->GetNetMode() == NM_Client)
+        return;
+
+    if (AGameModeBase* GM = World->GetAuthGameMode())
+    {
+        Cast<AER_InGameMode>(GM)->HandleObjectNoticeTimeUp();
     }
 }

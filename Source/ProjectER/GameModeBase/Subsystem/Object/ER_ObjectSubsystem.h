@@ -24,7 +24,19 @@ public:
 
 	bool bIsSpawned = false;
 
+	bool bIsReserved = false;
+
 	ERegionType RegionType;
+};
+
+USTRUCT()
+struct FSupplySpawnPick
+{
+	GENERATED_BODY()
+
+public:
+	ERegionType Region = ERegionType::None;
+	int32 Index = INDEX_NONE;
 };
 
 UCLASS()
@@ -34,6 +46,8 @@ class PROJECTER_API UER_ObjectSubsystem : public UWorldSubsystem
 	
 public:
 	void InitializeObjectPoints(TMap<FName, FObjectClassConfig>& ObjectClass);
+
+	void PickSupplySpawnIndex();
 
 	void SpawnSupplyOjbect();
 
@@ -54,6 +68,10 @@ private:
 
 	// 보스 스폰 위치를 모아둘 배열
 	TArray<FObjectInfo> BossPoints;
+
+	// 선정된 항공 보급 위치 저장용 배열
+	UPROPERTY()
+	TArray<FSupplySpawnPick> PendingSupplyPicks;
 
 	// 이후 생, 운 포인트가 나오면 배열 추가하기
 };
