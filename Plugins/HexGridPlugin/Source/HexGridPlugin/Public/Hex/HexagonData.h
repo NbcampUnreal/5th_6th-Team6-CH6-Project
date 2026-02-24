@@ -181,6 +181,16 @@ struct FHexGridLayout
 
 		return FHexCoord(x, y, z);
 	}
+	
+	// Snap a world location to the nearest hex center in this layout's coordinate space
+	FVector2D SnapToGrid(const FVector2D& WorldPos) const
+	{
+		// Find which hex this world position falls into
+		FHexCoord NearestHex = WorldToHex(WorldPos);
+		// Return that hex's center in world space
+		return HexToWorld(NearestHex);
+	}
+	
 };
 
 #pragma endregion

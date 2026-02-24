@@ -12,29 +12,26 @@
  *  Think of this as a translator for struct data to interface. this keeps the data as it is, and allows to use interface
  */
 
-
-// Forward
 class UHexGridAdapter;
 
 class FHexNodeAdapter : public IGridNode
 {
 public:
-    FHexNodeAdapter(const FHexCoord& InCoord, UHexGridAdapter* InOwner)
+    FHexNodeAdapter(FHexCoord InCoord, UHexGridAdapter* InOwner)  // value, not reference
         : Coord(InCoord)
         , Owner(InOwner)
     {}
 
     // ---------------- Core ----------------
     virtual int32 GetNumNeighbors() const override;
-    virtual IGridNode* GetNeighborPointerGraph(int32 Index, UObject* Graph) const override;
-    virtual IGridNode* GetNeighborIndexGraph(int32 Index, UObject* Graph) const override;
+    virtual IGridNode* GetNeighborPointerGraph(int32 Index, IGridGraph* Graph) const override;  //now using grid node, not uobject
+    virtual IGridNode* GetNeighborIndexGraph(int32 Index, IGridGraph* Graph) const override;    // changed
 
     virtual FVector GetWorldLocation() const override;
 
     // ---------------- Cost ----------------
     virtual float GetCostTo(const IGridNode* TargetNode) const override;
     virtual void SetCost(float Cost) override { GCost = Cost; }
-
     virtual float GetHeuristicCost(const IGridNode* TargetNode) const override;
     virtual void SetHeuristicCost(float Cost) override { HCost = Cost; }
 
@@ -56,10 +53,9 @@ public:
     const FHexCoord& GetCoord() const { return Coord; }
 
 private:
-    const FHexCoord& Coord;// only reference. not a copy!!
+    FHexCoord Coord;  // value — no dangling reference risk
     UHexGridAdapter* Owner;
 
-    // Pathfinding state (NOT in HexCoord)
     float GCost = 0.f;
     float HCost = 0.f;
     uint8 Flags = 0;
@@ -68,10 +64,8 @@ private:
 };
 
 
-//Same for the grid graph
-
 UCLASS(BlueprintType)
-class HEXGRIDPLUGIN_API UHexGridAdapter : public UObject, public IGridGraph
+class HEXGRIDPLUGIN_API UHexGridAdapter : public UObject, public IGridGraph  // still UObject, also IGridGraph
 {
     GENERATED_BODY()
 public:
@@ -86,25 +80,15 @@ public:
     virtual void ResetAllNodes() override;
 
     FHexNodeAdapter* GetNode(const FHexCoord& Coord) const;
-    FHexGridWrapper GetGridWrapper()const {return GridWrapper;}
-    
+    FHexGridWrapper GetGridWrapper() const { return GridWrapper; }
+
 private:
     FHexGridWrapper GridWrapper;
-    
     TMap<FHexCoord, TUniquePtr<FHexNodeAdapter>> Nodes;
 
     void BuildAdapters();
 };
 
-
-
-/**
- * Per-query / per-agent pathfinding context.
- * this is for runing the path finding without rebuilding the grid every time when the function is used
- *
- *  simply saying -> It is for caching a pathfinding view of the grid.
- *  fuck yeah
- */
 
 struct FHexPathQueryContext
 {
@@ -112,7 +96,6 @@ struct FHexPathQueryContext
 
     FHexPathQueryContext(const FHexGridWrapper& Grid, UObject* Outer)
     {
-        // Create the UObject properly
         Graph = NewObject<UHexGridAdapter>(Outer);
         Graph->Initialize(Grid);
     }
@@ -120,8 +103,6 @@ struct FHexPathQueryContext
     void Reset()
     {
         if (Graph)
-        {
             Graph->ResetAllNodes();
-        }
     }
 };
