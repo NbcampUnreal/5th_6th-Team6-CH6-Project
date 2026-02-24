@@ -55,6 +55,9 @@ protected:
 
 	UFUNCTION()
 	void OnMontageCancelled();
+
+	UFUNCTION()
+	void OnMontageCompleted();
 //private:
 
 public:
