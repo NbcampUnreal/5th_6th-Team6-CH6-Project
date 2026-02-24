@@ -59,7 +59,7 @@ ABaseCharacter::ABaseCharacter()
 	TopDownCameraComp = CreateDefaultSubobject<UTopDownCameraComp>(TEXT("TopDownCameraComp"));
 	TopDownCameraComp->SetupAttachment(RootComponent);//temp attatchement-> it should follow the owner with lag
 	TopDownCameraComp->InitializeCompRequirements();
-
+	TopDownCameraComp->SetAbsolute(true, true, true);
 
 	/* === 경로 설정 인덱스 초기화  === */
 	CurrentPathIndex = INDEX_NONE;
