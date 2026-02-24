@@ -233,6 +233,7 @@ public:
 	virtual void HandleDeath();
 	
 	// 부활 처리 호출
+	UFUNCTION(BlueprintCallable, Category = "Revive")
 	virtual void Revive(FVector RespawnLocation);
 	
 	// 빈사 상태 진입
