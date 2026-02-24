@@ -272,9 +272,9 @@ void ABaseMonster::InitAttributes(float Level)
 		AttributeSet->SetMoveSpeed(MonsterRow->BaseMoveSpeed);
 		AttributeSet->SetCooldownReduction(MonsterRow->BaseCooldownReduction);
 		AttributeSet->SetTenacity(MonsterRow->BaseTenacity);
-		AttributeSet->SetAttackDelay(MonsterRow->BaseAttackDelay);
-		AttributeSet->SetQSkillCoolTime(MonsterRow->BaseQSkillCoolTime);
-		AttributeSet->SetQSkillDelay(MonsterRow->BaseQSkillDelay);
+		//AttributeSet->SetAttackDelay(MonsterRow->BaseAttackDelay);
+		//AttributeSet->SetQSkillCoolTime(MonsterRow->BaseQSkillCoolTime);
+		//AttributeSet->SetQSkillDelay(MonsterRow->BaseQSkillDelay);
 	}
 }
 
@@ -569,9 +569,19 @@ bool ABaseMonster::HasASCTag(FGameplayTag Tag)
 	return ASC && ASC->HasMatchingGameplayTag(Tag);
 }
 
-void ABaseMonster::SendReturnSuccessEvent()
+void ABaseMonster::SendStateTreeEvent(FGameplayTag InputTag)
 {
-	StateTreeComp->SendStateTreeEvent(FGameplayTag(MonsterTags.ReturnEventTag));
+	if (IsValid(StateTreeComp) == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::SendStateTreeEvent : Not StateTreeComp"));
+		return;
+	}
+	if (StateTreeComp->IsRunning() == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::SendStateTreeEvent : Not StateTreeComp Running"));
+		return;
+	}
+	StateTreeComp->SendStateTreeEvent(InputTag);
 }
 
 UStateTreeComponent* ABaseMonster::GetStateTreeComponent()

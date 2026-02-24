@@ -54,6 +54,12 @@ protected:
 	virtual void Tick(float DeltaTime) override;
 
 
+
+public:
+
+	UFUNCTION(BlueprintCallable)
+	void SendStateTreeEvent(FGameplayTag InputTag);
+
 private:
 
 	UFUNCTION()
@@ -83,9 +89,6 @@ private:
 
 	UFUNCTION(BlueprintCallable) // SendAttackRangeEvent();
 	void SendAttackRangeEvent(float AttackRange);
-
-	UFUNCTION(BlueprintCallable) // SendReturnSuccessEvent();
-	void SendReturnSuccessEvent();
 	//
 
 	// HealthBar 변경용
