@@ -6,7 +6,6 @@
 #include "GameplayTagContainer.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
 #include "Monster/Data/MonsterTags.h"
-//#include "Monster/Data/MonsterDataAsset.h"
 #include "BaseMonster.generated.h"
 
 class UGameplayAbility;
@@ -117,6 +116,8 @@ private:
 
 	void InitCollision();
 
+	void InitStateTree();
+
 	void InitHPBar();
 	//
 
@@ -140,12 +141,6 @@ private:
 
 	UFUNCTION(BlueprintCallable)
 	void TryActivateByDynamicTag(FGameplayTag InputTag);
-
-	UFUNCTION(BlueprintCallable)
-	float GetAbilityDelayByTag(FGameplayTag InputTag);
-
-	UFUNCTION(BlueprintCallable)
-	float GetAbilityCoolTimeByTag(FGameplayTag InputTag);
 
 
 public:
