@@ -107,6 +107,7 @@ namespace ProjectER
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(SpawnProjectile); 
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Active);
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Casting);
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(End);
 		}
 
 		namespace System
