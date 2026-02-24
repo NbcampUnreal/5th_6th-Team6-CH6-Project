@@ -8,6 +8,7 @@ namespace ProjectER
 		{
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "Ability.Action.AutoAttack", "Attack Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "Ability.Action.Death", "Death Ability");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Revive, "Ability.Action.Revive", "Revive Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Move, "Ability.Action.Move", "Move Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Chase, "Ability.Action.Chase", "Chase Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "Ability.Action.Return", "Return Ability");

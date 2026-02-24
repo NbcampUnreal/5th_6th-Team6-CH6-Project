@@ -177,7 +177,7 @@ void ABasePlayerController::PlayerTick(float DeltaTime)
 		{
 			//MoveToMouseCursor(); 태웅님 기존 코드
 			// [김현수 추가분] 아이템 판별 기능이 포함된 함수로 변경 호출
-			ProcessMouseInteraction();
+			MoveToMouseCursor();
 			LastRPCUpdateTime = GetWorld()->GetTimeSeconds();
 		}
 	}
@@ -252,35 +252,12 @@ void ABasePlayerController::MoveToMouseCursor()
 			}
 #endif
 
-			/*if (HitActor && HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
-			{
-				InteractionTarget = HitActor;
-			}
-			else
-			{
-				InteractionTarget = nullptr;
-			}*/
-
 			if (ITargetableInterface* TargetObj = Cast<ITargetableInterface>(HitActor))
 			{
 				if (TargetObj->IsTargetable())
 				{
 					ETeamType MyTeam = ControlledBaseChar->GetTeamType();
 					ETeamType TargetTeam = TargetObj->GetTeamType();
-
-					const UEnum* TeamEnumPtr = StaticEnum<ETeamType>();
-
-					if (TeamEnumPtr)
-					{
-						// 2. Enum 값을 사람이 읽을 수 있는 FString으로 변환합니다.
-						FString MyTeamStr = TeamEnumPtr->GetValueAsString(MyTeam);
-						FString TargetTeamStr = TeamEnumPtr->GetValueAsString(TargetTeam);
-
-						// 3. 로그 출력 (* 연산자로 FString -> TCHAR* 변환)
-						UE_LOG(LogTemp, Warning, TEXT("My Team: [%s] , Target Team : [%s]"),
-							*MyTeamStr,
-							*TargetTeamStr);
-					}
 
 					bool bIsEnemy = (MyTeam != TargetTeam) &&
 						(MyTeam != ETeamType::None) &&
@@ -297,23 +274,57 @@ void ABasePlayerController::MoveToMouseCursor()
 #endif
 						return;
 					}
+					else if (ABaseCharacter* HitChar = Cast<ABaseCharacter>(HitActor))
+					{
+						// [1-2] 타겟팅 불가능한데 만약 내 아군이고 빈사(Down) 상태라면? -> 부활 로직
+						bool bIsAlly = (HitChar->GetTeamType() == ControlledBaseChar->GetTeamType());
+						bool bIsDown = false;
+					
+						if (UAbilitySystemComponent* TargetASC = HitChar->GetAbilitySystemComponent())
+						{
+							bIsDown = TargetASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Life.Down")));
+						}
+
+						if (bIsAlly && HitChar != ControlledBaseChar && bIsDown)
+						{
+							InteractionTargetDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
+							InteractionTarget = HitActor; 
+						
+							ControlledBaseChar->SetTarget(nullptr); // 공격 타겟 초기화
+							ControlledBaseChar->MoveToLocation(Hit.Location); // 아군을 향해 이동
+							return; 
+						}
+					}	
 				}
 			}
-
-			if (Hit.bBlockingHit) // 바닥(또는 아군) 클릭 시 이동
+			
+			if (HitActor->GetComponentByClass<ULootableComponent>())
 			{
-				// 일반 공격 중일 시 공격 취소 후 이동
-				UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ControlledBaseChar);
-				if (IsValid(ASC))
-				{
-					FGameplayTagContainer CancelTags;
-					CancelTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Action.AutoAttack")));
-					ASC->CancelAbilities(&CancelTags);
-				}
-
-				ControlledBaseChar->SetTarget(nullptr);
-				ControlledBaseChar->MoveToLocation(Hit.Location);
+				InteractionTargetDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
+				InteractionTarget = HitActor; 
 			}
+			else if (HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
+			{
+				InteractionTargetDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
+				InteractionTarget = HitActor; 
+			}
+			else
+			{
+				// 아무것도 아니면 (땅바닥 클릭) 타겟 초기화
+				InteractionTarget = nullptr;
+			}
+			
+			// 바닥(또는 아군) 클릭 시 이동
+			UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ControlledBaseChar);
+			if (IsValid(ASC))
+			{
+				FGameplayTagContainer CancelTags;
+				CancelTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Action.AutoAttack")));
+				ASC->CancelAbilities(&CancelTags);
+			}
+
+			ControlledBaseChar->SetTarget(nullptr);
+			ControlledBaseChar->MoveToLocation(Hit.Location);
 
 			// SpawnDestinationEffect(Hit.Location);
 		}
@@ -384,7 +395,27 @@ void ABasePlayerController::CheckInteractionDistance()
 			{
 				ControlledBaseChar->StopMove();
 			}
-
+	
+			if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(InteractionTarget))
+			{
+				// 타겟이 나와 같은 팀인지 확인
+				if (TargetChar->GetTeamType() == ControlledBaseChar->GetTeamType())
+				{
+					// 내 ASC를 가져와서 부활 스킬(GA_Revive)을 태그로 강제 실행시킵니다.
+					if (UAbilitySystemComponent* ASC = ControlledBaseChar->GetAbilitySystemComponent())
+					{
+						// GA_Revive 블루프린트에 등록해둔 Ability Tags를 적어줍니다.
+						FGameplayTag ReviveTag = FGameplayTag::RequestGameplayTag(FName("Ability.Action.Revive"));
+						ASC->TryActivateAbilitiesByTag(FGameplayTagContainer(ReviveTag));
+						
+						UE_LOG(LogTemp, Warning, TEXT("아군 구조 스킬 발동 시도!"));
+					}
+					
+					InteractionTarget = nullptr; // 실행했으니 타겟 초기화
+					return; // !!! 중요: 아래 상자 루팅 로직으로 넘어가지 않도록 즉시 종료 !!!
+				}
+			}
+			
 			if (II_ItemInteractable* Interactable = Cast<II_ItemInteractable>(InteractionTarget))
 			{
 				// 땅바닥 아이템 (BaseItemActor)
