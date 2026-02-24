@@ -22,6 +22,9 @@ UTopDownCameraComp::UTopDownCameraComp()
 	PrimaryComponentTick.bCanEverTick = true; // this is only for when the tick is never be used. not for switchable case
 	PrimaryComponentTick.bStartWithTickEnabled = false;
 
+	// In order to manually manage location smoothly, the component itself must be absolute in world space.
+	SetAbsolute(true, true, true);
+
 	// Create but DO NOT attach here
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->TargetArmLength = ArmLength;
