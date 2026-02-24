@@ -27,17 +27,19 @@ USkillBase::USkillBase()
 	ReplicationPolicy = EGameplayAbilityReplicationPolicy::ReplicateYes;
 	CastingTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Casting"));
 	ActiveTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Active"));
-	ActivationBlockedTags.AddTag(CastingTag);
+	//ActivationBlockedTags.AddTag(CastingTag);
 	ActivationBlockedTags.AddTag(ActiveTag);
 }
 
 void USkillBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+	//UE_LOG(LogTemp, Warning, TEXT("ActivateAbility"));
 }
 
 void USkillBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
+	//UE_LOG(LogTemp, Warning, TEXT("EndAbility"));
 	if (bWasCancelled == true)
 	{
 		OnCancelAbility();
@@ -70,7 +72,7 @@ void USkillBase::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const
 
 void USkillBase::ExecuteSkill()
 {
-	if (IsValid(CachedConfig) == false || CachedConfig->GetExcutionEffects().Num() <= 0) return;
+	/*if (IsValid(CachedConfig) == false || CachedConfig->GetExcutionEffects().Num() <= 0) return;
 
 	if (CanActivateAbility(CurrentSpecHandle, CurrentActorInfo))
 	{
@@ -112,6 +114,58 @@ void USkillBase::ExecuteSkill()
 	if (IsLocallyControlled())
 	{
 		OnExecuteSkill_InClient();
+	}*/
+
+	//if (IsValid(CachedConfig) == false || CachedConfig->GetExcutionEffects().Num() <= 0) return;
+
+	UAbilitySystemComponent* InstigatorASC = GetAbilitySystemComponentFromActorInfo();
+	AActor* Avatar = GetAvatarActorFromActorInfo();
+
+	if (!IsValid(InstigatorASC) || !IsValid(Avatar) || !IsValid(CachedConfig))
+	{
+		UE_LOG(LogTemp, Error, TEXT("ExecuteSkill: 필수 데이터가 누락되었습니다! (Config: %s, ASC: %s, Avatar: %s)"),
+			*GetNameSafe(CachedConfig), *GetNameSafe(InstigatorASC), *GetNameSafe(Avatar));
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+		return;
+	}
+
+	if (!CanActivateAbility(CurrentSpecHandle, CurrentActorInfo))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("!CanActivateAbility(CurrentSpecHandle, CurrentActorInfo)"));
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+		return;
+	}
+	else {
+		//Execute Skill
+
+		AddTagToOwner(ActiveTag);
+
+		const TArray<TObjectPtr<USkillEffectDataAsset>>& ExecutionEffects = CachedConfig->GetExcutionEffects();
+		ApplyEffectsToActor(Avatar, ExecutionEffects);
+
+		/*const TArray<TObjectPtr<USkillEffectDataAsset>>& ExecutionEffects = CachedConfig->GetExcutionEffects();
+		for (USkillEffectDataAsset* EffectData : ExecutionEffects)
+		{
+			if (!EffectData) continue;
+
+			TArray<FGameplayEffectSpecHandle> SpecHandles = EffectData->MakeSpecs(InstigatorASC, this, Avatar);
+			for (FGameplayEffectSpecHandle& SpecHandle : SpecHandles)
+			{
+				if (!SpecHandle.IsValid()) continue;
+				InstigatorASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get(), InstigatorASC->GetPredictionKeyForNewAction());
+			}
+		}*/
+
+		if (HasAuthority(&CurrentActivationInfo))
+		{
+			ABaseCharacter* Character = Cast<ABaseCharacter>(Avatar);
+			if (Character) Character->StopMove();
+		}
+
+		if (IsLocallyControlled())
+		{
+			OnExecuteSkill_InClient();
+		}
 	}
 }
 
@@ -146,16 +200,22 @@ void USkillBase::OnMontageInterrupted()
 	if (CachedConfig && CachedConfig->Data.bIsUseCasting && IsActive == false)
 	{
 		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+		//UE_LOG(LogTemp, Warning, TEXT("OnMontageInterrupted::CachedConfig && CachedConfig->Data.bIsUseCasting && IsActive == false"));
 		//FinishSkill();
 		return;
 	}
 
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+	//EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 }
 
 void USkillBase::OnMontageCancelled()
 {
 
+}
+
+void USkillBase::OnMontageCompleted()
+{
+	FinishSkill();
 }
 
 void USkillBase::PlayAnimMontage()
@@ -166,6 +226,7 @@ void USkillBase::PlayAnimMontage()
 
 	PlayTask->OnInterrupted.AddDynamic(this, &USkillBase::OnMontageInterrupted);
 	PlayTask->OnCancelled.AddDynamic(this, &USkillBase::OnMontageCancelled);
+	PlayTask->OnCompleted.AddDynamic(this, &USkillBase::OnMontageCompleted);
 	PlayTask->ReadyForActivation();
 }
 
@@ -340,6 +401,7 @@ void USkillBase::FinishSkill()
 
 void USkillBase::OnCancelAbility()
 {
+	//UE_LOG(LogTemp, Warning, TEXT("OnCancelAbility"));
 	StopMontage();
 }
 

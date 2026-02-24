@@ -123,7 +123,7 @@ void UMouseClickSkill::ExecuteSkill()
 		OnExecuteSkill_InClient();
 	}
 
-	FinishSkill();
+	//FinishSkill();
 }
 
 void UMouseClickSkill::FinishSkill()

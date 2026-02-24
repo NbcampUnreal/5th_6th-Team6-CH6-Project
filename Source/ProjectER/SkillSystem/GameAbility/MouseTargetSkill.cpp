@@ -46,7 +46,7 @@ void UMouseTargetSkill::ExecuteSkill()
 
 	ApplyEffectsToActors(AffectedActors, EffectDataAssets);
 	RotateToTarget(AffectedActors.begin()->Get());
-	FinishSkill();
+	//FinishSkill();
 }
 
 void UMouseTargetSkill::FinishSkill()

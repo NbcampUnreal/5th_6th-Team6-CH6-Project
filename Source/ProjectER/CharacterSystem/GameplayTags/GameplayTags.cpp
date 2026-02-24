@@ -106,6 +106,7 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(SpawnProjectile, "Event.Montage.SpawnProjectile", "Montage Event for Spawn Projectile");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Active, "Event.Montage.Active", "Montage Event for Active");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Casting, "Event.Montage.Casting", "Montage Event for Casting");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(End, "Event.Montage.End", "Montage Event for End");
 		}
 
 		namespace System
