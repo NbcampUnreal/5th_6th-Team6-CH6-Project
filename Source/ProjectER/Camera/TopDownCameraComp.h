@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -115,7 +115,7 @@ protected:
 
 	// State
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera|State")
-	bool bIsFreeCamMode = false;
+	bool bIsFreeCamMode = true;
 
 private:
 	FVector2D PendingKeyInput = FVector2D::ZeroVector;
