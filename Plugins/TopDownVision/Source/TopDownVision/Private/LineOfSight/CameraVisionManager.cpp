@@ -89,8 +89,7 @@ void UCameraVisionManager::Initialize()
 	}
 	else
 	{
-		UE_LOG(LOSVision, Warning,
-			TEXT("UCameraVisionManager::UpdateCameraLOS >> CameraLOSInterfaceMaterial is not assigned"));
+		//UE_LOG(LOSVision, Warning, TEXT("UCameraVisionManager::UpdateCameraLOS >> CameraLOSInterfaceMaterial is not assigned"));
 	}
 }
 
