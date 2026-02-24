@@ -6,7 +6,6 @@
 #include "GameplayTagContainer.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
 #include "Monster/Data/MonsterTags.h"
-//#include "Monster/Data/MonsterDataAsset.h"
 #include "BaseMonster.generated.h"
 
 class UGameplayAbility;
@@ -54,6 +53,12 @@ protected:
 	virtual void Tick(float DeltaTime) override;
 
 
+
+public:
+
+	UFUNCTION(BlueprintCallable)
+	void SendStateTreeEvent(FGameplayTag InputTag);
+
 private:
 
 	UFUNCTION()
@@ -83,9 +88,6 @@ private:
 
 	UFUNCTION(BlueprintCallable) // SendAttackRangeEvent();
 	void SendAttackRangeEvent(float AttackRange);
-
-	UFUNCTION(BlueprintCallable) // SendReturnSuccessEvent();
-	void SendReturnSuccessEvent();
 	//
 
 	// HealthBar 변경용
@@ -114,6 +116,8 @@ private:
 
 	void InitCollision();
 
+	void InitStateTree();
+
 	void InitHPBar();
 	//
 
@@ -130,19 +134,13 @@ private:
 	bool HasASCTag(FGameplayTag Tag);
 
 	UFUNCTION(NetMulticast, BlueprintCallable, Reliable)
-	void Multicast_SetDeathCollision();
+	void Multicast_SetCollisionProfileName(FName ProfileName);
 
 	UFUNCTION(BlueprintCallable)
 	void GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGameplayEffect> GE, FGameplayTag Tag, float Amount);
 
 	UFUNCTION(BlueprintCallable)
 	void TryActivateByDynamicTag(FGameplayTag InputTag);
-
-	UFUNCTION(BlueprintCallable)
-	float GetAbilityDelayByTag(FGameplayTag InputTag);
-
-	UFUNCTION(BlueprintCallable)
-	float GetAbilityCoolTimeByTag(FGameplayTag InputTag);
 
 
 public:

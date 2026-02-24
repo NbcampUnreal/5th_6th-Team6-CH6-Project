@@ -55,22 +55,11 @@ ABaseCharacter::ABaseCharacter()
 
 	//now the camera and camera boom is managed in the MainCameraComp.
 	
-	/*CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->SetUsingAbsoluteRotation(true);
-	CameraBoom->TargetArmLength = 800.f;
-	CameraBoom->SetRelativeRotation(FRotator(-60.f, 0.f, 0.f));
-	CameraBoom->bDoCollisionTest = false;
-
-	TopDownCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
-
-	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
-	TopDownCameraComponent->bUsePawnControlRotation = false;*/
-
 	//new camera
 	TopDownCameraComp = CreateDefaultSubobject<UTopDownCameraComp>(TEXT("TopDownCameraComp"));
 	TopDownCameraComp->SetupAttachment(RootComponent);//temp attatchement-> it should follow the owner with lag
-
+	TopDownCameraComp->InitializeCompRequirements();
+	TopDownCameraComp->SetAbsolute(true, true, true);
 
 	/* === 경로 설정 인덱스 초기화  === */
 	CurrentPathIndex = INDEX_NONE;
@@ -425,7 +414,7 @@ void ABaseCharacter::InitAbilitySystem()
 				FGameplayAbilitySpec Spec(AbilityClass, 1);
 
 				// 동적 Input Tag깅 (Enhanced Input과 연동하기 위해 Spec에 태그 추가 가능)
-				Spec.DynamicAbilityTags.AddTag(InputTag);
+				Spec.GetDynamicSpecSourceTags().AddTag(InputTag);
 
 				ASC->GiveAbility(Spec);
 			}
@@ -483,7 +472,7 @@ void ABaseCharacter::InitAttributes()
 				}
 				else
 				{
-					UE_LOG(LogTemp, Warning, TEXT("Curve Row Not Found: %s"), *RowName.ToString());
+					// UE_LOG(LogTemp, Warning, TEXT("Curve Row Not Found: %s"), *RowName.ToString());
 				}
 			};
 
@@ -642,18 +631,21 @@ void ABaseCharacter::MoveToLocation(FVector TargetLocation)
 		CurrentPathIndex = 1;
 		SetActorTickEnabled(true);
 		
-		FGameplayTag MoveTag = FGameplayTag::RequestGameplayTag(FName("State.Action.Move"));
-		if (!AbilitySystemComponent->HasMatchingGameplayTag(MoveTag))
+		if (AbilitySystemComponent.IsValid() && MovingStateEffectClass)
 		{
-			FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
-			Context.AddSourceObject(this);
-                
-			FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(MovingStateEffectClass, 1.0f, Context);
-			if (SpecHandle.IsValid())
+			FGameplayTag MoveTag = FGameplayTag::RequestGameplayTag(FName("State.Action.Move"));
+			if (!AbilitySystemComponent->HasMatchingGameplayTag(MoveTag))
 			{
-				// Handle 저장
-				MovingEffectHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-			}
+				FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+				Context.AddSourceObject(this);
+                
+				FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(MovingStateEffectClass, 1.0f, Context);
+				if (SpecHandle.IsValid())
+				{
+					// Handle 저장
+					MovingEffectHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+				}
+			}	
 		}
 	}
 	else

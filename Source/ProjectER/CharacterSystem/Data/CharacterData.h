@@ -30,8 +30,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
 	TSoftObjectPtr<UAnimMontage> DeathMontage;
 	
-	// 기본 스킬 (일반 공격 : Auto Attack)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|AutoAttack")
+	// 기본 스킬 (일반 공격, 아군 살리기 등)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TMap<FGameplayTag, TSoftClassPtr<UGameplayAbility>> Abilities;
 	
 	// 원거리 발사체 클래스
