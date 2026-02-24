@@ -134,7 +134,7 @@ private:
 	bool HasASCTag(FGameplayTag Tag);
 
 	UFUNCTION(NetMulticast, BlueprintCallable, Reliable)
-	void Multicast_SetDeathCollision();
+	void Multicast_SetCollisionProfileName(FName ProfileName);
 
 	UFUNCTION(BlueprintCallable)
 	void GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGameplayEffect> GE, FGameplayTag Tag, float Amount);

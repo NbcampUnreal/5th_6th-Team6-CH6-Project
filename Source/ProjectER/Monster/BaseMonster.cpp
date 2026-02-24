@@ -341,10 +341,9 @@ void ABaseMonster::OnMoveSpeedChangedHandle(float OldSpeed, float NewSpeed)
 	GetCharacterMovement()->MaxWalkSpeed = NewSpeed;
 }
 
-void ABaseMonster::Multicast_SetDeathCollision_Implementation()
+void ABaseMonster::Multicast_SetCollisionProfileName_Implementation(FName ProfileName)
 {
-	// WorldStatic하고만 충돌
-	GetCapsuleComponent()->SetCollisionProfileName("Spectator");
+	GetCapsuleComponent()->SetCollisionProfileName(ProfileName);
 }
 
 void ABaseMonster::InitHPBar()
