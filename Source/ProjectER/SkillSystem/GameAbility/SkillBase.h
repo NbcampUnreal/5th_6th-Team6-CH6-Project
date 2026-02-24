@@ -42,7 +42,6 @@ protected:
 	FGameplayTag GetInputTag();
 	ETargetRelationship GetSkillTargetRelationship();
 	bool IsValidRelationship(AActor* Target);
-	bool ValidateCachedConfig(const FString& CallerName);
 
 	UFUNCTION()
 	void OnActiveTagEventReceived(FGameplayEventData Payload);

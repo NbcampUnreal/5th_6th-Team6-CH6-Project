@@ -238,17 +238,6 @@ bool USkillBase::IsValidRelationship(AActor* Target)
 	return false;
 }
 
-bool USkillBase::ValidateCachedConfig(const FString& CallerName)
-{
-	if (!IsValid(CachedConfig))
-	{
-		UE_LOG(LogTemp, Error, TEXT("[%s -> %s]: CachedConfig가 유효하지 않습니다."), *CallerName, ANSI_TO_TCHAR(__FUNCTION__));
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
-		return false;
-	}
-	return true;
-}
-
 void USkillBase::FinishSkill()
 {
 	SetSkillTagCount(ActiveTag, 0);
