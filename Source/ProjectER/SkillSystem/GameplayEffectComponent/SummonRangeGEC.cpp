@@ -93,8 +93,6 @@ void USummonRangeGEC::OnGameplayEffectExecuted(FActiveGameplayEffectsContainer& 
 	if (!IsValid(DeferredSpawnedActor)) return;
 	ABaseRangeOverlapEffectActor* RangeActor = Cast<ABaseRangeOverlapEffectActor>(DeferredSpawnedActor);
 
-	USummonRangeByWorldOriginGECConfig* Cached = Cast<USummonRangeByWorldOriginGECConfig>(GetConfig());
-
 	if (IsValid(RangeActor))
 	{
 		TArray<FGameplayEffectSpecHandle> InitGEHandles;

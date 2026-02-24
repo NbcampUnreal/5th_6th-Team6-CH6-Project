@@ -17,7 +17,8 @@ public:
 	ABoxRangeOverlapEffectActor();
 
 protected:
-	virtual void ApplyCollisionSize(float InCollisionSize) override;
+	virtual void ApplyCollisionSize(const FVector& InCollisionSize) override;
+	virtual void BeginPlay() override;
 
 private:
 	UPROPERTY(VisibleAnywhere, Category = "Collision")

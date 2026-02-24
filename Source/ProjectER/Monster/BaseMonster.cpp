@@ -42,10 +42,11 @@ ABaseMonster::ABaseMonster()
 	// Collision 설정
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Pawn"));
+	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Spectator"));
 
 	HitBoxComp = CreateDefaultSubobject<UBoxComponent>(TEXT("HitBoxComponent"));
 	HitBoxComp->SetupAttachment(RootComponent);
+	HitBoxComp->SetCollisionProfileName(TEXT("Spectator"));
 
 	// ASC 복제, 데이터 Minimal로 되는지 확인 필요
 	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -83,15 +84,11 @@ void ABaseMonster::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(ABaseMonster, MonsterId);
-	//DOREPLIFETIME(ABaseMonster, TargetPlayer);
-	//DOREPLIFETIME(ABaseMonster, StartLocation);
-	//DOREPLIFETIME(ABaseMonster, StartRotator);
 	DOREPLIFETIME(ABaseMonster, bIsCombat);
 	DOREPLIFETIME(ABaseMonster, bIsDead);
-	//DOREPLIFETIME(ABaseMonster, bIsAttackOnCooldown);
-	//DOREPLIFETIME(ABaseMonster, bIsQSkillOnCooldown);
 	DOREPLIFETIME(ABaseMonster, TeamID);
+	DOREPLIFETIME(ABaseMonster, MonsterId);
+	DOREPLIFETIME(ABaseMonster, MonsterLevel);
 }
 
 void ABaseMonster::PossessedBy(AController* newController)
@@ -148,22 +145,13 @@ void ABaseMonster::Tick(float DeltaTime)
 
 void ABaseMonster::InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level)
 {
-	InitMonsterDataLoading(MonsterAssetId, Level);
-	MonsterLevel = Level;
 	MonsterId = MonsterAssetId;
+	MonsterLevel = Level;
+	InitMonsterDataLoading(MonsterAssetId, Level);
 }
 
 void ABaseMonster::InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float Level)
 {
-	////if (GetNetMode() == ENetMode::NM_Client)
-	////{
-	////	UE_LOG(LogTemp, Error, TEXT("InitMonsterData : Client"));
-	////}
-	////else
-	////{
-	////	UE_LOG(LogTemp, Error, TEXT("InitMonsterData : Server"));
-	////}
-
 	UAssetManager::Get().LoadPrimaryAsset(MonsterAssetId,
 		TArray<FName>(),
 		FStreamableDelegate::CreateUObject(
@@ -173,7 +161,7 @@ void ABaseMonster::InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float 
 			Level
 		));
 }
-// 모든곳에서 호출
+
 void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Level)
 {
 	MonsterData = Cast<UMonsterDataAsset>(
@@ -181,16 +169,17 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 	);
 	if (IsValid(MonsterData) == false)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitMonsterData - MonsterData is Not Valid!"));
+		UE_LOG(LogTemp, Error, TEXT("ABaseMonster::InitMonsterData - MonsterData is Not Valid!"));
 	}
 
 	InitVisuals();
+	InitCollision();
+
 	if (HasAuthority())
 	{
 		ASC->AddLooseGameplayTag(MonsterData->AttackType);
 		InitAttributes(Level);
 		InitGiveAbilities();
-		// 데이터 로드 완료 후 실행
 		StateTreeComp->StartLogic();
 	}
 }
@@ -255,8 +244,8 @@ void ABaseMonster::InitAttributes(float Level)
 		if (MaxHealth)
 		{
 			AttributeSet->SetMaxHealth(MonsterRow->BaseMaxHealth + MaxHealth->Eval(Level));
+			AttributeSet->SetHealth(MonsterRow->BaseMaxHealth + MaxHealth->Eval(Level));
 		}
-		AttributeSet->SetHealth(MonsterRow->BaseMaxHealth);
 		AttributeSet->SetHealthRegen(MonsterRow->BaseHealthRegen);
 		AttributeSet->SetStamina(MonsterRow->BaseMaxStamina);
 		AttributeSet->SetMaxStamina(MonsterRow->BaseMaxStamina);
@@ -297,9 +286,6 @@ void ABaseMonster::InitVisuals()
 		return;
 	}
 	GetMesh()->SetSkeletalMesh(MonsterData->Mesh.Get());
-	GetMesh()->SetRelativeScale3D(MonsterData->MeshScale);
-	GetCapsuleComponent()->SetCapsuleSize(MonsterData->CollisionRadius, MonsterData->CapsuleHalfHeight);
-	HitBoxComp->SetBoxExtent(MonsterData->HitBoxExtent);
 
 	if (IsValid(MonsterData->Anim) == false || !GetMesh())
 	{
@@ -307,6 +293,15 @@ void ABaseMonster::InitVisuals()
 		return;
 	}
 	GetMesh()->SetAnimInstanceClass(MonsterData->Anim.Get());
+}
+
+void ABaseMonster::InitCollision()
+{
+	GetMesh()->SetRelativeScale3D(MonsterData->MeshScale);
+	GetCapsuleComponent()->SetCapsuleSize(MonsterData->CollisionRadius, MonsterData->CapsuleHalfHeight);
+	GetCapsuleComponent()->SetCollisionProfileName("MonsterObjectCollision");
+	HitBoxComp->SetBoxExtent(MonsterData->HitBoxExtent);
+	HitBoxComp->SetCollisionProfileName("MonsterTraceCollision");
 }
 
 void ABaseMonster::OnRep_IsCombat()
@@ -325,7 +320,7 @@ void ABaseMonster::OnRep_IsDead()
 	}
 }
 
-void ABaseMonster::OnRep_MonsterId()
+void ABaseMonster::OnRep_MonsterData()
 {
 	InitMonsterDataLoading(MonsterId, MonsterLevel);
 }
@@ -345,7 +340,8 @@ void ABaseMonster::OnMoveSpeedChangedHandle(float OldSpeed, float NewSpeed)
 
 void ABaseMonster::Multicast_SetDeathCollision_Implementation()
 {
-	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+	// WorldStatic하고만 충돌
+	GetCapsuleComponent()->SetCollisionProfileName("Spectator");
 }
 
 void ABaseMonster::InitHPBar()
@@ -364,8 +360,6 @@ void ABaseMonster::InitHPBar()
 	HPBar->SetPercent(1.f);
 }
 
-
-
 // 서버에서만
 void ABaseMonster::OnMonterHitHandle(AActor* Target)
 {
@@ -383,13 +377,13 @@ void ABaseMonster::OnMonterHitHandle(AActor* Target)
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnMonterHitHandle : Not StateTree"));
 		return;
 	}
-	if (HitEventTag.IsValid() == false)
+	if (MonsterTags.HitEventTag.IsValid() == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnMonterHitHandle : Not HitEventTag"));
 		return;
 	}
 
-	StateTreeComp->SendStateTreeEvent(FStateTreeEvent(HitEventTag));
+	StateTreeComp->SendStateTreeEvent(FStateTreeEvent(MonsterTags.HitEventTag));
 }
 
 void ABaseMonster::OnMonterDeathHandle(AActor* Target)
@@ -410,7 +404,7 @@ void ABaseMonster::OnMonterDeathHandle(AActor* Target)
 	//아이템 박스 초기화;
 	LootableComp->InitializeWithItems(MonsterData->ItemList);
 	//보상 지급
-	GameplayEffectSetByCaller(Target, XPRewardEffect, IncomingXPTag, MonsterData->Exp);
+	GameplayEffectSetByCaller(Target, XPRewardEffect, MonsterTags.IncomingXPTag, MonsterData->Exp);
 }
 
 void ABaseMonster::GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGameplayEffect> GE, FGameplayTag Tag, float Amount)
@@ -438,7 +432,7 @@ void ABaseMonster::GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGamepl
 		Tag,
 		Amount
 	);
-	UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::GiveRewardsToPlayer : XP %f"), Amount);
+
 	TargetASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
 }
 
@@ -456,11 +450,11 @@ void ABaseMonster::TryActivateByDynamicTag(FGameplayTag InputTag)
 
 float ABaseMonster::GetAbilityDelayByTag(FGameplayTag InputTag)
 {
-	if (InputTag == AttackAbilityTag)
+	if (InputTag == MonsterTags.AttackAbilityTag)
 	{
 		return AttributeSet->GetAttackDelay();
 	}
-	else if (InputTag == QSkillAbilityTag)
+	else if (InputTag == MonsterTags.QSkillAbilityTag)
 	{
 		return AttributeSet->GetQSkillDelay();
 	}
@@ -470,24 +464,17 @@ float ABaseMonster::GetAbilityDelayByTag(FGameplayTag InputTag)
 
 float ABaseMonster::GetAbilityCoolTimeByTag(FGameplayTag InputTag)
 {
-	if (InputTag == AttackAbilityTag)
+	if (InputTag == MonsterTags.AttackAbilityTag)
 	{
 		return AttributeSet->GetAttackSpeed();
 	}
-	else if (InputTag == QSkillAbilityTag)
+	else if (InputTag == MonsterTags.QSkillAbilityTag)
 	{
 		return AttributeSet->GetQSkillCoolTime();
 	}
 	UE_LOG(LogTemp, Error, TEXT("Not GetAbilityDelayByTag"));
 	return 0.0f;
 }
-
-//void ABaseMonster::CooldownCheck()
-//{
-//	// 쿨타임 체크
-//	bIsAttackOnCooldown = ASC->HasMatchingGameplayTag(AutoAttackCooldownTag);
-//	bIsQSkillOnCooldown = ASC->HasMatchingGameplayTag(QSkillCooldownTag);
-//}
 
 void ABaseMonster::OnCooldown(FGameplayTag CooldownTag, float Cooldown)
 {
@@ -522,7 +509,7 @@ void ABaseMonster::OnTargetLostHandle()
 	{
 		BC->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
 	}
-	StateTreeComp->SendStateTreeEvent(FGameplayTag(TargetOffEventTag));
+	StateTreeComp->SendStateTreeEvent(FGameplayTag(MonsterTags.TargetOffEventTag));
 	TargetPlayer = nullptr;
 }
 
@@ -534,8 +521,8 @@ void ABaseMonster::OnPlayerCountOneHandle()
 		return;
 	}
 	FGameplayEventData* Payload = new FGameplayEventData();
-	ASC->HandleGameplayEvent(BeginSearchEventTag, Payload);
-	StateTreeComp->SendStateTreeEvent(BeginSearchEventTag);
+	ASC->HandleGameplayEvent(MonsterTags.BeginSearchEventTag, Payload);
+	StateTreeComp->SendStateTreeEvent(MonsterTags.BeginSearchEventTag);
 }  
 
 void ABaseMonster::OnPlayerCountZeroHandle()
@@ -549,8 +536,8 @@ void ABaseMonster::OnPlayerCountZeroHandle()
 	if (bIsCombat == false)
 	{
 		FGameplayEventData* Payload = new FGameplayEventData();
-		ASC->HandleGameplayEvent(FGameplayTag(EndSearchEventTag), Payload);
-		StateTreeComp->SendStateTreeEvent(FStateTreeEvent(EndSearchEventTag));
+		ASC->HandleGameplayEvent(FGameplayTag(MonsterTags.EndSearchEventTag), Payload);
+		StateTreeComp->SendStateTreeEvent(FStateTreeEvent(MonsterTags.EndSearchEventTag));
 	}
 }
 
@@ -562,20 +549,18 @@ void ABaseMonster::SendAttackRangeEvent(float AttackRange)
 		return;
 	}
 	
-	//CooldownCheck();
-	
 	const float Distance = FVector::DistSquared(
 			TargetPlayer->GetActorLocation(), GetActorLocation());
 
 	if (Distance <= AttackRange * AttackRange)
 	{
 		// 공격
-		StateTreeComp->SendStateTreeEvent(FGameplayTag(AttackEventTag));
+		StateTreeComp->SendStateTreeEvent(FGameplayTag(MonsterTags.AttackEventTag));
 	}
 	else
 	{
 		// 다시 체이스
-		StateTreeComp->SendStateTreeEvent(FGameplayTag(TargetOnEventTag));
+		StateTreeComp->SendStateTreeEvent(FGameplayTag(MonsterTags.TargetOnEventTag));
 	}
 }
 
@@ -586,7 +571,7 @@ bool ABaseMonster::HasASCTag(FGameplayTag Tag)
 
 void ABaseMonster::SendReturnSuccessEvent()
 {
-	StateTreeComp->SendStateTreeEvent(FGameplayTag(ReturnEventTag));
+	StateTreeComp->SendStateTreeEvent(FGameplayTag(MonsterTags.ReturnEventTag));
 }
 
 UStateTreeComponent* ABaseMonster::GetStateTreeComponent()
@@ -632,6 +617,14 @@ ETeamType ABaseMonster::GetTeamType() const
 
 bool ABaseMonster::IsTargetable() const
 {
+	if (IsValid(ASC))
+	{
+		if (ASC->HasMatchingGameplayTag(MonsterTags.DeathStateTag))
+		{
+			return false;
+		}
+	}
+
 	return true;
 }
 
@@ -676,10 +669,10 @@ void ABaseMonster::Death()
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnMonterDeathHandle : Not StateTree"));
 		return;
 	}
-	if (DeathEventTag.IsValid() == false)
+	if (MonsterTags.DeathEventTag.IsValid() == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnMonterDeathHandle : Not DeathEventTag"));
 		return;
 	}
-	StateTreeComp->SendStateTreeEvent(FStateTreeEvent(DeathEventTag));
+	StateTreeComp->SendStateTreeEvent(FStateTreeEvent(MonsterTags.DeathEventTag));
 }

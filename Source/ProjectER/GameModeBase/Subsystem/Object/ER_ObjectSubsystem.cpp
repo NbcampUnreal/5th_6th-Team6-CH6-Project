@@ -1,6 +1,7 @@
 ﻿#include "GameModeBase/Subsystem/Object/ER_ObjectSubsystem.h"
 #include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_GameState.h"
+#include "GameModeBase/PointActor/ER_PointActor.h"
 #include "Kismet/GameplayStatics.h"
 
 
@@ -108,7 +109,7 @@ void UER_ObjectSubsystem::InitializeObjectPoints(TMap<FName, FObjectClassConfig>
     UE_LOG(LogTemp, Log, TEXT("[OSS] InitializeObjectPoints End. SupplyPoint Count : %d , BossPoint Count : %d"), SupplyPointsByRegion.Num(), BossPoints.Num());
 }
 
-void UER_ObjectSubsystem::SpawnSupplyOjbect()
+void UER_ObjectSubsystem::PickSupplySpawnIndex()
 {
     UWorld* World = GetWorld();
     if (!World || World->GetNetMode() == NM_Client)
@@ -116,6 +117,8 @@ void UER_ObjectSubsystem::SpawnSupplyOjbect()
 
     if (!bIsInitialized)
         return;
+
+    PendingSupplyPicks.Reset();
 
     for (auto& Pair : SupplyPointsByRegion)
     {
@@ -127,20 +130,73 @@ void UER_ObjectSubsystem::SpawnSupplyOjbect()
 
         for (int32 i = 0; i < Infos.Num(); ++i)
         {
-            if (!Infos[i].bIsSpawned && Infos[i].ObjectClass && IsValid(Infos[i].SpawnPoint.Get()))
+            // 이미 스폰 됐거나, 예약 상태라면 제외
+            if (!Infos[i].bIsSpawned && !Infos[i].bIsReserved
+                && Infos[i].ObjectClass
+                && IsValid(Infos[i].SpawnPoint.Get()))
+            {
                 Candidates.Add(i);
+            }
         }
 
         if (Candidates.Num() == 0)
             continue;
 
         const int32 PickIdx = Candidates[FMath::RandRange(0, Candidates.Num() - 1)];
-        FObjectInfo& Picked = Infos[PickIdx];
 
-        const FTransform SpawnTM = Picked.SpawnPoint->GetActorTransform();
+        FSupplySpawnPick Info;
+        Info.Region = Region;
+        Info.Index = PickIdx;
+
+        // 예약으로 변경
+        Infos[PickIdx].bIsReserved = true;
+        PendingSupplyPicks.Add(Info);
+
+        if (AER_PointActor* PA = Cast<AER_PointActor>(Infos[PickIdx].SpawnPoint.Get()))
+        {
+            PA->SetSelectedVisual(true);
+        }
+    }
+}
+
+void UER_ObjectSubsystem::SpawnSupplyOjbect()
+{
+    UWorld* World = GetWorld();
+    if (!World || World->GetNetMode() == NM_Client)
+        return;
+
+    if (!bIsInitialized)
+        return;
+
+    if (PendingSupplyPicks.Num() == 0)
+        return;
+
+    for (int32 p = PendingSupplyPicks.Num() - 1; p >= 0; --p)
+    {
+        const FSupplySpawnPick Pick = PendingSupplyPicks[p];
+
+        TArray<FObjectInfo>* InfosPtr = SupplyPointsByRegion.Find(Pick.Region);
+        if (!InfosPtr || !InfosPtr->IsValidIndex(Pick.Index))
+        {
+            PendingSupplyPicks.RemoveAtSwap(p);
+            continue;
+        }
+
+        FObjectInfo& Info = (*InfosPtr)[Pick.Index];
+
+        // 스폰 직전 재검증
+        if (Info.bIsSpawned || !Info.ObjectClass || !IsValid(Info.SpawnPoint.Get()))
+        {
+            // 실패 시 예약 해제
+            Info.bIsReserved = false;
+            PendingSupplyPicks.RemoveAtSwap(p);
+            continue;
+        }
+
+        const FTransform SpawnTM = Info.SpawnPoint->GetActorTransform();
 
         AActor* Spawned = World->SpawnActorDeferred<AActor>(
-            Picked.ObjectClass,
+            Info.ObjectClass,
             SpawnTM,
             nullptr,
             nullptr,
@@ -148,11 +204,24 @@ void UER_ObjectSubsystem::SpawnSupplyOjbect()
         );
 
         if (!Spawned)
+        {
+            Info.bIsReserved = false;
+            PendingSupplyPicks.RemoveAtSwap(p);
             continue;
+        }
 
         UGameplayStatics::FinishSpawningActor(Spawned, SpawnTM);
 
-        Picked.bIsSpawned = true;
+        // 스폰 완료 시 예약 해제
+        Info.bIsSpawned = true;
+        Info.bIsReserved = false;
+
+        if (AER_PointActor* PA = Cast<AER_PointActor>(Info.SpawnPoint.Get()))
+        {
+            PA->SetSelectedVisual(false);
+        }
+
+        PendingSupplyPicks.RemoveAtSwap(p);
     }
 }
 

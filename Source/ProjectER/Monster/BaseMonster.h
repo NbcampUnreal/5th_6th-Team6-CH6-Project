@@ -5,6 +5,8 @@
 #include "AbilitySystemInterface.h"
 #include "GameplayTagContainer.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
+#include "Monster/Data/MonsterTags.h"
+//#include "Monster/Data/MonsterDataAsset.h"
 #include "BaseMonster.generated.h"
 
 class UGameplayAbility;
@@ -61,8 +63,7 @@ private:
 	void OnRep_IsDead();
 
 	UFUNCTION()
-	void OnRep_MonsterId();
-
+	void OnRep_MonsterData();
 	
 	// 이벤트 태그
 	UFUNCTION() // SendHitEvent()
@@ -111,6 +112,8 @@ private:
 
 	void InitVisuals();
 
+	void InitCollision();
+
 	void InitHPBar();
 	//
 
@@ -121,8 +124,6 @@ private:
 	void AddCooldownTag(FGameplayTag CooldownTag);
 
 	void RemoveCooldownTag(FGameplayTag CooldownTag);
-
-	//void CooldownCheck();
 	//
 
 	UFUNCTION(BlueprintCallable)
@@ -146,23 +147,20 @@ private:
 
 public:
 	// 블루프린트에서 사용중
-	UPROPERTY(/*Replicated, */BlueprintReadOnly, Category = "MonsterData")
+	UPROPERTY(BlueprintReadOnly, Category = "MonsterData")
 	TObjectPtr<UMonsterDataAsset> MonsterData;
 private:
-	// 해당값이 복제되면 클라이언트에서 데이터에셋 로드
-	UPROPERTY(ReplicatedUsing = OnRep_MonsterId)
+	UPROPERTY(ReplicatedUsing = OnRep_MonsterData)
 	FPrimaryAssetId MonsterId;
 
+	UPROPERTY(Replicated)
 	float MonsterLevel;
-
 
 
 public:
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<ULootableComponent> LootableComp;
 private:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UStateTreeComponent> StateTreeComp;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UMonsterRangeComponent> MonsterRangeComp;
@@ -180,111 +178,21 @@ private:
 	TObjectPtr<UBoxComponent> HitBoxComp;
 
 
-#pragma region SetByCall Tag
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Status", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag IncomingXPTag;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<UGameplayEffect> XPRewardEffect;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
+	FMonsterTags MonsterTags;
 
-#pragma endregion
+	TMap<FGameplayTag, FTimerHandle> CooldownTimerMap;
 
-#pragma region Ability Tag
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag DeathAbilityTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag ChaseAbilityTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag ReturnAbilityTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag SitAbilityTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag IdleAbilityTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag CombatAbilityTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag AttackAbilityTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Ability", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag QSkillAbilityTag;
-
-#pragma endregion
-
-#pragma region Cooldown Tag
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Cooldown", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag AutoAttackCooldownTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Cooldown", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag QSkillCooldownTag;
-
-#pragma endregion
-
-#pragma region Event Tag
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Event", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag AttackEventTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Event", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag HitEventTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Event", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag DeathEventTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Event", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag BeginSearchEventTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Event", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag EndSearchEventTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Event", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag TargetOnEventTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Event", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag TargetOffEventTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|Event", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag ReturnEventTag;
-
-#pragma endregion
-
-#pragma region State Tag
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|State", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag AliveStateTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|State", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag DeathStateTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|State", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag SitStateTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|State", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag IdleStateTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|State", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag CombatStateTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|State", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag MoveStateTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|State", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag AttackStateTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Tag|State", meta = (AllowPrivateAccess = "true"))
-	FGameplayTag ReturnStateTag;
-
-#pragma endregion 
 
 #pragma region StateTree
+
+private:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UStateTreeComponent> StateTreeComp;
 
 	// 서버에서 복제
 	UPROPERTY(BlueprintReadOnly, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
@@ -302,19 +210,11 @@ private:
 	UPROPERTY(ReplicatedUsing = OnRep_IsDead, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	bool bIsDead;
 
-	//UPROPERTY(BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
-	//bool bIsAttackOnCooldown = true;
-
-	//UPROPERTY(BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
-	//bool bIsQSkillOnCooldown = true;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	float FirstAttackUtility = 1.f;
 
 #pragma endregion
 
-#pragma region Timer
-
-	TMap<FGameplayTag, FTimerHandle> CooldownTimerMap;
-
-#pragma endregion
 
 #pragma region TargetableInterface
 public:

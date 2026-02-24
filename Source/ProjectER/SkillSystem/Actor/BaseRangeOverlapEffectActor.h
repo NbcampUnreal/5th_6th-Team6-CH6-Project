@@ -21,11 +21,11 @@ public:
 	// Sets default values for this actor's properties
 	ABaseRangeOverlapEffectActor();
 
-	void InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, float InCollisionSize, bool bInHitOncePerTarget);
+	void InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget);
 
 protected:
 	virtual void BeginPlay() override;
-	virtual void ApplyCollisionSize(float InCollisionSize);
+	virtual void ApplyCollisionSize(const FVector& InCollisionSize);
 	void SetCollisionComponent(UShapeComponent* InCollisionComponent);
 
 	UFUNCTION()
@@ -44,6 +44,12 @@ protected:
 
 	UPROPERTY()
 	bool bHitOncePerTarget = true;
+
+	UPROPERTY()
+	FVector PendingCollisionSize = FVector::ZeroVector;
+
+	UPROPERTY()
+	bool bHasPendingCollisionSize = false;
 
 	UPROPERTY()
 	TSet<TObjectPtr<AActor>> HitActors;

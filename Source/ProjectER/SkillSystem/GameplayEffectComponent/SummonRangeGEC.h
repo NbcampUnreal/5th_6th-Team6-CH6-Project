@@ -33,7 +33,7 @@ public:
 	FRotator SpawnRotation = FRotator::ZeroRotator;
 
 	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
-	float CollisionRadius = 100.0f;
+	FVector CollisionRadius = FVector(100.0f);
 
 	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
 	bool bHitOncePerTarget = true;
