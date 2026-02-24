@@ -70,8 +70,7 @@ void UCameraVisionManager::Initialize()
 	}
 	else
 	{
-		UE_LOG(LOSVision, Warning,
-			TEXT("UCameraVisionManager::UpdateCameraLOS >> PostProcessMPC instance not found!"));
+		//UE_LOG(LOSVision, Warning, TEXT("UCameraVisionManager::UpdateCameraLOS >> PostProcessMPC instance not found!"));
 	}
 
 	//Make a MID which will draw the Layered CRT
