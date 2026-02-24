@@ -3,10 +3,10 @@
 #include "CoreMinimal.h"
 #include "Animation/AnimNotifies/AnimNotify.h"
 #include "GameplayTagContainer.h"
-#include "AnimNotify_SendEventTag.generated.h"
+#include "AnimNotify_SendStateTreeEventTag.generated.h"
 
 UCLASS()
-class PROJECTER_API UAnimNotify_SendEventTag : public UAnimNotify
+class PROJECTER_API UAnimNotify_SendStateTreeEventTag : public UAnimNotify
 {
 	GENERATED_BODY()
 	

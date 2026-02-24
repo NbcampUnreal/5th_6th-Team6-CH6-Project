@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "GameplayTagContainer.h"
+#include "StateTree.h"
 #include "MonsterDataAsset.generated.h"
 
 class UGameplayAbility;
@@ -45,6 +46,10 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Stat")
 	TObjectPtr<UCurveTable> MonsterCurveTable;
+
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Stat")
+	TObjectPtr<UStateTree> MonsterStateTree;;
+
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|GAS")
 	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;

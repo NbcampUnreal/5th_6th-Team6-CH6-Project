@@ -180,7 +180,7 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 		ASC->AddLooseGameplayTag(MonsterData->AttackType);
 		InitAttributes(Level);
 		InitGiveAbilities();
-		StateTreeComp->StartLogic();
+		InitStateTree();
 	}
 }
 
@@ -272,9 +272,6 @@ void ABaseMonster::InitAttributes(float Level)
 		AttributeSet->SetMoveSpeed(MonsterRow->BaseMoveSpeed);
 		AttributeSet->SetCooldownReduction(MonsterRow->BaseCooldownReduction);
 		AttributeSet->SetTenacity(MonsterRow->BaseTenacity);
-		AttributeSet->SetAttackDelay(MonsterRow->BaseAttackDelay);
-		AttributeSet->SetQSkillCoolTime(MonsterRow->BaseQSkillCoolTime);
-		AttributeSet->SetQSkillDelay(MonsterRow->BaseQSkillDelay);
 	}
 }
 
@@ -302,6 +299,12 @@ void ABaseMonster::InitCollision()
 	GetCapsuleComponent()->SetCollisionProfileName("MonsterObjectCollision");
 	HitBoxComp->SetBoxExtent(MonsterData->HitBoxExtent);
 	HitBoxComp->SetCollisionProfileName("MonsterTraceCollision");
+}
+
+void ABaseMonster::InitStateTree()
+{
+	StateTreeComp->SetStateTree(MonsterData->MonsterStateTree);
+	StateTreeComp->StartLogic();
 }
 
 void ABaseMonster::OnRep_IsCombat()
@@ -448,34 +451,6 @@ void ABaseMonster::TryActivateByDynamicTag(FGameplayTag InputTag)
 	}
 }
 
-float ABaseMonster::GetAbilityDelayByTag(FGameplayTag InputTag)
-{
-	if (InputTag == MonsterTags.AttackAbilityTag)
-	{
-		return AttributeSet->GetAttackDelay();
-	}
-	else if (InputTag == MonsterTags.QSkillAbilityTag)
-	{
-		return AttributeSet->GetQSkillDelay();
-	}
-	UE_LOG(LogTemp, Error, TEXT("Not GetAbilityDelayByTag"));
-	return 0.0f;
-}
-
-float ABaseMonster::GetAbilityCoolTimeByTag(FGameplayTag InputTag)
-{
-	if (InputTag == MonsterTags.AttackAbilityTag)
-	{
-		return AttributeSet->GetAttackSpeed();
-	}
-	else if (InputTag == MonsterTags.QSkillAbilityTag)
-	{
-		return AttributeSet->GetQSkillCoolTime();
-	}
-	UE_LOG(LogTemp, Error, TEXT("Not GetAbilityDelayByTag"));
-	return 0.0f;
-}
-
 void ABaseMonster::OnCooldown(FGameplayTag CooldownTag, float Cooldown)
 {
 	AddCooldownTag(CooldownTag);
@@ -569,9 +544,19 @@ bool ABaseMonster::HasASCTag(FGameplayTag Tag)
 	return ASC && ASC->HasMatchingGameplayTag(Tag);
 }
 
-void ABaseMonster::SendReturnSuccessEvent()
+void ABaseMonster::SendStateTreeEvent(FGameplayTag InputTag)
 {
-	StateTreeComp->SendStateTreeEvent(FGameplayTag(MonsterTags.ReturnEventTag));
+	if (IsValid(StateTreeComp) == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::SendStateTreeEvent : Not StateTreeComp"));
+		return;
+	}
+	if (StateTreeComp->IsRunning() == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::SendStateTreeEvent : Not StateTreeComp Running"));
+		return;
+	}
+	StateTreeComp->SendStateTreeEvent(InputTag);
 }
 
 UStateTreeComponent* ABaseMonster::GetStateTreeComponent()
