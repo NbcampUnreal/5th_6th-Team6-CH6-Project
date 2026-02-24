@@ -31,22 +31,21 @@ USkillBase::USkillBase()
 	ActivationBlockedTags.AddTag(ActiveTag);
 }
 
+void USkillBase::SetSkillTagCount(FGameplayTag Tag, int32 Count)
+{
+	if (Tag.IsValid() && GetASC()) GetASC()->SetTagMapCount(Tag, Count);
+}
+
 void USkillBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-	//UE_LOG(LogTemp, Warning, TEXT("ActivateAbility"));
 }
 
 void USkillBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
-	//UE_LOG(LogTemp, Warning, TEXT("EndAbility"));
-	if (bWasCancelled == true)
-	{
-		OnCancelAbility();
-	}
-
-	RemoveTagFromOwner(CastingTag);
-	RemoveTagFromOwner(ActiveTag);
+	if(bWasCancelled) OnCancelAbility();
+	SetSkillTagCount(CastingTag, 0);
+	SetSkillTagCount(ActiveTag, 0);
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
@@ -54,16 +53,9 @@ void USkillBase::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const
 {
 	Super::OnGiveAbility(ActorInfo, Spec);
 
-	if (Spec.SourceObject.IsValid())
-	{
-		USkillDataAsset* SkillDataAsset = Cast<USkillDataAsset>(Spec.SourceObject);
-		if (IsValid(SkillDataAsset))
-		{
-			CachedConfig = SkillDataAsset->SkillConfig;
-		}
-	}
+	USkillDataAsset* DataAsset = Cast<USkillDataAsset>(Spec.SourceObject);
+	CachedConfig = IsValid(DataAsset) ? DataAsset->SkillConfig : nullptr;
 }
-
 
 //void USkillBase::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 //{
@@ -72,114 +64,35 @@ void USkillBase::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const
 
 void USkillBase::ExecuteSkill()
 {
-	/*if (IsValid(CachedConfig) == false || CachedConfig->GetExcutionEffects().Num() <= 0) return;
+	auto* ASC = GetASC();
+	auto* Avatar = GetAvatar();
 
-	if (CanActivateAbility(CurrentSpecHandle, CurrentActorInfo))
-	{
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
-		return;
-	}
+	// 유효성 검사: 한 줄씩 끊어서 가독성 확보
+	if (!IsValid(CachedConfig)) { EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true); return; }
+	if (!ASC || !Avatar) return;
+	if (!CanActivateAbility(CurrentSpecHandle, CurrentActorInfo)) { EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false); return; }
 
-	AddTagToOwner(ActiveTag);
-
-	AActor* Avatar = GetAvatarActorFromActorInfo();
-	if (IsValid(Avatar) == false) return;
+	// 메인 로직: 들여쓰기 없이 평탄하게 진행
+	SetSkillTagCount(ActiveTag, 1);
+	ApplyEffectsToActor(Avatar, CachedConfig->GetExcutionEffects());
 
 	if (HasAuthority(&CurrentActivationInfo))
 	{
-		UAbilitySystemComponent* InstigatorASC = GetAbilitySystemComponentFromActorInfo();
-		if (!IsValid(InstigatorASC))
-		{
-			FinishSkill();
-			return;
-		}
-
-		const TArray<TObjectPtr<USkillEffectDataAsset>>& ExecutionEffects = CachedConfig->GetExcutionEffects();
-		for (USkillEffectDataAsset* EffectData : ExecutionEffects)
-		{
-			if (!EffectData) continue;
-
-			TArray<FGameplayEffectSpecHandle> SpecHandles = EffectData->MakeSpecs(InstigatorASC, this, Avatar);
-			for (FGameplayEffectSpecHandle& SpecHandle : SpecHandles)
-			{
-				if (!SpecHandle.IsValid()) continue;
-				InstigatorASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get(), InstigatorASC->GetPredictionKeyForNewAction());
-			}
-		}
-
-		ABaseCharacter* Character = Cast<ABaseCharacter>(Avatar);
-		if (Character) Character->StopMove();
+		if (auto* Character = Cast<ABaseCharacter>(Avatar)) Character->StopMove();
 	}
 
-	if (IsLocallyControlled())
-	{
-		OnExecuteSkill_InClient();
-	}*/
-
-	//if (IsValid(CachedConfig) == false || CachedConfig->GetExcutionEffects().Num() <= 0) return;
-
-	UAbilitySystemComponent* InstigatorASC = GetAbilitySystemComponentFromActorInfo();
-	AActor* Avatar = GetAvatarActorFromActorInfo();
-
-	if (!IsValid(InstigatorASC) || !IsValid(Avatar) || !IsValid(CachedConfig))
-	{
-		UE_LOG(LogTemp, Error, TEXT("ExecuteSkill: 필수 데이터가 누락되었습니다! (Config: %s, ASC: %s, Avatar: %s)"),
-			*GetNameSafe(CachedConfig), *GetNameSafe(InstigatorASC), *GetNameSafe(Avatar));
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
-		return;
-	}
-
-	if (!CanActivateAbility(CurrentSpecHandle, CurrentActorInfo))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("!CanActivateAbility(CurrentSpecHandle, CurrentActorInfo)"));
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
-		return;
-	}
-	else {
-		//Execute Skill
-
-		AddTagToOwner(ActiveTag);
-
-		const TArray<TObjectPtr<USkillEffectDataAsset>>& ExecutionEffects = CachedConfig->GetExcutionEffects();
-		ApplyEffectsToActor(Avatar, ExecutionEffects);
-
-		/*const TArray<TObjectPtr<USkillEffectDataAsset>>& ExecutionEffects = CachedConfig->GetExcutionEffects();
-		for (USkillEffectDataAsset* EffectData : ExecutionEffects)
-		{
-			if (!EffectData) continue;
-
-			TArray<FGameplayEffectSpecHandle> SpecHandles = EffectData->MakeSpecs(InstigatorASC, this, Avatar);
-			for (FGameplayEffectSpecHandle& SpecHandle : SpecHandles)
-			{
-				if (!SpecHandle.IsValid()) continue;
-				InstigatorASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get(), InstigatorASC->GetPredictionKeyForNewAction());
-			}
-		}*/
-
-		if (HasAuthority(&CurrentActivationInfo))
-		{
-			ABaseCharacter* Character = Cast<ABaseCharacter>(Avatar);
-			if (Character) Character->StopMove();
-		}
-
-		if (IsLocallyControlled())
-		{
-			OnExecuteSkill_InClient();
-		}
-	}
+	if (IsLocallyControlled()) OnExecuteSkill_InClient();
 }
 
 void USkillBase::OnActiveTagEventReceived(FGameplayEventData Payload)
 {
+	auto* ASC = GetASC();
+	if (!GetASC() || !IsValid(CachedConfig)) return EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+
 	if (CachedConfig->Data.bIsUseCasting)
 	{
-		if (GetAbilitySystemComponentFromActorInfo()->HasMatchingGameplayTag(CastingTag) == false)
-		{
-			EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
-			return;
-		}
-
-		RemoveTagFromOwner(CastingTag);
+		if (ASC->HasMatchingGameplayTag(CastingTag) == false) return EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+		SetSkillTagCount(CastingTag, 0);
 	}
 
 	ExecuteSkill();
@@ -189,7 +102,7 @@ void USkillBase::OnCastingTagEventReceived(FGameplayEventData Payload)
 {
 	if (CachedConfig && CachedConfig->Data.bIsUseCasting)
 	{
-		AddTagToOwner(CastingTag);
+		SetSkillTagCount(CastingTag, 1);
 	}
 }
 
@@ -205,7 +118,7 @@ void USkillBase::OnMontageInterrupted()
 		return;
 	}
 
-	//EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 }
 
 void USkillBase::OnMontageCancelled()
@@ -232,9 +145,8 @@ void USkillBase::PlayAnimMontage()
 
 void USkillBase::StopMontage()
 {
-	const FGameplayAbilityActorInfo* AI = GetCurrentActorInfo();
-	UAbilitySystemComponent* ASC = AI->AbilitySystemComponent.Get();
-	if (AI && IsValid(ASC))
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	if (IsValid(ASC))
 	{
 		ASC->CurrentMontageStop(0.2f);
 	}
@@ -256,6 +168,8 @@ void USkillBase::SetWaitEventCastingTag()
 
 void USkillBase::PrepareToActiveSkill()
 {
+	if (!IsValid(CachedConfig)) return;
+
 	if (!CommitAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo))
 	{
 		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
@@ -265,167 +179,88 @@ void USkillBase::PrepareToActiveSkill()
 	SetWaitEventActiveTag();
 	if (CachedConfig->Data.bIsUseCasting) SetWaitEventCastingTag();
 
-	const bool bShouldPlayPredictedMontage = CurrentActorInfo && CurrentActorInfo->IsLocallyControlledPlayer();
-	const bool bShouldPlayServerMontage = HasAuthority(&CurrentActivationInfo);
-	if (bShouldPlayPredictedMontage || bShouldPlayServerMontage)
-	{
-		PlayAnimMontage();
-	}
+	if (IsLocallyControlled() || HasAuthority(&CurrentActivationInfo)) PlayAnimMontage();
 }
 
 void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle)
 {
-	if (Actors.Num() <= 0 || SkillEffectDataAssets.Num() <= 0) return;
+	auto* ASC = GetASC();
+	if (!ASC || Actors.Num() <= 0 || SkillEffectDataAssets.Num() <= 0) return;
 
-	FGameplayAbilityTargetDataHandle TargetDataHandle;
-	FGameplayAbilityTargetData_ActorArray* NewData = new FGameplayAbilityTargetData_ActorArray();
+	// 1. 타겟 데이터 생성 (인라인 루프)
+	auto* Data = new FGameplayAbilityTargetData_ActorArray();
+	for (AActor* Target : Actors) if (IsValidRelationship(Target)) Data->TargetActorArray.Add(Target);
 
-	for (AActor* Target : Actors)
+	FGameplayAbilityTargetDataHandle Handle(Data);
+
+	// 2. 이펙트 순차 적용
+	for (USkillEffectDataAsset* Effect : SkillEffectDataAssets)
 	{
-		if (IsValid(Target) && IsValidRelationship(Target))
+		if (!Effect) continue;
+		for (auto& Spec : Effect->MakeSpecs(ASC, this, GetAvatar(), InEffectContextHandle))
 		{
-			NewData->TargetActorArray.Add(Target);
-		}
-	}
-	TargetDataHandle.Add(NewData);
-
-	UAbilitySystemComponent* InstigatorASC = GetAbilitySystemComponentFromActorInfo();
-	if (!InstigatorASC) return;
-
-	for (USkillEffectDataAsset* EffectData : SkillEffectDataAssets)
-	{
-		if (!EffectData) continue;
-		TArray<FGameplayEffectSpecHandle> SpecHandles = EffectData->MakeSpecs(InstigatorASC, this, GetAvatarActorFromActorInfo(), InEffectContextHandle);
-
-		for (FGameplayEffectSpecHandle& SpecHandle : SpecHandles)
-		{
-			if (SpecHandle.IsValid())
-			{
-				ApplyGameplayEffectSpecToTarget(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, SpecHandle, TargetDataHandle);
-			}
+			if (Spec.IsValid()) ApplyGameplayEffectSpecToTarget(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, Spec, Handle);
 		}
 	}
 }
 
-void USkillBase::ApplyEffectsToActor(AActor* Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle)
+void USkillBase::ApplyEffectsToActor(AActor* Actor, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle)
 {
-	if (IsValid(Actors) == false) return;
-
-	TSet<TObjectPtr<AActor>> TargetSet;
-	TargetSet.Add(Actors);
-
-	ApplyEffectsToActors(TargetSet, SkillEffectDataAssets, InEffectContextHandle);
+	ApplyEffectsToActors({Actor}, SkillEffectDataAssets, InEffectContextHandle);
 }
 
 FGameplayTag USkillBase::GetInputTag()
 {
-	FGameplayTag Result;
-
-	if (CachedConfig)
-	{
-		Result = CachedConfig->Data.InputKeyTag;
-	}
-
-	return Result;
+	return CachedConfig ? CachedConfig->Data.InputKeyTag : FGameplayTag();
 }
 
 ETargetRelationship USkillBase::GetSkillTargetRelationship()
 {
-	ETargetRelationship Result = ETargetRelationship::None;
-
-	if (CachedConfig)
-	{
-		Result = CachedConfig->Data.ApplyTo;
-	}
-
-	return Result;
+	return CachedConfig ? CachedConfig->Data.ApplyTo : ETargetRelationship::None;
 }
 
 bool USkillBase::IsValidRelationship(AActor* Target)
 {
-	// 1. 기초 유효성 검사
-	if (!IsValid(Target)) return false;
+	if (!Target || !CachedConfig) return false;
 
-	ETargetRelationship SkillTargetRelationship = GetSkillTargetRelationship();
-	if (!ensureMsgf(SkillTargetRelationship != ETargetRelationship::None, TEXT("Relationship is None"))) return false;
+	auto* Instigator = GetAvatar();
+	auto* I_Instigator = Cast<ITargetableInterface>(Instigator);
+	auto* I_Target = Cast<ITargetableInterface>(Target);
 
-	AActor* Instigator = GetAvatarActorFromActorInfo();
-	checkf(IsValid(Instigator), TEXT("Instigator is Not Valid"));
+	if (!I_Instigator || !I_Target) return false;
 
-	// 2. 인터페이스 캐스팅 (두 방식 모두 확인)
-	const ITargetableInterface* InstigatorInterface = Cast<ITargetableInterface>(Instigator);
-	const ITargetableInterface* TargetInterface = Cast<ITargetableInterface>(Target);
+	bool bIsSameTeam = (I_Instigator->GetTeamType() == I_Target->GetTeamType());
+	auto Relationship = CachedConfig->Data.ApplyTo;
 
-	// 3. 인터페이스 구현 여부 확인 및 로그 출력
-	if (InstigatorInterface == nullptr)
-	{
-		UE_LOG(LogTemp, Error, TEXT("Instigator has not ITargetableInterface"), *Instigator->GetName());
-		return false;
-	}
-
-	if (TargetInterface == nullptr)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Target has not ITargetableInterface"), *Target->GetName());
-		return false;
-	}
-
-	// 5. 팀 관계 비교 로직
-	ETeamType InstigatorTeam = InstigatorInterface->GetTeamType();
-	ETeamType TargetTeam = TargetInterface->GetTeamType();
-
-	bool bIsSameTeam = (InstigatorTeam == TargetTeam);
-
-	// 관계 설정에 따른 최종 결과 반환
-	if (SkillTargetRelationship == ETargetRelationship::Friend)
-	{
-		return bIsSameTeam;
-	}
-	else if (SkillTargetRelationship == ETargetRelationship::Enemy)
-	{
-		if (bIsSameTeam == false && TargetInterface->IsTargetable() == false)
-		{
-			return false;
-		}
-
-		return !bIsSameTeam;
-	}
+	if (Relationship == ETargetRelationship::Friend) return bIsSameTeam;
+	if (Relationship == ETargetRelationship::Enemy)  return !bIsSameTeam && I_Target->IsTargetable();
 
 	return false;
 }
 
+bool USkillBase::ValidateCachedConfig(const FString& CallerName)
+{
+	if (!IsValid(CachedConfig))
+	{
+		UE_LOG(LogTemp, Error, TEXT("[%s -> %s]: CachedConfig가 유효하지 않습니다."), *CallerName, ANSI_TO_TCHAR(__FUNCTION__));
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+		return false;
+	}
+	return true;
+}
+
 void USkillBase::FinishSkill()
 {
-	RemoveTagFromOwner(ActiveTag);
+	SetSkillTagCount(ActiveTag, 0);
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 
 void USkillBase::OnCancelAbility()
 {
-	//UE_LOG(LogTemp, Warning, TEXT("OnCancelAbility"));
-	StopMontage();
+	if (auto* ASC = GetASC()) ASC->CurrentMontageStop(0.0f);
 }
 
 void USkillBase::OnExecuteSkill_InClient()
 {
 
-}
-
-void USkillBase::AddTagToOwner(FGameplayTag Tag)
-{
-	if (Tag.IsValid())
-	{
-		//같은 태그가 여러개 있어도 해당 태그를 1개로 설정
-		//GetAbilitySystemComponentFromActorInfo()->AddLooseGameplayTag(Tag, 1);
-		GetAbilitySystemComponentFromActorInfo()->SetTagMapCount(Tag, 1);
-	}
-}
-
-void USkillBase::RemoveTagFromOwner(FGameplayTag Tag)
-{
-	if (Tag.IsValid())
-	{
-		//같은 태그가 여러개 있어도 해당 태그를 0개로 설정
-		//GetAbilitySystemComponentFromActorInfo()->RemoveLooseGameplayTag(Tag, 1);
-		GetAbilitySystemComponentFromActorInfo()->SetTagMapCount(Tag, 0);
-	}
 }

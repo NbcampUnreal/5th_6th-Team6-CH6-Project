@@ -31,18 +31,18 @@ protected:
 	virtual void FinishSkill();
 	virtual void OnCancelAbility();
 	virtual void OnExecuteSkill_InClient();
-	void AddTagToOwner(FGameplayTag Tag);
-	void RemoveTagFromOwner(FGameplayTag Tag);
+	void SetSkillTagCount(FGameplayTag Tag, int32 Count);
 	void PlayAnimMontage();
 	void StopMontage();
 	void SetWaitEventActiveTag();
 	void SetWaitEventCastingTag();
 	void PrepareToActiveSkill();
 	void ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle = FGameplayEffectContextHandle());
-	void ApplyEffectsToActor(AActor* Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle = FGameplayEffectContextHandle());
+	void ApplyEffectsToActor(AActor* Actor, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle = FGameplayEffectContextHandle());
 	FGameplayTag GetInputTag();
 	ETargetRelationship GetSkillTargetRelationship();
 	bool IsValidRelationship(AActor* Target);
+	bool ValidateCachedConfig(const FString& CallerName);
 
 	UFUNCTION()
 	void OnActiveTagEventReceived(FGameplayEventData Payload);
@@ -58,7 +58,10 @@ protected:
 
 	UFUNCTION()
 	void OnMontageCompleted();
-//private:
+
+private:
+	FORCEINLINE UAbilitySystemComponent* GetASC() const { return GetAbilitySystemComponentFromActorInfo(); }
+	FORCEINLINE AActor* GetAvatar() const { return GetAvatarActorFromActorInfo(); }
 
 public:
 
