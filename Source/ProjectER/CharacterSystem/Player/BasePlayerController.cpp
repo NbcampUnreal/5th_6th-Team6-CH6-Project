@@ -145,6 +145,11 @@ void ABasePlayerController::SetupInputComponent()
 				this,
 				&ABasePlayerController::OnCameraPanX);
 		}
+		else
+		{
+			UE_LOG(Controller_Camera, Error,
+				TEXT("ABasePlayerController::SetupInputComponent >> CameraPanX input binding failed"));
+		}
 		if (InputConfig->InputCameraPanY)
 		{
 			EnhancedInputComponent->BindAction(
@@ -152,12 +157,22 @@ void ABasePlayerController::SetupInputComponent()
 				ETriggerEvent::Triggered,
 				this, &ABasePlayerController::OnCameraPanY);
 		}
+		else
+		{
+			UE_LOG(Controller_Camera, Error,
+				TEXT("ABasePlayerController::SetupInputComponent >> CameraPanY input binding failed"));
+		}
 		if (InputConfig->InputCameraToggle)
 		{
 			EnhancedInputComponent->BindAction(
 				InputConfig->InputCameraToggle,
 				ETriggerEvent::Started,
 				this, &ABasePlayerController::OnCameraToggle);
+		}
+		else
+		{
+			UE_LOG(Controller_Camera, Error,
+				TEXT("ABasePlayerController::SetupInputComponent >> InputCameraToggle binding failed"));
 		}
 	}
 }
