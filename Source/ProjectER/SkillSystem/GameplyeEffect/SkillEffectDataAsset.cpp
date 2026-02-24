@@ -57,7 +57,6 @@ TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySyste
 
         if (SpecHandle.IsValid())
         {
-            // 로그 확인을 위해 핸들 다시 가져오기
             const FGameplayEffectContextHandle& SpecContextHandle = SpecHandle.Data->GetContext();
             SpecHandle.Data->SetSetByCallerMagnitude(IndexTag, static_cast<float>(i));
             OutSpecs.Add(SpecHandle);
