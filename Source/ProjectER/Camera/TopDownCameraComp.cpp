@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "TopDownCameraComp.h"
 
@@ -19,7 +19,7 @@ DEFINE_LOG_CATEGORY(MainCameraComp);
 // Sets default values for this component's properties
 UTopDownCameraComp::UTopDownCameraComp()
 {
-	//PrimaryComponentTick.bCanEverTick = false; // this is only for when the tick is never be used. not for switchable case
+	PrimaryComponentTick.bCanEverTick = true; // this is only for when the tick is never be used. not for switchable case
 	PrimaryComponentTick.bStartWithTickEnabled = false;
 
 	// Create but DO NOT attach here
