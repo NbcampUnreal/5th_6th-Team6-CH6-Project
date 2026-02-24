@@ -341,10 +341,9 @@ void ABaseMonster::OnMoveSpeedChangedHandle(float OldSpeed, float NewSpeed)
 	GetCharacterMovement()->MaxWalkSpeed = NewSpeed;
 }
 
-void ABaseMonster::Multicast_SetDeathCollision_Implementation()
+void ABaseMonster::Multicast_SetCollisionProfileName_Implementation(FName ProfileName)
 {
-	// WorldStatic하고만 충돌
-	GetCapsuleComponent()->SetCollisionProfileName("Spectator");
+	GetCapsuleComponent()->SetCollisionProfileName(ProfileName);
 }
 
 void ABaseMonster::InitHPBar()
@@ -602,13 +601,18 @@ ETeamType ABaseMonster::GetTeamType() const
 
 bool ABaseMonster::IsTargetable() const
 {
-	if (IsValid(ASC))
+	if (bIsDead)
 	{
-		if (ASC->HasMatchingGameplayTag(MonsterTags.DeathStateTag))
-		{
-			return false;
-		}
+		return false;
 	}
+
+	// if (IsValid(ASC))
+	// {
+	// 	if (ASC->HasMatchingGameplayTag(MonsterTags.DeathStateTag))
+	// 	{
+	// 		return false;
+	// 	}
+	// }
 
 	return true;
 }
