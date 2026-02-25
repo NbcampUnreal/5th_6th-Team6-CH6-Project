@@ -172,6 +172,8 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 		UE_LOG(LogTemp, Error, TEXT("ABaseMonster::InitMonsterData - MonsterData is Not Valid!"));
 	}
 
+	InitVisuals();
+	InitCollision();
 	if (HasAuthority())
 	{
 		ASC->AddLooseGameplayTag(MonsterData->AttackType);
@@ -179,8 +181,6 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 		InitGiveAbilities();
 		InitStateTree();
 	}
-	InitVisuals();
-	InitCollision();
 }
 
 void ABaseMonster::InitGiveAbilities()
@@ -579,23 +579,24 @@ UStateTreeComponent* ABaseMonster::GetStateTreeComponent()
 
 void ABaseMonster::SetTargetPlayer(AActor* Target)
 {
-	if (TargetPlayer == nullptr)
-	{
-		TargetPlayer = Target;
-	}
-	else
-	{
-		const float OldTargetDistance = FVector::DistSquared(
-			TargetPlayer->GetActorLocation(), GetActorLocation());
+	//if (TargetPlayer == nullptr)
+	//{
+	//	TargetPlayer = Target;
+	//}
+	//else
+	//{
+	//	const float OldTargetDistance = FVector::DistSquared(
+	//		TargetPlayer->GetActorLocation(), GetActorLocation());
 
-		const float NewTargetDistance = FVector::DistSquared(
-			Target->GetActorLocation(), GetActorLocation());
+	//	const float NewTargetDistance = FVector::DistSquared(
+	//		Target->GetActorLocation(), GetActorLocation());
 
-		if (OldTargetDistance > NewTargetDistance)
-		{
-			TargetPlayer = Target;
-		}
-	}
+	//	if (OldTargetDistance > NewTargetDistance)
+	//	{
+	//		TargetPlayer = Target;
+	//	}
+	//}
+	TargetPlayer = Target;
 }
 
 AActor* ABaseMonster::GetTargetPlayer()
