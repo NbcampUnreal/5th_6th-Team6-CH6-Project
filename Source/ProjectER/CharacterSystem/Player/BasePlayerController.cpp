@@ -92,11 +92,15 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 
 	ControlledBaseChar = Cast<ABaseCharacter>(InPawn);
 
-	if (!ControlledBaseChar)
+	if (ControlledBaseChar)
+	{
+		// 포제스 할 때 캐릭터의 TopDownCameraComp를 가져오는 게 없었음 그래서 추가
+		TopDownCameraComp = ControlledBaseChar->GetComponentByClass<UTopDownCameraComp>();
+	}
+	else
 	{
 		// UE_LOG(LogTemp, Warning, TEXT("OnPossess: ControlledBaseChar is Null!"));
 	}
-	
 	
 }
 
@@ -193,6 +197,11 @@ void ABasePlayerController::OnRep_Pawn()
 	Super::OnRep_Pawn();
 
 	ControlledBaseChar = Cast<ABaseCharacter>(GetPawn());
+
+	if (ControlledBaseChar)
+	{
+		TopDownCameraComp = ControlledBaseChar->GetComponentByClass<UTopDownCameraComp>();
+	}
 
 }
 
