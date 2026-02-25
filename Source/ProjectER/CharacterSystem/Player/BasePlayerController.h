@@ -78,6 +78,8 @@ protected:
 	void OnCameraPanX(const FInputActionValue& Value);
 	void OnCameraPanY(const FInputActionValue& Value);
 	void OnCameraToggle();
+	void OnCameraHold_Started();
+	void OnCameraHold_Completed();
 	
 protected:
 	// 입력 매핑 컨텍스트 (IMC)

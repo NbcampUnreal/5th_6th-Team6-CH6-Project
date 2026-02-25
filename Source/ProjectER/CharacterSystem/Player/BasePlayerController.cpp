@@ -163,6 +163,17 @@ void ABasePlayerController::SetupInputComponent()
 				ETriggerEvent::Started,
 				this, &ABasePlayerController::OnCameraToggle);
 		}
+		if (InputConfig->InputCameraHold)
+		{
+			EnhancedInputComponent->BindAction(
+				InputConfig->InputCameraHold,
+				ETriggerEvent::Started,
+				this, &ABasePlayerController::OnCameraHold_Started);
+			EnhancedInputComponent->BindAction(
+				InputConfig->InputCameraHold,
+				ETriggerEvent::Completed,
+				this, &ABasePlayerController::OnCameraHold_Completed);
+		}
 	}
 }
 
@@ -600,6 +611,24 @@ void ABasePlayerController::OnCameraToggle()
 			*ModeString);
 	}
 }
+
+void ABasePlayerController::OnCameraHold_Started()
+{
+	if (IsValid(TopDownCameraComp))
+	{
+		TopDownCameraComp->SetFreeCamMode(true);
+	}
+}
+
+void ABasePlayerController::OnCameraHold_Completed()
+{
+	if (IsValid(TopDownCameraComp))
+	{
+		TopDownCameraComp->SetFreeCamMode(false);
+	}
+}
+
+
 
 
 /*void ABasePlayerController::Test_ChangeTeamToA()
