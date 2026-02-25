@@ -172,9 +172,6 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 		UE_LOG(LogTemp, Error, TEXT("ABaseMonster::InitMonsterData - MonsterData is Not Valid!"));
 	}
 
-	InitVisuals();
-	InitCollision();
-
 	if (HasAuthority())
 	{
 		ASC->AddLooseGameplayTag(MonsterData->AttackType);
@@ -182,6 +179,8 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 		InitGiveAbilities();
 		InitStateTree();
 	}
+	InitVisuals();
+	InitCollision();
 }
 
 void ABaseMonster::InitGiveAbilities()
