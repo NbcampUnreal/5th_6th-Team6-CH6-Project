@@ -115,7 +115,7 @@ protected:
 
 	// State
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera|State")
-	bool bIsFreeCamMode = true;
+	bool bIsFreeCamMode = false;
 
 private:
 	FVector2D PendingKeyInput = FVector2D::ZeroVector;
