@@ -41,6 +41,7 @@ public:
 	// Input
 	void AddKeyPanInput(FVector2D Input);
 	void ToggleCameraMode();
+	void SetFreeCamMode(bool bIsKeyPressed);
 	void RecenterOnPawn();
     
 	UFUNCTION(BlueprintCallable, Category="CameraComp")
@@ -116,6 +117,10 @@ protected:
 	// State
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera|State")
 	bool bIsFreeCamMode = false;
+
+	// Is the camera hard-locked to the player (e.g. by pressing Y)?
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera|State")
+	bool bIsCameraLocked = true;
 
 private:
 	FVector2D PendingKeyInput = FVector2D::ZeroVector;
