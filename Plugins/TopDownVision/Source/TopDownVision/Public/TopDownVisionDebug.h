@@ -9,6 +9,7 @@ TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(LOSTrace, Log, All);
 
 TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(LOSWorldBaker, Log, All);// for editor function
 
+TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(Occlusion, Log, All);
 
 //Server/Client Name Helper fun__function_ignore_lock_checking(
 //)

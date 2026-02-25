@@ -4,6 +4,7 @@
 #include "TopDownVision/Public/ObstacleOcclusion/PhysicallOcclusion/OcclusionObstacleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "TopDownVisionDebug.h"//log
 
 
 
@@ -16,6 +17,8 @@ void UOcclusionObstacleComponent::BeginPlay()//set up for the visual
 {
 	Super::BeginPlay();
 
+	DiscoverChildMeshes();
+	
 	InitializeCollision();
 	InitializeMaterials();
 }
@@ -27,15 +30,18 @@ void UOcclusionObstacleComponent::EndPlay(const EEndPlayReason::Type EndPlayReas
 
 void UOcclusionObstacleComponent::InitializeCollision()
 {
+	UE_LOG(Occlusion, Log,
+		TEXT("UOcclusionObstacleComponent::InitializeCollision>> Initializing collision for %s"),
+		*GetOwner()->GetName());
+
 	for (UStaticMeshComponent* Mesh : NormalMeshes)
 	{
 		if (!Mesh) continue;
 
-		// Only overlap OccluderProbe channel
 		Mesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		Mesh->SetCollisionResponseToAllChannels(ECR_Ignore);
 		Mesh->SetCollisionResponseToChannel(
-			ECC_GameTraceChannel1,   // OccluderProbe
+			OcclusionProbeChannel,
 			ECR_Overlap);
 
 		Mesh->SetGenerateOverlapEvents(true);
@@ -47,24 +53,93 @@ void UOcclusionObstacleComponent::InitializeCollision()
 		Mesh->OnComponentEndOverlap.AddDynamic(
 			this,
 			&UOcclusionObstacleComponent::OnMeshEndOverlap);
+
+		UE_LOG(Occlusion, Log,
+			TEXT("UOcclusionObstacleComponent::InitializeCollision>> Bound overlap events on %s"),
+			*Mesh->GetName());
 	}
 
-	// Occluded meshes = visual only
 	for (UStaticMeshComponent* Mesh : OccludedMeshes)
 	{
 		if (!Mesh) continue;
+
 		Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		UE_LOG(Occlusion, Log,
+			TEXT("UOcclusionObstacleComponent::InitializeCollision>> Disabled collision on OccludedMesh %s"),
+			*Mesh->GetName());
 	}
 }
 
 void UOcclusionObstacleComponent::CleanupInvalidOverlaps()
 {
+	int32 RemovedCount = 0;
+
 	for (auto It = ActiveOverlaps.CreateIterator(); It; ++It)
 	{
 		if (!It->IsValid())
 		{
 			It.RemoveCurrent();
+			RemovedCount++;
 		}
+	}
+
+	if (RemovedCount > 0)
+	{
+		UE_LOG(Occlusion, Log,
+			TEXT("UOcclusionObstacleComponent::CleanupInvalidOverlaps>> Removed %d invalid overlaps"),
+			RemovedCount);
+	}
+}
+
+void UOcclusionObstacleComponent::DiscoverChildMeshes()
+{
+	// Clear previous data (safety for PIE / re-init)
+	NormalMeshes.Empty();
+	OccludedMeshes.Empty();
+	DynamicMaterials.Empty();
+	ActiveOverlaps.Empty();
+
+	UE_LOG(Occlusion, Log,
+		TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> Discovering child meshes for %s"),
+		*GetOwner()->GetName());
+
+	TArray<USceneComponent*> Children;
+	GetChildrenComponents(true, Children);
+
+	for (USceneComponent* Child : Children)
+	{
+		if (UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(Child))
+		{
+			if (Mesh->ComponentHasTag(NormalMeshTag))
+			{
+				NormalMeshes.Add(Mesh);
+
+				UE_LOG(Occlusion, Log,
+					TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> Registered NormalMesh: %s"),
+					*Mesh->GetName());
+			}
+			else if (Mesh->ComponentHasTag(OccludedMeshTag))
+			{
+				OccludedMeshes.Add(Mesh);
+
+				UE_LOG(Occlusion, Log,
+					TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> Registered OccludedMesh: %s"),
+					*Mesh->GetName());
+			}
+		}
+	}
+
+	UE_LOG(Occlusion, Log,
+		TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> Total NormalMeshes: %d | OccludedMeshes: %d"),
+		NormalMeshes.Num(),
+		OccludedMeshes.Num());
+
+	if (NormalMeshes.Num() == 0 && OccludedMeshes.Num() == 0)
+	{
+		UE_LOG(Occlusion, Warning,
+			TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> No tagged meshes found on %s"),
+			*GetOwner()->GetName());
 	}
 }
 
@@ -74,6 +149,15 @@ void UOcclusionObstacleComponent::TickComponent(float DeltaTime, ELevelTick Tick
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	const float TargetAlpha = bShouldBeOccluded ? 1.f : 0.f;
+
+	if (bShouldBeOccluded != bLastOcclusionState)
+	{
+		UE_LOG(Occlusion, Verbose,
+			TEXT("UOcclusionObstacleComponent::TickComponent>> Occlusion State Changed -> %s"),
+			bShouldBeOccluded ? TEXT("OCCLUDED") : TEXT("VISIBLE"));
+
+		bLastOcclusionState = bShouldBeOccluded;
+	}
 
 	CurrentAlpha = FMath::FInterpTo(
 		CurrentAlpha,
@@ -89,13 +173,17 @@ void UOcclusionObstacleComponent::OnMeshBeginOverlap(UPrimitiveComponent* Overla
 {
 	if (!OtherComp) return;
 
-	// Safety check: only accept OccluderProbe channel
 	if (OtherComp->GetCollisionObjectType() != OcclusionProbeChannel)
 		return;
 
 	ActiveOverlaps.Add(OtherComp);
 
 	bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+
+	UE_LOG(Occlusion, Log,
+		TEXT("UOcclusionObstacleComponent::OnMeshBeginOverlap>> Overlap BEGIN with %s | ActiveOverlaps: %d"),
+		*OtherComp->GetName(),
+		ActiveOverlaps.Num());
 }
 
 void UOcclusionObstacleComponent::OnMeshEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
@@ -110,12 +198,21 @@ void UOcclusionObstacleComponent::OnMeshEndOverlap(UPrimitiveComponent* Overlapp
 
 	CleanupInvalidOverlaps();
 
-	bShouldBeOccluded = ActiveOverlaps.Num()>0;
+	bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+
+	UE_LOG(Occlusion, Log,
+		TEXT("UOcclusionObstacleComponent::OnMeshEndOverlap>> Overlap END with %s | ActiveOverlaps: %d"),
+		*OtherComp->GetName(),
+		ActiveOverlaps.Num());
 }
 
 void UOcclusionObstacleComponent::InitializeMaterials()
 {
 	//internal helper function for setting nomal and occluded meshes
+	UE_LOG(Occlusion, Log,
+		TEXT("UOcclusionObstacleComponent::InitializeMaterials>> Creating dynamic materials for %s"),
+		*GetOwner()->GetName());
+
 	auto SetupArray = [this](const TArray<UStaticMeshComponent*>& MeshArray)
 	{
 		for (UStaticMeshComponent* Mesh : MeshArray)
@@ -135,6 +232,11 @@ void UOcclusionObstacleComponent::InitializeMaterials()
 				if (Dyn)
 				{
 					DynamicMaterials.Add(Dyn);
+
+					UE_LOG(Occlusion, Log,
+						TEXT("UOcclusionObstacleComponent::InitializeMaterials>> Created Dynamic Material on %s (Index %d)"),
+						*Mesh->GetName(),
+						i);
 				}
 			}
 		}
@@ -142,6 +244,10 @@ void UOcclusionObstacleComponent::InitializeMaterials()
 
 	SetupArray(NormalMeshes);
 	SetupArray(OccludedMeshes);
+
+	UE_LOG(Occlusion, Log,
+		TEXT("UOcclusionObstacleComponent::InitializeMaterials>> Total Dynamic Materials: %d"),
+		DynamicMaterials.Num());
 }
 
 void UOcclusionObstacleComponent::UpdateMaterialAlpha()

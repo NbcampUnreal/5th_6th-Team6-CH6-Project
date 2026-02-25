@@ -20,9 +20,34 @@ public:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;//reset
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
+	
 protected:
+	UFUNCTION()
+	void OnMeshBeginOverlap(
+		UPrimitiveComponent* OverlappedComp,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult);
 
+	UFUNCTION()
+	void OnMeshEndOverlap(
+		UPrimitiveComponent* OverlappedComp,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex);
+
+private:
+	//internal helpers
+	void InitializeCollision();
+	void InitializeMaterials();
+	void UpdateMaterialAlpha();
+	void CleanupInvalidOverlaps();
+	void DiscoverChildMeshes();
+
+	
+protected:
 	/*/** Meshes that detect overlap (have collision) #1#
 	UPROPERTY(EditAnywhere, Category="Occlusion")
 	TArray<UStaticMeshComponent*> NormalMeshes;
@@ -39,9 +64,6 @@ protected:
 	// Tag used for visual-only meshes
 	UPROPERTY(EditAnywhere, Category="Occlusion")
 	FName OccludedMeshTag = TEXT("OccludedVisual");
-
-
-
 
 	/** Custom Trace Channel for occlusion probe detection */
 	UPROPERTY(EditAnywhere, Category="Occlusion")
@@ -76,24 +98,7 @@ private:
 	UPROPERTY()
 	TArray<UStaticMeshComponent*> OccludedMeshes;
 
-	UFUNCTION()
-	void OnMeshBeginOverlap(
-		UPrimitiveComponent* OverlappedComp,
-		AActor* OtherActor,
-		UPrimitiveComponent* OtherComp,
-		int32 OtherBodyIndex,
-		bool bFromSweep,
-		const FHitResult& SweepResult);
+	bool bLastOcclusionState = false;
 
-	UFUNCTION()
-	void OnMeshEndOverlap(
-		UPrimitiveComponent* OverlappedComp,
-		AActor* OtherActor,
-		UPrimitiveComponent* OtherComp,
-		int32 OtherBodyIndex);
 
-	void InitializeCollision();
-	void InitializeMaterials();
-	void UpdateMaterialAlpha();
-	void CleanupInvalidOverlaps();
 };
