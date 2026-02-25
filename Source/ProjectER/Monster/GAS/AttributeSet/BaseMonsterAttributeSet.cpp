@@ -10,6 +10,12 @@ UBaseMonsterAttributeSet::UBaseMonsterAttributeSet()
 
 }
 
+float UBaseMonsterAttributeSet::GetHPPersent()
+{
+	float Persent = FMath::Clamp(GetHealth() / GetMaxHealth(), 0.f, 100.f);
+	return Persent;
+}
+
 void UBaseMonsterAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);

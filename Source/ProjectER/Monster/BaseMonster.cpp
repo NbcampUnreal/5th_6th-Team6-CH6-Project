@@ -367,6 +367,12 @@ void ABaseMonster::OnMonterHitHandle(AActor* Target)
 {
 	SetTargetPlayer(Target);
 
+	if (bIsPhaseTrigger == false && AttributeSet->GetHPPersent() <= 0.5f)
+	{
+		bIsPhaseTrigger = true;
+		SendStateTreeEvent(MonsterTags.Phase2EventTag);
+	}
+
 	ABaseCharacter* BC = Cast<ABaseCharacter>(Target);
 	if (!BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
 	{
@@ -493,6 +499,11 @@ void ABaseMonster::OnPlayerCountOneHandle()
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnPlayerCountOneHandle : Not ASC"));
 		return;
 	}
+	if (StateTreeComp->IsRunning() == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnPlayerCountOneHandle : StateTree Loading..."));
+		return;
+	}
 	FGameplayEventData* Payload = new FGameplayEventData();
 	ASC->HandleGameplayEvent(MonsterTags.BeginSearchEventTag, Payload);
 	StateTreeComp->SendStateTreeEvent(MonsterTags.BeginSearchEventTag);
@@ -506,6 +517,11 @@ void ABaseMonster::OnPlayerCountZeroHandle()
 		return;
 	}
 
+	if (StateTreeComp->IsRunning() == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnPlayerCountOneHandle : StateTree Loading..."));
+		return;
+	}
 	if (bIsCombat == false)
 	{
 		FGameplayEventData* Payload = new FGameplayEventData();
@@ -564,7 +580,23 @@ UStateTreeComponent* ABaseMonster::GetStateTreeComponent()
 
 void ABaseMonster::SetTargetPlayer(AActor* Target)
 {
-	TargetPlayer = Target;
+	if (TargetPlayer == nullptr)
+	{
+		TargetPlayer = Target;
+	}
+	else
+	{
+		const float OldTargetDistance = FVector::DistSquared(
+			TargetPlayer->GetActorLocation(), GetActorLocation());
+
+		const float NewTargetDistance = FVector::DistSquared(
+			Target->GetActorLocation(), GetActorLocation());
+
+		if (OldTargetDistance > NewTargetDistance)
+		{
+			TargetPlayer = Target;
+		}
+	}
 }
 
 AActor* ABaseMonster::GetTargetPlayer()

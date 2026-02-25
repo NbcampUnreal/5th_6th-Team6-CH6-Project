@@ -17,6 +17,7 @@ class PROJECTER_API UBaseMonsterAttributeSet : public UBaseAttributeSet
 public:
 	UBaseMonsterAttributeSet();
 
+	float GetHPPersent();
 
 protected:
 

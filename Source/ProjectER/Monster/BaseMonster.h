@@ -209,7 +209,16 @@ private:
 	bool bIsDead;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
-	float FirstAttackUtility = 1.f;
+	float AttackUtility = 1.f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	float QSkillUtility = 1.f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	float WSkillUtility = 1.f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
+	bool bIsPhaseTrigger;
 
 #pragma endregion
 

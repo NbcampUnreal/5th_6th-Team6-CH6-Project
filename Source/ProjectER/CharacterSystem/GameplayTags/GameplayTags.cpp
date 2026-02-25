@@ -16,6 +16,9 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Idle, "Ability.Action.Idle", "Idle Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Combat, "Ability.Action.Combat", "Combat Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction, "Ability.Action.Interaction", "Interaction Ability");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyStart, "Ability.Action.FlyStart", "FlyStart Ability");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyIdle, "Ability.Action.FlyIdle", "FlyIdle Ability");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyEnd, "Ability.Action.FlyEnd", "FlyEnd Ability");
 		}
 
 		namespace Input
@@ -99,6 +102,8 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction, "Event.Action.Interaction", "Event for Interaction");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "Event.Action.Death", "Event for Death");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "Event.Action.Return", "Event for Return");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Phase1, "Event.Action.Phase1", "Event for Phase1");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Phase2, "Event.Action.Phase2", "Event for Phase2");
 		}
 
 		namespace Montage
@@ -143,6 +148,9 @@ namespace ProjectER
 				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Chase, "GameplayCue.State.Action.Chase", "");
 				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "GameplayCue.State.Action.Attack", "");
 				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "GameplayCue.State.Action.Return", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyStart, "GameplayCue.State.Action.FlyStart", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyIdle, "GameplayCue.State.Action.FlyIdle", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyEnd, "GameplayCue.State.Action.FlyEnd", "");
 			}
 		}
 	}
@@ -160,6 +168,9 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "State.Action.Attack", "Attack State");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "State.Action.Return", "Return State");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Reviving, "State.Action.Reviving", "Reviving State");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyStart, "State.Action.FlyStart", "FlyStart State");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyIdle, "State.Action.FlyIdle", "FlyIdle State");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyEnd, "State.Action.FlyEnd", "FlyEnd State");
 		}
 
 		namespace Buff
