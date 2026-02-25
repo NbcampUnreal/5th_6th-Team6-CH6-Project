@@ -18,6 +18,7 @@ public:
 
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
+	//virtual void CancelAbility()
 
 protected:
 
@@ -37,7 +38,7 @@ protected:
 
 	// 박스와의 최대 거리
 	UPROPERTY(EditDefaultsOnly, Category = "OpenBox")
-	float MaxLootDistance = 500.f;
+	float MaxLootDistance = 150.f;
 
 	// 거리를 체크할 tick 시간
 	UPROPERTY(EditDefaultsOnly, Category = "OpenBox")
