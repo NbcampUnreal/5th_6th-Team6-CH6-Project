@@ -365,7 +365,6 @@ void ABaseMonster::InitHPBar()
 // 서버에서만
 void ABaseMonster::OnMonterHitHandle(AActor* Target)
 {
-	SetbIsCombat(true);
 	SetTargetPlayer(Target);
 
 	ABaseCharacter* BC = Cast<ABaseCharacter>(Target);

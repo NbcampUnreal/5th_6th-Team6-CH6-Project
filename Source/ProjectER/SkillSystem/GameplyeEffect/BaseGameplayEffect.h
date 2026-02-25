@@ -23,8 +23,8 @@ protected:
 private:
 
 public:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameplayEffect|GameplayModifier", meta = (FilterMetaTag = "HideFromModifiers"))
-	FGameplayAttribute SourceAttribute;	
+	/*UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameplayEffect|GameplayModifier", meta = (FilterMetaTag = "HideFromModifiers"))
+	FGameplayAttribute SourceAttribute;	*/
 
 protected:
 
