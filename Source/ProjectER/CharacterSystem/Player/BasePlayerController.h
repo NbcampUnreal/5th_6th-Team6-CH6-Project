@@ -78,6 +78,8 @@ protected:
 	void OnCameraPanX(const FInputActionValue& Value);
 	void OnCameraPanY(const FInputActionValue& Value);
 	void OnCameraToggle();
+	void OnCameraHold_Started();
+	void OnCameraHold_Completed();
 	
 protected:
 	// 입력 매핑 컨텍스트 (IMC)
@@ -131,7 +133,7 @@ protected:
 
 	// 상호작용 거리 저장
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "ProjectER|Item")
-	float InteractionTargetDistance = 500.f;
+	float InteractionTargetDistance = 200.f;
 
 	// 거리 체크 로직 (PlayerTick에서 호출)
 	void CheckInteractionDistance();
@@ -185,7 +187,7 @@ public:
 	void Server_BeginLoot(AActor* Actor);// 루팅 시작 요청
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_EndLoot(ABaseBoxActor* Box); // 루팅 종료 요청(또는 거리 벗어남)
+	void Server_EndLoot(); // 루팅 종료 요청(또는 거리 벗어남)
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_TakeItem(ABaseBoxActor* Box, int32 SlotIndex); // 아이템 가져가기(핵심)

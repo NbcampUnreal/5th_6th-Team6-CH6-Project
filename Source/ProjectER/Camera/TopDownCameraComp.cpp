@@ -103,6 +103,7 @@ void UTopDownCameraComp::AddKeyPanInput(FVector2D Input)
 
 	if (!bIsFreeCamMode)
 	{
+		bIsCameraLocked = false; // 수동으로 이동하려 하므로 카메라 고정 강제 해제
 		bIsFreeCamMode = true;
 		FreeCamPivotLocation = GetComponentLocation();
 
@@ -117,21 +118,57 @@ void UTopDownCameraComp::ToggleCameraMode()
 {
 	if (bIsFreeCamMode)
 	{
+		bIsCameraLocked = true; // Y키로 고정함
 		UE_LOG(MainCameraComp, Log,
-			TEXT("%s UTopDownCameraComp::ToggleCameraMode >> FREE CAM -> FOLLOW"),
+			TEXT("%s UTopDownCameraComp::ToggleCameraMode >> FREE CAM -> FOLLOW (Locked)"),
 			*DebugLogHelper::GetClientDebugName(this));
 
 		RecenterOnPawn();
 	}
 	else
 	{
+		bIsCameraLocked = false; // Y키로 고정 해제함
 		bIsFreeCamMode = true;
 		FreeCamPivotLocation = GetComponentLocation();
 
 		UE_LOG(MainCameraComp, Log,
-			TEXT("%s UTopDownCameraComp::ToggleCameraMode >> FOLLOW -> FREE CAM | Pivot: %s"),
+			TEXT("%s UTopDownCameraComp::ToggleCameraMode >> FOLLOW -> FREE CAM (Unlocked) | Pivot: %s"),
 			*DebugLogHelper::GetClientDebugName(this),
 			*FreeCamPivotLocation.ToString());
+	}
+}
+
+void UTopDownCameraComp::SetFreeCamMode(bool bIsKeyPressed)
+{
+	// 스페이스바를 누르고 있으면(true) -> 자유 시점 해제(false)
+	// 스페이스바를 떼면(false) -> 자유 시점 허용(true)
+	bool bTargetFreeCamMode = !bIsKeyPressed;
+
+	// 현재 상태와 같으면 무시
+	if (bIsFreeCamMode == bTargetFreeCamMode) return;
+	
+	// 자유 모드로 전환(풀어줌) 시도 시, 만약 Y키로 하드락이 걸려있다면 무시
+	if (bTargetFreeCamMode && bIsCameraLocked)
+	{
+		return;
+	}
+	
+	bIsFreeCamMode = bTargetFreeCamMode;
+
+	if (bIsFreeCamMode)
+	{
+		FreeCamPivotLocation = GetComponentLocation();
+		UE_LOG(MainCameraComp, Log,
+			TEXT("%s UTopDownCameraComp::SetFreeCamMode >> Changed to FREE CAM | Pivot: %s"),
+			*DebugLogHelper::GetClientDebugName(this),
+			*FreeCamPivotLocation.ToString());
+	}
+	else
+	{
+		UE_LOG(MainCameraComp, Log,
+			TEXT("%s UTopDownCameraComp::SetFreeCamMode >> Changed to FOLLOW"),
+			*DebugLogHelper::GetClientDebugName(this));
+		RecenterOnPawn();
 	}
 }
 
