@@ -289,7 +289,7 @@ void AER_InGameMode::HandlePhaseTimeUp()
 			// (항공 보급 생성)
 			ObjectSS->SpawnSupplyObject();
 			// (오브젝트 스폰)
-
+			ObjectSS->SpawnBossObject();
 		}
 		
 	}
@@ -306,6 +306,7 @@ void AER_InGameMode::HandleObjectNoticeTimeUp()
 	{
 		// 항공 보급 생성 위치 알림
 		ObjectSS->PickSupplySpawnIndex();
+		ObjectSS->PickBossSpawnIndex();
 	}
 }
 
