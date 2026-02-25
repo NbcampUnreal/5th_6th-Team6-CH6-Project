@@ -23,13 +23,29 @@ public:
 
 protected:
 
-	/** Meshes that detect overlap (have collision) */
+	/*/** Meshes that detect overlap (have collision) #1#
 	UPROPERTY(EditAnywhere, Category="Occlusion")
 	TArray<UStaticMeshComponent*> NormalMeshes;
-
-	/** Visual-only meshes */
+	/** Visual-only meshes #1#
 	UPROPERTY(EditAnywhere, Category="Occlusion")
-	TArray<UStaticMeshComponent*> OccludedMeshes;
+	TArray<UStaticMeshComponent*> OccludedMeshes;*/
+
+	
+	//!!!!! Now use the Tag for the mesh so that the mesh can be placed freely in the editor-> register will be happened in begin play
+	// Tag used for collision meshes
+	UPROPERTY(EditAnywhere, Category="Occlusion")
+	FName NormalMeshTag = TEXT("OcclusionMesh");
+
+	// Tag used for visual-only meshes
+	UPROPERTY(EditAnywhere, Category="Occlusion")
+	FName OccludedMeshTag = TEXT("OccludedVisual");
+
+
+
+
+	/** Custom Trace Channel for occlusion probe detection */
+	UPROPERTY(EditAnywhere, Category="Occlusion")
+	TEnumAsByte<ECollisionChannel> OcclusionProbeChannel = ECC_GameTraceChannel1;
 
 	/** Fade speed */
 	UPROPERTY(EditAnywhere, Category="Occlusion")
@@ -53,6 +69,12 @@ private:
 	/** Cached dynamic materials */
 	UPROPERTY()
 	TArray<UMaterialInstanceDynamic*> DynamicMaterials;
+
+	//registered meshes
+	UPROPERTY()
+	TArray<UStaticMeshComponent*> NormalMeshes;
+	UPROPERTY()
+	TArray<UStaticMeshComponent*> OccludedMeshes;
 
 	UFUNCTION()
 	void OnMeshBeginOverlap(

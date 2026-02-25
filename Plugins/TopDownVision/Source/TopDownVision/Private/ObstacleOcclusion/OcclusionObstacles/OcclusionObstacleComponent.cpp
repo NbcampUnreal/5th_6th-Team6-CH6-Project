@@ -90,7 +90,7 @@ void UOcclusionObstacleComponent::OnMeshBeginOverlap(UPrimitiveComponent* Overla
 	if (!OtherComp) return;
 
 	// Safety check: only accept OccluderProbe channel
-	if (OtherComp->GetCollisionObjectType() != ECC_GameTraceChannel1)
+	if (OtherComp->GetCollisionObjectType() != OcclusionProbeChannel)
 		return;
 
 	ActiveOverlaps.Add(OtherComp);
@@ -103,7 +103,7 @@ void UOcclusionObstacleComponent::OnMeshEndOverlap(UPrimitiveComponent* Overlapp
 {
 	if (!OtherComp) return;
 
-	if (OtherComp->GetCollisionObjectType() != ECC_GameTraceChannel1)
+	if (OtherComp->GetCollisionObjectType() != OcclusionProbeChannel)
 		return;
 
 	ActiveOverlaps.Remove(OtherComp);
