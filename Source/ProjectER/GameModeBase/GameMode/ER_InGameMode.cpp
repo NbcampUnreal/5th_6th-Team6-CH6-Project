@@ -287,7 +287,7 @@ void AER_InGameMode::HandlePhaseTimeUp()
 		if (ObjectSS)
 		{
 			// (항공 보급 생성)
-			ObjectSS->SpawnSupplyOjbect();
+			ObjectSS->SpawnSupplyObject();
 			// (오브젝트 스폰)
 
 		}

@@ -159,7 +159,7 @@ void UER_ObjectSubsystem::PickSupplySpawnIndex()
     }
 }
 
-void UER_ObjectSubsystem::SpawnSupplyOjbect()
+void UER_ObjectSubsystem::SpawnSupplyObject()
 {
     UWorld* World = GetWorld();
     if (!World || World->GetNetMode() == NM_Client)
