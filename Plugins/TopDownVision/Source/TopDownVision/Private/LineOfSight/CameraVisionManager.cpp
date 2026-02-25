@@ -70,8 +70,7 @@ void UCameraVisionManager::Initialize()
 	}
 	else
 	{
-		UE_LOG(LOSVision, Warning,
-			TEXT("UCameraVisionManager::UpdateCameraLOS >> PostProcessMPC instance not found!"));
+		//UE_LOG(LOSVision, Warning, TEXT("UCameraVisionManager::UpdateCameraLOS >> PostProcessMPC instance not found!"));
 	}
 
 	//Make a MID which will draw the Layered CRT
@@ -90,8 +89,7 @@ void UCameraVisionManager::Initialize()
 	}
 	else
 	{
-		UE_LOG(LOSVision, Warning,
-			TEXT("UCameraVisionManager::UpdateCameraLOS >> CameraLOSInterfaceMaterial is not assigned"));
+		//UE_LOG(LOSVision, Warning, TEXT("UCameraVisionManager::UpdateCameraLOS >> CameraLOSInterfaceMaterial is not assigned"));
 	}
 }
 
@@ -253,8 +251,8 @@ void UCameraVisionManager::UpdateCameraLOS()
 	}
 	else
 	{
-		UE_LOG(LOSVision, Warning,
-			TEXT("UCameraVisionManager::UpdateCameraLOS >> PostProcessMPC instance not found!"));
+		/*UE_LOG(LOSVision, Warning,
+			TEXT("UCameraVisionManager::UpdateCameraLOS >> PostProcessMPC instance not found!"));*/
 	}
 
 	/*UE_LOG(LOSVision, Log,

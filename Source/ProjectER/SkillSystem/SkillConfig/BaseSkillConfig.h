@@ -59,12 +59,12 @@ class PROJECTER_API UMouseClickSkillConfig : public UBaseSkillConfig
 public:
 	UMouseClickSkillConfig();
 	FORCEINLINE float GetRange() const { return Range; }
-	FORCEINLINE const TArray<TObjectPtr<USkillEffectDataAsset>>& GetEffectsToApply() const { return EffectsToApply; }
+	//FORCEINLINE const TArray<TObjectPtr<USkillEffectDataAsset>>& GetEffectsToApply() const { return EffectsToApply; }
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Config", meta = (AllowPrivateAccess = "true"))
 	float Range;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Config")
-	TArray<TObjectPtr<USkillEffectDataAsset>> EffectsToApply;
+	//UPROPERTY(EditDefaultsOnly, Category = "Config")
+	//TArray<TObjectPtr<USkillEffectDataAsset>> EffectsToApply;
 };
 
