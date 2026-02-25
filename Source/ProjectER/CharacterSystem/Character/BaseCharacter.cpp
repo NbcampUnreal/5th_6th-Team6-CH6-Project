@@ -1015,12 +1015,12 @@ void ABaseCharacter::OnRep_TargetActor()
 	}
 
 #if WITH_EDITOR
-	if (bShowDebug)
+	/*if (bShowDebug)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[%s] Set Target Actor -> %s"),
 			*GetName(),
 			TargetActor ? *TargetActor->GetName() : TEXT("None"));
-	}
+	}*/
 #endif
 }
 
@@ -1127,20 +1127,16 @@ void ABaseCharacter::Revive(FVector RespawnLocation)
 {
 	if (!HasAuthority()) return;
 	
-	// 빈사 상태(Down) 제거 (추가 예정)
-	// 태그로 찾아서 GE 제거
-	// AbilitySystemComponent->RemoveActiveEffectsWithGrantedTags(FGameplayTagContainer(ProjectER::State::Life::Down));
-	
 	if (AbilitySystemComponent.IsValid())
 	{
-		// [상태 초기화] 사망(Death) 또는 빈사(Down) 태그를 가진 모든 GE 제거
+		// 사망(Death) 또는 빈사(Down) 태그를 가진 모든 GE 제거
 		FGameplayTagContainer BadStateTags;
 		BadStateTags.AddTag(ProjectER::State::Life::Death);
 		BadStateTags.AddTag(ProjectER::State::Life::Down);
 		
 		AbilitySystemComponent->RemoveActiveEffectsWithGrantedTags(BadStateTags);
 
-		// (안전장치) 혹시 Loose Tag로 남아있을 경우를 대비해 직접 제거 (기존 코드 호환용)
+		// Loose Tag로 남아있을 경우를 대비 직접 제거 (기존 코드 호환용)
 		AbilitySystemComponent->RemoveLooseGameplayTag(ProjectER::State::Life::Death);
 		AbilitySystemComponent->RemoveLooseGameplayTag(ProjectER::State::Life::Down);
 
@@ -1173,14 +1169,8 @@ void ABaseCharacter::Revive(FVector RespawnLocation)
 	
 	if (AS)
 	{
-		AS->SetHealth(AS->GetMaxHealth());
-		AS->SetStamina(AS->GetMaxStamina());
-		
-		UE_LOG(LogTemp, Warning, TEXT("[Revive] HP Recovered: %f"), AS->GetHealth());
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("[Revive] AttributeSet is NULL! Check PlayerState Class."));
+		AS->SetHealth(AS->GetMaxHealth() * 0.3f);
+		AS->SetStamina(AS->GetMaxStamina() * 0.3f);
 	}
     
 	// 타겟 초기화
@@ -1209,7 +1199,6 @@ void ABaseCharacter::HandleDown()
 				if (SpecHandle.IsValid())
 				{
 					AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-					UE_LOG(LogTemp, Warning, TEXT("[%s] Apply GE_State_Down Success!"), *GetName());
 				}
 			}
 		}
@@ -1306,12 +1295,6 @@ void ABaseCharacter::Multicast_HandleDown_Implementation()
 	{
 		GetMesh()->GetAnimInstance()->Montage_Stop(0.0f);
 	}
-
-	// (선택) 캡슐 콜리전 처리
-	// 기어다닐 때 다른 유저의 길을 막지 않게 하려면 여기서 Collision Response를 수정할 수 있습니다.
-	// GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
-
-	UE_LOG(LogTemp, Warning, TEXT("[%s] 빈사 상태(Down) 진입!"), *GetName());
 }
 
 void ABaseCharacter::InitUI()

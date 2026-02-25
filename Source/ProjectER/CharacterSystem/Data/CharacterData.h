@@ -26,6 +26,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
 	TSoftClassPtr<UAnimInstance> AnimClass;
 	
+	// 캐릭터 Animation Montages
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	TMap<FGameplayTag, TSoftObjectPtr<UAnimMontage>> CharacterMontages;
+	
 	// 사망 몽타주 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
 	TSoftObjectPtr<UAnimMontage> DeathMontage;
