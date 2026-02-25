@@ -428,13 +428,13 @@ void ABasePlayerController::CheckInteractionDistance()
 		
 
 		// InteractionTargetDistance는 처음 클릭했을 때의 거리
-		if (CurrentDistance <= 150.f || CurrentDistance <= (InteractionTargetDistance * 0.3f)) // 거리에 따라서, 박스에 닿기 직전에 멈추는 현상이 남아 있음 수정 필요
+		if (CurrentDistance <= 150.f) // 거리에 따라서, 박스에 닿기 직전에 멈추는 현상이 남아 있음 수정 필요
 		{
 			if (ControlledBaseChar)
 			{
 				ControlledBaseChar->StopMove();
 			}
-	
+			// 1. 타겟 상호작용 종류 판별 및 우선 실행 (UI 띄우기 / 스킬 쓰기)
 			if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(InteractionTarget))
 			{
 				// 타겟이 나와 같은 팀인지 확인
@@ -443,19 +443,15 @@ void ABasePlayerController::CheckInteractionDistance()
 					// 내 ASC를 가져와서 부활 스킬(GA_Revive)을 태그로 강제 실행시킵니다.
 					if (UAbilitySystemComponent* ASC = ControlledBaseChar->GetAbilitySystemComponent())
 					{
-						// GA_Revive 블루프린트에 등록해둔 Ability Tags를 적어줍니다.
 						FGameplayTag ReviveTag = FGameplayTag::RequestGameplayTag(FName("Ability.Action.Revive"));
 						ASC->TryActivateAbilitiesByTag(FGameplayTagContainer(ReviveTag));
-						
 						UE_LOG(LogTemp, Warning, TEXT("아군 구조 스킬 발동 시도!"));
 					}
 					
-					InteractionTarget = nullptr; // 실행했으니 타겟 초기화
-					return; // !!! 중요: 아래 상자 루팅 로직으로 넘어가지 않도록 즉시 종료 !!!
+					InteractionTarget = nullptr; 
 				}
 			}
-			
-			if (II_ItemInteractable* Interactable = Cast<II_ItemInteractable>(InteractionTarget))
+			else if (II_ItemInteractable* Interactable = Cast<II_ItemInteractable>(InteractionTarget))
 			{
 				// 땅바닥 아이템 (BaseItemActor)
 				if (ABaseItemActor* AAA = Cast<ABaseItemActor>(Interactable))
@@ -467,8 +463,18 @@ void ABasePlayerController::CheckInteractionDistance()
 			}
 			else // LootableComponent가 있는 액터 (박스, 플레이어 시체, 몬스터 시체 등)
 			{
-				Server_BeginLoot(InteractionTarget);
-				InteractionTarget = nullptr;
+				if (InteractionTarget)
+				{
+					Server_BeginLoot(InteractionTarget);
+					InteractionTarget = nullptr;
+					
+				}
+			}
+			
+			// 2. 상호작용 명령을 모두 내렸으니 이제서야 캐릭터를 정지시킴 (부드러운 정지 및 창 띄우기 동시 체감)
+			if (ControlledBaseChar)
+			{
+				//ControlledBaseChar->StopMove();
 			}
 		}
 	}
@@ -878,13 +884,8 @@ void ABasePlayerController::Server_BeginLoot_Implementation(AActor* Actor)
 	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(PS, EventTag, Payload);
 }
 
-void ABasePlayerController::Server_EndLoot_Implementation(ABaseBoxActor* Box)
+void ABasePlayerController::Server_EndLoot_Implementation()
 {
-	if (!Box)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Server_EndLoot: Invalid Box"));
-		return;
-	}
 
 	// GA_OpenBox 종료
 	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
@@ -901,6 +902,7 @@ void ABasePlayerController::Server_EndLoot_Implementation(ABaseBoxActor* Box)
 		}
 	}
 }
+
 void ABasePlayerController::Server_TakeItem_Implementation(ABaseBoxActor* Box, int32 SlotIndex)
 {
 	////box->TryTakeItem 예정
