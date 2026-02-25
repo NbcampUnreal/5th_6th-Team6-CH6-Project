@@ -256,7 +256,7 @@ void UER_ObjectSubsystem::PickBossSpawnIndex()
 
     PendingBossPicks.Reset();
 
-    int32 PickIdx;
+    int32 PickIdx = -1;
 
     for (int i = 0; i < 50; ++i)
     {
@@ -268,17 +268,21 @@ void UER_ObjectSubsystem::PickBossSpawnIndex()
         }
     }
 
-    FSupplySpawnPick Info;
-    Info.Region = ERegionType::None;
-    Info.Index = PickIdx;
-
-    BossPoints[PickIdx].bIsReserved = true;
-    PendingBossPicks.Add(Info);
-
-    if (AER_PointActor* PA = Cast<AER_PointActor>(BossPoints[PickIdx].SpawnPoint.Get()))
+    if (PickIdx != -1)
     {
-        PA->SetSelectedVisual(true);
+        FSupplySpawnPick Info;
+        Info.Region = ERegionType::None;
+        Info.Index = PickIdx;
+
+        BossPoints[PickIdx].bIsReserved = true;
+        PendingBossPicks.Add(Info);
+
+        if (AER_PointActor* PA = Cast<AER_PointActor>(BossPoints[PickIdx].SpawnPoint.Get()))
+        {
+            PA->SetSelectedVisual(true);
+        }
     }
+
 
 }
 
