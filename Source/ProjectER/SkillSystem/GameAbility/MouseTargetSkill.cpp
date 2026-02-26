@@ -54,8 +54,14 @@ void UMouseTargetSkill::ExecuteSkill()
 
 void UMouseTargetSkill::CompleteFinishSkill()
 {
-	AffectedActors.Empty();
+	CleanUpSkill();
 	Super::CompleteFinishSkill();
+}
+
+void UMouseTargetSkill::OnCancelAbility()
+{
+	CleanUpSkill();
+	Super::OnCancelAbility();
 }
 
 void UMouseTargetSkill::SetWaitTargetTask()
@@ -199,4 +205,9 @@ void UMouseTargetSkill::RotateToTarget(AActor* Actor)
 	{
 		PC->SetControlRotation(NewRotation);
 	}*/
+}
+
+void UMouseTargetSkill::CleanUpSkill()
+{
+	AffectedActors.Empty();
 }

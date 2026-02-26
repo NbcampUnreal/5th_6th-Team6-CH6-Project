@@ -24,7 +24,6 @@ public:
 	bool IsTargetLocationInRange(const FVector& InLocation) const;
 protected:
 	virtual void ExecuteSkill() override;
-	virtual void FinishSkill() override;
 	virtual void OnCancelAbility() override;
 	bool IsInRange(const FVector& Location) const;
 	void RotateToLocation(const FVector& Location);
