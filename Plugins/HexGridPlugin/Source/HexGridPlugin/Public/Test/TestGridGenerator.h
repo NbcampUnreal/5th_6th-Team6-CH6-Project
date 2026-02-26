@@ -4,12 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Hex/HexagonData.h"
-#include "Wrappers/HexGridGenerator.h"
+#include "Test/HexGridComponent.h"
 #include "TestGridGenerator.generated.h"
-
-// Log
-HEXGRIDPLUGIN_API DECLARE_LOG_CATEGORY_EXTERN(GridTesterLog, Log, All)
 
 UCLASS()
 class HEXGRIDPLUGIN_API ATestGridGenerator : public AActor
@@ -20,6 +16,40 @@ public:
 	ATestGridGenerator();
 
 protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Hex Grid")
+	UHexGridComponent* HexGridComponent;
+
+public:
+	// Convenience passthrough so Blueprint can still call generate/clear on the actor
+	UFUNCTION(BlueprintCallable, Category = "Hex Grid")
+	void GenerateGrid()
+	{
+		if (HexGridComponent)
+		HexGridComponent->GenerateGrid(GetActorLocation());
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "Hex Grid")
+	void ClearGrid()
+	{
+		if (HexGridComponent)
+			HexGridComponent->ClearGrid();
+	}
+};
+/*
+public:
+	ATestGridGenerator();
+
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Hex Grid")
+	UHexGridComponent* HexGridComponent;
+	
+public:
+	// Convenience passthrough so Blueprint can still call generate/clear on the actor
+	UFUNCTION(BlueprintCallable, Category = "Hex Grid")
+	void GenerateGrid() { if (HexGridComponent) HexGridComponent->GenerateGrid(); }
+
+	UFUNCTION(BlueprintCallable, Category = "Hex Grid")
+	void ClearGrid() { if (HexGridComponent) HexGridComponent->ClearGrid(); }
 	
 	// Grid parameters
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hex Grid")
@@ -68,3 +98,4 @@ private:
 	// --- Helper for layout origin offset ---
 	FHexGridLayout CreateLayoutAtCenter(const FVector& Center);
 };
+*/

@@ -3,12 +3,15 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 
-// Log
-DEFINE_LOG_CATEGORY(GridTesterLog);
 
-ATestGridGenerator::ATestGridGenerator()
+
+ATestGridGenerator::ATestGridGenerator()// now just a wrapper for the hex grid comp
 {
     PrimaryActorTick.bCanEverTick = false;
+
+    HexGridComponent = CreateDefaultSubobject<UHexGridComponent>(TEXT("HexGridComponent"));
+    SetRootComponent(HexGridComponent);
+    /*PrimaryActorTick.bCanEverTick = false;
 
     // Create Instanced Static Mesh Component
     ISMComponent = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("HexISM"));
@@ -18,18 +21,17 @@ ATestGridGenerator::ATestGridGenerator()
     // Create generator instance
     Generator = NewObject<UHexGridGenerator>();
     UE_LOG(GridTesterLog, Log,
-        TEXT("ATestGridGenerator::Constructor >> Generator created"));
+        TEXT("ATestGridGenerator::Constructor >> Generator created"));*/
 }
 
+
+/*// Layout origin = actor world location, so HexToWorld returns correct world positions directly
 FHexGridLayout ATestGridGenerator::CreateLayoutAtCenter(const FVector& Center)
 {
     FHexGridLayout Layout;
     Layout.HexSize = HexSize;
     Layout.Orientation = Orientation;
-    //Layout.Origin = FVector2D(Center.X, Center.Y);
-
-    FVector RootLocation=GetActorLocation();
-    Layout.Origin=FVector2D(RootLocation.X, RootLocation.Y);
+    Layout.Origin = FVector2D(Center.X, Center.Y);
     
     return Layout;
 }
@@ -84,7 +86,7 @@ void ATestGridGenerator::GenerateHexGrid_Texture(UTexture2D* MaskTexture, float 
         TEXT("ATestGridGenerator::GenerateHexGrid_Texture >> Hexes after mask: %d"),
         Grid.Cells.Num());
 
-    GenerateHexGrid_Internal(Grid, GetActorLocation());*/
+    GenerateHexGrid_Internal(Grid, GetActorLocation());#1#
 }
 
 void ATestGridGenerator::GenerateHexGrid_Square(const FVector& CenterLocation, float X_HalfWidth, float Y_HalfHeight)
@@ -103,7 +105,7 @@ void ATestGridGenerator::GenerateHexGrid_Square(const FVector& CenterLocation, f
 
     UE_LOG(GridTesterLog, Log,
         TEXT("ATestGridGenerator::GenerateHexGrid_Square >> Total hexes spawned: %d"),
-        Grid.Cells.Num());*/
+        Grid.Cells.Num());#1#
 }
 
 // --- Clear previous instances --- //
@@ -141,21 +143,23 @@ void ATestGridGenerator::GenerateHexGrid_Internal(FHexGrid& Grid, const FVector&
 
     for (const FHexCoord& Hex : Grid.Cells)
     {
-        FVector2D World2D = Layout.HexToWorld(Hex);
-        FVector WorldPos = FVector(World2D.X, World2D.Y, GridCenter.Z);
+        // Layout.Origin already is the actor world position
+        // so HexToWorld gives us the correct world space position directly
+        const FVector2D World2D = Layout.HexToWorld(Hex);
+        const FVector WorldPos  = FVector(World2D.X, World2D.Y, GridCenter.Z);
 
         FTransform InstanceTransform;
         InstanceTransform.SetLocation(WorldPos);
-
         ISMComponent->AddInstance(InstanceTransform);
         SpawnedCount++;
 
-        UE_LOG(GridTesterLog, Log,
-            TEXT("ATestGridGenerator::GenerateHexGrid_Internal >> Hex X=%d Y=%d Z=%d -> World X=%.2f Y=%.2f"),
-            Hex.Hex_X, Hex.Hex_Y, Hex.Hex_Z, WorldPos.X, WorldPos.Y);
+        UE_LOG(GridTesterLog, Verbose,
+            TEXT("ATestGridGenerator::GenerateHexGrid_Internal >> Hex (%d,%d,%d) -> World (%.1f, %.1f)"),
+            Hex.Hex_X, Hex.Hex_Y, Hex.Hex_Z,
+            WorldPos.X, WorldPos.Y);
     }
 
     UE_LOG(GridTesterLog, Log,
-        TEXT("ATestGridGenerator::GenerateHexGrid_Internal >> Spawned %d hex instances"),
+        TEXT("ATestGridGenerator::GenerateHexGrid_Internal >> Spawned %d instances"),
         SpawnedCount);
-}
+}*/

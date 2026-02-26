@@ -48,6 +48,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FGameplayTag ReturnEventTag;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FGameplayTag Phase1EventTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FGameplayTag Phase2EventTag;
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FGameplayTag DeathStateTag;

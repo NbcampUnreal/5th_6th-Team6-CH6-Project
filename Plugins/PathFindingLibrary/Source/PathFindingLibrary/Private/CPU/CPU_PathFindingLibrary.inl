@@ -12,6 +12,7 @@ float FCPU_PathFindingLibrary::GetDistance(NodeType* NodeA, NodeType* NodeB)
 	return FVector::Dist(NodeA->GetWorldLocation(), NodeB->GetWorldLocation());
 }
 
+
 template <typename NodeType>
 void FCPU_PathFindingLibrary::ResetNodeFlags(TArray<NodeType*>& Nodes, uint8 ResetMask)
 {
@@ -77,8 +78,13 @@ bool FCPU_PathFindingLibrary::FindPath_AStar(
     TArray<NodeType*>& OutPath,
     TFunction<bool(NodeType*)> CanVisit)
 {
+   /*
    // Fuck. just make sure the graph is uobject. or else, it wont work
     static_assert(TIsDerivedFrom<GraphType, UObject>::Value, "GraphType must derive from UObject!");
+    */ //!!! no uobject just pure struct can be used !!!
+
+    static_assert(TIsDerivedFrom<GraphType, IGridGraph>::Value,
+        "GraphType must implement IGridGraph!");
 
     if (!Graph || !StartNode || !GoalNode) return false;
 
@@ -120,13 +126,16 @@ bool FCPU_PathFindingLibrary::FindPath_AStar(
                 OutPath.Insert(PathNode, 0);
                 PathNode = CameFrom.Contains(PathNode) ? CameFrom[PathNode] : nullptr;
             }
+            // swap Add+Reverse instead of repeated Insert(0) to avoid O(n^2)
+            // OutPath.Add then Algo::Reverse(OutPath) if performance matters at scale
             return true;
         }
 
         for (int32 i = 0; i < Current.Node->GetNumNeighbors(); ++i)
         {
-            // --- Safe: GraphType is UObject, no Cast<> needed ---
-            NodeType* Neighbor = Current.Node->GetNeighborPointerGraph(i, static_cast<UObject*>(Graph));
+            // Now passes IGridGraph* directly — no cast needed
+            NodeType* Neighbor = static_cast<NodeType*>(
+                Current.Node->GetNeighborPointerGraph(i, Graph));
 
             if (!Neighbor || !Neighbor->IsTraversable()) continue;
             if (CanVisit && !CanVisit(Neighbor)) continue;
@@ -155,10 +164,13 @@ bool FCPU_PathFindingLibrary::FindPath_Dijkstra(
     TArray<NodeType*>& OutPath,
     TFunction<bool(NodeType*)> CanVisit)
 {
+    static_assert(TIsDerivedFrom<GraphType, IGridGraph>::Value,
+         "GraphType must implement IGridGraph!");
+
     if (!Graph || !StartNode || !GoalNode) return false;
     OutPath.Reset();
 
-    struct FNodeEntry { NodeType* Node; float Cost; FNodeEntry(NodeType* InNode, float InCost) : Node(InNode), Cost(InCost) {} };
+    struct FNodeEntry { NodeType* Node; float Cost; FNodeEntry(NodeType* N, float C) : Node(N), Cost(C) {} };
     struct FCompare { bool operator()(const FNodeEntry& A, const FNodeEntry& B) const { return A.Cost < B.Cost; } };
 
     FMinHeap<FNodeEntry, FCompare> OpenList;
@@ -185,7 +197,9 @@ bool FCPU_PathFindingLibrary::FindPath_Dijkstra(
 
         for (int32 i = 0; i < Current.Node->GetNumNeighbors(); ++i)
         {
-            NodeType* Neighbor = Current.Node->GetNeighborPointerGraph(i, Graph);
+            NodeType* Neighbor = static_cast<NodeType*>(
+                Current.Node->GetNeighborPointerGraph(i, Graph));
+
             if (!Neighbor || !Neighbor->IsTraversable()) continue;
             if (CanVisit && !CanVisit(Neighbor)) continue;
 
@@ -211,6 +225,9 @@ bool FCPU_PathFindingLibrary::BFS(
     TArray<NodeType*>& OutConnectedNodes,
     TFunction<bool(NodeType*)> CanVisit)
 {
+    static_assert(TIsDerivedFrom<GraphType, IGridGraph>::Value,
+        "GraphType must implement IGridGraph!");
+
     if (!Graph || !StartNode) return false;
     OutConnectedNodes.Reset();
 
@@ -230,7 +247,9 @@ bool FCPU_PathFindingLibrary::BFS(
 
         for (int32 i = 0; i < Current->GetNumNeighbors(); ++i)
         {
-            NodeType* Neighbor = Current->GetNeighborPointerGraph(i, Graph);
+            NodeType* Neighbor = static_cast<NodeType*>(
+                Current->GetNeighborPointerGraph(i, Graph));
+
             if (!Neighbor || !Neighbor->IsTraversable() || Visited.Contains(Neighbor)) continue;
             if (CanVisit && !CanVisit(Neighbor)) continue;
 

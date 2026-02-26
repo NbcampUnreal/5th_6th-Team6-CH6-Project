@@ -1,34 +1,28 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿#include "Hex/HexAdapter.h"
 
-
-#include "Hex/HexAdapter.h"
-
-//============ FHexNodeAdapter =======================================================================================//
+// ---------------- FHexNodeAdapter ----------------
 
 int32 FHexNodeAdapter::GetNumNeighbors() const
 {
     if (!Owner) return 0;
-    FHexNodeAdapter* Node = Owner->GetNode(Coord);
-    return Node ? Owner->GetNode(Coord)->GetCoord().DistanceTo(Coord) : 0;
+    // Returns actual valid neighbors within grid bounds, not always 6
+    return Owner->GetGridWrapper().Grid.GetNeighbors(Coord).Num();
 }
 
-IGridNode* FHexNodeAdapter::GetNeighborPointerGraph(int32 Index, UObject* Graph) const
+IGridNode* FHexNodeAdapter::GetNeighborPointerGraph(int32 Index, IGridGraph* Graph) const
 {
-    UHexGridAdapter* HexGraph = Cast<UHexGridAdapter>(Graph);
-    if (!HexGraph)
-        return nullptr;
+    // static_cast is safe — caller always passes UHexGridAdapter which implements IGridGraph
+    UHexGridAdapter* HexGraph = static_cast<UHexGridAdapter*>(Graph);
+    if (!HexGraph) return nullptr;
 
-    // Then get the neighbor node from HexGraph
     const TArray<FHexCoord> Neighbors = HexGraph->GetGridWrapper().Grid.GetNeighbors(Coord);
-    if (Index < 0 || Index >= Neighbors.Num())
-        return nullptr;
+    if (!Neighbors.IsValidIndex(Index)) return nullptr;
 
     return HexGraph->GetNode(Neighbors[Index]);
 }
 
-IGridNode* FHexNodeAdapter::GetNeighborIndexGraph(int32 Index, UObject* Graph) const
+IGridNode* FHexNodeAdapter::GetNeighborIndexGraph(int32 Index, IGridGraph* Graph) const
 {
-    // Same as pointer-based lookup for this implementation
     return GetNeighborPointerGraph(Index, Graph);
 }
 
@@ -40,19 +34,21 @@ FVector FHexNodeAdapter::GetWorldLocation() const
 
 float FHexNodeAdapter::GetCostTo(const IGridNode* TargetNode) const
 {
-    if (!TargetNode) return 0.f;
+    if (!TargetNode || !Owner) return 0.f;
     const FHexNodeAdapter* HexTarget = static_cast<const FHexNodeAdapter*>(TargetNode);
-    return FVector2D::Distance(Owner->GetGridWrapper().GetWorldPos(Coord),
-                               Owner->GetGridWrapper().GetWorldPos(HexTarget->GetCoord()));
+    return FVector2D::Distance(
+        Owner->GetGridWrapper().GetWorldPos(Coord),
+        Owner->GetGridWrapper().GetWorldPos(HexTarget->GetCoord()));
 }
 
 float FHexNodeAdapter::GetHeuristicCost(const IGridNode* TargetNode) const
 {
+    if (!TargetNode) return 0.f;
     const FHexNodeAdapter* HexTarget = static_cast<const FHexNodeAdapter*>(TargetNode);
-    if (!HexTarget)
-    {
-        return 0.f;
-    }
+
+    // Multiply by HexSize so heuristic is in world units — matches GetCostTo
+    if (Owner)
+        return static_cast<float>(Coord.DistanceTo(HexTarget->Coord)) * Owner->GetGridWrapper().Layout.HexSize;
 
     return static_cast<float>(Coord.DistanceTo(HexTarget->Coord));
 }
@@ -64,14 +60,8 @@ bool FHexNodeAdapter::HasFlag(uint8 Flag) const
 
 void FHexNodeAdapter::SetFlag(uint8 Flag, bool bValue)
 {
-    if (bValue)
-    {
-        Flags |= Flag;
-    }
-    else
-    {
-        Flags &= ~Flag;
-    }
+    if (bValue) Flags |= Flag;
+    else        Flags &= ~Flag;
 }
 
 void FHexNodeAdapter::ResetState()
@@ -85,11 +75,10 @@ void FHexNodeAdapter::ResetState()
 
 int32 FHexNodeAdapter::GetNodeID() const
 {
-    // Stable hash-based ID
     return static_cast<int32>(GetTypeHash(Coord));
 }
 
-//============ FHexGridAdapter =======================================================================================//
+// ---------------- UHexGridAdapter ----------------
 
 void UHexGridAdapter::Initialize(const FHexGridWrapper& InGrid)
 {
@@ -109,6 +98,7 @@ void UHexGridAdapter::BuildAdapters()
 TArray<IGridNode*> UHexGridAdapter::GetAllNodes()
 {
     TArray<IGridNode*> Result;
+    Result.Reserve(Nodes.Num());
     for (auto& Pair : Nodes)
         Result.Add(Pair.Value.Get());
     return Result;
@@ -126,16 +116,10 @@ IGridNode* UHexGridAdapter::FindNodeByID(int32 NodeID)
 
 IGridNode* UHexGridAdapter::FindNodeByLocation(const FVector& Location)
 {
+    // WorldToHex is O(1) — avoids linear scan
     FVector2D Loc2D(Location.X, Location.Y);
-    
-    for (auto& Pair : Nodes)
-    {
-        FVector NodeWorld = Pair.Value->GetWorldLocation(); // FVector
-        FVector2D Node2D(NodeWorld.X, NodeWorld.Y);// convert to 2D
-        if (FVector2D::Distance(Node2D, Loc2D) < KINDA_SMALL_NUMBER)
-            return Pair.Value.Get();
-    }
-    return nullptr;
+    FHexCoord Coord = GridWrapper.Layout.WorldToHex(Loc2D);
+    return GetNode(Coord);
 }
 
 void UHexGridAdapter::ResetAllNodes()
@@ -146,7 +130,6 @@ void UHexGridAdapter::ResetAllNodes()
 
 FHexNodeAdapter* UHexGridAdapter::GetNode(const FHexCoord& Coord) const
 {
-    if (Nodes.Contains(Coord))
-        return Nodes[Coord].Get();
-    return nullptr;
+    const TUniquePtr<FHexNodeAdapter>* Found = Nodes.Find(Coord);
+    return Found ? Found->Get() : nullptr;
 }

@@ -19,7 +19,11 @@ enum class EMonsterMontageType : uint8
 	Attack,
 	QSkill,
 	Sit,
-	Dead
+	Dead,
+	
+	FlyStart,
+	FlyIdle,
+	FlyEnd
 };
 
 

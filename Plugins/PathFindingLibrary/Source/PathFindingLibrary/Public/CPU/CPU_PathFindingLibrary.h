@@ -18,22 +18,25 @@ public:
 	//Generic Helpers
 	//Template based
 	template<typename NodeType>
-		static float GetDistance(NodeType* NodeA, NodeType* NodeB);
+	   static float GetDistance(
+	   	NodeType* NodeA,
+	   	NodeType* NodeB);
 
 
 	template<typename NodeType>
-	static void ResetNodeFlags(TArray<NodeType*>& Nodes, uint8 ResetMask = NodeType::Blocked);
+		static void ResetNodeFlags(
+			TArray<NodeType*>& Nodes,
+			uint8 ResetMask = NodeType::Blocked);
 
-	
 
 // ---------------- A* Template ----------------
 	template<typename NodeType, typename GraphType>
-	static bool FindPath_AStar(
-		GraphType* Graph,
-		NodeType* StartNode,
-		NodeType* GoalNode,
-		TArray<NodeType*>& OutPath,
-		TFunction<bool(NodeType*)> CanVisit = nullptr);
+	 static bool FindPath_AStar(
+		 GraphType* Graph,
+		 NodeType* StartNode,
+		 NodeType* GoalNode,
+		 TArray<NodeType*>& OutPath,
+		 TFunction<bool(NodeType*)> CanVisit = nullptr);
 
 // ---------------- Dijkstra Template ----------------
 	template<typename NodeType, typename GraphType>

@@ -63,5 +63,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<UInputAction> InputCameraToggle;//Toggle
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera")
+	TObjectPtr<UInputAction> InputCameraHold;//Hold
 	
 };

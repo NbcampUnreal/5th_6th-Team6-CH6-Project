@@ -47,9 +47,13 @@ class PROJECTER_API UER_ObjectSubsystem : public UWorldSubsystem
 public:
 	void InitializeObjectPoints(TMap<FName, FObjectClassConfig>& ObjectClass);
 
+	// 항공 보급 스폰
 	void PickSupplySpawnIndex();
+	void SpawnSupplyObject();
 
-	void SpawnSupplyOjbect();
+	// 보스 몬스터 스폰
+	void PickBossSpawnIndex();
+	void SpawnBossObject();
 
 	void RegisterPoint(AActor* Point);
 	void UnregisterPoint(AActor* Point);
@@ -73,5 +77,8 @@ private:
 	UPROPERTY()
 	TArray<FSupplySpawnPick> PendingSupplyPicks;
 
+	// 선정된 보스 위치 저장용 배열
+	UPROPERTY()
+	TArray<FSupplySpawnPick> PendingBossPicks;
 	// 이후 생, 운 포인트가 나오면 배열 추가하기
 };

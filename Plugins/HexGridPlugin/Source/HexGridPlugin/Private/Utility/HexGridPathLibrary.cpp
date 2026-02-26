@@ -14,7 +14,6 @@ bool FHexGridPathLibrary::Hex_FindPath(
 {
 	OutPath.Empty();
 
-	// --- 1. Find start / end nodes ---
 	FHexNodeAdapter* StartNode = Graph.GetNode(Start);
 	FHexNodeAdapter* EndNode   = Graph.GetNode(End);
 
@@ -25,39 +24,30 @@ bool FHexGridPathLibrary::Hex_FindPath(
 		return false;
 	}
 
-	// --- 2. Reset pathfinding state ---
 	Graph.ResetAllNodes();
 
-	// --- 3. Run generic A* ---
 	TArray<IGridNode*> NodePath;
 
-	const bool bFound =
-		FCPU_PathFindingLibrary::FindPath_AStar<IGridNode, UHexGridAdapter>(// fuck, make the grid adapter to be a uobject 
-			&Graph,
-			StartNode,
-			EndNode,
-			NodePath,
-			[&](IGridNode* Node)
-			{
-				return CanVisit ? CanVisit(Node) : true;
-			});
+	// GraphType is UHexGridAdapter which now implements IGridGraph — static_assert passes cleanly
+	const bool bFound = FCPU_PathFindingLibrary::FindPath_AStar<IGridNode, UHexGridAdapter>(
+		&Graph,
+		StartNode,
+		EndNode,
+		NodePath,
+		[&](IGridNode* Node) { return CanVisit ? CanVisit(Node) : true; });
 
 	if (!bFound || NodePath.IsEmpty())
-        return false;
+		return false;
 
-    // 4. Translate node → hex
-    OutPath.Reserve(NodePath.Num());
+	OutPath.Reserve(NodePath.Num());
+	for (IGridNode* Node : NodePath)
+	{
+		const FHexNodeAdapter* HexNode = static_cast<const FHexNodeAdapter*>(Node);
+		OutPath.Add(HexNode->GetCoord());
+	}
 
-    for (IGridNode* Node : NodePath)
-    {
-        const FHexNodeAdapter* HexNode = static_cast<const FHexNodeAdapter*>(Node);
-
-        OutPath.Add(HexNode->GetCoord());
-    }
-
-    return true;
+	return true;
 }
-
 
 // Flood fill
 bool FHexGridPathLibrary::FloodFill(
@@ -70,41 +60,31 @@ bool FHexGridPathLibrary::FloodFill(
 	OutArea.Reset();
 	OutRing.Reset();
 
-	// 1. Translate hex → node
 	FHexNodeAdapter* StartNode = Graph.GetNode(StartHex);
-	if (!StartNode)
-		return false;
+	if (!StartNode) return false;
 
 	TQueue<IGridNode*> Queue;
 	Queue.Enqueue(StartNode);
 	OutArea.Add(StartHex);
 
-	// 2. Generic BFS over IGridNode
 	while (!Queue.IsEmpty())
 	{
 		IGridNode* Current = nullptr;
 		Queue.Dequeue(Current);
 
-		const FHexNodeAdapter* CurrentHex =
-			static_cast<const FHexNodeAdapter*>(Current);
+		const FHexNodeAdapter* CurrentHex = static_cast<const FHexNodeAdapter*>(Current);
 
 		for (int32 i = 0; i < Current->GetNumNeighbors(); ++i)
 		{
-			IGridNode* Neighbor =
-				Current->GetNeighborPointerGraph(i, nullptr);
+			// Pass &Graph instead of nullptr — fixes the silent failure bug
+			IGridNode* Neighbor = Current->GetNeighborPointerGraph(i, &Graph);
+			if (!Neighbor) continue;
 
-			if (!Neighbor)
-				continue;
-
-			const FHexNodeAdapter* NeighborHex =
-				static_cast<const FHexNodeAdapter*>(Neighbor);
-
+			const FHexNodeAdapter* NeighborHex = static_cast<const FHexNodeAdapter*>(Neighbor);
 			const FHexCoord& Coord = NeighborHex->GetCoord();
 
-			if (OutArea.Contains(Coord))
-				continue;
+			if (OutArea.Contains(Coord)) continue;
 
-			// blocked → ring
 			if (CanVisit && !CanVisit(Neighbor))
 			{
 				OutRing.Add(CurrentHex->GetCoord());
