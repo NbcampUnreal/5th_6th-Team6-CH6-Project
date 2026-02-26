@@ -280,6 +280,15 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<class UW_LootingPopup> LootWidgetInstance;
 
+	// Currently bound loot component for automatic popup close
+	TWeakObjectPtr<class ULootableComponent> BoundLootComponent;
+
+	// Close loot widget locally and cleanup bindings
+	void CloseLootWidgetLocal();
+
+	// Handler for loot depleted delegate
+	void HandleLootDepleted();
+
 
 	// Add reference to curved world subsystem
 	UPROPERTY()
