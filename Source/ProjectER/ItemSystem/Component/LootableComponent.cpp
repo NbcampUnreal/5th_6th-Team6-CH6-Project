@@ -34,6 +34,7 @@ void ULootableComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ULootableComponent, CurrentItemList);
+	DOREPLIFETIME(ULootableComponent, bDestroyOwnerWhenEmpty); // replicate config flag so clients see it
 }
 
 void ULootableComponent::PickupItem()
@@ -89,6 +90,22 @@ void ULootableComponent::ReduceItem(int32 SlotIndex)
 
 	// 서버 측 UI 갱신을 위해 브로드캐스트
 	OnLootChanged.Broadcast();
+
+	// 모든 아이템이 소진되었는지 확인
+	if (!HasLootRemaining())
+	{
+		// 루팅이 모두 끝난 이벤트
+		OnLootDepleted.Broadcast();
+
+		if (bDestroyOwnerWhenEmpty && GetOwner()->HasAuthority())
+		{
+			UE_LOG(LogTemp, Log, TEXT("[LootableComponent] Owner %s destroyed because loot emptied."), *GetOwner()->GetName());
+			GetOwner()->Destroy();
+			// Owner is gone, no need to call ForceNetUpdate
+			return;
+		}
+	}
+
 	GetOwner()->ForceNetUpdate();
 }
 
@@ -191,6 +208,14 @@ void ULootableComponent::ClearLoot()
 	}
 
 	OnLootChanged.Broadcast();
+
+	// 비워진 상태가 루팅 완료와 동일하므로 처리
+	OnLootDepleted.Broadcast();
+	if (bDestroyOwnerWhenEmpty)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[LootableComponent] Owner %s destroyed because loot cleared."), *GetOwner()->GetName());
+		GetOwner()->Destroy();
+	}
 }
 
 bool ULootableComponent::HasLootRemaining() const
