@@ -20,7 +20,7 @@ public:
 	AActor* GetTargetUnderCursorInRange();
 protected:
 	virtual void ExecuteSkill() override;
-	virtual void FinishSkill() override;
+	virtual void CompleteFinishSkill() override;
 	void SetWaitTargetTask();
 	AActor* GetTargetUnderCursor();
 	bool IsInRange(AActor* Actor);
