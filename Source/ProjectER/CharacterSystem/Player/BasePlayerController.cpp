@@ -257,8 +257,8 @@ void ABasePlayerController::MoveToMouseCursor()
 	}
 
 	FHitResult Hit;
-	//if (GetHitResultUnderCursor(ECC_Visibility, false, Hit)) //2026/02/10
-	if (GetCurvedHitResultUnderCursor(ECC_Visibility, false, Hit))//<- Replaced with a curve world accurate-hit result
+	//if (GetCurvedHitResultUnderCursor(ECC_Visibility, false, Hit)) //<- Replaced with a curve world accurate-hit result 추후에 완성되면 이걸로 변경
+	if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))//
 	{
 		if (Hit.bBlockingHit)
 		{
@@ -590,7 +590,7 @@ void ABasePlayerController::OnCameraPanX(const FInputActionValue& Value)
 {
 	if (IsValid(TopDownCameraComp))
 	{
-		FVector2D PanXValue=FVector2D(Value.Get<float>(), 0.f);
+		FVector2D PanXValue=FVector2D(0.f, Value.Get<float>());
 		TopDownCameraComp->AddKeyPanInput(PanXValue);
 		
 		UE_LOG(Controller_Camera, Warning,
@@ -603,12 +603,12 @@ void ABasePlayerController::OnCameraPanY(const FInputActionValue& Value)
 {
 	if (IsValid(TopDownCameraComp))
 	{
-		FVector2D PanXValue=FVector2D(0.f, Value.Get<float>());
-		TopDownCameraComp->AddKeyPanInput(PanXValue);
+		FVector2D PanYValue=FVector2D(Value.Get<float>(), 0.f);
+		TopDownCameraComp->AddKeyPanInput(PanYValue);
 
 		UE_LOG(Controller_Camera, Warning,
 			TEXT("ABasePlayerController::OnCameraPanY >> CameraPanX[%s]"),
-			*PanXValue.ToString());
+			*PanYValue.ToString());
 	}
 }
 
