@@ -80,6 +80,10 @@ protected:
 	void OnCameraToggle();
 	void OnCameraHold_Started();
 	void OnCameraHold_Completed();
+
+	// 미니맵 클릭 이동 _ mpyi
+public:
+	void OnMinimapClicked(FVector _TargetWorldPos);
 	
 protected:
 	// 입력 매핑 컨텍스트 (IMC)

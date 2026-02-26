@@ -634,6 +634,18 @@ void ABasePlayerController::OnCameraHold_Completed()
 	}
 }
 
+void ABasePlayerController::OnMinimapClicked(FVector _TargetWorldPos)
+{
+	bIsMousePressed = false;
+	InteractionTarget = nullptr;
+	if (ControlledBaseChar)
+	{
+		ControlledBaseChar->SetTarget(nullptr);
+		ControlledBaseChar->MoveToLocation(_TargetWorldPos);
+	}
+	
+}
+
 
 
 
