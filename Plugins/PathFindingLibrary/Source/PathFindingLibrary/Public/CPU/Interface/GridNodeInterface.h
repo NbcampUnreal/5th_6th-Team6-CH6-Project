@@ -15,7 +15,9 @@
  */
 
 
-//============= Node ============//
+// Forward declare instead of including UObject
+class IGridGraph;
+
 class IGridNode
 {
 public:
@@ -23,15 +25,14 @@ public:
 
     // ---------------- Core Node Functions ----------------
     virtual int32 GetNumNeighbors() const = 0;
-    virtual IGridNode* GetNeighborPointerGraph(int32 Index, UObject* Graph) const = 0;
-    virtual IGridNode* GetNeighborIndexGraph(int32 Index, UObject* Graph) const = 0;
+    virtual IGridNode* GetNeighborPointerGraph(int32 Index, IGridGraph* Graph) const = 0;  // changed
+    virtual IGridNode* GetNeighborIndexGraph(int32 Index, IGridGraph* Graph) const = 0;    // changed
 
     virtual FVector GetWorldLocation() const = 0;
 
     // ---------------- Cost / Pathfinding ----------------
-    virtual float GetCostTo(const IGridNode* TargetNode) const = 0; // traversal cost
+    virtual float GetCostTo(const IGridNode* TargetNode) const = 0;
     virtual void SetCost(float Cost) = 0;
-
     virtual float GetHeuristicCost(const IGridNode* TargetNode) const = 0;
     virtual void SetHeuristicCost(float Cost) = 0;
 
@@ -51,13 +52,11 @@ public:
     virtual FName GetTag() const = 0;
 };
 
-//============= GridGraph ============//
-
 class IGridGraph
 {
 public:
     virtual ~IGridGraph() {}
-    
+
     virtual TArray<IGridNode*> GetAllNodes() = 0;
     virtual IGridNode* FindNodeByID(int32 NodeID) = 0;
     virtual IGridNode* FindNodeByLocation(const FVector& Location) = 0;

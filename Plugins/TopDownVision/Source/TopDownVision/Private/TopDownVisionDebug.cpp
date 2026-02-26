@@ -13,6 +13,10 @@ DEFINE_LOG_CATEGORY(LOSVision);
 DEFINE_LOG_CATEGORY(LOSTrace);
 DEFINE_LOG_CATEGORY(LOSWorldBaker);
 
+//Occlusion
+DEFINE_LOG_CATEGORY(Occlusion);
+
+
 namespace TopDownVisionDebug
 {
 	FString GetNetModeString(const UWorld* World)

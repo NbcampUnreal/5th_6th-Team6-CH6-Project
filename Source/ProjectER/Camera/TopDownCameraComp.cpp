@@ -107,7 +107,7 @@ void UTopDownCameraComp::AddKeyPanInput(FVector2D Input)
 		bIsFreeCamMode = true;
 		FreeCamPivotLocation = GetComponentLocation();
 
-		UE_LOG(MainCameraComp, Log,
+		UE_LOG(MainCameraComp, Verbose,
 			TEXT("%s UTopDownCameraComp::AddKeyPanInput >> Entered FREE CAM mode | Pivot: %s"),
 			*DebugLogHelper::GetClientDebugName(this),
 			*FreeCamPivotLocation.ToString());
