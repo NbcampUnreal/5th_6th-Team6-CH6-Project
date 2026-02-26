@@ -650,7 +650,7 @@ void ABaseCharacter::MoveToLocation(FVector TargetLocation)
 		CurrentPathIndex = 1;
 		SetActorTickEnabled(true);
 		
-		UE_LOG(LogTemp, Warning, TEXT("길찾기 성공! 포인트 갯수: %d"), NavPath->PathPoints.Num());
+		// UE_LOG(LogTemp, Warning, TEXT("길찾기 성공! 포인트 갯수: %d"), NavPath->PathPoints.Num());
 		
 		if (AbilitySystemComponent.IsValid() && MovingStateEffectClass)
 		{
@@ -671,7 +671,7 @@ void ABaseCharacter::MoveToLocation(FVector TargetLocation)
 	}
 	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("길찾기 실패! 시작점과 도착점이 끊어져있거나 NavMesh 범위 밖입니다."));
+		// UE_LOG(LogTemp, Error, TEXT("길찾기 실패! 시작점과 도착점이 끊어져있거나 NavMesh 범위 밖입니다."));
 		// 경로 탐색 실패 시 중지
 		// but, 타겟이 있을 경우 정지 X
 		if (TargetActor == nullptr) 
