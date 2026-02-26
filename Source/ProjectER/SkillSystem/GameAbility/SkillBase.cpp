@@ -13,6 +13,7 @@
 #include "SkillSystem/SkillDataAsset.h"
 #include "SkillSystem/SkillData.h"
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
+#include "SkillSystem/GameplyeEffect/GE_SharedCooldown.h"
 #include "Monster/BaseMonster.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
@@ -29,6 +30,8 @@ USkillBase::USkillBase()
 	ActiveTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Active"));
 	//ActivationBlockedTags.AddTag(CastingTag);
 	ActivationBlockedTags.AddTag(ActiveTag);
+
+	CooldownGameplayEffectClass = UGE_SharedCooldown::StaticClass();
 }
 
 void USkillBase::SetSkillTagCount(FGameplayTag Tag, int32 Count)
@@ -43,7 +46,9 @@ void USkillBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const 
 
 void USkillBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
-	if(bWasCancelled) OnCancelAbility();
+	if (bWasCancelled) {
+		OnCancelAbility();
+	}
 	SetSkillTagCount(CastingTag, 0);
 	SetSkillTagCount(ActiveTag, 0);
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
@@ -62,15 +67,44 @@ void USkillBase::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const
 //	Super::PostEditChangeProperty(PropertyChangedEvent);
 //}
 
+void USkillBase::ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
+{
+	UGameplayEffect* CooldownGE = GetCooldownGameplayEffect();
+
+	if (CooldownGE && CachedConfig)
+	{
+		FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(CooldownGE->GetClass(), GetAbilityLevel());
+
+		if (SpecHandle.IsValid())
+		{
+			float Duration = CachedConfig->Data.BaseCoolTime.GetValueAtLevel(GetAbilityLevel());
+			SpecHandle.Data.Get()->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Skill.Data.CoolTime")), Duration);
+			SpecHandle.Data.Get()->DynamicGrantedTags.AppendTags(CachedConfig->Data.CoolTimeTags);
+			ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, SpecHandle);
+		}
+	}
+}
+
+const FGameplayTagContainer* USkillBase::GetCooldownTags() const
+{
+	// 데이터 에셋에 쿨타임 태그가 설정되어 있다면 그것을 우선적으로 반환합니다.
+	if (CachedConfig && CachedConfig->Data.CoolTimeTags.IsValid())
+	{
+		return &CachedConfig->Data.CoolTimeTags;
+	}
+
+	return nullptr;
+}
+
 void USkillBase::ExecuteSkill()
 {
 	auto* ASC = GetASC();
 	auto* Avatar = GetAvatar();
-
-	// 유효성 검사: 한 줄씩 끊어서 가독성 확보
-	if (!IsValid(CachedConfig)) { EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true); return; }
-	if (!ASC || !Avatar) return;
-	if (!CanActivateAbility(CurrentSpecHandle, CurrentActorInfo)) { EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false); return; }
+	if (!IsValid(CachedConfig) || !IsValid(ASC) || !IsValid(Avatar))
+	{
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+		return;
+	}
 
 	// 메인 로직: 들여쓰기 없이 평탄하게 진행
 	SetSkillTagCount(ActiveTag, 1);
@@ -86,16 +120,10 @@ void USkillBase::ExecuteSkill()
 
 void USkillBase::OnActiveTagEventReceived(FGameplayEventData Payload)
 {
-	auto* ASC = GetASC();
-	if (!GetASC() || !IsValid(CachedConfig)) return EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
-
-	if (CachedConfig->Data.bIsUseCasting)
+	if (!TryExecuteSkill())
 	{
-		if (ASC->HasMatchingGameplayTag(CastingTag) == false) return EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
-		SetSkillTagCount(CastingTag, 0);
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 	}
-
-	ExecuteSkill();
 }
 
 void USkillBase::OnCastingTagEventReceived(FGameplayEventData Payload)
@@ -108,27 +136,23 @@ void USkillBase::OnCastingTagEventReceived(FGameplayEventData Payload)
 
 void USkillBase::OnMontageInterrupted()
 {
-	const bool IsActive = GetAbilitySystemComponentFromActorInfo()->HasMatchingGameplayTag(ActiveTag);
-
-	if (CachedConfig && CachedConfig->Data.bIsUseCasting && IsActive == false)
+	if (IsActive())
 	{
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
-		//UE_LOG(LogTemp, Warning, TEXT("OnMontageInterrupted::CachedConfig && CachedConfig->Data.bIsUseCasting && IsActive == false"));
-		//FinishSkill();
-		return;
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 	}
-
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 }
 
 void USkillBase::OnMontageCancelled()
 {
-
+	if (IsActive())
+	{
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+	}
 }
 
 void USkillBase::OnMontageCompleted()
 {
-	FinishSkill();
+	CompleteFinishSkill();
 }
 
 void USkillBase::PlayAnimMontage()
@@ -141,15 +165,6 @@ void USkillBase::PlayAnimMontage()
 	PlayTask->OnCancelled.AddDynamic(this, &USkillBase::OnMontageCancelled);
 	PlayTask->OnCompleted.AddDynamic(this, &USkillBase::OnMontageCompleted);
 	PlayTask->ReadyForActivation();
-}
-
-void USkillBase::StopMontage()
-{
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
-	if (IsValid(ASC))
-	{
-		ASC->CurrentMontageStop(0.2f);
-	}
 }
 
 void USkillBase::SetWaitEventActiveTag()
@@ -189,7 +204,11 @@ void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TAr
 
 	// 1. 타겟 데이터 생성 (인라인 루프)
 	auto* Data = new FGameplayAbilityTargetData_ActorArray();
-	for (AActor* Target : Actors) if (IsValidRelationship(Target)) Data->TargetActorArray.Add(Target);
+	for (AActor* Target : Actors) {
+		if (IsValidRelationship(Target)) {
+			Data->TargetActorArray.Add(Target);
+		}
+	}
 
 	FGameplayAbilityTargetDataHandle Handle(Data);
 
@@ -209,6 +228,35 @@ void USkillBase::ApplyEffectsToActor(AActor* Actor, const TArray<TObjectPtr<USki
 	ApplyEffectsToActors({Actor}, SkillEffectDataAssets, InEffectContextHandle);
 }
 
+bool USkillBase::TryExecuteSkill()
+{
+	auto* ASC = GetASC();
+	if (!IsValid(ASC) || !IsValid(CachedConfig)) {
+		UE_LOG(LogTemp, Warning, TEXT("TryExecuteSkill::!IsValid(ASC) || !IsValid(CachedConfig)"));
+		return false;
+	}
+
+	if (CachedConfig->Data.bIsUseCasting && ASC->HasMatchingGameplayTag(CastingTag) == false){
+		UE_LOG(LogTemp, Warning, TEXT("TryExecuteSkill::CachedConfig->Data.bIsUseCasting && ASC->HasMatchingGameplayTag(CastingTag) == false"));
+		return false;
+	}
+
+	if (!DoesAbilitySatisfyTagRequirements(*ASC, nullptr, nullptr, nullptr)){
+		UE_LOG(LogTemp, Warning, TEXT("DoesAbilitySatisfyTagRequirements"));
+		return false;
+	}
+
+	SetSkillTagCount(CastingTag, 0);
+	ExecuteSkill();
+	return true;
+}
+
+void USkillBase::CompleteFinishSkill()
+{
+	SetSkillTagCount(ActiveTag, 0);
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+}
+
 FGameplayTag USkillBase::GetInputTag()
 {
 	return CachedConfig ? CachedConfig->Data.InputKeyTag : FGameplayTag();
@@ -221,16 +269,25 @@ ETargetRelationship USkillBase::GetSkillTargetRelationship()
 
 bool USkillBase::IsValidRelationship(AActor* Target)
 {
-	if (!Target || !CachedConfig) return false;
+	if (!IsValid(Target) || !IsValid(CachedConfig)) return false;
 
 	auto* Instigator = GetAvatar();
 	auto* I_Instigator = Cast<ITargetableInterface>(Instigator);
 	auto* I_Target = Cast<ITargetableInterface>(Target);
 
+	bool IsInstigatorImplementsInterface = Instigator->GetClass()->ImplementsInterface(UTargetableInterface::StaticClass());
+	bool TargetImplementsInterface = Target->GetClass()->ImplementsInterface(UTargetableInterface::StaticClass());
+
+	if (!IsInstigatorImplementsInterface || !TargetImplementsInterface)
+	{
+		return false;
+	}
+
+	//if (!IsValid(I_Instigator) || !IsValid()) return false;
 	if (!I_Instigator || !I_Target) return false;
 
 	bool bIsSameTeam = (I_Instigator->GetTeamType() == I_Target->GetTeamType());
-	auto Relationship = CachedConfig->Data.ApplyTo;
+	const ETargetRelationship& Relationship = CachedConfig->Data.ApplyTo;
 
 	if (Relationship == ETargetRelationship::Friend) return bIsSameTeam;
 	if (Relationship == ETargetRelationship::Enemy)  return !bIsSameTeam && I_Target->IsTargetable();
@@ -238,15 +295,9 @@ bool USkillBase::IsValidRelationship(AActor* Target)
 	return false;
 }
 
-void USkillBase::FinishSkill()
-{
-	SetSkillTagCount(ActiveTag, 0);
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
-}
-
 void USkillBase::OnCancelAbility()
 {
-	if (auto* ASC = GetASC()) ASC->CurrentMontageStop(0.0f);
+
 }
 
 void USkillBase::OnExecuteSkill_InClient()
