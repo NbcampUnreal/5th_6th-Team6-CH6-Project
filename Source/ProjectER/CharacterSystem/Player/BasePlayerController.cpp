@@ -262,6 +262,10 @@ void ABasePlayerController::MoveToMouseCursor()
 	{
 		if (Hit.bBlockingHit)
 		{
+			// [디버그 1] 클릭 충돌 성공 (화면에 파란 점 찍기)
+			DrawDebugSphere(GetWorld(), Hit.Location, 15.f, 12, FColor::Blue, false, 2.0f);
+			UE_LOG(LogTemp, Warning, TEXT("마우스 클릭 성공 좌표: %s"), *Hit.Location.ToString());
+			
 			AActor* HitActor = Hit.GetActor();
 
 			// [디버깅] 클릭 대상 확인
@@ -347,6 +351,10 @@ void ABasePlayerController::MoveToMouseCursor()
 			ControlledBaseChar->MoveToLocation(Hit.Location);
 
 			// SpawnDestinationEffect(Hit.Location);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("마우스 클릭 실패: Blocking Hit가 아님 (바닥 콜리전 확인 필요)"));
 		}
 	}
 }
@@ -984,6 +992,28 @@ void ABasePlayerController::Client_OpenLootUI_Implementation(const AActor* Box)
 		LootWidgetInstance->UpdateLootingSlots(Box);
 		LootWidgetInstance->Refresh();
 	}
+
+	// If the loot source will auto-destroy on empty, bind a small lambda
+	if (Box)
+	{
+		AActor* Actor = const_cast<AActor*>(Box);
+		if (ULootableComponent* LootComp = Actor->FindComponentByClass<ULootableComponent>())
+		{
+			if (LootComp->bDestroyOwnerWhenEmpty)
+			{
+				// Capture a weak pointer to the widget; when loot depleted fires, close the popup locally.
+				TWeakObjectPtr<UW_LootingPopup> WeakPopup = LootWidgetInstance;
+				LootComp->OnLootDepleted.AddLambda([WeakPopup]() {
+					if (WeakPopup.IsValid())
+					{
+						WeakPopup->HideTooltip();
+						WeakPopup->RemoveFromParent();
+					}
+					});
+			}
+		}
+	}
+
 }
 
 void ABasePlayerController::Client_CloseLootUI_Implementation()
