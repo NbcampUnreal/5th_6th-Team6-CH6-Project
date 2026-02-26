@@ -16,11 +16,6 @@ UOcclusionObstacleComponent::UOcclusionObstacleComponent()
 void UOcclusionObstacleComponent::BeginPlay()//set up for the visual
 {
 	Super::BeginPlay();
-
-	DiscoverChildMeshes();
-	
-	InitializeCollision();
-	InitializeMaterials();
 }
 
 void UOcclusionObstacleComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -97,7 +92,8 @@ void UOcclusionObstacleComponent::DiscoverChildMeshes()
 	// Clear previous data (safety for PIE / re-init)
 	NormalMeshes.Empty();
 	OccludedMeshes.Empty();
-	DynamicMaterials.Empty();
+	NormalDynamicMaterials.Empty();
+	OccludedDynamicMaterials.Empty();
 	ActiveOverlaps.Empty();
 
 	UE_LOG(Occlusion, Log,
@@ -141,6 +137,11 @@ void UOcclusionObstacleComponent::DiscoverChildMeshes()
 			TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> No tagged meshes found on %s"),
 			*GetOwner()->GetName());
 	}
+
+	Modify();
+
+	bool DidMarked=MarkPackageDirty();
+	
 }
 
 void UOcclusionObstacleComponent::TickComponent(float DeltaTime, ELevelTick TickType,
@@ -168,8 +169,19 @@ void UOcclusionObstacleComponent::TickComponent(float DeltaTime, ELevelTick Tick
 	UpdateMaterialAlpha();
 }
 
+void UOcclusionObstacleComponent::SetupOcclusionMeshes()
+{
+	DiscoverChildMeshes();
+	InitializeCollision();
+	InitializeMaterials();
+
+	UE_LOG(Occlusion, Log,
+		TEXT("UOcclusionObstacleComponent::SetupOcclusionMeshes>> Completed setup for %s"),
+		*GetOwner()->GetName());
+}
+
 void UOcclusionObstacleComponent::OnMeshBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+                                                     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (!OtherComp) return;
 
@@ -213,51 +225,67 @@ void UOcclusionObstacleComponent::InitializeMaterials()
 		TEXT("UOcclusionObstacleComponent::InitializeMaterials>> Creating dynamic materials for %s"),
 		*GetOwner()->GetName());
 
-	auto SetupArray = [this](const TArray<UStaticMeshComponent*>& MeshArray)
-	{
-		for (UStaticMeshComponent* Mesh : MeshArray)
+	auto SetupArray =
+		[this](const TArray<UStaticMeshComponent*>& MeshArray,
+			   TArray<UMaterialInstanceDynamic*>& OutArray)
 		{
-			if (!Mesh) continue;
-
-			const int32 MatCount = Mesh->GetNumMaterials();
-
-			for (int32 i = 0; i < MatCount; ++i)
+			for (UStaticMeshComponent* Mesh : MeshArray)
 			{
-				UMaterialInterface* BaseMat = Mesh->GetMaterial(i);
-				if (!BaseMat) continue;
+				if (!Mesh) continue;
 
-				UMaterialInstanceDynamic* Dyn =
-					Mesh->CreateDynamicMaterialInstance(i, BaseMat);
+				const int32 MatCount = Mesh->GetNumMaterials();
 
-				if (Dyn)
+				for (int32 i = 0; i < MatCount; ++i)
 				{
-					DynamicMaterials.Add(Dyn);
+					UMaterialInterface* BaseMat = Mesh->GetMaterial(i);
+					if (!BaseMat) continue;
 
-					UE_LOG(Occlusion, Log,
-						TEXT("UOcclusionObstacleComponent::InitializeMaterials>> Created Dynamic Material on %s (Index %d)"),
-						*Mesh->GetName(),
-						i);
+					UMaterialInstanceDynamic* Dyn =
+						Mesh->CreateDynamicMaterialInstance(i, BaseMat);
+
+					if (Dyn)
+					{
+						OutArray.Add(Dyn);
+
+						UE_LOG(Occlusion, Log,
+							TEXT("UOcclusionObstacleComponent::InitializeMaterials>> Created Dynamic Material on %s (Index %d)"),
+							*Mesh->GetName(),
+							i);
+					}
 				}
 			}
-		}
-	};
+		};
 
-	SetupArray(NormalMeshes);
-	SetupArray(OccludedMeshes);
+	SetupArray(NormalMeshes, NormalDynamicMaterials);
+	SetupArray(OccludedMeshes, OccludedDynamicMaterials);
 
 	UE_LOG(Occlusion, Log,
-		TEXT("UOcclusionObstacleComponent::InitializeMaterials>> Total Dynamic Materials: %d"),
-		DynamicMaterials.Num());
+		TEXT("UOcclusionObstacleComponent::InitializeMaterials>> NormalDyn: %d | OccludedDyn: %d"),
+		NormalDynamicMaterials.Num(),
+		OccludedDynamicMaterials.Num());
 }
 
 void UOcclusionObstacleComponent::UpdateMaterialAlpha()
 {
-	for (UMaterialInstanceDynamic* Dyn : DynamicMaterials)
+	//swapped
+	const float NormalAlpha   =  1.f - CurrentAlpha;;
+	const float OccludedAlpha = CurrentAlpha;
+
+	for (UMaterialInstanceDynamic* Dyn : NormalDynamicMaterials)
 	{
 		if (!Dyn) continue;
 
 		Dyn->SetScalarParameterValue(
 			AlphaParameterName,
-			CurrentAlpha);
+			NormalAlpha);
+	}
+
+	for (UMaterialInstanceDynamic* Dyn : OccludedDynamicMaterials)
+	{
+		if (!Dyn) continue;
+
+		Dyn->SetScalarParameterValue(
+			AlphaParameterName,
+			OccludedAlpha);
 	}
 }

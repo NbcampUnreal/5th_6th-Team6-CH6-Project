@@ -1,12 +1,45 @@
 ﻿#pragma once
 
+//Include Path: /Plugin/TopDownVision/OcclusionMask/OcclusionMask.ush
+
 
 //this is for making radial mask to be used for OcclusionRT as a brush
 
 // simple Gradient Mask -> stylized
 
 
-//Stylization function
+// turned out the dithering isnt only for the stylization, but also for the performance.
+// translucent alpha transition is tricky with deferred shader
 
-//Bitmap Dithering Shader
+//Simple
 
+// ==========================================================
+// 4x4 Bayer Ordered Dither
+// PixelPos : screen pixel position
+// Fade     : 0–1 threshold
+// Returns  : 0 or 1 (for masked opacity)
+// ==========================================================
+
+float Bayer4x4Threshold(float2 PixelPos)
+{
+	int2 p = int2(floor(PixelPos)) & 3; // faster than fmod(x,4)
+
+	int index = p.x + p.y * 4;
+
+	// 4x4 Bayer matrix (branchless via static array)
+	const float bayer[16] =
+	{
+		0.0/16.0,  8.0/16.0,  2.0/16.0, 10.0/16.0,
+		12.0/16.0, 4.0/16.0, 14.0/16.0, 6.0/16.0,
+		3.0/16.0, 11.0/16.0,  1.0/16.0, 9.0/16.0,
+		15.0/16.0, 7.0/16.0, 13.0/16.0, 5.0/16.0
+	};
+
+	return bayer[index];
+}
+
+float DitherMask4x4(float2 PixelPos, float Fade)
+{
+	float threshold = Bayer4x4Threshold(PixelPos);
+	return Fade > threshold ? 1.0 : 0.0;
+}

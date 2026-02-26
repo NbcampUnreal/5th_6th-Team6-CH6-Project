@@ -20,6 +20,9 @@ public:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;//reset
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+	UFUNCTION(BlueprintCallable, Category="Occlusion Setup")
+	void SetupOcclusionMeshes();// this is for registering the mesh in the editor
 	
 protected:
 	UFUNCTION()
@@ -90,12 +93,14 @@ private:
 
 	/** Cached dynamic materials */
 	UPROPERTY()
-	TArray<UMaterialInstanceDynamic*> DynamicMaterials;
+	TArray<UMaterialInstanceDynamic*> NormalDynamicMaterials;
+	UPROPERTY()
+	TArray<UMaterialInstanceDynamic*> OccludedDynamicMaterials;
 
 	//registered meshes
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, Instanced)
 	TArray<UStaticMeshComponent*> NormalMeshes;
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, Instanced)
 	TArray<UStaticMeshComponent*> OccludedMeshes;
 
 	bool bLastOcclusionState = false;
