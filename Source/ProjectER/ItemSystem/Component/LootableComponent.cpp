@@ -6,6 +6,8 @@
 #include "CharacterSystem/Player/BasePlayerController.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/Character.h"
+#include "Components/CapsuleComponent.h"
 
 ULootableComponent::ULootableComponent()
 {
@@ -94,13 +96,37 @@ void ULootableComponent::ReduceItem(int32 SlotIndex)
 	// 모든 아이템이 소진되었는지 확인
 	if (!HasLootRemaining())
 	{
-		// 루팅이 모두 끝난 이벤트
-		OnLootDepleted.Broadcast();
+		// 옵션이 켜져있을 때만 루팅이 모두 끝난 이벤트를 브로드캐스트
+		if (bDestroyOwnerWhenEmpty)
+		{
+			OnLootDepleted.Broadcast();
+		}
 
 		if (bDestroyOwnerWhenEmpty && GetOwner()->HasAuthority())
 		{
 			UE_LOG(LogTemp, Log, TEXT("[LootableComponent] Owner %s destroyed because loot emptied."), *GetOwner()->GetName());
-			GetOwner()->Destroy();
+
+			// RootComponent의 Collision 비활성화
+			AActor* Owner = GetOwner();
+
+			// 1. RootComponent가 PrimitiveComponent인 경우 (박스의 경우 StaticMeshComponent)
+			if (UPrimitiveComponent* RootPrim = Cast<UPrimitiveComponent>(Owner->GetRootComponent()))
+			{
+				RootPrim->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				UE_LOG(LogTemp, Log, TEXT("[LootableComponent] Disabled collision on RootComponent"));
+			}
+
+			// 2. Character인 경우 CapsuleComponent도 확인
+			if (ACharacter* Character = Cast<ACharacter>(Owner))
+			{
+				if (UCapsuleComponent* Capsule = Character->GetCapsuleComponent())
+				{
+					Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+					UE_LOG(LogTemp, Log, TEXT("[LootableComponent] Disabled collision on CapsuleComponent"));
+				}
+			}
+
+			Owner->Destroy();
 			// Owner is gone, no need to call ForceNetUpdate
 			return;
 		}
@@ -210,11 +236,32 @@ void ULootableComponent::ClearLoot()
 	OnLootChanged.Broadcast();
 
 	// 비워진 상태가 루팅 완료와 동일하므로 처리
-	OnLootDepleted.Broadcast();
 	if (bDestroyOwnerWhenEmpty)
 	{
+		OnLootDepleted.Broadcast();
 		UE_LOG(LogTemp, Log, TEXT("[LootableComponent] Owner %s destroyed because loot cleared."), *GetOwner()->GetName());
-		GetOwner()->Destroy();
+
+		//  RootComponent의 Collision 비활성화
+		AActor* Owner = GetOwner();
+
+		// 1. RootComponent가 PrimitiveComponent인 경우
+		if (UPrimitiveComponent* RootPrim = Cast<UPrimitiveComponent>(Owner->GetRootComponent()))
+		{
+			RootPrim->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			UE_LOG(LogTemp, Log, TEXT("[LootableComponent] Disabled collision on RootComponent (ClearLoot)"));
+		}
+
+		// 2. Character인 경우 CapsuleComponent도 확인
+		if (ACharacter* Character = Cast<ACharacter>(Owner))
+		{
+			if (UCapsuleComponent* Capsule = Character->GetCapsuleComponent())
+			{
+				Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				UE_LOG(LogTemp, Log, TEXT("[LootableComponent] Disabled collision on CapsuleComponent (ClearLoot)"));
+			}
+		}
+
+		Owner->Destroy();
 	}
 }
 
@@ -330,6 +377,13 @@ void ULootableComponent::OnRep_CurrentItemList()
 	{
 		OnLootChanged.Broadcast();
 	}
+	// 클라이언트에서도 루팅이 모두 끝난 경우 알림
+	// 팝업 닫힘은 옵션이 켜져있을 때만 수행
+	if (!HasLootRemaining() && bDestroyOwnerWhenEmpty && OnLootDepleted.IsBound())
+	{
+		OnLootDepleted.Broadcast();
+	}
+
 	UE_LOG(LogTemp, Log, TEXT("[LootableComponent] OnRep_CurrentItemList: Loot updated for %s"),
 		*GetOwner()->GetName());
 }
