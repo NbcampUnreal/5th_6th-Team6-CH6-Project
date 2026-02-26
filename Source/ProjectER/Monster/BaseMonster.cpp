@@ -632,18 +632,14 @@ ETeamType ABaseMonster::GetTeamType() const
 
 bool ABaseMonster::IsTargetable() const
 {
-	if (bIsDead)
+	if (IsValid(ASC))
 	{
-		return false;
+		if (ASC->HasMatchingGameplayTag(MonsterTags.DeathStateTag))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("DeathStateTag Add"));
+			return false;
+		}
 	}
-
-	// if (IsValid(ASC))
-	// {
-	// 	if (ASC->HasMatchingGameplayTag(MonsterTags.DeathStateTag))
-	// 	{
-	// 		return false;
-	// 	}
-	// }
 
 	return true;
 }
@@ -695,4 +691,17 @@ void ABaseMonster::Death()
 		return;
 	}
 	StateTreeComp->SendStateTreeEvent(FStateTreeEvent(MonsterTags.DeathEventTag));
+}
+
+
+
+void ABaseMonster::ASCTagCheck()
+{
+	FGameplayTagContainer OwnedTags;
+	ASC->GetOwnedGameplayTags(OwnedTags);
+
+	for (const FGameplayTag& Tag : OwnedTags)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Tag: %s"), *Tag.ToString());
+	}
 }

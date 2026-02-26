@@ -257,11 +257,15 @@ void ABasePlayerController::MoveToMouseCursor()
 	}
 
 	FHitResult Hit;
-	//if (GetHitResultUnderCursor(ECC_Visibility, false, Hit)) //2026/02/10
-	if (GetCurvedHitResultUnderCursor(ECC_Visibility, false, Hit))//<- Replaced with a curve world accurate-hit result
+	//if (GetCurvedHitResultUnderCursor(ECC_Visibility, false, Hit)) //<- Replaced with a curve world accurate-hit result 추후에 완성되면 이걸로 변경
+	if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))//
 	{
 		if (Hit.bBlockingHit)
 		{
+			// [디버그 1] 클릭 충돌 성공 (화면에 파란 점 찍기)
+			/*DrawDebugSphere(GetWorld(), Hit.Location, 15.f, 12, FColor::Blue, false, 2.0f);
+			UE_LOG(LogTemp, Warning, TEXT("마우스 클릭 성공 좌표: %s"), *Hit.Location.ToString());*/
+			
 			AActor* HitActor = Hit.GetActor();
 
 			// [디버깅] 클릭 대상 확인
@@ -288,9 +292,9 @@ void ABasePlayerController::MoveToMouseCursor()
 						/* === 공격 로직 === */
 						ControlledBaseChar->SetTarget(HitActor); // 타겟 지정
 #if WITH_EDITOR
-						UE_LOG(LogTemp, Warning, TEXT("[%s] Set Target Actor -> %s"),
+						/*UE_LOG(LogTemp, Warning, TEXT("[%s] Set Target Actor -> %s"),
 							*ControlledBaseChar->GetName(),
-							HitActor ? *HitActor->GetName() : TEXT("None"));
+							HitActor ? *HitActor->GetName() : TEXT("None"));*/
 #endif
 						return;
 					}
@@ -347,6 +351,10 @@ void ABasePlayerController::MoveToMouseCursor()
 			ControlledBaseChar->MoveToLocation(Hit.Location);
 
 			// SpawnDestinationEffect(Hit.Location);
+		}
+		else
+		{
+			// UE_LOG(LogTemp, Error, TEXT("마우스 클릭 실패: Blocking Hit가 아님 (바닥 콜리전 확인 필요)"));
 		}
 	}
 }
@@ -445,7 +453,7 @@ void ABasePlayerController::CheckInteractionDistance()
 					{
 						FGameplayTag ReviveTag = FGameplayTag::RequestGameplayTag(FName("Ability.Action.Revive"));
 						ASC->TryActivateAbilitiesByTag(FGameplayTagContainer(ReviveTag));
-						UE_LOG(LogTemp, Warning, TEXT("아군 구조 스킬 발동 시도!"));
+						// UE_LOG(LogTemp, Warning, TEXT("아군 구조 스킬 발동 시도!"));
 					}
 					
 					InteractionTarget = nullptr; 
@@ -582,7 +590,7 @@ void ABasePlayerController::OnCameraPanX(const FInputActionValue& Value)
 {
 	if (IsValid(TopDownCameraComp))
 	{
-		FVector2D PanXValue=FVector2D(Value.Get<float>(), 0.f);
+		FVector2D PanXValue=FVector2D(0.f, Value.Get<float>());
 		TopDownCameraComp->AddKeyPanInput(PanXValue);
 		
 		UE_LOG(Controller_Camera, Warning,
@@ -595,12 +603,12 @@ void ABasePlayerController::OnCameraPanY(const FInputActionValue& Value)
 {
 	if (IsValid(TopDownCameraComp))
 	{
-		FVector2D PanXValue=FVector2D(0.f, Value.Get<float>());
-		TopDownCameraComp->AddKeyPanInput(PanXValue);
+		FVector2D PanYValue=FVector2D(Value.Get<float>(), 0.f);
+		TopDownCameraComp->AddKeyPanInput(PanYValue);
 
 		UE_LOG(Controller_Camera, Warning,
 			TEXT("ABasePlayerController::OnCameraPanY >> CameraPanX[%s]"),
-			*PanXValue.ToString());
+			*PanYValue.ToString());
 	}
 }
 
@@ -632,6 +640,18 @@ void ABasePlayerController::OnCameraHold_Completed()
 	{
 		TopDownCameraComp->SetFreeCamMode(false);
 	}
+}
+
+void ABasePlayerController::OnMinimapClicked(FVector _TargetWorldPos)
+{
+	bIsMousePressed = false;
+	InteractionTarget = nullptr;
+	if (ControlledBaseChar)
+	{
+		ControlledBaseChar->SetTarget(nullptr);
+		ControlledBaseChar->MoveToLocation(_TargetWorldPos);
+	}
+	
 }
 
 
@@ -984,6 +1004,28 @@ void ABasePlayerController::Client_OpenLootUI_Implementation(const AActor* Box)
 		LootWidgetInstance->UpdateLootingSlots(Box);
 		LootWidgetInstance->Refresh();
 	}
+
+	// If the loot source will auto-destroy on empty, bind a small lambda
+	if (Box)
+	{
+		AActor* Actor = const_cast<AActor*>(Box);
+		if (ULootableComponent* LootComp = Actor->FindComponentByClass<ULootableComponent>())
+		{
+			if (LootComp->bDestroyOwnerWhenEmpty)
+			{
+				// Capture a weak pointer to the widget; when loot depleted fires, close the popup locally.
+				TWeakObjectPtr<UW_LootingPopup> WeakPopup = LootWidgetInstance;
+				LootComp->OnLootDepleted.AddLambda([WeakPopup]() {
+					if (WeakPopup.IsValid())
+					{
+						WeakPopup->HideTooltip();
+						WeakPopup->RemoveFromParent();
+					}
+					});
+			}
+		}
+	}
+
 }
 
 void ABasePlayerController::Client_CloseLootUI_Implementation()

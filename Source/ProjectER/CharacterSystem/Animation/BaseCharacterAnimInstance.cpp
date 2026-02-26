@@ -59,4 +59,13 @@ void UBaseCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 			bIsDown = ASC->HasMatchingGameplayTag(ProjectER::State::Life::Down);
 		}
 	}
+	
+	// [디버그 추가] 실시간 플래그 상태 출력
+	/*if (GEngine && Character)
+	{
+		FString DebugMsg = FString::Printf(TEXT("Move: %d | Fall: %d | Dead: %d | Down: %d | Speed: %.1f"), 
+			bShouldMove, bIsFalling, bIsDead, bIsDown, GroundSpeed);
+			
+		GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Cyan, DebugMsg);
+	}*/
 }

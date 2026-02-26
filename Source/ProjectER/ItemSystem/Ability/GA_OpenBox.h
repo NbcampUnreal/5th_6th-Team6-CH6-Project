@@ -32,6 +32,9 @@ protected:
 	UFUNCTION()
 	void TickDistanceCheck();
 
+	// 루팅 완료 콜백
+	void OnBoxDepleted();
+
 
 	UPROPERTY(EditDefaultsOnly, Category = "ProjectER|Design")
 	float OpenTime = 1.5f;

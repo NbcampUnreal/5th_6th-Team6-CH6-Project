@@ -41,7 +41,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "State")
 	uint8 bIsDead : 1;
 	
-	// 사망 상태 확인용 변수
+	// 빈사 상태 확인용 변수
 	UPROPERTY(BlueprintReadOnly, Category = "State")
 	uint8 bIsDown : 1;
 };

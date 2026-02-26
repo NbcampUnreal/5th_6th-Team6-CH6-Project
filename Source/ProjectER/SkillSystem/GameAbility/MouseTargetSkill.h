@@ -20,11 +20,13 @@ public:
 	AActor* GetTargetUnderCursorInRange();
 protected:
 	virtual void ExecuteSkill() override;
-	virtual void FinishSkill() override;
+	virtual void CompleteFinishSkill() override;
+	virtual void OnCancelAbility() override;
 	void SetWaitTargetTask();
 	AActor* GetTargetUnderCursor();
 	bool IsInRange(AActor* Actor);
 	void RotateToTarget(AActor* Actor);
+	void CleanUpSkill();
 
 	UFUNCTION()
 	void OnTargetDataReady(const FGameplayAbilityTargetDataHandle& DataHandle);

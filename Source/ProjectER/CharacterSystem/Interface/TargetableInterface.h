@@ -29,10 +29,10 @@ class PROJECTER_API ITargetableInterface
 
 public:
 	// 해당 액터의 팀 정보를 반환
-	virtual ETeamType GetTeamType() const = 0;
+	virtual ETeamType GetTeamType() const { return ETeamType::None; }
 
 	// 현재 타겟팅이 가능한 상태인지 확인 (죽었거나, 은신이거나, 무적 등)
-	virtual bool IsTargetable() const = 0;
+	virtual bool IsTargetable() const { return true; }
 
 	// (추가 예정) 타겟팅 되었을 때 시각적 효과(아웃라인)를 켜고 끄기 위한 함수
 	// virtual void HighlightActor(bool bIsHighlight) {}

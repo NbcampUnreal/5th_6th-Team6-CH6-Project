@@ -90,14 +90,14 @@ void UMouseClickSkill::ExecuteSkill()
 		if (EffectContext == nullptr || !EffectContext->HasOrigin())
 		{
 			UE_LOG(LogTemp, Warning, TEXT("ExecuteSkill::TargetLocationEffectContext has no valid origin"));
-			FinishSkill();
+			//FinishSkill();
 			return;
 		}
 
 		UAbilitySystemComponent* InstigatorASC = GetAbilitySystemComponentFromActorInfo();
 		if (!IsValid(InstigatorASC))
 		{
-			FinishSkill();
+			//FinishSkill();
 			return;
 		}
 
@@ -114,6 +114,7 @@ void UMouseClickSkill::ExecuteSkill()
 			}
 		}
 
+		RotateToLocation(TargetLocationEffectContext.GetOrigin());
 		ABaseCharacter* Character = Cast<ABaseCharacter>(Avatar);
 		if (Character) Character->StopMove();
 	}
@@ -122,15 +123,6 @@ void UMouseClickSkill::ExecuteSkill()
 	{
 		OnExecuteSkill_InClient();
 	}
-
-	//FinishSkill();
-}
-
-void UMouseClickSkill::FinishSkill()
-{
-	TargetLocationEffectContext = FGameplayEffectContextHandle();
-	CurrentMouseLocationTargetActor = nullptr;
-	Super::FinishSkill();
 }
 
 void UMouseClickSkill::OnCancelAbility()
@@ -220,7 +212,6 @@ void UMouseClickSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle&
 	ContextHandle.AddSourceObject(this);
 	TargetLocationEffectContext = ContextHandle;
 
-	RotateToLocation(Location);
 	PrepareToActiveSkill();
 }
 

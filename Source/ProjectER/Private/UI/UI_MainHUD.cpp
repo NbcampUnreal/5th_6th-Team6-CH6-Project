@@ -421,32 +421,45 @@ void UUI_MainHUD::HandleMinimapClicked(const FPointerEvent& InMouseEvent)
     FVector2D LocalClickPos = MapGeometry.AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition());
     FVector2D ImageSize = MapGeometry.GetLocalSize();
 
-    /// 실제 클릭 위치 좌표 구하기
     float AlphaX = LocalClickPos.X / ImageSize.X;
     float AlphaY = LocalClickPos.Y / ImageSize.Y;
+
     float OffsetXRatio = AlphaX - 0.5f;
     float OffsetYRatio = AlphaY - 0.5f;
 
-    // 씬캡쳐의 OrthoWidth를 기준으로 실제 월드 단위 거리 계산
     float MapWidth = MinimapCaptureComponent->OrthoWidth;
 
-    // 캐릭터로부터의 상대 거리 계산
-    float RelativeX = -(OffsetYRatio * MapWidth);
-    float RelativeY = (OffsetXRatio * MapWidth);
+    float RelativeWorldX = -(OffsetYRatio * MapWidth);
+    float RelativeWorldY = (OffsetXRatio * MapWidth);
 
-    // 최종 목적지 = 현재 캐릭터 위치 + 상대 거리
+    FVector CameraLoc = MinimapCaptureComponent->GetComponentLocation();
+
+    // 최종 목적지 계산
+    FVector TargetWorldPos = FVector(CameraLoc.X + RelativeWorldX, CameraLoc.Y + RelativeWorldY, CameraLoc.Z);
+
+    UE_LOG(LogTemp, Log, TEXT("최종 목적지 월드 좌표: %s"), *TargetWorldPos.ToString());
+    
+    // 실제 이동 명령
+    ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
+    if (IsValid(PC))
+    {
+		UE_LOG(LogTemp, Log, TEXT("PC에게 이동 명령 전달: %s"), *TargetWorldPos.ToString());
+        PC->OnMinimapClicked(TargetWorldPos);
+    }
+
+    // 캐릭터로부터의 방향과 거리 구하기 <- 생각해보니 이거 왜 계산했지???
     APawn* PlayerPawn = GetOwningPlayerPawn();
     if (IsValid(PlayerPawn))
     {
-        FVector CurrentCharLoc = PlayerPawn->GetActorLocation();
-        FVector TargetWorldPos = CurrentCharLoc + FVector(RelativeX, RelativeY, 0.f);
+        FVector CharLoc = PlayerPawn->GetActorLocation();
 
-        // 결과 확인용 로그
-        UE_LOG(LogTemp, Error, TEXT("Relative : X=%f, Y=%f"), RelativeX, RelativeY);
-        UE_LOG(LogTemp, Error, TEXT("Absolute : %s"), *TargetWorldPos.ToString());
+        FVector DirToTarget = TargetWorldPos - CharLoc;
+        DirToTarget.Z = 0.f; // 평면 거리만
 
-        // 이동 명령
-        // MoveToLocation(TargetWorldPos);
+        float Distance = DirToTarget.Size();
+        FVector Direction = DirToTarget.GetSafeNormal();
+
+        UE_LOG(LogTemp, Log, TEXT("캐릭터로부터 거리: %f, 방향: %s"), Distance, *Direction.ToString());
     }
 }
 

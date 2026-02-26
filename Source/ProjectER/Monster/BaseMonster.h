@@ -261,6 +261,9 @@ public:
 	int32 GetSpawnPoint() { return SpawnPoint; }
 
 
+	// Test용
+	UFUNCTION(BlueprintCallable)
+	void ASCTagCheck();
 
 };
 

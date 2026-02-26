@@ -26,19 +26,21 @@ public:
 	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
 	virtual void OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
 protected:
+	virtual void ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const;
+	virtual const FGameplayTagContainer* GetCooldownTags() const;
 	//virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	virtual void ExecuteSkill();
-	virtual void FinishSkill();
 	virtual void OnCancelAbility();
 	virtual void OnExecuteSkill_InClient();
+	virtual void CompleteFinishSkill();
 	void SetSkillTagCount(FGameplayTag Tag, int32 Count);
 	void PlayAnimMontage();
-	void StopMontage();
 	void SetWaitEventActiveTag();
 	void SetWaitEventCastingTag();
 	void PrepareToActiveSkill();
 	void ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle = FGameplayEffectContextHandle());
 	void ApplyEffectsToActor(AActor* Actor, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle = FGameplayEffectContextHandle());
+	bool TryExecuteSkill();
 	FGameplayTag GetInputTag();
 	ETargetRelationship GetSkillTargetRelationship();
 	bool IsValidRelationship(AActor* Target);

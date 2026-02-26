@@ -47,12 +47,14 @@ struct FSkillDefaultData {
     UPROPERTY(EditDefaultsOnly, Category = "Skill|Animation")
     TObjectPtr<UAnimMontage> AnimMontage;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Skill|Status")
+    UPROPERTY(EditDefaultsOnly, Category = "Skill|Status|CoolDown")
     FScalableFloat BaseCoolTime;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Skill|Status|CoolDown", meta = (Categories = "Cooldown.Skill"))
+    FGameplayTagContainer CoolTimeTags;
 
     UPROPERTY(EditDefaultsOnly, Category = "Skill|InputKey", meta = (Categories = "Input"))
     FGameplayTag InputKeyTag;
-
 };
 
 //class PROJECTER_API SkillData
