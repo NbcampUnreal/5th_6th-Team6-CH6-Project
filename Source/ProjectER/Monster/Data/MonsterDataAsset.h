@@ -9,6 +9,7 @@
 class UGameplayAbility;
 class UBaseItemData;
 class USkillDataAsset;
+class UNiagaraSystem;
 struct FGameplayTag;
 
 UENUM(BlueprintType)
@@ -24,6 +25,32 @@ enum class EMonsterMontageType : uint8
 	FlyStart,
 	FlyIdle,
 	FlyEnd
+};
+
+UENUM(BlueprintType)
+enum class EMonsterNiagaraType : uint8
+{
+	NormalAttack,
+	QSkill,
+};
+
+USTRUCT(BlueprintType)
+struct FMonsterNiagaraData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TObjectPtr<UNiagaraSystem> NiagaraSystem;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	FVector Scale = FVector(1.f);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	bool bFollow = false;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (EditCondition = "bFollow", EditConditionHides))
+	FName AttachSocket = NAME_None;
+
 };
 
 
@@ -65,6 +92,9 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
 	TMap<EMonsterMontageType, TObjectPtr<UAnimMontage>> Montages;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Niagara")
+	TMap<EMonsterNiagaraType, FMonsterNiagaraData> Niagaras;
 
 
 
