@@ -268,5 +268,19 @@ namespace ProjectER
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Object);    // 상호작용 오브젝트
 		}
 	}
-
+	
+	namespace Montage
+	{
+		namespace Common
+		{
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Death);
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(AutoAttack);
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(PrimaryA);
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(PrimaryB);
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(PrimaryC);
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(CriticalHit);
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(TryRevive);
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Revive);
+		}
+	}
 }

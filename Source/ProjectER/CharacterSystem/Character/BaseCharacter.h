@@ -9,6 +9,7 @@
 
 class UCameraComponent;
 class USpringArmComponent;
+class UNiagaraSystem;
 class UAbilitySystemComponent;
 class UBaseAttributeSet;
 class UGameplayEffect;
@@ -110,6 +111,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GAS")
 	float GetAttackRange() const;
 	
+	// Tag 기반 몽타주 검색 및 반환
+	UFUNCTION(BlueprintCallable, Category = "GAS")
+	UAnimMontage* GetCharacterMontageByTag(FGameplayTag MontageTag);
+	
+	// 몽타주 Pre-Load
+	void PreloadMontages();
+	
 protected:
 	// 이동 속도 스탯 변경 감지 델리게이트
 	virtual void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
@@ -125,6 +133,7 @@ public:
 	UPROPERTY(ReplicatedUsing=OnRep_HeroData, EditAnywhere, BlueprintReadWrite, Category = "Data", meta = (ExposeOnSpawn = true))
 	TObjectPtr<UCharacterData> HeroData;
 	
+	// 스탯 초기화 이펙트 클래스
 	UPROPERTY(EditDefaultsOnly,Category = "GAS") 
 	TSubclassOf<UGameplayEffect> InitStatusEffectClass;
 	
@@ -149,6 +158,10 @@ public:
 	TSubclassOf<class UGameplayAbility> OpenAbilityClass;
 	
 protected:
+	// Anim Montage 하드 참조 캐싱 맵
+	UPROPERTY(Transient)
+	TMap<FGameplayTag, TObjectPtr<UAnimMontage>> CachedMontages;
+	
 	// GE_Moving 핸들 (추적용)
 	FActiveGameplayEffectHandle MovingEffectHandle;
 #pragma endregion 
@@ -204,6 +217,14 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_AttackMoveToLocation(FVector TargetLocation);
 	
+	// 몽타주 섹션 이름 반환 및 인덱스 관리
+	UFUNCTION(BlueprintCallable, Category = "Combat|Combo")
+	FName GetNextAutoAttackSectionName();
+	
+	// 타격 위치 피격 이펙트 재생
+	UFUNCTION(NetMulticast, Unreliable, BlueprintCallable, Category = "Combat|VFX")
+	void Multicast_PlayBasicHitVFX(FVector HitLocation, FRotator HitRotation);
+	
 protected:
 	UFUNCTION()
 	void OnRep_TargetActor();
@@ -221,6 +242,14 @@ protected:
 	
 	//  공격 명령 (A키 입력) 상태 확인 플래그
 	uint8 bIsAttackMoving : 1;
+	
+	// 평타 순환용 인덱스 (0, 1, 2)
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Combat|Combo")
+	int32 AutoAttackIndex = 0;
+	
+	// 피격 이펙트 캐싱용 변수
+	UPROPERTY(Transient)
+	TObjectPtr<UNiagaraSystem> CachedBasicHitVFX;
 	
 #pragma endregion
 
@@ -256,9 +285,6 @@ protected:
 	void Multicast_HandleDown();
 	
 protected:
-	// 사망 모션 몽타주 : 내부 캐싱용
-	UPROPERTY()
-	TObjectPtr<UAnimMontage> DeadAnimMontage;
 	
 #pragma endregion
 	

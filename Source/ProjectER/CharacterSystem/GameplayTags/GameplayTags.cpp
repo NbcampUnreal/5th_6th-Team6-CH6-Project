@@ -261,8 +261,20 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Structure, "Unit.Type.Structure", "Static Structures");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Object, "Unit.Type.Object", "Interactable Objects");
 		}
-		
-
 	}
 
+	namespace Montage
+	{
+		namespace Common
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "Montage.Common.Death", "Death Action Montage");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "Montage.Common.AutoAttack", "AutoAttack Action Montage");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(PrimaryA, "Montage.Common.PrimaryA", "Primary A Action Montage");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(PrimaryB, "Montage.Common.PrimaryB", "Primary B Action Montage");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(PrimaryC, "Montage.Common.PrimaryB", "Primary C Action Montage");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(CriticalHit, "Montage.Common.CriticalHit", "CriticalHit Action Montage");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(TryRevive, "Montage.Common.TryRevive", "TryRevive Action Montage");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Revive, "Montage.Common.Revive", "Revive Action Montage");
+		}
+	}
 }

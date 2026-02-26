@@ -9,6 +9,7 @@ class UGameplayAbility;
 class UGameplayEffect;
 class USkeletalMesh;
 class UAnimInstance;
+class UNiagaraSystem;
 class USkillDataAsset;
 class ABaseProjectile;
 
@@ -30,12 +31,16 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
 	TMap<FGameplayTag, TSoftObjectPtr<UAnimMontage>> CharacterMontages;
 	
-	// 사망 몽타주 
+	// 일반 공격 피격 이펙트 (나이아가라)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
-	TSoftObjectPtr<UAnimMontage> DeathMontage;
+	TSoftObjectPtr<UNiagaraSystem> BasicHitVFX;
 	
-	// 기본 스킬 (일반 공격, 아군 살리기 등)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	// 피격 이펙트 크기 (Scale) 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	FVector BasicHitVFXScale = FVector(1.0f);
+	
+	// 공통 스킬 (일반 공격, 아군 살리기 등)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Common")
 	TMap<FGameplayTag, TSoftClassPtr<UGameplayAbility>> Abilities;
 	
 	// 원거리 발사체 클래스

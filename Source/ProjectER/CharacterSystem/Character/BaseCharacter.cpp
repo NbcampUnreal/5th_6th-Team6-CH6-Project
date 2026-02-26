@@ -19,6 +19,8 @@
 #include "NavigationSystem.h"
 #include "NavigationPath.h"
 #include "GameplayEffect.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "GameplayAbilitySpec.h"
@@ -100,6 +102,8 @@ void ABaseCharacter::BeginPlay()
 	{
 		InitVisuals();
 	}
+	
+	PreloadMontages();
 }
 
 void ABaseCharacter::Tick(float DeltaTime)
@@ -329,6 +333,36 @@ float ABaseCharacter::GetAttackRange() const
 	return 150.0f;
 }
 
+UAnimMontage* ABaseCharacter::GetCharacterMontageByTag(FGameplayTag MontageTag)
+{
+	if (CachedMontages.Contains(MontageTag))
+	{
+		return CachedMontages[MontageTag];
+	}
+    
+	UE_LOG(LogTemp, Warning, TEXT("태그(%s)에 해당하는 몽타주가 캐싱되어 있지 않습니다!"), *MontageTag.ToString());
+	return nullptr;
+}
+
+void ABaseCharacter::PreloadMontages()
+{
+	if (!HeroData) return;
+	
+	for (const auto& Pair : HeroData->CharacterMontages)
+	{
+		if (UAnimMontage* LoadedMontage = Pair.Value.LoadSynchronous())
+		{
+			// 로드된 몽타주를 CachedMontages에 저장하여 메모리에서 날아가지 않게 꽉 붙잡아둡니다 (Caching)
+			CachedMontages.Add(Pair.Key, LoadedMontage);
+		}
+	}
+	
+	if (!HeroData->BasicHitVFX.IsNull())
+	{
+		CachedBasicHitVFX = HeroData->BasicHitVFX.LoadSynchronous();
+	}
+}
+
 void ABaseCharacter::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
 {
 	if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
@@ -535,20 +569,11 @@ void ABaseCharacter::InitVisuals()
 	if (!HeroData) return;
 
 	// 스켈레탈 메시 로드 및 설정
-	// TSoftObjectPtr을 동기 로드(LoadSynchronous)합니다.
-	// 최적화 Tip: AssetManager를 통해 게임 시작 전(로딩 화면)에 미리 AsyncLoad 해두면 
-	// 여기서 LoadSynchronous를 호출해도 딜레이가 0입니다.
 	if (!HeroData->Mesh.IsNull())
 	{
 		if (USkeletalMesh* LoadedMesh = HeroData->Mesh.LoadSynchronous())
 		{
 			GetMesh()->SetSkeletalMesh(LoadedMesh);
-
-			// 메시 크기에 맞춰 캡슐 컴포넌트 조정 (필요 시)
-			// GetCapsuleComponent()->SetCapsuleSize(...);
-
-			// 메시 위치 조정 (데이터에 오프셋이 있다면 적용)
-			// GetMesh()->SetRelativeLocation(...);
 		}
 	}
 
@@ -559,12 +584,6 @@ void ABaseCharacter::InitVisuals()
 		{
 			GetMesh()->SetAnimInstanceClass(LoadedAnimClass);
 		}
-	}
-	
-	if (!HeroData->DeathMontage.IsNull())
-	{
-		// 동기 로드 (LoadSynchronous)하여 변수에 저장
-		DeadAnimMontage = HeroData->DeathMontage.LoadSynchronous();
 	}
 }
 
@@ -631,6 +650,8 @@ void ABaseCharacter::MoveToLocation(FVector TargetLocation)
 		CurrentPathIndex = 1;
 		SetActorTickEnabled(true);
 		
+		UE_LOG(LogTemp, Warning, TEXT("길찾기 성공! 포인트 갯수: %d"), NavPath->PathPoints.Num());
+		
 		if (AbilitySystemComponent.IsValid() && MovingStateEffectClass)
 		{
 			FGameplayTag MoveTag = FGameplayTag::RequestGameplayTag(FName("State.Action.Move"));
@@ -650,6 +671,7 @@ void ABaseCharacter::MoveToLocation(FVector TargetLocation)
 	}
 	else
 	{
+		UE_LOG(LogTemp, Error, TEXT("길찾기 실패! 시작점과 도착점이 끊어져있거나 NavMesh 범위 밖입니다."));
 		// 경로 탐색 실패 시 중지
 		// but, 타겟이 있을 경우 정지 X
 		if (TargetActor == nullptr) 
@@ -966,7 +988,7 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 			if (bWasActivated)
 			{
 #if WITH_EDITOR
-				if (bShowDebug)
+				/*if (bShowDebug)
 				{
 					UE_LOG(LogTemp, Warning, TEXT("[%s] Tag: %s / Found Ability: %s / Activated: %s"),
 							*GetName(),
@@ -974,7 +996,7 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 							bHasAbility ? TEXT("YES") : TEXT("NO (Check DataAsset!)"), // 여기가 NO라면 데이터에셋)문제
 							bWasActivated ? TEXT("True") : TEXT("False (Check Cooldown/Cost/State)") // 여기가 False라면 조건 문제
 							);
-				}
+				}*/
 #endif	
 			}
 		}
@@ -1001,6 +1023,42 @@ void ABaseCharacter::Server_AttackMoveToLocation_Implementation(FVector TargetLo
 
 	// 이동 시작
 	MoveToLocation(TargetLocation);
+}
+
+FName ABaseCharacter::GetNextAutoAttackSectionName()
+{
+	FName SectionName;
+
+	// 현재 인덱스에 맞춰 재생할 몽타주 섹션 이름 결정
+	switch (AutoAttackIndex)
+	{
+	case 0: SectionName = FName("AttackA"); break;
+	case 1: SectionName = FName("AttackB"); break;
+	case 2: SectionName = FName("AttackC"); break;
+	default: SectionName = FName("AttackA"); break;
+	}
+
+	// 다음 평타를 위해 인덱스 증가 (0, 1, 2 무한 순환)
+	AutoAttackIndex = (AutoAttackIndex + 1) % 3;
+
+	return SectionName;
+}
+
+void ABaseCharacter::Multicast_PlayBasicHitVFX_Implementation(FVector HitLocation, FRotator HitRotation)
+{
+	if (CachedBasicHitVFX)
+	{
+		if (CachedBasicHitVFX && HeroData)
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+				GetWorld(), 
+				CachedBasicHitVFX, 
+				HitLocation, 
+				HitRotation, // 동적 회전값
+				HeroData->BasicHitVFXScale // 데이터 에셋에서 설정한 크기
+			);
+		}
+	}
 }
 
 void ABaseCharacter::OnRep_TargetActor()
@@ -1249,9 +1307,10 @@ void ABaseCharacter::Multicast_Revive_Implementation(FVector RespawnLocation)
 void ABaseCharacter::Multicast_Death_Implementation()
 {
 	// 사망 애니메이션 몽타주 재생
-	if (DeadAnimMontage && GetMesh() && GetMesh()->GetAnimInstance())
+	FGameplayTag DeathTag = FGameplayTag::RequestGameplayTag(FName("Montage.Common.Death"));
+	if (UAnimMontage* DeathMontage = GetCharacterMontageByTag(DeathTag))
 	{
-		PlayAnimMontage(DeadAnimMontage);
+		PlayAnimMontage(DeathMontage);
 	}
 
 	// Capsule 비활성화 
