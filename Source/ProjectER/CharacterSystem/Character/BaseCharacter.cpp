@@ -74,7 +74,7 @@ ABaseCharacter::ABaseCharacter()
 	// 26.01.29. mpyi
 	// 미니맵을 위한 씬 컴포넌트 2D <- 차후 '카메라' 시스템으로 이동할 예정
 	MinimapCaptureComponent = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("MinimapCaptureComponent"));
-	MinimapCaptureComponent->SetupAttachment(RootComponent);
+	MinimapCaptureComponent->SetupAttachment(TopDownCameraComp);
 
 	// 미니맵 캡처 기본 설정
 	MinimapCaptureComponent->SetAbsolute(false, true, false); // 순서대로: 위치, 회전, 스케일

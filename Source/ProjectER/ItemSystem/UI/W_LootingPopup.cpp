@@ -239,8 +239,8 @@ void UW_LootingPopup::OnItemHovered()
 	for (auto& Elem : SlotItemMap)
 	{
 		UButton* Btn = Elem.Key;
-		UE_LOG(LogTemp, Error, TEXT("ssssssssss"));
-		UE_LOG(LogTemp, Error, TEXT("Btn : %s"), *Btn->GetName());
+		//UE_LOG(LogTemp, Error, TEXT("ssssssssss"));
+		//UE_LOG(LogTemp, Error, TEXT("Btn : %s"), *Btn->GetName());
 		if (Btn->IsHovered())
 		{
 			// Todo:
