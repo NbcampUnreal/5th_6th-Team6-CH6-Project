@@ -98,7 +98,7 @@ private:
 	TArray<UMaterialInstanceDynamic*> OccludedDynamicMaterials;
 
 	//registered meshes
-	UPROPERTY(EditAnywhere, Instanced)
+	UPROPERTY(VisibleAnywhere, Instanced)
 	TArray<UStaticMeshComponent*> NormalMeshes;
 	UPROPERTY(VisibleAnywhere, Instanced)
 	TArray<UStaticMeshComponent*> OccludedMeshes;
