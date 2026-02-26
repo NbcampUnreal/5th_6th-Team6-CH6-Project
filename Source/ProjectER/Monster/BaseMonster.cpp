@@ -692,3 +692,16 @@ void ABaseMonster::Death()
 	}
 	StateTreeComp->SendStateTreeEvent(FStateTreeEvent(MonsterTags.DeathEventTag));
 }
+
+
+
+void ABaseMonster::ASCTagCheck()
+{
+	FGameplayTagContainer OwnedTags;
+	ASC->GetOwnedGameplayTags(OwnedTags);
+
+	for (const FGameplayTag& Tag : OwnedTags)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Tag: %s"), *Tag.ToString());
+	}
+}
