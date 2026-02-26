@@ -80,6 +80,10 @@ protected:
 	void OnCameraToggle();
 	void OnCameraHold_Started();
 	void OnCameraHold_Completed();
+
+	// 미니맵 클릭 이동 _ mpyi
+public:
+	void OnMinimapClicked(FVector _TargetWorldPos);
 	
 protected:
 	// 입력 매핑 컨텍스트 (IMC)
@@ -279,6 +283,15 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<class UW_LootingPopup> LootWidgetInstance;
+
+	// Currently bound loot component for automatic popup close
+	TWeakObjectPtr<class ULootableComponent> BoundLootComponent;
+
+	// Close loot widget locally and cleanup bindings
+	void CloseLootWidgetLocal();
+
+	// Handler for loot depleted delegate
+	void HandleLootDepleted();
 
 
 	// Add reference to curved world subsystem

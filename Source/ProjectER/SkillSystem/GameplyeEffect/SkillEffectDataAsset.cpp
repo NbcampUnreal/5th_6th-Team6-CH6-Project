@@ -25,12 +25,10 @@ TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySyste
         return OutSpecs;
     }
 
-    // 2. 새로운 컨텍스트 핸들 준비 (전달받은 게 유효하면 복사본 생성, 없으면 신규 생성)
     FGameplayEffectContextHandle SharedContextHandle;
 
     if (InEffectContextHandle.IsValid())
     {
-        // Duplicate()를 직접 호출하지 마세요. 핸들을 대입하면 엔진이 안전하게 복제합니다.
         SharedContextHandle = InEffectContextHandle;
     }
     else

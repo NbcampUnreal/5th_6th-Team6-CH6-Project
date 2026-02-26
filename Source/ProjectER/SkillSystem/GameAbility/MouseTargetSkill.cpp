@@ -40,19 +40,28 @@ void UMouseTargetSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 void UMouseTargetSkill::ExecuteSkill()
 {
 	Super::ExecuteSkill();
-	UMouseTargetSkillConfig* Config = Cast<UMouseTargetSkillConfig>(CachedConfig);
-	if (!Config || AffectedActors.Num() <= 0) return;
-	const TArray<TObjectPtr<USkillEffectDataAsset>>& EffectDataAssets = Config->GetEffectsToApply();
 
-	ApplyEffectsToActors(AffectedActors, EffectDataAssets);
+	if (AffectedActors.Num() <= 0) return;
 	RotateToTarget(AffectedActors.begin()->Get());
-	//FinishSkill();
+
+	UMouseTargetSkillConfig* Config = Cast<UMouseTargetSkillConfig>(CachedConfig);
+	if (!IsValid(Config)) return;
+
+	const TArray<TObjectPtr<USkillEffectDataAsset>>& EffectDataAssets = Config->GetEffectsToApply();
+	if (EffectDataAssets.Num() <= 0) return;
+	ApplyEffectsToActors(AffectedActors, EffectDataAssets);
 }
 
-void UMouseTargetSkill::FinishSkill()
+void UMouseTargetSkill::CompleteFinishSkill()
 {
-	Super::FinishSkill();
-	AffectedActors.Empty();
+	CleanUpSkill();
+	Super::CompleteFinishSkill();
+}
+
+void UMouseTargetSkill::OnCancelAbility()
+{
+	CleanUpSkill();
+	Super::OnCancelAbility();
 }
 
 void UMouseTargetSkill::SetWaitTargetTask()
@@ -100,7 +109,10 @@ void UMouseTargetSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle
 
 	for (AActor* Actor : TargetActors)
 	{
-		AffectedActors.Add(Actor);
+		if (IsValid(Actor))
+		{
+			AffectedActors.Add(Actor);
+		}
 	}
 
 	PrepareToActiveSkill();
@@ -193,4 +205,9 @@ void UMouseTargetSkill::RotateToTarget(AActor* Actor)
 	{
 		PC->SetControlRotation(NewRotation);
 	}*/
+}
+
+void UMouseTargetSkill::CleanUpSkill()
+{
+	AffectedActors.Empty();
 }

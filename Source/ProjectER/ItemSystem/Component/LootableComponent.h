@@ -135,7 +135,7 @@ public:
 	bool bAutoInitialize = false;
 
 	/** 루팅 완료 시 오너 액터 자동 삭제 여부 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lootable|Behavior")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Lootable|Behavior")
 	bool bDestroyOwnerWhenEmpty = false;
 
 protected:

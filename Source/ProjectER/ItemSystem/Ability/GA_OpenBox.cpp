@@ -8,58 +8,73 @@
 #include "Engine/World.h"
 
 #include "CharacterSystem/Player/BasePlayerController.h"
+#include "ItemSystem/Component/LootableComponent.h"
 
 UGA_OpenBox::UGA_OpenBox()
 {
-	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
+    InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 }
 
 void UGA_OpenBox::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
-	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+    Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
-	UE_LOG(LogTemp, Log, TEXT("GA_OpenBox START"));
+    UE_LOG(LogTemp, Log, TEXT("GA_OpenBox START"));
 
-	const AActor* Box = nullptr;
-	if (TriggerEventData)
-	{
+    const AActor* Box = nullptr;
+    if (TriggerEventData)
+    {
         Box = TriggerEventData->Target;
-	}
+    }
 
-	if (!Box)
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
+    if (!Box)
+    {
+        EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+        return;
+    }
 
     TargetBox = Box;
 
-	if (ABasePlayerController* PC = Cast<ABasePlayerController>(ActorInfo->PlayerController.Get()))
-	{
-		PC->Client_OpenLootUI(Box);
-	}
+    //  LootableComponent의 OnLootDepleted 델리게이트 바인딩
+    if (ULootableComponent* LootComp = Box->FindComponentByClass<ULootableComponent>())
+    {
+        LootComp->OnLootDepleted.AddUObject(this, &UGA_OpenBox::OnBoxDepleted);
+    }
 
-	// 거리 체크/종료까지 GA가 맡을 거면 Task/Timer로 유지
+    if (ABasePlayerController* PC = Cast<ABasePlayerController>(ActorInfo->PlayerController.Get()))
+    {
+        PC->Client_OpenLootUI(Box);
+    }
+
+    // 거리 체크/종료까지 GA가 맡을 거면 Task/Timer로 유지
     StartDistanceCheck(ActorInfo);
 }
 
 void UGA_OpenBox::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
     StopDistanceCheck();
-    //TargetBox.Reset();
+
+    // 델리게이트 언바인딩
+    if (const AActor* Box = TargetBox.Get())
+    {
+        if (ULootableComponent* LootComp = Box->FindComponentByClass<ULootableComponent>())
+        {
+            LootComp->OnLootDepleted.RemoveAll(this);
+        }
+    }
 
     Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
 void UGA_OpenBox::StartDistanceCheck(const FGameplayAbilityActorInfo* ActorInfo)
 {
-    if (!ActorInfo) 
+    if (!ActorInfo)
         return;
 
     UE_LOG(LogTemp, Log, TEXT("StartDistanceCheck Start"));
 
     UWorld* World = GetWorld();
-    if (!World) 
+    if (!World)
         return;
 
     World->GetTimerManager().SetTimer(
@@ -112,4 +127,23 @@ void UGA_OpenBox::TickDistanceCheck()
         StopDistanceCheck();
         EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
     }
-}   
+}
+// 루팅 완료 콜백
+void UGA_OpenBox::OnBoxDepleted()
+{
+    UE_LOG(LogTemp, Log, TEXT("[GA_OpenBox] OnBoxDepleted - Box is now empty!"));
+
+    const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+    if (!ActorInfo)
+        return;
+
+    // UI 닫기
+    if (ABasePlayerController* PC = Cast<ABasePlayerController>(ActorInfo->PlayerController.Get()))
+    {
+        PC->Client_CloseLootUI();
+    }
+
+    // Ability 종료
+    StopDistanceCheck();
+    EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+}
