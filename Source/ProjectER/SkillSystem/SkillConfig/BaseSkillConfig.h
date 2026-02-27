@@ -14,6 +14,21 @@
 
 class USkillBase;
 
+USTRUCT(BlueprintType)
+struct FSkillCostInfo
+{
+	GENERATED_BODY()
+
+public:
+	// 소모할 스탯 (예: Mana, Stamina 등)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cost")
+	FGameplayAttribute Attribute;
+
+	// 소모량 (FScalableFloat를 사용하여 레벨/커브 대응)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cost")
+	FScalableFloat CostValue;
+};
+
 UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced)
 class PROJECTER_API UBaseSkillConfig : public UObject
 {
@@ -25,13 +40,19 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "DefaultData")
 	FSkillDefaultData Data;
 
-	UPROPERTY(VisibleAnywhere, Category = "DefaultData", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, Category = "DefaultData|Cost")
+	TArray<FSkillCostInfo> SkillCosts;
+
+	UPROPERTY(VisibleAnywhere, Category = "Config", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<USkillBase> AbilityClass;
 
 	FORCEINLINE const TArray<TObjectPtr<USkillEffectDataAsset>>& GetExcutionEffects() const { return ExcutionEffects; }
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Config")
 	TArray<TObjectPtr<USkillEffectDataAsset>> ExcutionEffects;
+
+public:
+	UGameplayEffect* CreateCostGameplayEffect(UObject* Outer);
 };
 
 UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced)
