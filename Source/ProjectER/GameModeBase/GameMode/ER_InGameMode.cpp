@@ -27,11 +27,38 @@ void AER_InGameMode::BeginPlay()
 
 }
 
+AER_InGameMode::AER_InGameMode()
+{
+	bUseSeamlessTravel = true;
+}
+
 void AER_InGameMode::PostSeamlessTravel()
 {
 	Super::PostSeamlessTravel();
 
 	UE_LOG(LogTemp, Warning, TEXT("[GM] PostSeamlessTravel - Expecting %d players"), ExpectedPlayers);
+
+	// 무한 로딩을 방지하기 위해 60초 타이머 설정
+	GetWorld()->GetTimerManager().SetTimer(LoadingTimeoutHandle, this, &AER_InGameMode::HandleLoadingTimeout, 60.0f, false);
+}
+
+void AER_InGameMode::HandleLoadingTimeout()
+{
+	if (bIsGameStarted) return;
+
+	UE_LOG(LogTemp, Error, TEXT("[GM] Loading timeout! Arrrived: %d / Expected: %d"), PlayersInitialized, ExpectedPlayers);
+
+	if (PlayersInitialized > 1)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[GM] Forcing start with %d players."), PlayersInitialized);
+		ExpectedPlayers = PlayersInitialized;
+		StartGame();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[GM] Not enough players. Aborting match."));
+		EndGame();
+	}
 }
 
 void AER_InGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
@@ -60,7 +87,8 @@ void AER_InGameMode::Logout(AController* Exiting)
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
 		APlayerController* PC = It->Get();
-		if (IsValid(PC) && PC->PlayerState)
+		// 방금 Logout을 호출한 Exiting은 제외
+		if (IsValid(PC) && PC != Exiting && PC->PlayerState)
 		{
 			++RemainingPlayers;
 		}
@@ -68,10 +96,33 @@ void AER_InGameMode::Logout(AController* Exiting)
 
 	UE_LOG(LogTemp, Warning, TEXT("[GM] Logout. RemainingPlayers=%d"), RemainingPlayers);
 
-	if (RemainingPlayers <= 1)
+	if (!bIsGameStarted)
 	{
-		//로그아웃 시점에 플레이어가 1명일 시에 서버 초기화
-		EndGame();
+		// 로딩/대기 중 나감
+		ExpectedPlayers = FMath::Max(0, ExpectedPlayers - 1);
+		UE_LOG(LogTemp, Warning, TEXT("[GM] Logout before start. Adjusted Expected= %d"), ExpectedPlayers);
+
+		if (ExpectedPlayers <= 1 || RemainingPlayers <= 1)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[GM] Not enough players to start. Ending game."));
+			GetWorld()->GetTimerManager().ClearTimer(LoadingTimeoutHandle);
+			EndGame();
+		}
+		else if (PlayersInitialized >= ExpectedPlayers)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[GM] All remaining players loaded. Starting game."));
+			GetWorld()->GetTimerManager().ClearTimer(LoadingTimeoutHandle);
+			StartGame();
+		}
+	}
+	else
+	{
+		// 게임 중 나감
+		if (RemainingPlayers <= 1)
+		{
+			//로그아웃 시점에 플레이어가 1명일 시에 서버 초기화
+			EndGame();
+		}
 	}
 }
 
@@ -97,6 +148,7 @@ void AER_InGameMode::HandleStartingNewPlayer_Implementation(APlayerController* N
 	{
 		// 모든 플레이어가 준비된 상황에서 실행
 		UE_LOG(LogTemp, Warning, TEXT("[GM] HandleStartingNewPlayer_Implementation -> StartGame"));
+		GetWorld()->GetTimerManager().ClearTimer(LoadingTimeoutHandle);
 		StartGame();
 	}
 }
@@ -134,11 +186,25 @@ void AER_InGameMode::StartGame()
 	GetWorld()->GetTimerManager().SetTimerForNextTick([WeakThis]()
 		{
 			if (!WeakThis.IsValid()) return;
-			WeakThis->StartGame_Internal();
+			WeakThis->StartGame_Initialize();
 		});
+	GetWorldTimerManager().SetTimer(StartCountdownTimerHandle, this, &AER_InGameMode::TickCountdown, 1.0f, true);
 }
 
-void AER_InGameMode::StartGame_Internal()
+void AER_InGameMode::TickCountdown()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Game Start Countdown: %d"), RemainingSeconds);
+
+	RemainingSeconds--;
+
+	if (RemainingSeconds < 0)
+	{
+		GetWorldTimerManager().ClearTimer(StartCountdownTimerHandle);
+		StartGame_Internal();
+	}
+}
+
+void AER_InGameMode::StartGame_Initialize()
 {
 	AER_GameState* ERGS = GetGameState<AER_GameState>();
 	if (!ERGS)
@@ -146,19 +212,26 @@ void AER_InGameMode::StartGame_Internal()
 		return;
 	}
 
-	ERGS->BuildTeamCache();
-
 	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
 	if (NeutralSS)
 	{
 		NeutralSS->InitializeSpawnPoints(NeutralClass);
-		NeutralSS->FirstSpawnNeutral();
 	}
+
 	UER_ObjectSubsystem* ObjectSS = GetWorld()->GetSubsystem<UER_ObjectSubsystem>();
 	if (ObjectSS)
 	{
 		ObjectSS->InitializeObjectPoints(ObjectClass);
-		
+	}
+}
+
+void AER_InGameMode::StartGame_Internal()
+{
+	//플레이어 시작 위치 지정 코드를 여기에
+	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
+	if (NeutralSS)
+	{
+		NeutralSS->FirstSpawnNeutral();
 	}
 
 	HandlePhaseTimeUp();

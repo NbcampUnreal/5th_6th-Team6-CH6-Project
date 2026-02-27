@@ -36,6 +36,8 @@ class PROJECTER_API AER_InGameMode : public AGameModeBase
 	GENERATED_BODY()
 	
 public:
+	AER_InGameMode();
+	
 	virtual void BeginPlay() override;
 	virtual void PostSeamlessTravel() override;
 	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
@@ -43,6 +45,7 @@ public:
 	virtual void Logout(AController* Exiting) override;
 
 	void StartGame();
+	void StartGame_Initialize();
 	void StartGame_Internal();
 	void EndGame();
 	void EndGame_Internal();
@@ -75,6 +78,13 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Subsystem|Neutral")
 	TMap<FName, FNeutralClassConfig> NeutralClass;
+
+	FTimerHandle LoadingTimeoutHandle;
+	void HandleLoadingTimeout();
+
+	FTimerHandle StartCountdownTimerHandle;
+	int32 RemainingSeconds = 5;
+	void TickCountdown();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Subsystem|Object")
 	TMap<FName, FObjectClassConfig> ObjectClass;
