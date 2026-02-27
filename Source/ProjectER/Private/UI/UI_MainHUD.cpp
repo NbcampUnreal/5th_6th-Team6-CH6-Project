@@ -7,6 +7,8 @@
 #include "Components/ProgressBar.h"
 #include "Components/Image.h"
 #include "Components/SceneCaptureComponent2D.h" // 미니맵용
+#include "NavigationSystem.h" // 미니맵용
+#include "NavigationPath.h" // 미니맵용
 
 #include "Blueprint/SlateBlueprintLibrary.h" // 툴팁용
 #include "Blueprint/WidgetLayoutLibrary.h" // 툴팁용
@@ -305,7 +307,7 @@ FReply UUI_MainHUD::NativeOnMouseButtonDown(const FGeometry& InGeometry, const F
                 HandleMinimapClicked(InMouseEvent);
 
                 // 이벤트 핸들 처리
-                return FReply::Handled();
+                return FReply::Handled();              
             }
         }
     }
@@ -437,30 +439,44 @@ void UUI_MainHUD::HandleMinimapClicked(const FPointerEvent& InMouseEvent)
     // 최종 목적지 계산
     FVector TargetWorldPos = FVector(CameraLoc.X + RelativeWorldX, CameraLoc.Y + RelativeWorldY, CameraLoc.Z);
 
-    UE_LOG(LogTemp, Log, TEXT("최종 목적지 월드 좌표: %s"), *TargetWorldPos.ToString());
+    // UE_LOG(LogTemp, Log, TEXT("최종 목적지 월드 좌표: %s"), *TargetWorldPos.ToString());
     
     // 실제 이동 명령
     ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
     if (IsValid(PC))
     {
-		UE_LOG(LogTemp, Log, TEXT("PC에게 이동 명령 전달: %s"), *TargetWorldPos.ToString());
+		// UE_LOG(LogTemp, Log, TEXT("PC에게 이동 명령 전달: %s"), *TargetWorldPos.ToString());
+
+        FNavLocation ProjectedLocation;
+        
+        // -250~250 범위에 NavMesh가 있는지 찾아보기
+        FVector QueryExtent(0.f, 0.f, 500.f);
+		FVector ZeroExtent(0.f, 0.f, -250.f);
+        UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+        if (NavSys->ProjectPointToNavigation(ZeroExtent, ProjectedLocation, QueryExtent))
+        {
+            float MeshZ = ProjectedLocation.Location.Z;
+            // UE_LOG(LogTemp, Warning, TEXT("내 발밑 NavMesh의 Z값: %f"), MeshZ);
+			TargetWorldPos.Z = MeshZ;
+        }
+
         PC->OnMinimapClicked(TargetWorldPos);
     }
 
-    // 캐릭터로부터의 방향과 거리 구하기 <- 생각해보니 이거 왜 계산했지???
-    APawn* PlayerPawn = GetOwningPlayerPawn();
-    if (IsValid(PlayerPawn))
-    {
-        FVector CharLoc = PlayerPawn->GetActorLocation();
+    //// 캐릭터로부터의 방향과 거리 구하기 <- 생각해보니 이거 왜 계산했지???
+    //APawn* PlayerPawn = GetOwningPlayerPawn();
+    //if (IsValid(PlayerPawn))
+    //{
+    //    FVector CharLoc = PlayerPawn->GetActorLocation();
 
-        FVector DirToTarget = TargetWorldPos - CharLoc;
-        DirToTarget.Z = 0.f; // 평면 거리만
+    //    FVector DirToTarget = TargetWorldPos - CharLoc;
+    //    DirToTarget.Z = 0.f; // 평면 거리만
 
-        float Distance = DirToTarget.Size();
-        FVector Direction = DirToTarget.GetSafeNormal();
+    //    float Distance = DirToTarget.Size();
+    //    FVector Direction = DirToTarget.GetSafeNormal();
 
-        UE_LOG(LogTemp, Log, TEXT("캐릭터로부터 거리: %f, 방향: %s"), Distance, *Direction.ToString());
-    }
+    //    UE_LOG(LogTemp, Log, TEXT("캐릭터로부터 거리: %f, 방향: %s"), Distance, *Direction.ToString());
+    //}
 }
 
 void UUI_MainHUD::OnSkillClicked_Q()
