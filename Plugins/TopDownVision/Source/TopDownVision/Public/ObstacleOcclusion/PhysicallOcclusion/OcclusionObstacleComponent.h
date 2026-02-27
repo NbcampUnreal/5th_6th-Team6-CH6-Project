@@ -1,110 +1,80 @@
-﻿#pragma once
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
+#include "OcclusionInterface.h"
 #include "OcclusionObstacleComponent.generated.h"
 
-//ForwardDeclares
+// Forward declares
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
 class UPrimitiveComponent;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOPDOWNVISION_API UOcclusionObstacleComponent : public USceneComponent
+class TOPDOWNVISION_API UOcclusionObstacleComponent : public USceneComponent, public IOcclusionInterface
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	UOcclusionObstacleComponent();
+    UOcclusionObstacleComponent();
 
-	virtual void BeginPlay() override;
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;//reset
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+    virtual void BeginPlay() override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+    virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	UFUNCTION(BlueprintCallable, Category="Occlusion Setup")
-	void SetupOcclusionMeshes();// this is for registering the mesh in the editor
-	
-protected:
-	UFUNCTION()
-	void OnMeshBeginOverlap(
-		UPrimitiveComponent* OverlappedComp,
-		AActor* OtherActor,
-		UPrimitiveComponent* OtherComp,
-		int32 OtherBodyIndex,
-		bool bFromSweep,
-		const FHitResult& SweepResult);
+    /** Call this in editor or BeginPlay to register tagged meshes and set up materials */
+    UFUNCTION(BlueprintCallable, Category="Occlusion Setup")
+    void SetupOcclusionMeshes();
 
-	UFUNCTION()
-	void OnMeshEndOverlap(
-		UPrimitiveComponent* OverlappedComp,
-		AActor* OtherActor,
-		UPrimitiveComponent* OtherComp,
-		int32 OtherBodyIndex);
-
-private:
-	//internal helpers
-	void InitializeCollision();
-	void InitializeMaterials();
-	void UpdateMaterialAlpha();
-	void CleanupInvalidOverlaps();
-	void DiscoverChildMeshes();
-
-	
-protected:
-	/*/** Meshes that detect overlap (have collision) #1#
-	UPROPERTY(EditAnywhere, Category="Occlusion")
-	TArray<UStaticMeshComponent*> NormalMeshes;
-	/** Visual-only meshes #1#
-	UPROPERTY(EditAnywhere, Category="Occlusion")
-	TArray<UStaticMeshComponent*> OccludedMeshes;*/
-
-	
-	//!!!!! Now use the Tag for the mesh so that the mesh can be placed freely in the editor-> register will be happened in begin play
-	// Tag used for collision meshes
-	UPROPERTY(EditAnywhere, Category="Occlusion")
-	FName NormalMeshTag = TEXT("OcclusionMesh");
-
-	// Tag used for visual-only meshes
-	UPROPERTY(EditAnywhere, Category="Occlusion")
-	FName OccludedMeshTag = TEXT("OccludedVisual");
-
-	/** Custom Trace Channel for occlusion probe detection */
-	UPROPERTY(EditAnywhere, Category="Occlusion")
-	TEnumAsByte<ECollisionChannel> OcclusionProbeChannel = ECC_GameTraceChannel1;
-
-	/** Fade speed */
-	UPROPERTY(EditAnywhere, Category="Occlusion")
-	float FadeSpeed = 6.f;
-
-	/** Material parameter name */
-	UPROPERTY(EditAnywhere, Category="Occlusion")
-	FName AlphaParameterName = TEXT("OcclusionAlpha");
+    // IOcclusionInterface
+    virtual void OnOcclusionEnter_Implementation(UPrimitiveComponent* OccludingComponent) override;
+    virtual void OnOcclusionExit_Implementation(UPrimitiveComponent* OccludingComponent) override;
 
 private:
 
-	/** Active overlapping occluder sphere components */
-	TSet<TWeakObjectPtr<UPrimitiveComponent>> ActiveOverlaps;
+    void InitializeMaterials();
+    void UpdateMaterialAlpha();
+    void CleanupInvalidOverlaps();
+    void DiscoverChildMeshes();
 
-	/** Current fade alpha */
-	float CurrentAlpha = 0.f;
+protected:
 
-	/** Target state */
-	bool bShouldBeOccluded = false;
+    // Tag used for normal (visible) meshes
+    UPROPERTY(EditAnywhere, Category="Occlusion")
+    FName NormalMeshTag = TEXT("OcclusionMesh");
 
-	/** Cached dynamic materials */
-	UPROPERTY(Transient)
-	TArray<UMaterialInstanceDynamic*> NormalDynamicMaterials;
-	UPROPERTY(Transient)
-	TArray<UMaterialInstanceDynamic*> OccludedDynamicMaterials;
+    // Tag used for occluded (faded) meshes
+    UPROPERTY(EditAnywhere, Category="Occlusion")
+    FName OccludedMeshTag = TEXT("OccludedVisual");
 
-	//registered meshes
-	UPROPERTY(VisibleAnywhere)
-	TArray<TSoftObjectPtr<UStaticMeshComponent>> NormalMeshes;
-	UPROPERTY(VisibleAnywhere)
-	TArray<TSoftObjectPtr<UStaticMeshComponent>> OccludedMeshes;
-	
+    /** Fade interpolation speed */
+    UPROPERTY(EditAnywhere, Category="Occlusion")
+    float FadeSpeed = 6.f;
 
-	bool bLastOcclusionState = false;
+    /** Material scalar parameter driven by occlusion state */
+    UPROPERTY(EditAnywhere, Category="Occlusion")
+    FName AlphaParameterName = TEXT("OcclusionAlpha");
 
+private:
 
+    /** Active occluding components — tracked for multi-overlap safety */
+    TSet<TWeakObjectPtr<UPrimitiveComponent>> ActiveOverlaps;
+
+    float CurrentAlpha = 0.f;
+    bool  bShouldBeOccluded = false;
+    bool  bLastOcclusionState = false;
+
+    UPROPERTY(Transient)
+    TArray<UMaterialInstanceDynamic*> NormalDynamicMaterials;
+
+    UPROPERTY(Transient)
+    TArray<UMaterialInstanceDynamic*> OccludedDynamicMaterials;
+
+    UPROPERTY(VisibleAnywhere)
+    TArray<TSoftObjectPtr<UStaticMeshComponent>> NormalMeshes;
+
+    UPROPERTY(VisibleAnywhere)
+    TArray<TSoftObjectPtr<UStaticMeshComponent>> OccludedMeshes;
 };

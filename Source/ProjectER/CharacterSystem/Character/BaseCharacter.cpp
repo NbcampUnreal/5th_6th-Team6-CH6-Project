@@ -60,7 +60,9 @@ ABaseCharacter::ABaseCharacter()
 	//new camera
 	TopDownCameraComp = CreateDefaultSubobject<UTopDownCameraComp>(TEXT("TopDownCameraComp"));
 	TopDownCameraComp->SetupAttachment(RootComponent);//temp attatchement-> it should follow the owner with lag
-	TopDownCameraComp->InitializeCompRequirements();
+	
+	//TopDownCameraComp->InitializeCompRequirements(); -> this is too early for getting if the target is locally controlled or not
+	//--> move to begin play
 	TopDownCameraComp->SetAbsolute(true, true, true);
 
 	/* === 경로 설정 인덱스 초기화  === */
@@ -101,6 +103,11 @@ void ABaseCharacter::BeginPlay()
 	if (HeroData)
 	{
 		InitVisuals();
+	}
+	
+	if (TopDownCameraComp)
+	{
+		TopDownCameraComp->InitializeCompRequirements();
 	}
 	
 	PreloadMontages();

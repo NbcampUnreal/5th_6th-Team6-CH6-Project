@@ -1,305 +1,216 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-
-#include "TopDownVision/Public/ObstacleOcclusion/PhysicallOcclusion/OcclusionObstacleComponent.h"
+#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionObstacleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
-#include "TopDownVisionDebug.h"//log
-
+#include "TopDownVisionDebug.h"
 
 
 UOcclusionObstacleComponent::UOcclusionObstacleComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;//tick to be true
+    PrimaryComponentTick.bCanEverTick = true;
 }
 
-void UOcclusionObstacleComponent::BeginPlay()//set up for the visual
+void UOcclusionObstacleComponent::BeginPlay()
 {
-	Super::BeginPlay();
+    Super::BeginPlay();
 
-	//Initialize the MID
-	InitializeMaterials();
-	//Setup the collision
-	InitializeCollision();
+    InitializeMaterials();//set MID at runtime
 }
 
 void UOcclusionObstacleComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	Super::EndPlay(EndPlayReason);
-}
-
-void UOcclusionObstacleComponent::InitializeCollision()
-{
-	UE_LOG(Occlusion, Log,
-		TEXT("UOcclusionObstacleComponent::InitializeCollision>> Initializing collision for %s"),
-		*GetOwner()->GetName());
-
-	for (TSoftObjectPtr<UStaticMeshComponent> Mesh : NormalMeshes)
-	{
-		if (!Mesh) continue;
-
-		Mesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		Mesh->SetCollisionResponseToAllChannels(ECR_Ignore);
-		Mesh->SetCollisionResponseToChannel(
-			OcclusionProbeChannel,
-			ECR_Overlap);
-
-		Mesh->SetGenerateOverlapEvents(true);
-
-		Mesh->OnComponentBeginOverlap.AddDynamic(
-			this,
-			&UOcclusionObstacleComponent::OnMeshBeginOverlap);
-
-		Mesh->OnComponentEndOverlap.AddDynamic(
-			this,
-			&UOcclusionObstacleComponent::OnMeshEndOverlap);
-
-		UE_LOG(Occlusion, Log,
-			TEXT("UOcclusionObstacleComponent::InitializeCollision>> Bound overlap events on %s"),
-			*Mesh->GetName());
-	}
-
-	for (TSoftObjectPtr<UStaticMeshComponent> Mesh : OccludedMeshes)
-	{
-		if (!Mesh) continue;
-
-		Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-		UE_LOG(Occlusion, Log,
-			TEXT("UOcclusionObstacleComponent::InitializeCollision>> Disabled collision on OccludedMesh %s"),
-			*Mesh->GetName());
-	}
-}
-
-void UOcclusionObstacleComponent::CleanupInvalidOverlaps()
-{
-	int32 RemovedCount = 0;
-
-	for (auto It = ActiveOverlaps.CreateIterator(); It; ++It)
-	{
-		if (!It->IsValid())
-		{
-			It.RemoveCurrent();
-			RemovedCount++;
-		}
-	}
-
-	if (RemovedCount > 0)
-	{
-		UE_LOG(Occlusion, Log,
-			TEXT("UOcclusionObstacleComponent::CleanupInvalidOverlaps>> Removed %d invalid overlaps"),
-			RemovedCount);
-	}
-}
-
-void UOcclusionObstacleComponent::DiscoverChildMeshes()
-{
-	// Clear previous data (safety for PIE / re-init)
-	NormalMeshes.Empty();
-	OccludedMeshes.Empty();
-	NormalDynamicMaterials.Empty();
-	OccludedDynamicMaterials.Empty();
-	ActiveOverlaps.Empty();
-
-	UE_LOG(Occlusion, Log,
-		TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> Discovering child meshes for %s"),
-		*GetOwner()->GetName());
-
-	TArray<USceneComponent*> Children;
-	GetChildrenComponents(true, Children);
-
-	for (USceneComponent* Child : Children)
-	{
-		if (UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(Child))
-		{
-			if (Mesh->ComponentHasTag(NormalMeshTag))
-			{
-				NormalMeshes.Add(Mesh);
-
-				UE_LOG(Occlusion, Log,
-					TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> Registered NormalMesh: %s"),
-					*Mesh->GetName());
-			}
-			else if (Mesh->ComponentHasTag(OccludedMeshTag))
-			{
-				OccludedMeshes.Add(Mesh);
-
-				UE_LOG(Occlusion, Log,
-					TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> Registered OccludedMesh: %s"),
-					*Mesh->GetName());
-			}
-		}
-	}
-
-	UE_LOG(Occlusion, Log,
-		TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> Total NormalMeshes: %d | OccludedMeshes: %d"),
-		NormalMeshes.Num(),
-		OccludedMeshes.Num());
-
-	if (NormalMeshes.Num() == 0 && OccludedMeshes.Num() == 0)
-	{
-		UE_LOG(Occlusion, Warning,
-			TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> No tagged meshes found on %s"),
-			*GetOwner()->GetName());
-	}
-
-
+    Super::EndPlay(EndPlayReason);
 }
 
 void UOcclusionObstacleComponent::TickComponent(float DeltaTime, ELevelTick TickType,
                                                 FActorComponentTickFunction* ThisTickFunction)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	const float TargetAlpha = bShouldBeOccluded ? 1.f : 0.f;
+    const float TargetAlpha = bShouldBeOccluded ? 1.f : 0.f;
 
-	if (bShouldBeOccluded != bLastOcclusionState)
-	{
-		UE_LOG(Occlusion, Verbose,
-			TEXT("UOcclusionObstacleComponent::TickComponent>> Occlusion State Changed -> %s"),
-			bShouldBeOccluded ? TEXT("OCCLUDED") : TEXT("VISIBLE"));
+    if (bShouldBeOccluded != bLastOcclusionState)
+    {
+        UE_LOG(Occlusion, Verbose,
+            TEXT("UOcclusionObstacleComponent::TickComponent>> Occlusion State Changed -> %s"),
+            bShouldBeOccluded ? TEXT("OCCLUDED") : TEXT("VISIBLE"));
 
-		bLastOcclusionState = bShouldBeOccluded;
-	}
+        bLastOcclusionState = bShouldBeOccluded;
+    }
 
-	CurrentAlpha = FMath::FInterpTo(
-		CurrentAlpha,
-		TargetAlpha,
-		DeltaTime,
-		FadeSpeed);
+    CurrentAlpha = FMath::FInterpTo(CurrentAlpha, TargetAlpha, DeltaTime, FadeSpeed);
 
-	UpdateMaterialAlpha();
+    UpdateMaterialAlpha();
 }
+
+// IOcclusionInterface — called by OcclusionProbeComp hit diff
+
+void UOcclusionObstacleComponent::OnOcclusionEnter_Implementation(UPrimitiveComponent* OccludingComponent)
+{
+    if (!OccludingComponent)
+        return;
+
+    ActiveOverlaps.Add(OccludingComponent);
+    bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComponent::OnOcclusionEnter>> %s | ActiveOverlaps: %d"),
+        *OccludingComponent->GetName(),
+        ActiveOverlaps.Num());
+}
+
+void UOcclusionObstacleComponent::OnOcclusionExit_Implementation(UPrimitiveComponent* OccludingComponent)
+{
+    if (!OccludingComponent)
+        return;
+
+    ActiveOverlaps.Remove(OccludingComponent);
+    CleanupInvalidOverlaps();
+    bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComponent::OnOcclusionExit>> %s | ActiveOverlaps: %d"),
+        *OccludingComponent->GetName(),
+        ActiveOverlaps.Num());
+}
+
+// Setup
 
 void UOcclusionObstacleComponent::SetupOcclusionMeshes()
 {
-	DiscoverChildMeshes();
-	//InitializeCollision(); --> the collision settings are not saved-> so do this in beginplay
-	//InitializeMaterials(); --> now, making MID cannot be done in the editor. do this in the beginplay
+    DiscoverChildMeshes();
 
-	if (GetOwner())//call marking in the owner actor
-	{
-		GetOwner()->Modify();//indicate the change to the component
-
-		UE_LOG(Occlusion, Log,
-		TEXT("UOcclusionObstacleComponent::SetupOcclusionMeshes>> Completed setup for %s"),
-		*GetOwner()->GetName());
-	}
-
-	Modify();//call in the component
-	
-
-	UE_LOG(Occlusion, Log,
-		TEXT("UOcclusionObstacleComponent::SetupOcclusionMeshes>> Completed setup for %s"),
-		*GetOwner()->GetName());
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComponent::SetupOcclusionMeshes>> Completed setup for %s"),
+        *GetOwner()->GetName());
 }
 
-void UOcclusionObstacleComponent::OnMeshBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-                                                     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void UOcclusionObstacleComponent::DiscoverChildMeshes()
 {
-	if (!OtherComp) return;
+    NormalMeshes.Empty();
+    OccludedMeshes.Empty();
+    NormalDynamicMaterials.Empty();
+    OccludedDynamicMaterials.Empty();
+    ActiveOverlaps.Empty();
 
-	if (OtherComp->GetCollisionObjectType() != OcclusionProbeChannel)
-		return;
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> Discovering child meshes for %s"),
+        *GetOwner()->GetName());
 
-	ActiveOverlaps.Add(OtherComp);
+    TArray<USceneComponent*> Children;
+    GetChildrenComponents(true, Children);
 
-	bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+    for (USceneComponent* Child : Children)
+    {
+        if (UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(Child))
+        {
+            if (Mesh->ComponentHasTag(NormalMeshTag))
+            {
+                NormalMeshes.Add(Mesh);
+                UE_LOG(Occlusion, Log,
+                    TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> NormalMesh: %s"),
+                    *Mesh->GetName());
+            }
+            else if (Mesh->ComponentHasTag(OccludedMeshTag))
+            {
+                OccludedMeshes.Add(Mesh);
+                UE_LOG(Occlusion, Log,
+                    TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> OccludedMesh: %s"),
+                    *Mesh->GetName());
+            }
+        }
+    }
 
-	UE_LOG(Occlusion, Log,
-		TEXT("UOcclusionObstacleComponent::OnMeshBeginOverlap>> Overlap BEGIN with %s | ActiveOverlaps: %d"),
-		*OtherComp->GetName(),
-		ActiveOverlaps.Num());
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> NormalMeshes: %d | OccludedMeshes: %d"),
+        NormalMeshes.Num(), OccludedMeshes.Num());
+
+    if (NormalMeshes.Num() == 0 && OccludedMeshes.Num() == 0)
+    {
+        UE_LOG(Occlusion, Warning,
+            TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> No tagged meshes found on %s"),
+            *GetOwner()->GetName());
+    }
+
+    Modify();
 }
 
-void UOcclusionObstacleComponent::OnMeshEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+void UOcclusionObstacleComponent::CleanupInvalidOverlaps()
 {
-	if (!OtherComp) return;
+    int32 RemovedCount = 0;
 
-	if (OtherComp->GetCollisionObjectType() != OcclusionProbeChannel)
-		return;
+    for (auto It = ActiveOverlaps.CreateIterator(); It; ++It)
+    {
+        if (!It->IsValid())
+        {
+            It.RemoveCurrent();
+            RemovedCount++;
+        }
+    }
 
-	ActiveOverlaps.Remove(OtherComp);
-
-	CleanupInvalidOverlaps();
-
-	bShouldBeOccluded = ActiveOverlaps.Num() > 0;
-
-	UE_LOG(Occlusion, Log,
-		TEXT("UOcclusionObstacleComponent::OnMeshEndOverlap>> Overlap END with %s | ActiveOverlaps: %d"),
-		*OtherComp->GetName(),
-		ActiveOverlaps.Num());
+    if (RemovedCount > 0)
+    {
+        UE_LOG(Occlusion, Log,
+            TEXT("UOcclusionObstacleComponent::CleanupInvalidOverlaps>> Removed %d stale entries"),
+            RemovedCount);
+    }
 }
 
 void UOcclusionObstacleComponent::InitializeMaterials()
 {
-	//internal helper function for setting nomal and occluded meshes
-	UE_LOG(Occlusion, Log,
-		TEXT("UOcclusionObstacleComponent::InitializeMaterials>> Creating dynamic materials for %s"),
-		*GetOwner()->GetName());
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComponent::InitializeMaterials>> Creating dynamic materials for %s"),
+        *GetOwner()->GetName());
 
-	auto SetupArray =
-		[this](const TArray<TSoftObjectPtr<UStaticMeshComponent>>& MeshArray,
-			   TArray<UMaterialInstanceDynamic*>& OutArray)
-		{
-			for (TSoftObjectPtr<UStaticMeshComponent> Mesh : MeshArray)
-			{
-				if (!Mesh) continue;
+    auto SetupArray =
+        [this](const TArray<TSoftObjectPtr<UStaticMeshComponent>>& MeshArray,
+               TArray<UMaterialInstanceDynamic*>& OutArray)
+        {
+            for (TSoftObjectPtr<UStaticMeshComponent> Mesh : MeshArray)
+            {
+                if (!Mesh) continue;
 
-				const int32 MatCount = Mesh->GetNumMaterials();
+                const int32 MatCount = Mesh->GetNumMaterials();
+                for (int32 i = 0; i < MatCount; ++i)
+                {
+                    UMaterialInterface* BaseMat = Mesh->GetMaterial(i);
+                    if (!BaseMat) continue;
 
-				for (int32 i = 0; i < MatCount; ++i)
-				{
-					UMaterialInterface* BaseMat = Mesh->GetMaterial(i);
-					if (!BaseMat) continue;
+                    UMaterialInstanceDynamic* Dyn =
+                        Mesh->CreateDynamicMaterialInstance(i, BaseMat);
 
-					UMaterialInstanceDynamic* Dyn =
-						Mesh->CreateDynamicMaterialInstance(i, BaseMat);
+                    if (Dyn)
+                    {
+                        OutArray.Add(Dyn);
+                        UE_LOG(Occlusion, Log,
+                            TEXT("UOcclusionObstacleComponent::InitializeMaterials>> Created DynMat on %s (Index %d)"),
+                            *Mesh->GetName(), i);
+                    }
+                }
+            }
+        };
 
-					if (Dyn)
-					{
-						OutArray.Add(Dyn);
+    SetupArray(NormalMeshes,   NormalDynamicMaterials);
+    SetupArray(OccludedMeshes, OccludedDynamicMaterials);
 
-						UE_LOG(Occlusion, Log,
-							TEXT("UOcclusionObstacleComponent::InitializeMaterials>> Created Dynamic Material on %s (Index %d)"),
-							*Mesh->GetName(),
-							i);
-					}
-				}
-			}
-		};
-
-	SetupArray(NormalMeshes, NormalDynamicMaterials);
-	SetupArray(OccludedMeshes, OccludedDynamicMaterials);
-
-	UE_LOG(Occlusion, Log,
-		TEXT("UOcclusionObstacleComponent::InitializeMaterials>> NormalDyn: %d | OccludedDyn: %d"),
-		NormalDynamicMaterials.Num(),
-		OccludedDynamicMaterials.Num());
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComponent::InitializeMaterials>> NormalDyn: %d | OccludedDyn: %d"),
+        NormalDynamicMaterials.Num(), OccludedDynamicMaterials.Num());
 }
 
 void UOcclusionObstacleComponent::UpdateMaterialAlpha()
 {
-	//swapped
-	const float NormalAlpha   =  1.f - CurrentAlpha;;
-	const float OccludedAlpha = CurrentAlpha;
+    const float NormalAlpha   = 1.f - CurrentAlpha;
+    const float OccludedAlpha = CurrentAlpha;
 
-	for (UMaterialInstanceDynamic* Dyn : NormalDynamicMaterials)
-	{
-		if (!Dyn) continue;
+    for (UMaterialInstanceDynamic* Dyn : NormalDynamicMaterials)
+    {
+        if (Dyn) Dyn->SetScalarParameterValue(AlphaParameterName, NormalAlpha);
+    }
 
-		Dyn->SetScalarParameterValue(
-			AlphaParameterName,
-			NormalAlpha);
-	}
-
-	for (UMaterialInstanceDynamic* Dyn : OccludedDynamicMaterials)
-	{
-		if (!Dyn) continue;
-
-		Dyn->SetScalarParameterValue(
-			AlphaParameterName,
-			OccludedAlpha);
-	}
+    for (UMaterialInstanceDynamic* Dyn : OccludedDynamicMaterials)
+    {
+        if (Dyn) Dyn->SetScalarParameterValue(AlphaParameterName, OccludedAlpha);
+    }
 }

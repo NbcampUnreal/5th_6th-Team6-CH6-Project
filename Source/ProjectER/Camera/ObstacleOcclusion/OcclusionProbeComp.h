@@ -18,13 +18,20 @@
  *  which avoids broadphase maintenance cost of dynamic sphere repositioning every tick.
  *
  *  Hit results are diffed against the previous frame to synthesize Begin/End occlusion signals,
- *  which are then dispatched to IOcclusionTarget on hit actors.
+ *  which are then dispatched via IOcclusionInterface on hit actors.
+ *
+ *  Tick is disabled — call UpdateOcclusionProbe() manually for custom tick control.
+ *
+ *  Segment count is dynamic — derived from path length / SegmentLength, clamped between Min/MaxSegments.
  */
 
 class APlayerCameraManager;
 
+// Log
+PROJECTER_API DECLARE_LOG_CATEGORY_EXTERN(OcclusionProbeComp, Log, All);
+
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class PROJECTER_API UOcclusionProbeComp : public USceneComponent
+class PROJECTER_API UOcclusionProbeComp : public USceneComponent // root is used for target (endpoint)
 {
     GENERATED_BODY()
 
@@ -35,16 +42,22 @@ protected:
     virtual void BeginPlay() override;
 
 public:
-    virtual void TickComponent(float DeltaTime,
-        ELevelTick TickType,
-        FActorComponentTickFunction* ThisTickFunction) override;
+    /** Call this manually from your custom tick — runs sweeps and processes hit diff */
+    UFUNCTION(BlueprintCallable, Category="Occlusion")
+    void UpdateOcclusionProbe();
+
+    UFUNCTION(BlueprintCallable, Category="Occlusion")
+    void SetCameraManager();
+
+    UFUNCTION(BlueprintCallable, Category="Occlusion")
+    void SetCameraManager_Test(APlayerCameraManager* InCameraManager) {CameraManager=InCameraManager;};
 
 private:
 
     /** Run sweeps along the curved path and collect all hit primitive components */
     void RunSweeps();
 
-    /** Diff current vs previous hit sets to fire Begin/End signals */
+    /** Diff current vs previous hit sets and dispatch interface calls */
     void ProcessHitDiff();
 
     /** Calculate world-space sphere radius matching the actor's screen footprint */
@@ -52,9 +65,17 @@ private:
 
 private:
 
-    /** Number of sweep segments along the curved path (camera -> character) */
+    /** World-space distance between each sweep sphere — segment count is derived from this */
     UPROPERTY(EditAnywhere, Category="Occlusion")
-    int32 NumSegments = 8;
+    float SegmentLength = 100.f;
+
+    /** Minimum number of segments regardless of distance */
+    UPROPERTY(EditAnywhere, Category="Occlusion")
+    int32 MinSegments = 2;
+
+    /** Maximum number of segments to cap performance cost */
+    UPROPERTY(EditAnywhere, Category="Occlusion")
+    int32 MaxSegments = 20;
 
     UPROPERTY(EditAnywhere, Category="Occlusion")
     float MinSweepRadius = 25.f;

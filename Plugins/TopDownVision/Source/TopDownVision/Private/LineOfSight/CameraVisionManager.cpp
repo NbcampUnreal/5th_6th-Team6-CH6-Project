@@ -234,8 +234,7 @@ void UCameraVisionManager::UpdateCameraLOS()
 			});
 	}
 
-
-
+	
 	// update MPC scalars (camera location, size)
 	if (MPCInstance)
 	{

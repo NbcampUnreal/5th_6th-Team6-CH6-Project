@@ -3,51 +3,109 @@
 #include "OcclusionProbeComp.h"
 
 #include "FCurvedWorldUtil.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicallOcclusion/OcclusionInterface.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
 #include "DrawDebugHelpers.h"
 
+DEFINE_LOG_CATEGORY(OcclusionProbeComp);
+
 
 UOcclusionProbeComp::UOcclusionProbeComp()
 {
-    PrimaryComponentTick.bCanEverTick = true;
+    // Tick disabled — UpdateOcclusionProbe() is called manually
+    PrimaryComponentTick.bCanEverTick = false;
 }
 
 void UOcclusionProbeComp::BeginPlay()
 {
     Super::BeginPlay();
 
-    APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
-    if (PC)
+    //SetCameraManager();//set camera -> temp for bp testing
+    
+    CurvedWorldSubsystem = GetWorld()->GetSubsystem<UCurvedWorldSubsystem>();
+
+    if (!CurvedWorldSubsystem)
     {
-        CameraManager = PC->PlayerCameraManager;
+        UE_LOG(OcclusionProbeComp, Error,
+            TEXT("UOcclusionProbeComp::BeginPlay >> CurvedWorldSubsystem is null"));
+        return;
     }
 
-    CurvedWorldSubsystem = GetWorld()->GetSubsystem<UCurvedWorldSubsystem>();
+    UE_LOG(OcclusionProbeComp, Log,
+        TEXT("UOcclusionProbeComp::BeginPlay >> Initialized on %s"),
+        *GetOwner()->GetName());
 }
 
-void UOcclusionProbeComp::TickComponent(float DeltaTime,
-    ELevelTick TickType,
-    FActorComponentTickFunction* ThisTickFunction)
-{
-    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+// ------------------------------------------------------------
+// Public — called manually from custom tick
+// ------------------------------------------------------------
+
+void UOcclusionProbeComp::UpdateOcclusionProbe()
+{
     RunSweeps();
     ProcessHitDiff();
 }
 
+void UOcclusionProbeComp::SetCameraManager()
+{
+    APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+    if (!PC)
+    {
+        UE_LOG(OcclusionProbeComp, Error,
+            TEXT("UOcclusionProbeComp::BeginPlay >> Failed to get PlayerController"));
+        return;
+    }
+
+    CameraManager = PC->PlayerCameraManager;
+
+    if (!CameraManager)
+    {
+        UE_LOG(OcclusionProbeComp, Error,
+            TEXT("UOcclusionProbeComp::BeginPlay >> PlayerCameraManager is null"));
+        return;
+    }
+
+}
+
+
+// ------------------------------------------------------------
+// Private
+// ------------------------------------------------------------
 
 void UOcclusionProbeComp::RunSweeps()
 {
     if (!CameraManager || !CurvedWorldSubsystem)
+    {
+        UE_LOG(OcclusionProbeComp, Error,
+            TEXT("UOcclusionProbeComp::RunSweeps >> Invalid CameraManager or CurvedWorldSubsystem"));
         return;
+    }
 
-    FVector CameraLoc  = CameraManager->GetCameraLocation();
-    FVector TargetLoc  = GetComponentLocation();
-    float   SweepRadius = CalculateSweepRadius();
+    FVector CameraLoc = CameraManager->GetCameraLocation();
+    FVector TargetLoc = GetComponentLocation();
+    float SweepRadius = CalculateSweepRadius();
 
-    // Generate curved path points — one extra point so we have N segments between N+1 points
+    // Offset target toward camera by half radius so the last sphere sits
+    // just in front of the target rather than centered on it.
+    // This prevents false occlusion hits directly behind the target.
+    const FVector CameraToTarget = (TargetLoc - CameraLoc).GetSafeNormal();
+    TargetLoc -= CameraToTarget * SweepRadius;
+
+    // Derive segment count from path length so coverage stays consistent at any distance
+    const float  PathLength  = FVector::Distance(CameraLoc, TargetLoc);
+    const int32  NumSegments = FMath::Clamp(
+        FMath::CeilToInt(PathLength / SegmentLength),
+        MinSegments,
+        MaxSegments);
+
+    UE_LOG(OcclusionProbeComp, Verbose,
+        TEXT("UOcclusionProbeComp::RunSweeps >> PathLength: %.1f | Segments: %d | SweepRadius: %.1f"),
+        PathLength, NumSegments, SweepRadius);
+
+    // N+1 points gives N segments
     TArray<FVector> PathPoints = FCurvedWorldUtil::GenerateCurvedPathPoints(
         CameraLoc,
         TargetLoc,
@@ -56,16 +114,19 @@ void UOcclusionProbeComp::RunSweeps()
         ECurveMathType::ZHeightOnly);
 
     if (PathPoints.Num() < 2)
+    {
+        UE_LOG(OcclusionProbeComp, Warning,
+            TEXT("UOcclusionProbeComp::RunSweeps >> Not enough path points generated (%d)"),
+            PathPoints.Num());
         return;
+    }
 
-    // Params shared across all sweeps
-    FCollisionShape SphereShape = FCollisionShape::MakeSphere(SweepRadius);
-
+    FCollisionShape       SphereShape = FCollisionShape::MakeSphere(SweepRadius);
     FCollisionQueryParams QueryParams;
     QueryParams.AddIgnoredActor(GetOwner());
     QueryParams.bTraceComplex = false;
 
-    // Carry over previous frame's hits, then rebuild CurrentHits fresh
+    // Swap hit sets — previous frame becomes PreviousHits, CurrentHits is rebuilt fresh
     PreviousHits = MoveTemp(CurrentHits);
     CurrentHits.Reset();
 
@@ -75,7 +136,6 @@ void UOcclusionProbeComp::RunSweeps()
         const FVector& End   = PathPoints[i + 1];
 
         TArray<FHitResult> HitResults;
-
         GetWorld()->SweepMultiByChannel(
             HitResults,
             Start,
@@ -90,52 +150,66 @@ void UOcclusionProbeComp::RunSweeps()
             if (UPrimitiveComponent* HitComp = Hit.GetComponent())
             {
                 CurrentHits.Add(HitComp);
+
+                UE_LOG(OcclusionProbeComp, Verbose,
+                    TEXT("UOcclusionProbeComp::RunSweeps >> Hit: %s on %s"),
+                    *HitComp->GetName(),
+                    *HitComp->GetOwner()->GetName());
             }
         }
 
-#if ENABLE_DRAW_DEBUG
         if (bDrawDebug)
         {
             DrawDebugSphere(GetWorld(), Start, SweepRadius, 8, FColor::Yellow, false, 0.f);
-            DrawDebugLine(GetWorld(), Start, End, FColor::Cyan, false, 0.f);
+            DrawDebugLine(GetWorld(),   Start, End, FColor::Cyan, false, 0.f);
         }
-#endif
     }
 
-#if ENABLE_DRAW_DEBUG
     if (bDrawDebug && PathPoints.Num() > 0)
     {
         DrawDebugSphere(GetWorld(), PathPoints.Last(), SweepRadius, 8, FColor::Yellow, false, 0.f);
     }
-#endif
 }
 
 
 void UOcclusionProbeComp::ProcessHitDiff()
 {
-    // --- Occlusion BEGIN: in current but not in previous ---
+    // --- Occlusion ENTER: in current but not in previous ---
     for (const TWeakObjectPtr<UPrimitiveComponent>& WeakComp : CurrentHits)
     {
         if (!PreviousHits.Contains(WeakComp))
         {
             if (UPrimitiveComponent* Comp = WeakComp.Get())
             {
-                // TODO: call IOcclusionTarget::Execute_OnOcclusionBegin on Comp->GetOwner()
-                // Left as a stub until the interface is added in the next step
-                (void)Comp;
+                AActor* Owner = Comp->GetOwner();
+                if (Owner && Owner->Implements<UOcclusionInterface>())
+                {
+                    IOcclusionInterface::Execute_OnOcclusionEnter(Owner, Comp);
+
+                    UE_LOG(OcclusionProbeComp, Log,
+                        TEXT("UOcclusionProbeComp::ProcessHitDiff >> ENTER: %s"),
+                        *Owner->GetName());
+                }
             }
         }
     }
 
-    // --- Occlusion END: in previous but not in current ---
+    // --- Occlusion EXIT: in previous but not in current ---
     for (const TWeakObjectPtr<UPrimitiveComponent>& WeakComp : PreviousHits)
     {
         if (!CurrentHits.Contains(WeakComp))
         {
             if (UPrimitiveComponent* Comp = WeakComp.Get())
             {
-                // TODO: call IOcclusionTarget::Execute_OnOcclusionEnd on Comp->GetOwner()
-                (void)Comp;
+                AActor* Owner = Comp->GetOwner();
+                if (Owner && Owner->Implements<UOcclusionInterface>())
+                {
+                    IOcclusionInterface::Execute_OnOcclusionExit(Owner, Comp);
+
+                    UE_LOG(OcclusionProbeComp, Log,
+                        TEXT("UOcclusionProbeComp::ProcessHitDiff >> EXIT: %s"),
+                        *Owner->GetName());
+                }
             }
         }
     }
@@ -145,40 +219,51 @@ void UOcclusionProbeComp::ProcessHitDiff()
 float UOcclusionProbeComp::CalculateSweepRadius() const
 {
     if (!CameraManager)
+    {
+        UE_LOG(OcclusionProbeComp, Warning,
+            TEXT("UOcclusionProbeComp::CalculateSweepRadius >> No CameraManager, returning MinSweepRadius"));
         return MinSweepRadius;
+    }
 
     APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
     if (!PC)
+    {
+        UE_LOG(OcclusionProbeComp, Warning,
+            TEXT("UOcclusionProbeComp::CalculateSweepRadius >> No PlayerController, returning MinSweepRadius"));
         return MinSweepRadius;
+    }
 
     int32 ViewportX, ViewportY;
     PC->GetViewportSize(ViewportX, ViewportY);
     if (ViewportX == 0 || ViewportY == 0)
+    {
+        UE_LOG(OcclusionProbeComp, Warning,
+            TEXT("UOcclusionProbeComp::CalculateSweepRadius >> Invalid viewport size, returning MinSweepRadius"));
         return MinSweepRadius;
+    }
 
     FVector ActorLocation = GetOwner()->GetActorLocation();
 
-    FBox TargetBounds = GetOwner()->GetComponentsBoundingBox();
-    float ApproxRadius = TargetBounds.GetExtent().Size();
-
-    FVector WorldEdge = ActorLocation + FVector(ApproxRadius, 0.f, 0.f);
+    FBox    TargetBounds = GetOwner()->GetComponentsBoundingBox();
+    float   ApproxRadius = TargetBounds.GetExtent().Size();
+    FVector WorldEdge    = ActorLocation + FVector(ApproxRadius, 0.f, 0.f);
 
     FVector2D ScreenCenter, ScreenEdge;
     if (!PC->ProjectWorldLocationToScreen(ActorLocation, ScreenCenter) ||
-        !PC->ProjectWorldLocationToScreen(WorldEdge, ScreenEdge))
+        !PC->ProjectWorldLocationToScreen(WorldEdge,     ScreenEdge))
+    {
+        UE_LOG(OcclusionProbeComp, Warning,
+            TEXT("UOcclusionProbeComp::CalculateSweepRadius >> Failed to project to screen, returning MinSweepRadius"));
         return MinSweepRadius;
+    }
 
-    float PixelRadius = FVector2D::Distance(ScreenCenter, ScreenEdge);
-    float NDCRadius   = PixelRadius / static_cast<float>(ViewportY);
+    float PixelRadius   = FVector2D::Distance(ScreenCenter, ScreenEdge);
+    float NDCRadius     = PixelRadius / static_cast<float>(ViewportY);
 
-    float DistanceToCamera = FVector::Distance(
-        ActorLocation,
-        CameraManager->GetCameraLocation());
-
-    float HalfFOVRad    = FMath::DegreesToRadians(CameraManager->GetFOVAngle() * 0.5f);
-    float FrustumHeight = 2.f * DistanceToCamera * FMath::Tan(HalfFOVRad);
-
-    float WorldRadius = NDCRadius * FrustumHeight;
+    float DistanceToCamera = FVector::Distance(ActorLocation, CameraManager->GetCameraLocation());
+    float HalfFOVRad       = FMath::DegreesToRadians(CameraManager->GetFOVAngle() * 0.5f);
+    float FrustumHeight    = 2.f * DistanceToCamera * FMath::Tan(HalfFOVRad);
+    float WorldRadius      = NDCRadius * FrustumHeight;
 
     return FMath::Clamp(WorldRadius, MinSweepRadius, MaxSweepRadius);
 }

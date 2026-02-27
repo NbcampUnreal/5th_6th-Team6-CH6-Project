@@ -84,7 +84,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera|Components")
 	TObjectPtr<UCameraComponent> CameraComp;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera|Components")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Camera|Components")
 	TObjectPtr<UCameraVisionManager> CameraVisionManager;
 
 	// Cached subsystem

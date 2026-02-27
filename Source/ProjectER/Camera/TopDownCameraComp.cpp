@@ -69,8 +69,20 @@ void UTopDownCameraComp::TickComponent(float DeltaTime, ELevelTick TickType,
 
 	if (CameraVisionManager)
 	{
-		CameraVisionManager->UpdateCameraLOS();
+		CameraVisionManager->UpdateCameraLOS();// it is updating 
+		/*UE_LOG(MainCameraComp, Log,
+			TEXT("%s UTopDownCameraComp::OnRegister >>Updating CameraVisionManager"),
+			*DebugLogHelper::GetClientDebugName(this));*/
 	}
+	else
+	{
+		/*UE_LOG(MainCameraComp, Error,
+			TEXT("%s UTopDownCameraComp::OnRegister >> No Valid CameraVisionManager"),
+			*DebugLogHelper::GetClientDebugName(this));*/
+	}
+
+	//update the curve as well
+	UpdateCameraTransform();
 }
 
 void UTopDownCameraComp::OnRegister()

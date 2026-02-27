@@ -7,6 +7,7 @@
 /**
  * 
  */
+
 namespace DebugLogHelper
 {
 	PROJECTER_API FString GetClientDebugName(const UObject* WorldContextObject);
