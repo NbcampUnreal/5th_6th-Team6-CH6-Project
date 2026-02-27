@@ -174,8 +174,7 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 		UE_LOG(LogTemp, Error, TEXT("ABaseMonster::InitMonsterData - MonsterData is Not Valid!"));
 	}
 
-	InitVisuals();
-	InitCollision();
+
 	if (HasAuthority())
 	{
 		ASC->AddLooseGameplayTag(MonsterData->AttackType);
@@ -183,6 +182,8 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 		InitGiveAbilities();
 		InitStateTree();
 	}
+	InitVisuals();
+	InitCollision();
 }
 
 void ABaseMonster::InitGiveAbilities()
@@ -450,7 +451,10 @@ void ABaseMonster::TryActivateByDynamicTag(FGameplayTag InputTag)
 	{
 		if (Spec.DynamicAbilityTags.HasTagExact(InputTag))
 		{
-			ASC->TryActivateAbility(Spec.Handle);
+			if (!ASC->TryActivateAbility(Spec.Handle))
+			{
+				UE_LOG(LogTemp, Error, TEXT("ABaseMonster::TryActivateByDynamicTag : Skill Fail"));
+			}
 			break;
 		}
 	}
