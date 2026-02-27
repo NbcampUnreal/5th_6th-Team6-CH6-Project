@@ -62,17 +62,9 @@ private:
     UPROPERTY(EditAnywhere, Category="Occlusion")
     float MaxSweepRadius = 200.f;
 
-<<<<<<< HEAD
     /** Collision channel the obstacle meshes respond to */
     UPROPERTY(EditAnywhere, Category="Occlusion")
     TEnumAsByte<ECollisionChannel> OcclusionProbeChannel = ECC_GameTraceChannel3;
-=======
-	UPROPERTY(EditAnywhere, Category="Occlusion")
-	TEnumAsByte<ECollisionChannel> OcclusionProbeChannel = ECC_GameTraceChannel3;
-
-	UPROPERTY()
-	TArray<USphereComponent*> ProbeSpheres;
->>>>>>> feature_NewLOS
 
     /** Draw debug spheres along the sweep path */
     UPROPERTY(EditAnywhere, Category="Occlusion|Debug")
