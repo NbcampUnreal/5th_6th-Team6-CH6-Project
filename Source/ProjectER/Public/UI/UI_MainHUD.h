@@ -253,6 +253,10 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* NowRespawnTime;
 
+	// 인벤토리 Grid (BP에서 만든 Grid_item)
+	UPROPERTY(meta = (BindWidget))
+	class UUniformGridPanel* Grid_item;
+
 	UFUNCTION()
 	void OnSkillClicked_Q();
 	UFUNCTION()
@@ -319,6 +323,10 @@ private:
 public:
 	void UpdateTeamHP(int32 TeamIndex, float CurrentHP, float MaxHP);
 	void UpdateTeamLV(int32 TeamIndex, int32 CurrentLV);
+
+	// 인벤토리 UI 업데이트 (아이템 시스템용)
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void UpdateInventoryUI();
 
 	// 체력 빨강 반짝 애니메이션 용
 protected:
