@@ -160,6 +160,10 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(W, "GameplayCue.Skill.W", "W Particle");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(E, "GameplayCue.Skill.E", "E Particle");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(R, "GameplayCue.Skill.R", "R Particle");
+		
+		namespace Combat
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Hit, "GameplayCue.Combat.Hit", "Cue for Attack Hit");
 		}
 	}
 	
