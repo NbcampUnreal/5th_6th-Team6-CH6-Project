@@ -28,6 +28,8 @@ public:
 protected:
 	virtual void ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const;
 	virtual const FGameplayTagContainer* GetCooldownTags() const;
+	virtual UGameplayEffect* GetCostGameplayEffect() const override;
+	virtual void ApplyCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const;
 	//virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	virtual void ExecuteSkill();
 	virtual void OnCancelAbility();
@@ -75,4 +77,7 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Skill|Tags")
 	FGameplayTag ActiveTag;
+
+	UPROPERTY()
+	TObjectPtr<UGameplayEffect> DynamicCostGE;
 };
