@@ -13,117 +13,137 @@
 // Sets default values for this component's properties
 UOcclusionProbeComp::UOcclusionProbeComp()
 {
-	PrimaryComponentTick.bCanEverTick = true;
+    PrimaryComponentTick.bCanEverTick = true;
 }
 
 void UOcclusionProbeComp::BeginPlay()
 {
-	Super::BeginPlay();
+    Super::BeginPlay();
 
-	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
-	if (PC)
-	{
-		CameraManager = PC->PlayerCameraManager;
-	}
+    APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+    if (PC)
+    {
+        CameraManager = PC->PlayerCameraManager;
+    }
 
-	CurvedWorldSubsystem = GetWorld()->GetSubsystem<UCurvedWorldSubsystem>();
+    CurvedWorldSubsystem = GetWorld()->GetSubsystem<UCurvedWorldSubsystem>();
 
-	InitializeProbes();
+    InitializeProbes();
 }
 
 
 void UOcclusionProbeComp::InitializeProbes()
 {
-	ProbeSpheres.Reserve(NumProbes);
+    ProbeSpheres.Reserve(NumProbes);
 
-	for (int32 i = 0; i < NumProbes; ++i)
-	{
-		FString Name = FString::Printf(TEXT("OcclusionProbe_%d"), i);
+    for (int32 i = 0; i < NumProbes; ++i)
+    {
+        FString Name = FString::Printf(TEXT("OcclusionProbe_%d"), i);
 
-		USphereComponent* Sphere = NewObject<USphereComponent>(GetOwner(), *Name);
-		Sphere->SetupAttachment(this);
-		Sphere->RegisterComponent();
+        USphereComponent* Sphere = NewObject<USphereComponent>(GetOwner(), *Name);
+        Sphere->SetupAttachment(this);
+        Sphere->RegisterComponent();
 
-		Sphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		Sphere->SetCollisionResponseToAllChannels(ECR_Ignore);
-		Sphere->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Overlap);
+        Sphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+        Sphere->SetCollisionResponseToAllChannels(ECR_Ignore);
 
-		ProbeSpheres.Add(Sphere);
-	}
+        // Overlap both static and dynamic world geometry so walls/pillars are detected
+        Sphere->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Overlap);
+        Sphere->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
+
+        // Hide in game — these are logic-only probes
+        Sphere->SetHiddenInGame(true);
+
+        ProbeSpheres.Add(Sphere);
+    }
 }
 
 void UOcclusionProbeComp::TickComponent(float DeltaTime,
-	ELevelTick TickType,
-	FActorComponentTickFunction* ThisTickFunction)
+    ELevelTick TickType,
+    FActorComponentTickFunction* ThisTickFunction)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	UpdateProbes();
+    UpdateProbes();
 }
 
 
 void UOcclusionProbeComp::UpdateProbes()
 {
-	if (!CameraManager || !CurvedWorldSubsystem)
-		return;
+    if (!CameraManager || !CurvedWorldSubsystem)
+        return;
 
-	FVector CameraLoc = CameraManager->GetCameraLocation();
-	FVector TargetLoc = GetComponentLocation();
+    FVector CameraLoc = CameraManager->GetCameraLocation();
+    FVector TargetLoc = GetComponentLocation();
 
-	TArray<FVector> PathPoints =
-		FCurvedWorldUtil::GenerateCurvedPathPoints(
-			CameraLoc,
-			TargetLoc,
-			NumProbes,
-			CurvedWorldSubsystem,
-			ECurveMathType::ZHeightOnly);
+    TArray<FVector> PathPoints =
+        FCurvedWorldUtil::GenerateCurvedPathPoints(
+            CameraLoc,
+            TargetLoc,
+            NumProbes,
+            CurvedWorldSubsystem,
+            ECurveMathType::ZHeightOnly);
 
-	float SphereRadius = CalculateScreenProjectedRadius();
-	SphereRadius = FMath::Clamp(SphereRadius, MinSphereRadius, MaxSphereRadius);
+    float SphereRadius = CalculateScreenProjectedRadius();
 
-	for (int32 i = 0; i < ProbeSpheres.Num(); ++i)
-	{
-		ProbeSpheres[i]->SetWorldLocation(PathPoints[i]);
-		ProbeSpheres[i]->SetSphereRadius(SphereRadius);
-	}
+    // Guard: only iterate up to the smallest of the two arrays
+    int32 Count = FMath::Min(ProbeSpheres.Num(), PathPoints.Num());
+
+    for (int32 i = 0; i < Count; ++i)
+    {
+        ProbeSpheres[i]->SetWorldLocation(PathPoints[i]);
+        ProbeSpheres[i]->SetSphereRadius(SphereRadius);
+    }
 }
+
 
 float UOcclusionProbeComp::CalculateScreenProjectedRadius() const
 {
-	if (!CameraManager)
-		return MinSphereRadius;
+    if (!CameraManager)
+        return MinSphereRadius;
 
-	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-	if (!PC)
-		return MinSphereRadius;
+    APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+    if (!PC)
+        return MinSphereRadius;
 
-	FVector ActorLocation = GetOwner()->GetActorLocation();
+    // Get actual viewport dimensions for correct pixel->NDC conversion
+    int32 ViewportX, ViewportY;
+    PC->GetViewportSize(ViewportX, ViewportY);
+    if (ViewportX == 0 || ViewportY == 0)
+        return MinSphereRadius;
 
-	FBox TargetBounds = GetOwner()->GetComponentsBoundingBox();
-	float ApproxRadius = TargetBounds.GetExtent().Size();
+    FVector ActorLocation = GetOwner()->GetActorLocation();
 
-	FVector WorldEdge = ActorLocation + FVector(ApproxRadius, 0, 0);
+    // Use bounding box to approximate the actor's "radius" in world space
+    FBox TargetBounds = GetOwner()->GetComponentsBoundingBox();
+    float ApproxRadius = TargetBounds.GetExtent().Size();
 
-	FVector2D ScreenCenter;
-	FVector2D ScreenEdge;
+    // Project center and an offset point to screen to measure pixel footprint
+    FVector WorldEdge = ActorLocation + FVector(ApproxRadius, 0.f, 0.f);
 
-	if (!PC->ProjectWorldLocationToScreen(ActorLocation, ScreenCenter))
-		return MinSphereRadius;
+    FVector2D ScreenCenter, ScreenEdge;
+    if (!PC->ProjectWorldLocationToScreen(ActorLocation, ScreenCenter) ||
+        !PC->ProjectWorldLocationToScreen(WorldEdge, ScreenEdge))
+        return MinSphereRadius;
 
-	if (!PC->ProjectWorldLocationToScreen(WorldEdge, ScreenEdge))
-		return MinSphereRadius;
+    // How many pixels does ApproxRadius occupy on screen?
+    float PixelRadius = FVector2D::Distance(ScreenCenter, ScreenEdge);
 
-	float PixelRadius = FVector2D::Distance(ScreenCenter, ScreenEdge);
+    // Normalize to NDC using viewport height so aspect ratio doesn't skew things
+    float NDCRadius = PixelRadius / static_cast<float>(ViewportY);
 
-	float DistanceToCamera = FVector::Distance(
-		ActorLocation,
-		CameraManager->GetCameraLocation());
+    // Back-project NDC fraction into world units at the actor's depth
+    float DistanceToCamera = FVector::Distance(
+        ActorLocation,
+        CameraManager->GetCameraLocation());
 
-	float FOV = CameraManager->GetFOVAngle();
+    float HalfFOVRad = FMath::DegreesToRadians(CameraManager->GetFOVAngle() * 0.5f);
 
-	float WorldRadius =
-		2.f * DistanceToCamera *
-		FMath::Tan(FMath::DegreesToRadians(PixelRadius * FOV / 1920.f));
+    // Full frustum height at this distance
+    float FrustumHeight = 2.f * DistanceToCamera * FMath::Tan(HalfFOVRad);
 
-	return WorldRadius;
+    // World radius that matches the screen footprint of the actor
+    float WorldRadius = NDCRadius * FrustumHeight;
+
+    return FMath::Clamp(WorldRadius, MinSphereRadius, MaxSphereRadius);
 }

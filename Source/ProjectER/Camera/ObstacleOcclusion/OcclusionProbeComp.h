@@ -53,10 +53,9 @@ private:
 	UPROPERTY(EditAnywhere, Category="Occlusion")
 	float MaxSphereRadius = 200.f;
 
-	
 	UPROPERTY(EditAnywhere, Category="Occlusion")
 	TEnumAsByte<ECollisionChannel> OcclusionProbeChannel = ECC_GameTraceChannel3;
-		
+
 	UPROPERTY()
 	TArray<USphereComponent*> ProbeSpheres;
 
