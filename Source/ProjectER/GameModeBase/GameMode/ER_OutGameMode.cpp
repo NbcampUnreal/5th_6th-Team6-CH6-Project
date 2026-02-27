@@ -5,6 +5,10 @@
 #include "Kismet/GameplayStatics.h"
 #include "CharacterSystem/Player/BasePlayerController.h"
 
+AER_OutGameMode::AER_OutGameMode()
+{
+	bUseSeamlessTravel = true;
+}
 
 void AER_OutGameMode::BeginPlay()
 {

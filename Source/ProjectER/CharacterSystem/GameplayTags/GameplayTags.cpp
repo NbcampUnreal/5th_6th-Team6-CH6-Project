@@ -153,6 +153,14 @@ namespace ProjectER
 				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyEnd, "GameplayCue.State.Action.FlyEnd", "");
 			}
 		}
+		namespace Skill
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "GameplayCue.Skill.AutoAttack", "AutoAttack Particle");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Q, "GameplayCue.Skill.Q", "Q Particle");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(W, "GameplayCue.Skill.W", "W Particle");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(E, "GameplayCue.Skill.E", "E Particle");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(R, "GameplayCue.Skill.R", "R Particle");
+		}
 	}
 	
 	namespace State
