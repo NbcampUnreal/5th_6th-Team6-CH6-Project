@@ -153,6 +153,11 @@ namespace ProjectER
 				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyEnd, "GameplayCue.State.Action.FlyEnd", "");
 			}
 		}
+		
+		namespace Combat
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Hit, "GameplayCue.Combat.Hit", "Cue for Attack Hit");
+		}
 	}
 	
 	namespace State
