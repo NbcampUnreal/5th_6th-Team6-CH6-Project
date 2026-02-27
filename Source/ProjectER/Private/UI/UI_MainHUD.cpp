@@ -7,6 +7,8 @@
 #include "Components/ProgressBar.h"
 #include "Components/Image.h"
 #include "Components/SceneCaptureComponent2D.h" // 미니맵용
+#include "NavigationSystem.h" // 미니맵용
+#include "NavigationPath.h" // 미니맵용
 
 #include "Blueprint/SlateBlueprintLibrary.h" // 툴팁용
 #include "Blueprint/WidgetLayoutLibrary.h" // 툴팁용
@@ -28,6 +30,10 @@
 #include "GameModeBase/State/ER_GameState.h" // gamestate
 #include "GameModeBase/State/ER_PlayerState.h"
 
+// 인벤토리 UI용
+#include "Components/UniformGridPanel.h"
+#include "ItemSystem/Component/BaseInventoryComponent.h"
+#include "ItemSystem/Data/BaseItemData.h"
 void UUI_MainHUD::Update_LV(float CurrentLV)
 {
     if(IsValid(stat_LV))
@@ -305,7 +311,7 @@ FReply UUI_MainHUD::NativeOnMouseButtonDown(const FGeometry& InGeometry, const F
                 HandleMinimapClicked(InMouseEvent);
 
                 // 이벤트 핸들 처리
-                return FReply::Handled();
+                return FReply::Handled();              
             }
         }
     }
@@ -437,30 +443,44 @@ void UUI_MainHUD::HandleMinimapClicked(const FPointerEvent& InMouseEvent)
     // 최종 목적지 계산
     FVector TargetWorldPos = FVector(CameraLoc.X + RelativeWorldX, CameraLoc.Y + RelativeWorldY, CameraLoc.Z);
 
-    UE_LOG(LogTemp, Log, TEXT("최종 목적지 월드 좌표: %s"), *TargetWorldPos.ToString());
+    // UE_LOG(LogTemp, Log, TEXT("최종 목적지 월드 좌표: %s"), *TargetWorldPos.ToString());
     
     // 실제 이동 명령
     ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
     if (IsValid(PC))
     {
-		UE_LOG(LogTemp, Log, TEXT("PC에게 이동 명령 전달: %s"), *TargetWorldPos.ToString());
+		// UE_LOG(LogTemp, Log, TEXT("PC에게 이동 명령 전달: %s"), *TargetWorldPos.ToString());
+
+        FNavLocation ProjectedLocation;
+        
+        // -250~250 범위에 NavMesh가 있는지 찾아보기
+        FVector QueryExtent(0.f, 0.f, 500.f);
+		FVector ZeroExtent(0.f, 0.f, -250.f);
+        UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+        if (NavSys->ProjectPointToNavigation(ZeroExtent, ProjectedLocation, QueryExtent))
+        {
+            float MeshZ = ProjectedLocation.Location.Z;
+            // UE_LOG(LogTemp, Warning, TEXT("내 발밑 NavMesh의 Z값: %f"), MeshZ);
+			TargetWorldPos.Z = MeshZ;
+        }
+
         PC->OnMinimapClicked(TargetWorldPos);
     }
 
-    // 캐릭터로부터의 방향과 거리 구하기 <- 생각해보니 이거 왜 계산했지???
-    APawn* PlayerPawn = GetOwningPlayerPawn();
-    if (IsValid(PlayerPawn))
-    {
-        FVector CharLoc = PlayerPawn->GetActorLocation();
+    //// 캐릭터로부터의 방향과 거리 구하기 <- 생각해보니 이거 왜 계산했지???
+    //APawn* PlayerPawn = GetOwningPlayerPawn();
+    //if (IsValid(PlayerPawn))
+    //{
+    //    FVector CharLoc = PlayerPawn->GetActorLocation();
 
-        FVector DirToTarget = TargetWorldPos - CharLoc;
-        DirToTarget.Z = 0.f; // 평면 거리만
+    //    FVector DirToTarget = TargetWorldPos - CharLoc;
+    //    DirToTarget.Z = 0.f; // 평면 거리만
 
-        float Distance = DirToTarget.Size();
-        FVector Direction = DirToTarget.GetSafeNormal();
+    //    float Distance = DirToTarget.Size();
+    //    FVector Direction = DirToTarget.GetSafeNormal();
 
-        UE_LOG(LogTemp, Log, TEXT("캐릭터로부터 거리: %f, 방향: %s"), Distance, *Direction.ToString());
-    }
+    //    UE_LOG(LogTemp, Log, TEXT("캐릭터로부터 거리: %f, 방향: %s"), Distance, *Direction.ToString());
+    //}
 }
 
 void UUI_MainHUD::OnSkillClicked_Q()
@@ -944,4 +964,103 @@ UWidgetAnimation* UUI_MainHUD::GetWidgetAnimationByName(FName AnimName) const
         }
     }
     return nullptr;
+}
+// 인벤토리 UI 업데이트 함수
+void UUI_MainHUD::UpdateInventoryUI()
+{
+    if (!Grid_item)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Grid_item is null!"));
+        return;
+    }
+
+    // 플레이어의 인벤토리 컴포넌트 가져오기
+    APlayerController* PC = GetOwningPlayer();
+    if (!PC)
+        return;
+
+    APawn* Pawn = PC->GetPawn();
+    if (!Pawn)
+        return;
+
+    UBaseInventoryComponent* InventoryComp = Pawn->FindComponentByClass<UBaseInventoryComponent>();
+    if (!InventoryComp)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] InventoryComponent not found!"));
+        return;
+    }
+
+    // Grid의 모든 자식 위젯 가져오기 (Button들)
+    TArray<UWidget*> GridChildren = Grid_item->GetAllChildren();
+
+    // 인벤토리 데이터는 private이므로 reflection 사용
+    UClass* InventoryClass = InventoryComp->GetClass();
+    FProperty* InventoryProperty = InventoryClass->FindPropertyByName(FName("InventoryContents"));
+
+    if (!InventoryProperty)
+    {
+        UE_LOG(LogTemp, Error, TEXT("[UI_MainHUD] Cannot find InventoryContents property!"));
+        return;
+    }
+
+    // TArray<UBaseItemData*> 가져오기
+    void* PropertyPtr = InventoryProperty->ContainerPtrToValuePtr<void>(InventoryComp);
+    FArrayProperty* ArrayProp = CastField<FArrayProperty>(InventoryProperty);
+    if (!ArrayProp)
+        return;
+
+    FScriptArrayHelper ArrayHelper(ArrayProp, PropertyPtr);
+
+    // Grid의 각 버튼에 아이템 아이콘 설정
+    for (int32 i = 0; i < GridChildren.Num(); ++i)
+    {
+        UButton* ItemButton = Cast<UButton>(GridChildren[i]);
+        if (!ItemButton)
+            continue;
+
+        // 버튼의 자식 이미지 찾기 (첫 번째 자식이 이미지라고 가정)
+        TArray<UWidget*> ButtonChildren = ItemButton->GetAllChildren();
+
+        UImage* IconImage = nullptr;
+        for (UWidget* Child : ButtonChildren)
+        {
+            IconImage = Cast<UImage>(Child);
+            if (IconImage)
+                break;
+        }
+
+        if (!IconImage)
+            continue;
+
+        // 인벤토리에 아이템이 있으면 아이콘 설정
+        if (i < ArrayHelper.Num())
+        {
+            UBaseItemData** ItemDataPtr = reinterpret_cast<UBaseItemData**>(ArrayHelper.GetRawPtr(i));
+            if (ItemDataPtr && *ItemDataPtr)
+            {
+                UBaseItemData* ItemData = *ItemDataPtr;
+
+                // ItemIcon 로드 및 설정
+                if (!ItemData->ItemIcon.IsNull())
+                {
+                    UTexture2D* IconTexture = ItemData->ItemIcon.LoadSynchronous();
+                    if (IconTexture)
+                    {
+                        IconImage->SetBrushFromTexture(IconTexture);
+                        IconImage->SetVisibility(ESlateVisibility::Visible);
+                    }
+                }
+            }
+            else
+            {
+                // 빈 슬롯
+                IconImage->SetVisibility(ESlateVisibility::Hidden);
+            }
+        }
+        else
+        {
+            // 인벤토리 범위 밖
+            IconImage->SetVisibility(ESlateVisibility::Hidden);
+        }
+    }
 }

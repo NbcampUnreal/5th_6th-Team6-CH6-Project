@@ -60,6 +60,7 @@ void USkillBase::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const
 
 	USkillDataAsset* DataAsset = Cast<USkillDataAsset>(Spec.SourceObject);
 	CachedConfig = IsValid(DataAsset) ? DataAsset->SkillConfig : nullptr;
+	DynamicCostGE = IsValid(CachedConfig) ? CachedConfig->CreateCostGameplayEffect(this) : nullptr;
 }
 
 //void USkillBase::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
@@ -94,6 +95,61 @@ const FGameplayTagContainer* USkillBase::GetCooldownTags() const
 	}
 
 	return nullptr;
+}
+
+UGameplayEffect* USkillBase::GetCostGameplayEffect() const
+{
+	if (IsValid(DynamicCostGE))
+	{
+		return DynamicCostGE;
+	}
+
+	if (IsValid(CachedConfig))
+	{
+		USkillBase* MutableThis = const_cast<USkillBase*>(this);
+		MutableThis->DynamicCostGE = CachedConfig->CreateCostGameplayEffect(MutableThis);
+
+		if (IsValid(DynamicCostGE))
+		{
+			return DynamicCostGE;
+		}
+	}
+
+	return Super::GetCostGameplayEffect();
+}
+
+void USkillBase::ApplyCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
+{
+	// 1. 동적으로 만든 GE가 있는지 확인
+	if (DynamicCostGE && ActorInfo->AbilitySystemComponent.IsValid())
+	{
+		// 2. 엔진 함수를 거치지 않고 직접 Spec 인스턴스 생성 (중요!)
+		// 생성자 파라미터: (UGameplayEffect 인스턴스, Context, 레벨)
+		FGameplayEffectSpec* NewSpec = new FGameplayEffectSpec(DynamicCostGE, MakeEffectContext(Handle, ActorInfo), GetAbilityLevel(Handle, ActorInfo));
+		FGameplayEffectSpecHandle SpecHandle(NewSpec);
+
+		if (SpecHandle.IsValid())
+		{
+			// --- 로그 출력 부분 시작 ---
+			// 모디파이어가 여러 개일 수 있으므로 루프를 돌며 출력합니다.
+			for (int32 i = 0; i < SpecHandle.Data->Modifiers.Num(); ++i)
+			{
+				// GetModifierMagnitude를 호출하면 커브 테이블 연산이 끝난 최종 수치를 반환합니다.
+				float CurrentLevel = GetAbilityLevel(Handle, ActorInfo);
+				float FinalMagnitude = SpecHandle.Data->GetModifierMagnitude(i, true);
+				UE_LOG(LogTemp, Warning, TEXT("[SkillCost], Final Magnitude: %f (Level: %f)"), FinalMagnitude, CurrentLevel);
+			}
+			// --- 로그 출력 부분 끝 ---
+
+			FGameplayAbilitySpec* AbilitySpec = ActorInfo->AbilitySystemComponent->FindAbilitySpecFromHandle(Handle);
+			ApplyAbilityTagsToGameplayEffectSpec(*SpecHandle.Data.Get(), AbilitySpec);
+			ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, SpecHandle);
+			return;
+		}
+	}
+
+	
+	Super::ApplyCost(Handle, ActorInfo, ActivationInfo);
 }
 
 void USkillBase::ExecuteSkill()

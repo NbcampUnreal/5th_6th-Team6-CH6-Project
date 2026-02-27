@@ -41,11 +41,13 @@ ABaseMonster::ABaseMonster()
 
 	// Collision 설정
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Spectator"));
 
 	HitBoxComp = CreateDefaultSubobject<UBoxComponent>(TEXT("HitBoxComponent"));
 	HitBoxComp->SetupAttachment(RootComponent);
+	HitBoxComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	HitBoxComp->SetCollisionProfileName(TEXT("Spectator"));
 
 	// ASC 복제, 데이터 Minimal로 되는지 확인 필요
