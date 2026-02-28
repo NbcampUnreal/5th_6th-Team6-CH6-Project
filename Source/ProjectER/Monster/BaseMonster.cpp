@@ -579,6 +579,7 @@ void ABaseMonster::SendStateTreeEvent(FGameplayTag InputTag)
 		return;
 	}
 	StateTreeComp->SendStateTreeEvent(InputTag);
+	//UE_LOG(LogTemp, Error, TEXT("ABaseMonster::SendStateTreeEvent"));
 }
 
 UStateTreeComponent* ABaseMonster::GetStateTreeComponent()
