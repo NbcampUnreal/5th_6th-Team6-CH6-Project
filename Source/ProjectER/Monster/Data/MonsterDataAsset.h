@@ -32,6 +32,23 @@ enum class EMonsterNiagaraType : uint8
 {
 	NormalAttack,
 	QSkill,
+	WSkill,
+	ESkill,
+	RSkill
+};
+
+UENUM(BlueprintType)
+enum class ENiagaraAttachType : uint8
+{
+	Mine,
+	Target
+};
+
+UENUM(BlueprintType)
+enum class ENiagaraSpawnPositionType : uint8
+{
+	TargetPosition,
+	TargetDirection
 };
 
 USTRUCT(BlueprintType)
@@ -42,14 +59,28 @@ struct FMonsterNiagaraData
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	TObjectPtr<UNiagaraSystem> NiagaraSystem;
 
+
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	FVector Scale = FVector(1.f);
+	FVector PositionOffset = FVector(0,0,0);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	FRotator RotationOffset = FRotator(0,0,0);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	bool bFollow = false;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (EditCondition = "bFollow", EditConditionHides))
+	ENiagaraAttachType AttachType = ENiagaraAttachType::Mine;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (EditCondition = "bFollow", EditConditionHides))
 	FName AttachSocket = NAME_None;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (EditCondition = "!bFollow", EditConditionHides))
+	ENiagaraSpawnPositionType SpawnType = ENiagaraSpawnPositionType::TargetPosition;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (EditCondition = "!bFollow", EditConditionHides))
+	FVector Scale = FVector(1.f);
 
 };
 
