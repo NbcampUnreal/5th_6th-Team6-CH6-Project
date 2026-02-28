@@ -180,10 +180,13 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 		ASC->AddLooseGameplayTag(MonsterData->AttackType);
 		InitAttributes(Level);
 		InitGiveAbilities();
-		InitStateTree();
 	}
 	InitVisuals();
 	InitCollision();
+	if (HasAuthority())
+	{
+		InitStateTree();
+	}
 }
 
 void ABaseMonster::InitGiveAbilities()
