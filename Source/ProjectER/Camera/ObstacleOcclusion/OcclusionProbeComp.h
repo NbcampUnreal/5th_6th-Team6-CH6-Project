@@ -11,58 +11,74 @@
 /*
  *  This will be used for detecting the obstacle hiding the character on the camera view
  *
- *  this is made in a separate component,
- *  -->because there are cases when there are multiple actors need to be shown in one camera other than player character
+ *  This is made in a separate component,
+ *  --> because there are cases when multiple actors need to be shown in one camera other than the player character
  *
- *  also, this will not use capsule but array of sphere collisions because of the curve made by curved world bender shader.
+ *  Uses sphere sweeps along the curved world path instead of persistent sphere components,
+ *  which avoids broadphase maintenance cost of dynamic sphere repositioning every tick.
+ *
+ *  Hit results are diffed against the previous frame to synthesize Begin/End occlusion signals,
+ *  which are then dispatched to IOcclusionTarget on hit actors.
  */
 
-class USphereComponent;
 class APlayerCameraManager;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class PROJECTER_API UOcclusionProbeComp : public USceneComponent
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	UOcclusionProbeComp();
+    UOcclusionProbeComp();
 
 protected:
-	virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
 
 public:
-	virtual void TickComponent(float DeltaTime,
-		ELevelTick TickType,
-		FActorComponentTickFunction* ThisTickFunction) override;
+    virtual void TickComponent(float DeltaTime,
+        ELevelTick TickType,
+        FActorComponentTickFunction* ThisTickFunction) override;
 
 private:
 
-	void InitializeProbes();
-	void UpdateProbes();
-	float CalculateScreenProjectedRadius() const;
+    /** Run sweeps along the curved path and collect all hit primitive components */
+    void RunSweeps();
+
+    /** Diff current vs previous hit sets to fire Begin/End signals */
+    void ProcessHitDiff();
+
+    /** Calculate world-space sphere radius matching the actor's screen footprint */
+    float CalculateSweepRadius() const;
 
 private:
 
-	UPROPERTY(EditAnywhere, Category="Occlusion")
-	int32 NumProbes = 12;
+    /** Number of sweep segments along the curved path (camera -> character) */
+    UPROPERTY(EditAnywhere, Category="Occlusion")
+    int32 NumSegments = 8;
 
-	UPROPERTY(EditAnywhere, Category="Occlusion")
-	float MinSphereRadius = 25.f;
+    UPROPERTY(EditAnywhere, Category="Occlusion")
+    float MinSweepRadius = 25.f;
 
-	UPROPERTY(EditAnywhere, Category="Occlusion")
-	float MaxSphereRadius = 200.f;
+    UPROPERTY(EditAnywhere, Category="Occlusion")
+    float MaxSweepRadius = 200.f;
 
-	
-	UPROPERTY(EditAnywhere, Category="Occlusion")
-	TEnumAsByte<ECollisionChannel> OcclusionProbeChannel = ECC_GameTraceChannel3;
-		
-	UPROPERTY()
-	TArray<USphereComponent*> ProbeSpheres;
+    /** Collision channel the obstacle meshes respond to */
+    UPROPERTY(EditAnywhere, Category="Occlusion")
+    TEnumAsByte<ECollisionChannel> OcclusionProbeChannel = ECC_GameTraceChannel3;
 
-	UPROPERTY()
-	APlayerCameraManager* CameraManager;
+    /** Draw debug spheres along the sweep path */
+    UPROPERTY(EditAnywhere, Category="Occlusion|Debug")
+    bool bDrawDebug = false;
 
-	UPROPERTY()
-	UCurvedWorldSubsystem* CurvedWorldSubsystem;
+    /** Components hit this frame */
+    TSet<TWeakObjectPtr<UPrimitiveComponent>> CurrentHits;
+
+    /** Components hit last frame — used for begin/end diff */
+    TSet<TWeakObjectPtr<UPrimitiveComponent>> PreviousHits;
+
+    UPROPERTY()
+    APlayerCameraManager* CameraManager;
+
+    UPROPERTY()
+    UCurvedWorldSubsystem* CurvedWorldSubsystem;
 };
