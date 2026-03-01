@@ -9,7 +9,7 @@
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
 #include "GameFramework/SpringArmComponent.h"
-#include "LineOfSight/CameraVisionManager.h"
+#include "LineOfSight/MainVisionRTManager.h"
 
 #include "LogHelper/DebugLogHelper.h"
 
@@ -35,7 +35,7 @@ UTopDownCameraComp::UTopDownCameraComp()
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->bUsePawnControlRotation = false;
 
-	CameraVisionManager = CreateDefaultSubobject<UCameraVisionManager>(TEXT("CameraVisionManager"));
+	MainVisionRTManager = CreateDefaultSubobject<UMainVisionRTManager>(TEXT("CameraVisionManager"));
 
 	UE_LOG(MainCameraComp, Log,
 		TEXT("%s UTopDownCameraComp::Constructor >> Component created"),
@@ -65,20 +65,9 @@ void UTopDownCameraComp::TickComponent(float DeltaTime, ELevelTick TickType,
 
 	PendingKeyInput = FVector2D::ZeroVector;
 
-	UpdateCameraTransform();
-
-	if (CameraVisionManager)
+	if (MainVisionRTManager)//if it is not valid, then try again
 	{
-		CameraVisionManager->UpdateCameraLOS();// it is updating 
-		/*UE_LOG(MainCameraComp, Log,
-			TEXT("%s UTopDownCameraComp::OnRegister >>Updating CameraVisionManager"),
-			*DebugLogHelper::GetClientDebugName(this));*/
-	}
-	else
-	{
-		/*UE_LOG(MainCameraComp, Error,
-			TEXT("%s UTopDownCameraComp::OnRegister >> No Valid CameraVisionManager"),
-			*DebugLogHelper::GetClientDebugName(this));*/
+		MainVisionRTManager->UpdateCameraLOS();
 	}
 
 	//update the curve as well
@@ -104,6 +93,15 @@ void UTopDownCameraComp::OnRegister()
 		UE_LOG(MainCameraComp, Log,
 			TEXT("%s UTopDownCameraComp::OnRegister >> CameraComp attached to SpringArm"),
 			*DebugLogHelper::GetClientDebugName(this));
+	}
+
+	if (MainVisionRTManager && !MainVisionRTManager->GetAttachParent())
+	{
+		MainVisionRTManager->SetupAttachment(this);
+		UE_LOG(MainCameraComp, Log,
+			TEXT("%s UTopDownCameraComp::OnRegister >> MainVisionRTManager attached"),
+			*DebugLogHelper::GetClientDebugName(this));
+		
 	}
 }
 
@@ -329,9 +327,20 @@ void UTopDownCameraComp::PrepareRequirements()
 
 	CacheCurveWorldSubsystem();
 
-	if (CameraVisionManager)
+	// Fallback — if subobject registration didn't complete in time, find it on the owner
+	if (!MainVisionRTManager)
 	{
-		CameraVisionManager->Initialize();
+		MainVisionRTManager = GetOwner()->FindComponentByClass<UMainVisionRTManager>();
+
+		UE_LOG(MainCameraComp, Warning,
+			TEXT("%s UTopDownCameraComp::PrepareRequirements >> MainVisionRTManager was null, fallback find: %s"),
+			*DebugLogHelper::GetClientDebugName(this),
+			MainVisionRTManager ? TEXT("Found") : TEXT("Still NULL"));
+	}
+
+	if (MainVisionRTManager)
+	{
+		MainVisionRTManager->Initialize();
 
 		UE_LOG(MainCameraComp, Log,
 			TEXT("%s UTopDownCameraComp::PrepareRequirements >> CameraVisionManager initialized"),
@@ -340,7 +349,8 @@ void UTopDownCameraComp::PrepareRequirements()
 	else
 	{
 		UE_LOG(MainCameraComp, Error,
-			TEXT("%s UTopDownCameraComp::PrepareRequirements >> CameraVisionManager is NULL"),
+			TEXT("%s UTopDownCameraComp::PrepareRequirements >> CameraVisionManager is NULL even after fallback "
+		" -> Check constructor subobject creation"),
 			*DebugLogHelper::GetClientDebugName(this));
 	}
 }

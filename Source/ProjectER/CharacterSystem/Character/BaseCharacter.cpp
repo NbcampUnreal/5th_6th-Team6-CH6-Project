@@ -62,7 +62,7 @@ ABaseCharacter::ABaseCharacter()
 	TopDownCameraComp->SetupAttachment(RootComponent);//temp attatchement-> it should follow the owner with lag
 	
 	//TopDownCameraComp->InitializeCompRequirements(); -> this is too early for getting if the target is locally controlled or not
-	//--> move to begin play
+	//--> move to on rep_player state
 	TopDownCameraComp->SetAbsolute(true, true, true);
 
 	/* === 경로 설정 인덱스 초기화  === */
@@ -105,10 +105,8 @@ void ABaseCharacter::BeginPlay()
 		InitVisuals();
 	}
 	
-	if (TopDownCameraComp)
-	{
-		TopDownCameraComp->InitializeCompRequirements();
-	}
+
+
 	
 	PreloadMontages();
 }
@@ -173,10 +171,10 @@ void ABaseCharacter::PossessedBy(AController* NewController)
 		InitVisuals();
 	}
 
-	if (TopDownCameraComp)//disable the tick for the server
+	/*if (TopDownCameraComp)//disable the tick for the server
 	{
 		TopDownCameraComp->SetComponentTickEnabled(false);
-	}
+	}*/
 
 	// UI 초기화
 	InitUI();
@@ -253,6 +251,7 @@ void ABaseCharacter::OnRep_PlayerState()
 		{
 			TopDownCameraComp->Activate();
 			TopDownCameraComp->SetComponentTickEnabled(true);
+			TopDownCameraComp->InitializeCompRequirements();
 		}
 		else
 		{

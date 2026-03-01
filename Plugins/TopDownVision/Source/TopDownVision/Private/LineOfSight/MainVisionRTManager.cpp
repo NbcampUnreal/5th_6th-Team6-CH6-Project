@@ -1,4 +1,4 @@
-﻿#include "LineOfSight/CameraVisionManager.h"
+﻿#include "LineOfSight/MainVisionRTManager.h"
 
 #include "RenderGraphUtils.h"
 #include "LineOfSight/LineOfSightComponent.h"
@@ -14,19 +14,21 @@
 
 
 
-UCameraVisionManager::UCameraVisionManager()
+UMainVisionRTManager::UMainVisionRTManager()
 {
+	PrimaryComponentTick.bCanEverTick = true;
 	UE_LOG(LOSVision, Log,
 		TEXT("UCameraVisionManager::Constructor >> Component constructed"));
 }
 
-void UCameraVisionManager::BeginPlay()
+void UMainVisionRTManager::BeginPlay()
 {
 	Super::BeginPlay();
 	UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::BeginPlay >> BeginPlay called"));
 }
 
-void UCameraVisionManager::Initialize()
+
+void UMainVisionRTManager::Initialize()
 {
 	if (!ShouldRunClientLogic())
 	{
@@ -43,7 +45,7 @@ void UCameraVisionManager::Initialize()
 	// Bind the draw callback if CPU
 	if (bUseCPU)
 	{
-		CameraLocalRT->OnCanvasRenderTargetUpdate.AddDynamic(this, &UCameraVisionManager::DrawLOS_CPU);
+		CameraLocalRT->OnCanvasRenderTargetUpdate.AddDynamic(this, &UMainVisionRTManager::DrawLOS_CPU);
 		CameraLocalRT->UpdateResource(); // initial clear
 
 		UE_LOG(LOSVision, Log, TEXT("UCameraVisionManager::Initialize >> Initialized with CameraLocalRT: %s"),
@@ -109,7 +111,7 @@ static bool RectOverlapsWorld(
 	);
 }
 
-void UCameraVisionManager::UpdateCameraLOS()
+void UMainVisionRTManager::UpdateCameraLOS()
 {
 	if (!ShouldRunClientLogic())
 	{
@@ -142,15 +144,15 @@ void UCameraVisionManager::UpdateCameraLOS()
 		if (!Provider || !Provider->GetOwner())
 			continue;
 
-		const bool bVisible = RectOverlapsWorld(
+		const bool bIsVisible = RectOverlapsWorld(
 			CameraCenter,
 			CameraVisionRange,
 			Provider->GetOwner()->GetActorLocation(),
 			Provider->GetVisibleRange());
 
-		Provider->ToggleLOSStampUpdate(bVisible);
+		Provider->ToggleLOSStampUpdate(bIsVisible);
 
-		if (bVisible)// !!!!! FUCK YEAH !!!!!!
+		if (bIsVisible)// !!!!! FUCK YEAH !!!!!!
 		{
 			Provider->UpdateLocalLOS();// update in here, not in the owner's tick update
 		}
@@ -259,7 +261,7 @@ void UCameraVisionManager::UpdateCameraLOS()
 }
 
 //Internal helper for the Drawing LOS stamp
-void UCameraVisionManager::DrawLOSStamp(UCanvas* Canvas, const TArray<ULineOfSightComponent*>& Providers,
+void UMainVisionRTManager::DrawLOSStamp(UCanvas* Canvas, const TArray<ULineOfSightComponent*>& Providers,
 	const FLinearColor& Color)
 {
 	if (!Canvas) return;// invalid canvas, just leave
@@ -291,7 +293,7 @@ void UCameraVisionManager::DrawLOSStamp(UCanvas* Canvas, const TArray<ULineOfSig
 	}
 }
 
-void UCameraVisionManager::RenderLOS_GPU(FRDGBuilder& GraphBuilder, FRDGTextureRef LOSTexture)
+void UMainVisionRTManager::RenderLOS_GPU(FRDGBuilder& GraphBuilder, FRDGTextureRef LOSTexture)
 {
 	TArray<ULineOfSightComponent*> ActiveProviders;
 	if (!GetVisibleProviders(ActiveProviders))
@@ -343,7 +345,7 @@ void UCameraVisionManager::RenderLOS_GPU(FRDGBuilder& GraphBuilder, FRDGTextureR
 		/*bClearBeforeStamp=*/true);
 }
 
-void UCameraVisionManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Height)
+void UMainVisionRTManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Height)
 {
 	/*UE_LOG(LOSVision, Log,
 		TEXT("UCameraVisionManager::DrawLOS >> Canvas=%s, Width=%d, Height=%d"),
@@ -427,7 +429,7 @@ void UCameraVisionManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Heigh
 		CompositedCount);*/
 }
 
-bool UCameraVisionManager::ConvertWorldToRT(
+bool UMainVisionRTManager::ConvertWorldToRT(
 	const FVector& ProviderWorldLocation,
 	const float& ProviderVisionRange,
 	FVector2D& OutPixelPosition,
@@ -452,7 +454,7 @@ bool UCameraVisionManager::ConvertWorldToRT(
 	return true;
 }
 
-bool UCameraVisionManager::GetVisibleProviders(TArray<ULineOfSightComponent*>& OutProviders) const
+bool UMainVisionRTManager::GetVisibleProviders(TArray<ULineOfSightComponent*>& OutProviders) const
 {
 	if (VisionChannel==EVisionChannel::None)
 	{
@@ -472,7 +474,7 @@ bool UCameraVisionManager::GetVisibleProviders(TArray<ULineOfSightComponent*>& O
 	return true;
 }
 
-bool UCameraVisionManager::ShouldRunClientLogic() const
+bool UMainVisionRTManager::ShouldRunClientLogic() const
 {
 	if (GetNetMode() == NM_DedicatedServer)
 		return false;
@@ -484,7 +486,7 @@ bool UCameraVisionManager::ShouldRunClientLogic() const
 	return true;
 }
 
-uint32 UCameraVisionManager::MakeChannelBitMask(const TArray<EVisionChannel>& ChannelEnums)
+uint32 UMainVisionRTManager::MakeChannelBitMask(const TArray<EVisionChannel>& ChannelEnums)
 {
 	uint32 Mask = 0;
 

@@ -3,12 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
+#include "Components/SceneComponent.h"
 #include "Engine/CanvasRenderTarget2D.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstance.h"
 #include "LineOfSight/VisionData.h"// now as enum
-#include "CameraVisionManager.generated.h"
+#include "MainVisionRTManager.generated.h"
 
 
 // Forward declaration
@@ -18,12 +18,20 @@ class ULineOfSightComponent;// for the local LOS stamps
  * This is the Main RT which will Layer the LOS stamps which are visible, exist in camera vision range.
  */
 
-UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOPDOWNVISION_API UCameraVisionManager : public UActorComponent
+//UCLASS(ClassGroup=(Custom),Blueprintable, meta=(BlueprintSpawnableComponent))
+
+UCLASS(
+	ClassGroup=(Custom),
+	BlueprintType,
+	Blueprintable,
+	EditInlineNew,
+	meta=(BlueprintSpawnableComponent)//changed the class macro for exposing the details in the editor
+)
+class TOPDOWNVISION_API UMainVisionRTManager : public USceneComponent
 {
 	GENERATED_BODY()
 public:
-	UCameraVisionManager();
+	UMainVisionRTManager();
 
 protected:
 	virtual void BeginPlay() override;

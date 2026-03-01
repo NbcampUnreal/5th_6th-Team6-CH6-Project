@@ -16,7 +16,7 @@
 class USpringArmComponent;
 class UCameraComponent;
 // RT
-class UCameraVisionManager;
+class UMainVisionRTManager;
 class UCurvedWorldSubsystem;
 
 PROJECTER_API DECLARE_LOG_CATEGORY_EXTERN(MainCameraComp, Log, All);
@@ -84,11 +84,11 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera|Components")
 	TObjectPtr<UCameraComponent> CameraComp;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Camera|Components")
-	TObjectPtr<UCameraVisionManager> CameraVisionManager;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UMainVisionRTManager> MainVisionRTManager;
 
 	// Cached subsystem
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera|Components")
+	UPROPERTY()
 	TObjectPtr<UCurvedWorldSubsystem> CurveSubSystem = nullptr;
 
 	// Curve settings
