@@ -166,10 +166,10 @@ void ABaseCharacter::PossessedBy(AController* NewController)
 		InitVisuals();
 	}
 
-	if (TopDownCameraComp)//disable the tick for the server
+	/*if (TopDownCameraComp)//disable the tick for the server
 	{
 		TopDownCameraComp->SetComponentTickEnabled(false);
-	}
+	}*/ //--> no need. it is already set to false
 
 	// UI 초기화
 	InitUI();
@@ -246,6 +246,7 @@ void ABaseCharacter::OnRep_PlayerState()
 		{
 			TopDownCameraComp->Activate();
 			TopDownCameraComp->SetComponentTickEnabled(true);
+			TopDownCameraComp->InitializeCompRequirements();//add initialization!!!!
 		}
 		else
 		{
