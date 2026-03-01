@@ -8,7 +8,7 @@
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstance.h"
 #include "LineOfSight/VisionData.h"// now as enum
-#include "CameraVisionManager.generated.h"
+#include "MainVisionRTManager.generated.h"
 
 
 // Forward declaration
@@ -19,11 +19,11 @@ class ULineOfSightComponent;// for the local LOS stamps
  */
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOPDOWNVISION_API UCameraVisionManager : public UActorComponent
+class TOPDOWNVISION_API UMainVisionRTManager : public UActorComponent
 {
 	GENERATED_BODY()
 public:
-	UCameraVisionManager();
+	UMainVisionRTManager();
 
 protected:
 	virtual void BeginPlay() override;
@@ -74,9 +74,10 @@ private:
 		//Out
 		TArray<ULineOfSightComponent*>& OutProviders) const;
 
-	bool ShouldRunClientLogic() const;// can it run as client or not
+	bool ShouldRunClientLogic() const;// can it run as client or no
 
-
+	//Blur Drawing
+	void ApplyFeatheredBlurToRT();
 
 	
 protected:
@@ -100,6 +101,41 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	UCanvasRenderTarget2D* CameraLocalRT = nullptr;
 
+#pragma region Blur
+	//Buffer RT
+	UPROPERTY(Transient)
+	UCanvasRenderTarget2D* TempBlurRT = nullptr;//buffer RT generated and used for the bluring
+	
+	//Feathered out mask drawing
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
+	UMaterialInterface* FeatherOutMaterial = nullptr; // <-- your M_Blur material
+	UPROPERTY(Transient)
+	UMaterialInstanceDynamic* FeatherMID = nullptr;
+
+	//required paran names+value
+	
+	/** Material used for compositing / blurring the CameraLocalRT */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
+	UMaterialInterface* BlurMaterial = nullptr; // <-- your M_Blur material
+	UPROPERTY(Transient)
+	UMaterialInstanceDynamic* BlurMID = nullptr;
+
+	/** Gaussian blur settings */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision|Blur")
+	float BlurRadiusPercent = 0.03f; // 3% of texture size
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision|Blur")
+	int BlurNumSamples = 32;
+
+	/*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision|Blur")
+	FName */
+
+
+	//temp
+	FVector2D CanvasSize=FVector2D{512.f,512.f};
+
+#pragma endregion
+	
 	//MPC
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Vision")
 	UMaterialParameterCollection* PostProcessMPC=nullptr;// update MPC not MID. the post process is just one

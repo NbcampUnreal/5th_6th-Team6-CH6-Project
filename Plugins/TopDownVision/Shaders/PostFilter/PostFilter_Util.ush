@@ -1,82 +1,388 @@
 #pragma once
+// Path: /Plugin/TopDownVision/PostFilter/PostFilter_Util.ush
+// GPU-friendly utility functions for post-processing (Gaussian blur + mask feathering)
+// SM6 compatible, percentage-based radius, runtime sample count as float
 
-// path:   /Plugin/TopDownVision/PostFilter/PostFilter_Util.ush
+#define MAX_BLUR_SAMPLES 64// Compile-time max for unrolling loops
 
-/*
-
-
-*/
-
-#pragma once
-
+//-----------------------------------------
+// Feather mask outward (simple)
 float FeatherMaskOutward(
-	Texture2D MaskTex,
-	SamplerState MaskSampler,
-	float2 UV,
-	float2 TexelSize,
-	int FeatherRadius)
-{
-	float Center = MaskTex.SampleLevel(MaskSampler, UV, 0).r;
-    
-	// If we are already inside the mask, keep it solid (Feather Out only)
-	if (Center >= 0.99)
-	{
-		return 1.0;
-	}
-
-	float Accumulator = 0.0;
-	float Divisor = 0.0;
-    
-	// Use a box-search to find the proximity of the mask
-	// Increase radius for a wider, smoother falloff
-	for (int x = -FeatherRadius; x <= FeatherRadius; x++)
-	{
-		for (int y = -FeatherRadius; y <= FeatherRadius; y++)
-		{
-			float2 OffsetUV = UV + float2(x, y) * TexelSize;
-			float Sample = MaskTex.SampleLevel(MaskSampler, OffsetUV, 0).r;
-            
-			// Basic distance falloff for smoothness
-			float Dist = length(float2(x, y));
-			if (Dist <= FeatherRadius)
-			{
-				float Weight = 1.0 - (Dist / float(FeatherRadius));
-				Accumulator += Sample * Weight;
-				Divisor += Weight;
-			}
-		}
-	}
-
-	// Return the averaged influence, allowing the mask to "bleed" out
-	return saturate(Accumulator / max(Divisor, 0.0001) * 2.0);
-}
-
-
-float4 GaussianBlurPass(
-	float2 UV,
-	Texture2D Tex,
-	SamplerState TexSampler,
-	float2 TexelSize,
-	float Radius,
-	float Horizontal
+    Texture2D MaskTex,
+    SamplerState MaskSampler,
+    float2 UV,
+    float2 TexelSize,
+    float FeatherPercent,  // 0..1 fraction of RT size
+    float NumSamplesF      // float controlling sample count
 )
 {
-	float4 Sum = float4(0,0,0,0);
-	float WeightSum = 0;
+    float Center = MaskTex.SampleLevel(MaskSampler, UV, 0).r;
+    if (Center >= 0.99)
+        return 1.0;
 
-	float Sigma = Radius / 2.0;
+    float Accum = 0.0;
+    float Div = 0.0;
 
-	// 1D Gaussian kernel (separable)
-	[unroll]
-	for (int i = -Radius; i <= Radius; i++)
-	{
-		float Offset = i;
-		float Weight = exp(-Offset*Offset / (2.0 * Sigma*Sigma));
-		WeightSum += Weight;
+    int NumSamples = clamp(int(NumSamplesF + 0.5), 1, MAX_BLUR_SAMPLES);
 
-		float2 SampleUV = UV + (Horizontal > 0.5 ? float2(Offset * TexelSize.x, 0) : float2(0, Offset * TexelSize.y));
-		Sum += Tex.Sample(TexSampler, SampleUV) * Weight;
-	}
+    float MaxRadiusX = FeatherPercent / TexelSize.x;
+    float MaxRadiusY = FeatherPercent / TexelSize.y;
 
-	return Sum / WeightSum;
+    [unroll(MAX_BLUR_SAMPLES)]
+    for (int i = 0; i < MAX_BLUR_SAMPLES; i++)
+    {
+        if (i >= NumSamples) break;
+        float fx = (float(i) / float(NumSamples - 1) - 0.5) * 2.0 * MaxRadiusX;
+
+        [unroll(MAX_BLUR_SAMPLES)]
+        for (int j = 0; j < MAX_BLUR_SAMPLES; j++)
+        {
+            if (j >= NumSamples) break;
+            float fy = (float(j) / float(NumSamples - 1) - 0.5) * 2.0 * MaxRadiusY;
+
+            if (fx == 0 && fy == 0) continue;
+
+            float2 SampleUV = UV + float2(fx * TexelSize.x, fy * TexelSize.y);
+            SampleUV = clamp(SampleUV, 0.0, 1.0);
+
+            float Sample = MaskTex.SampleLevel(MaskSampler, SampleUV, 0).r;
+            if (Sample > 0.99)
+            {
+                float Dist = length(float2(fx / MaxRadiusX, fy / MaxRadiusY));
+                float Weight = saturate(1.0 - Dist);
+                Accum += Weight;
+                Div += Weight;
+            }
+        }
+    }
+
+    return saturate(Accum / max(Div, 0.0001));
+}
+
+//-----------------------------------------
+// Gaussian blur (percentage radius, runtime sample count)
+float4 GaussianBlur_Percent(
+    Texture2D Tex,
+    SamplerState TexSampler,
+    float2 UV,
+    float RadiusPercent,
+    int NumSamples,
+    float Horizontal
+)
+{
+    float4 Sum = float4(0,0,0,0);
+    float WeightSum = 0;
+
+    int SampleCount = min(NumSamples, MAX_BLUR_SAMPLES);
+    float Sigma = RadiusPercent * 0.5;
+
+    float2 PixelOffset = Horizontal > 0.5 ? float2(RadiusPercent, 0) : float2(0, RadiusPercent);
+
+    [unroll(MAX_BLUR_SAMPLES)]
+    for (int i = 0; i < SampleCount; i++)
+    {
+        float t = float(i) / float(max(SampleCount-1,1));
+        float2 SampleUV = UV + (t - 0.5) * 2.0 * PixelOffset;
+
+        float Weight = exp(- (t-0.5)*(t-0.5) / (2.0*Sigma*Sigma));
+        Sum += Tex.Sample(TexSampler, SampleUV) * Weight;
+        WeightSum += Weight;
+    }
+
+    return Sum / max(WeightSum, 0.0001);
+}
+
+// Gaussian-style Feather Outward (smooth gradient from solid mask)
+// Only affects pixels outside the mask
+float FeatherMaskOutwardGaussian(
+    Texture2D MaskTex,
+    SamplerState MaskSampler,
+    float2 UV,
+    float2 TexelSize,      // 1/RTSize
+    float FeatherPercent,   // 0..1 fraction of RT
+    float NumSamplesF       // runtime float controlling sample count
+)
+{
+    // Inside mask stays fully solid
+    float Center = MaskTex.SampleLevel(MaskSampler, UV, 0).r;
+    if (Center >= 0.99)
+        return 1.0;
+
+    float Accum = 0.0;
+    float Div = 0.0;
+
+    int NumSamples = clamp(int(NumSamplesF + 0.5), 1, MAX_BLUR_SAMPLES);
+
+    // Convert percent into max radius in pixels
+    float MaxRadiusX = FeatherPercent / TexelSize.x;
+    float MaxRadiusY = FeatherPercent / TexelSize.y;
+
+    float Sigma = 0.5; // Gaussian falloff factor, tweak for softness
+
+    [unroll(MAX_BLUR_SAMPLES)]
+    for (int i = 0; i < MAX_BLUR_SAMPLES; i++)
+    {
+        if (i >= NumSamples) break;
+        float fx = (float(i) / float(NumSamples-1) - 0.5) * 2.0 * MaxRadiusX;
+
+        [unroll(MAX_BLUR_SAMPLES)]
+        for (int j = 0; j < MAX_BLUR_SAMPLES; j++)
+        {
+            if (j >= NumSamples) break;
+            float fy = (float(j) / float(NumSamples-1) - 0.5) * 2.0 * MaxRadiusY;
+
+            if (fx == 0 && fy == 0) continue;
+
+            float2 SampleUV = UV + float2(fx * TexelSize.x, fy * TexelSize.y);
+            SampleUV = clamp(SampleUV, 0.0, 1.0);
+
+            float SampleAlpha = MaskTex.SampleLevel(MaskSampler, SampleUV, 0).r;
+
+            // Gaussian-style weight based on distance, scaled by sampled alpha
+            float DistNorm = length(float2(fx / MaxRadiusX, fy / MaxRadiusY)); // 0..1
+            float Weight = SampleAlpha * exp(-DistNorm * DistNorm / (2.0 * Sigma * Sigma));
+
+            Accum += Weight;
+            Div += Weight;
+        }
+    }
+
+    return saturate(Accum / max(Div, 0.0001));
+}
+
+//================== Mip using RT method ==================//
+
+//-----------------------------------------
+// Feather mask outward (Gaussian-style, mip aware)
+float FeatherMaskOutwardMip(
+    Texture2D MaskTex,
+    SamplerState MaskSampler,
+    float2 UV,
+    float2 TexelSize,       // 1/RTSize
+    float FeatherPercent,    // 0..1 fraction of RT
+    float NumSamplesF,       // runtime float controlling sample count
+    float MipLevel           // which mip to sample
+)
+{
+    float Center = MaskTex.SampleLevel(MaskSampler, UV, 0).r;
+    if (Center >= 0.99)
+        return 1.0;
+
+    float Accum = 0.0;
+    float Div = 0.0;
+
+    int NumSamples = clamp(int(NumSamplesF + 0.5), 1, MAX_BLUR_SAMPLES);
+
+    // Convert percent into max radius in pixels at mip 0
+    float MaxRadiusX = FeatherPercent / TexelSize.x;
+    float MaxRadiusY = FeatherPercent / TexelSize.y;
+
+    // Adjust for mip level (lower mip = coarser sampling)
+    float MipScale = exp2(MipLevel); // mip 1 = 2x bigger pixel, mip 2 = 4x, etc.
+    float ScaledRadiusX = MaxRadiusX / MipScale;
+    float ScaledRadiusY = MaxRadiusY / MipScale;
+
+    float Sigma = 0.5; // Gaussian softness
+
+    [unroll(MAX_BLUR_SAMPLES)]
+    for (int i = 0; i < MAX_BLUR_SAMPLES; i++)
+    {
+        if (i >= NumSamples) break;
+        float fx = (float(i) / float(NumSamples-1) - 0.5) * 2.0 * ScaledRadiusX;
+
+        [unroll(MAX_BLUR_SAMPLES)]
+        for (int j = 0; j < MAX_BLUR_SAMPLES; j++)
+        {
+            if (j >= NumSamples) break;
+            float fy = (float(j) / float(NumSamples-1) - 0.5) * 2.0 * ScaledRadiusY;
+
+            if (fx == 0 && fy == 0) continue;
+
+            float2 SampleUV = UV + float2(fx * TexelSize.x * MipScale, fy * TexelSize.y * MipScale);
+            SampleUV = clamp(SampleUV, 0.0, 1.0);
+
+            float Sample = MaskTex.SampleLevel(MaskSampler, SampleUV, MipLevel).r;
+            if (Sample > 0.99)
+            {
+                float DistNorm = length(float2(fx / ScaledRadiusX, fy / ScaledRadiusY)); // 0..1
+                float Weight = exp(-DistNorm*DistNorm / (2.0*Sigma*Sigma));
+                Accum += Weight;
+                Div += Weight;
+            }
+        }
+    }
+
+    return saturate(Accum / max(Div, 0.0001));
+}
+
+//-----------------------------------------
+// Gaussian directional blur using mip level
+float4 GaussianBlurMip(
+    Texture2D Tex,
+    SamplerState TexSampler,
+    float2 UV,
+    float2 TexelSize,
+    float RadiusPercent,   // fraction of RT
+    int NumSamples,
+    float Horizontal,      // >0.5 = horizontal, else vertical
+    float MipLevel
+)
+{
+    float4 Sum = float4(0,0,0,0);
+    float WeightSum = 0;
+
+    int SampleCount = min(NumSamples, MAX_BLUR_SAMPLES);
+    float Sigma = RadiusPercent * 0.5;
+
+    // Adjust UV step for mip
+    float MipScale = exp2(MipLevel);
+
+    [unroll(MAX_BLUR_SAMPLES)]
+    for (int i = 0; i < SampleCount; i++)
+    {
+        float t = float(i) / float(max(SampleCount-1,1));
+        float Offset = (t - 0.5) * 2.0 * RadiusPercent * MipScale;
+
+        float2 SampleUV = UV + (Horizontal > 0.5 ? float2(Offset * TexelSize.x, 0) : float2(0, Offset * TexelSize.y));
+        SampleUV = clamp(SampleUV, 0.0, 1.0);
+
+        float Weight = exp(-t*t / (2.0*Sigma*Sigma));
+        Sum += Tex.SampleLevel(TexSampler, SampleUV, MipLevel) * Weight;
+        WeightSum += Weight;
+    }
+
+    return Sum / max(WeightSum, 0.0001);
+}
+
+//-----------------------------------------
+// One-way horizontal/vertical feather pass
+// Horizontal = 1 -> horizontal pass, else vertical
+float FeatherOutward_1D(
+    Texture2D MaskTex,
+    SamplerState MaskSampler,
+    float2 UV,
+    float2 TexelSize,     // 1 / RTSize
+    float FeatherPercent, // fraction of RT
+    int NumSamples,
+    bool Horizontal      // true = horizontal pass
+)
+{
+    float CenterAlpha = MaskTex.SampleLevel(MaskSampler, UV, 0).r;
+    if (CenterAlpha >= 0.99)
+        return 1.0; // inside mask, fully visible
+
+    float MaxAlpha = CenterAlpha;
+
+    NumSamples = clamp(NumSamples, 1, MAX_BLUR_SAMPLES);
+
+    float MaxOffset = FeatherPercent;
+
+    [unroll(MAX_BLUR_SAMPLES)]
+    for (int i = 0; i < NumSamples; i++)
+    {
+        float t = float(i) / float(max(NumSamples - 1, 1)); // 0..1
+        float Offset = (t - 0.5) * 2.0 * MaxOffset;          // -MaxOffset .. MaxOffset
+
+        float2 SampleUV = UV + (Horizontal ? float2(Offset * TexelSize.x, 0) 
+                                           : float2(0, Offset * TexelSize.y));
+
+        SampleUV = clamp(SampleUV, 0.0, 1.0);
+
+        float SampleAlpha = MaskTex.SampleLevel(MaskSampler, SampleUV, 0).r;
+
+        // Only expand alpha outward
+        MaxAlpha = max(MaxAlpha, SampleAlpha);
+    }
+
+    return MaxAlpha;
+}
+
+//-----------------------------------------
+// Full 2D pass (horizontal + vertical)
+float FeatherOutward_2D(
+    Texture2D MaskTex,
+    SamplerState MaskSampler,
+    float2 UV,
+    float2 TexelSize,
+    float FeatherPercent,
+    int NumSamples
+)
+{
+    // Horizontal pass
+    float Horz = FeatherOutward_1D(MaskTex, MaskSampler, UV, TexelSize, FeatherPercent, NumSamples, true);
+    
+    // Create temporary UV offset for vertical pass (simulate sampling the horizontal output)
+    // In practice, in UE material, you do vertical pass on render target after horizontal
+    float2 TempUV = UV;
+
+    // Vertical pass: we read from the horizontal pass RT
+    float Vert = FeatherOutward_1D(MaskTex, MaskSampler, TempUV, TexelSize, FeatherPercent, NumSamples, false);
+
+    // Combine: max of horizontal and vertical
+    return max(Horz, Vert);
+}
+
+// FeatherOutward_2D_Soft
+// Expands visible pixels outward (white), leaves inside fully solid, soft Gaussian edge outside
+// Cheap for tick updates, only operates on final merged RT
+
+float FeatherOutward_2D_Soft(
+    Texture2D MaskTex,
+    SamplerState MaskSampler,
+    float2 UV,
+    float2 TexelSize,      // 1/RTSize
+    float FeatherPercent,   // 0..1 fraction of RT
+    int NumSamples,         // samples per axis
+    float Sigma             // Gaussian softness 0..1
+)
+{
+    // Inside mask stays solid
+    float Center = MaskTex.SampleLevel(MaskSampler, UV, 0).r;
+    if (Center >= 0.99)
+        return 1.0;
+
+    float Accum = 0.0;
+    float WeightSum = 0.0;
+
+    NumSamples = clamp(NumSamples, 1, 32);
+
+    // Convert percent into max radius in pixels
+    float MaxRadiusX = FeatherPercent / TexelSize.x;
+    float MaxRadiusY = FeatherPercent / TexelSize.y;
+
+    [unroll(32)]
+    for (int i = 0; i < 32; i++)
+    {
+        if (i >= NumSamples) break;
+
+        float fx = (float(i) / float(NumSamples - 1) - 0.5) * 2.0 * MaxRadiusX;
+
+        [unroll(32)]
+        for (int j = 0; j < 32; j++)
+        {
+            if (j >= NumSamples) break;
+
+            float fy = (float(j) / float(NumSamples - 1) - 0.5) * 2.0 * MaxRadiusY;
+
+            if (fx == 0 && fy == 0)
+                continue; // skip center, already sampled
+
+            float2 SampleUV = UV + float2(fx * TexelSize.x, fy * TexelSize.y);
+            SampleUV = clamp(SampleUV, 0.0, 1.0);
+
+            float SampleAlpha = MaskTex.SampleLevel(MaskSampler, SampleUV, 0).r;
+
+            // Only contribute if neighbor is visible
+            if (SampleAlpha > 0.99)
+            {
+                float DistNorm = length(float2(fx / MaxRadiusX, fy / MaxRadiusY)); // normalized 0..1
+                float Weight = exp(-DistNorm * DistNorm / (2.0 * Sigma * Sigma));
+                Accum += Weight;
+                WeightSum += Weight;
+            }
+        }
+    }
+
+    // Return final feathered alpha
+    return saturate(Accum / max(WeightSum, 0.0001));
 }

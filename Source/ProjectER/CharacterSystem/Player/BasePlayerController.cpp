@@ -257,8 +257,8 @@ void ABasePlayerController::MoveToMouseCursor()
 	}
 
 	FHitResult Hit;
-	//if (GetCurvedHitResultUnderCursor(ECC_Visibility, false, Hit)) //<- Replaced with a curve world accurate-hit result 추후에 완성되면 이걸로 변경
-	if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))//
+	if (GetCurvedHitResultUnderCursor(ECC_Visibility, false, Hit)) //<- Replaced with a curve world accurate-hit result 추후에 완성되면 이걸로 변경
+	//if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))//
 	{
 		if (Hit.bBlockingHit)
 		{
@@ -322,7 +322,7 @@ void ABasePlayerController::MoveToMouseCursor()
 				}
 			}
 			
-			if (HitActor->GetComponentByClass<ULootableComponent>())
+			/*if (HitActor->GetComponentByClass<ULootableComponent>())
 			{
 				InteractionTargetDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
 				InteractionTarget = HitActor; 
@@ -335,6 +335,31 @@ void ABasePlayerController::MoveToMouseCursor()
 			else
 			{
 				// 아무것도 아니면 (땅바닥 클릭) 타겟 초기화
+				InteractionTarget = nullptr;
+			}*/
+
+		//2026/03/01 no safety check for the hit actor being nullptr. added the safety net
+			if (IsValid(HitActor))
+			{
+				if (HitActor->FindComponentByClass<ULootableComponent>())
+				{
+					InteractionTargetDistance =
+						FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
+					InteractionTarget = HitActor;
+				}
+				else if (HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
+				{
+					InteractionTargetDistance =
+						FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
+					InteractionTarget = HitActor;
+				}
+				else
+				{
+					InteractionTarget = nullptr;
+				}
+			}
+			else
+			{
 				InteractionTarget = nullptr;
 			}
 			
@@ -1187,11 +1212,10 @@ bool ABasePlayerController::GetCurvedHitResultUnderCursor(ECollisionChannel Trac
 
 	// Use curved world corrected trace -> for now, just do the z height only modification
 	return FCurvedWorldUtil::GetHitResultUnderCursorCorrected(
-		this,
-		CurvedWorldSubsystem,
-		OutHitResult,
-		TraceChannel,
-		ECurveMathType::ZHeightOnly);
+		   this,
+		   CurvedWorldSubsystem,
+		   OutHitResult,
+		   TraceChannel);
 }
 
 
