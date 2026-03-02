@@ -16,14 +16,17 @@ UENUM(BlueprintType)
 enum class EMonsterMontageType : uint8
 {
 	Idle,
+	Alert,
 	Move,
 	Attack,
 	QSkill,
-	Sit,
+	WSkill,
+	ESkill,
+	RSkill,
 	Dead,
 	
 	FlyStart,
-	FlyIdle,
+	FlyAttack,
 	FlyEnd
 };
 
