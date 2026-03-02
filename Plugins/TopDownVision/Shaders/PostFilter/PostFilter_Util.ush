@@ -385,4 +385,94 @@ float FeatherOutward_2D_Soft(
 
     // Return final feathered alpha
     return saturate(Accum / max(WeightSum, 0.0001));
+
+    /*// If the center is already empty, no need to feather
+    float Center = MaskTex.SampleLevel(MaskSampler, UV, 0).r;
+    if (Center <= 0.01)
+        return 0.0;
+
+    float Accum = 0.0;
+    float WeightSum = 0.0;
+
+    NumSamples = clamp(NumSamples, 1, 32);
+
+    // Convert percent into max radius in pixels
+    float MaxRadiusX = FeatherPercent / TexelSize.x;
+    float MaxRadiusY = FeatherPercent / TexelSize.y;
+
+    [unroll(32)]
+    for (int i = 0; i < 32; i++)
+    {
+        if (i >= NumSamples) break;
+
+        float fx = (float(i) / float(NumSamples - 1) - 0.5) * 2.0 * MaxRadiusX;
+
+        [unroll(32)]
+        for (int j = 0; j < 32; j++)
+        {
+            if (j >= NumSamples) break;
+
+            float fy = (float(j) / float(NumSamples - 1) - 0.5) * 2.0 * MaxRadiusY;
+
+            if (fx == 0 && fy == 0)
+                continue;
+
+            float2 SampleUV = UV + float2(fx * TexelSize.x, fy * TexelSize.y);
+            SampleUV = clamp(SampleUV, 0.0, 1.0);
+
+            float SampleAlpha = MaskTex.SampleLevel(MaskSampler, SampleUV, 0).r;
+
+            // INVERSION: Only contribute if neighbor is EMPTY (black)
+            // This pulls the "zero" value into the "one" value areas
+            if (SampleAlpha < 0.01)
+            {
+                float DistNorm = length(float2(fx / MaxRadiusX, fy / MaxRadiusY));
+                float Weight = exp(-DistNorm * DistNorm / (2.0 * Sigma * Sigma));
+                Accum += Weight;
+                WeightSum += Weight;
+            }
+        }
+    }
+
+    // If no "empty" neighbors were found, the pixel remains fully solid.
+    // Otherwise, subtract the 'emptiness' from the solid center.
+    if (WeightSum <= 0.0001) return 1.0;
+
+    // We calculate the 'influence' of the outside area and subtract it from 1
+    float Softness = saturate(Accum / WeightSum);
+    return saturate(1.0 - Softness);*/
+}
+
+float FeatherApprox(
+    Texture2D MaskTex,
+    SamplerState MaskSampler,
+    float2 UV,
+    float2 TexelSize,
+    float Sigma
+)
+{
+    float Center = MaskTex.SampleLevel(MaskSampler, UV, 0).r;
+
+    // Inside mask stays solid
+    if (Center >= 0.99) return 1.0;
+
+    // Sample immediate 4 neighbors
+    float AlphaL = MaskTex.SampleLevel(MaskSampler, UV + float2(-TexelSize.x, 0), 0).r;
+    float AlphaR = MaskTex.SampleLevel(MaskSampler, UV + float2( TexelSize.x, 0), 0).r;
+    float AlphaU = MaskTex.SampleLevel(MaskSampler, UV + float2(0,  TexelSize.y), 0).r;
+    float AlphaD = MaskTex.SampleLevel(MaskSampler, UV + float2(0, -TexelSize.y), 0).r;
+
+    // Compute how close we are to the mask
+    float MaxNeighbor = max(max(AlphaL, AlphaR), max(AlphaU, AlphaD));
+
+    // If neighbor is inside mask, we are at the boundary
+    float DistToMask = saturate(1.0 - MaxNeighbor); // 0 at boundary, 1 fully outside
+
+    // Scale by desired feather size
+    float Feather = saturate(DistToMask / Sigma);
+
+    // Optional smooth step for nicer falloff
+    Feather = smoothstep(0.0, 1.0, Feather);
+
+    return Feather;
 }
