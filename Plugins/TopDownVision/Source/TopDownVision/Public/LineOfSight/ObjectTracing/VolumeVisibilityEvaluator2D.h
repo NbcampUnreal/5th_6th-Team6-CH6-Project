@@ -1,30 +1,54 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
+#include "UObject/Object.h"
 #include "VolumeVisibilityEvaluator2D.generated.h"
 
 
-UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOPDOWNVISION_API UVolumeVisibilityEvaluator2D : public UActorComponent
+
+/**
+ *  This is for topdown 2d use case method. it will use the obstacle RT and sample the pixel G value to check obstacle occlusion
+ *
+ *
+ *  Fuck yeah
+ */
+
+//Log
+TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(VolumeObstacleEvaluator, Log, All);
+
+
+// ==== FD ==== //
+class UTextureRenderTarget2D;
+class UTopDown2DShapeComp;
+
+UCLASS()
+class TOPDOWNVISION_API UVolumeVisibilityEvaluator2D : public UObject
 {
     GENERATED_BODY()
 
 public:
-    UVolumeVisibilityEvaluator2D();
-    
-    /*/** Generates points within the 2D footprint of the owner #1#
-    UFUNCTION(BlueprintCallable, Category = "Visibility")
-    void Bake2DFootprint(float FootprintRadius, int32 RingCount = 3);
 
-protected:
-    /** Local space points representing the character's floor footprint #1#
-    UPROPERTY(VisibleAnywhere, Category = "Visibility")
-    TArray<FVector2D> LocalFootprintPoints;
+    UFUNCTION(BlueprintCallable, Category="VolumeVisibility")
+    static bool EvaluateVisibility(
+        UTextureRenderTarget2D* ObstacleRT,
+        float MaxRange,
+        const FVector& ObserverLocation,
+        const FVector& TargetLocation,
+        UTopDown2DShapeComp* ShapeComp,
+        float OcclusionThreshold = 0.8f);
 
-    /** Threshold to consider the actor "hidden" (e.g. 0.1 means 90% in shadow) #1#
-    UPROPERTY(EditAnywhere, Category = "Visibility")
-    float VisibilityThreshold = 0.15f;*/
+private:
+    /** Sample G channel at a given UV in the pixel buffer. Returns true if occluded. */
+    static bool SampleGChannel(
+        const TArray<FColor>& Pixels,
+        int32 RTWidth,
+        int32 RTHeight,
+        float U,
+        float V);
+
+    /** Project a world point into the observer's obstacle RT UV space. */
+    static FVector2D WorldToObstacleUV(
+        const FVector& WorldPoint,
+        const FVector& ObserverLocation,
+        float MaxRange);
 };

@@ -66,7 +66,7 @@ protected:
     bool bDrawSampleRange = false;
 
     // --- Sampling ---
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="LOSObstacle")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSObstacle")
     ULocalTextureSampler* LocalTextureSampler = nullptr;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="LOSObstacle")
@@ -88,5 +88,5 @@ protected:
 
     /** Name of the texture parameter in ObstacleMaterial to bind the RT to. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSObstacle")
-    FName MIDTextureParam = NAME_None;
+    FName MIDTextureParam = TEXT("ObstacleMaskRT");
 };

@@ -75,9 +75,9 @@ private:
 protected:
 	
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Render")
 	bool bDrawDebugRT=false;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Render")
 	TObjectPtr<UTextureRenderTarget2D> DebugRT;
 	
 	/** Local merged obstacle/height mask */

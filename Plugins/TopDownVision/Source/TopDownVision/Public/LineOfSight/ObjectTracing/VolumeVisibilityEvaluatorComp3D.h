@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "VolumeVisibilityEvaluatorComp.generated.h"
+#include "VolumeVisibilityEvaluatorComp3D.generated.h"
 
 /*
  *  This will be used for self-evaluation,
@@ -58,12 +58,12 @@ struct FVolumeShape //cachable object volume to compute if the sample point is i
 };
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOPDOWNVISION_API UVolumeVisibilityEvaluatorComp : public UActorComponent
+class TOPDOWNVISION_API UVolumeVisibilityEvaluatorComp3D : public UActorComponent
 {
     GENERATED_BODY()
 
 public:
-    UVolumeVisibilityEvaluatorComp();
+    UVolumeVisibilityEvaluatorComp3D();
 
 protected:
     virtual void BeginPlay() override;

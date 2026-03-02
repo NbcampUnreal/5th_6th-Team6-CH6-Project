@@ -66,11 +66,11 @@ protected:
 
     /** Texture parameter name for the obstacle RT input in the LOS material. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSStamp")
-    FName MIDObstacleTextureParam = NAME_None;
+    FName MIDObstacleTextureParam = TEXT("ObstacleMaskRT");
 
     /** Scalar parameter name for the normalized vision range in the LOS material. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSStamp")
-    FName MIDVisibleRangeParam = NAME_None;
+    FName MIDVisibleRangeParam = TEXT("NormalizedVisionRadius");
 
     // --- Debug --- //
     UPROPERTY(EditAnywhere, Category="LOSStamp|Debug")

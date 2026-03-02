@@ -166,6 +166,7 @@ void ULocalTextureSampler::PrepareSetups()
 	{
 		UE_LOG(LOSVision, Warning, TEXT("ULocalTextureSampler::PrepareSetups >> Failed to get VisionSubsystem"));
 	}
+
 }
 
 bool ULocalTextureSampler::ShouldRunClientLogic() const

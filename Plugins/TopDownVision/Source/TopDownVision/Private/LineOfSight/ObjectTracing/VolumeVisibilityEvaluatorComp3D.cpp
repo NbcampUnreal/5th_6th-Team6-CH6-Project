@@ -1,7 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "LineOfSight/ObjectTracing/VolumeVisibilityEvaluatorComp.h"
+#include "LineOfSight/ObjectTracing/VolumeVisibilityEvaluatorComp3D.h"
 
 #include "Components/SphereComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -10,12 +10,12 @@
 #include "TopDownVisionDebug.h"//log
 #include "DrawDebugHelpers.h"//debug draw
 
-UVolumeVisibilityEvaluatorComp::UVolumeVisibilityEvaluatorComp()
+UVolumeVisibilityEvaluatorComp3D::UVolumeVisibilityEvaluatorComp3D()
 {
     PrimaryComponentTick.bCanEverTick = false;
 }
 
-void UVolumeVisibilityEvaluatorComp::BeginPlay()
+void UVolumeVisibilityEvaluatorComp3D::BeginPlay()
 {
     Super::BeginPlay();
 
@@ -23,8 +23,8 @@ void UVolumeVisibilityEvaluatorComp::BeginPlay()
 
     if (TargetShapeComp)
     {
-        TargetShapeComp->OnComponentBeginOverlap.AddDynamic(this, &UVolumeVisibilityEvaluatorComp::OnVolumeOverlapBegin);
-        TargetShapeComp->OnComponentEndOverlap.AddDynamic(this, &UVolumeVisibilityEvaluatorComp::OnVolumeOverlapEnd);
+        TargetShapeComp->OnComponentBeginOverlap.AddDynamic(this, &UVolumeVisibilityEvaluatorComp3D::OnVolumeOverlapBegin);
+        TargetShapeComp->OnComponentEndOverlap.AddDynamic(this, &UVolumeVisibilityEvaluatorComp3D::OnVolumeOverlapEnd);
 
         UE_LOG(LOSTrace, Log,
             TEXT("%s UVisibilityTargetComp::BeginPlay >> overlap bindings registered on [%s]"),
@@ -38,15 +38,15 @@ void UVolumeVisibilityEvaluatorComp::BeginPlay()
     }
 }
 
-void UVolumeVisibilityEvaluatorComp::SetTargetShapeComp(UPrimitiveComponent* NewShapeComp)
+void UVolumeVisibilityEvaluatorComp3D::SetTargetShapeComp(UPrimitiveComponent* NewShapeComp)
 {
     const FString Ctx = TopDownVisionDebug::GetClientDebugName(this);
 
     // Unbind from the old comp if there was one
     if (TargetShapeComp)
     {
-        TargetShapeComp->OnComponentBeginOverlap.RemoveDynamic(this, &UVolumeVisibilityEvaluatorComp::OnVolumeOverlapBegin);
-        TargetShapeComp->OnComponentEndOverlap.RemoveDynamic(this, &UVolumeVisibilityEvaluatorComp::OnVolumeOverlapEnd);
+        TargetShapeComp->OnComponentBeginOverlap.RemoveDynamic(this, &UVolumeVisibilityEvaluatorComp3D::OnVolumeOverlapBegin);
+        TargetShapeComp->OnComponentEndOverlap.RemoveDynamic(this, &UVolumeVisibilityEvaluatorComp3D::OnVolumeOverlapEnd);
 
         UE_LOG(LOSTrace, Log,
             TEXT("%s UVisibilityTargetComp::SetTargetShapeComp >> unbound from old comp [%s]"),
@@ -63,8 +63,8 @@ void UVolumeVisibilityEvaluatorComp::SetTargetShapeComp(UPrimitiveComponent* New
 
         if (GetWorld() && GetWorld()->HasBegunPlay())
         {
-            TargetShapeComp->OnComponentBeginOverlap.AddDynamic(this, &UVolumeVisibilityEvaluatorComp::OnVolumeOverlapBegin);
-            TargetShapeComp->OnComponentEndOverlap.AddDynamic(this, &UVolumeVisibilityEvaluatorComp::OnVolumeOverlapEnd);
+            TargetShapeComp->OnComponentBeginOverlap.AddDynamic(this, &UVolumeVisibilityEvaluatorComp3D::OnVolumeOverlapBegin);
+            TargetShapeComp->OnComponentEndOverlap.AddDynamic(this, &UVolumeVisibilityEvaluatorComp3D::OnVolumeOverlapEnd);
 
             UE_LOG(LOSTrace, Log,
                 TEXT("%s UVisibilityTargetComp::SetTargetShapeComp >> overlap bindings registered (post-BeginPlay)"),
@@ -79,7 +79,7 @@ void UVolumeVisibilityEvaluatorComp::SetTargetShapeComp(UPrimitiveComponent* New
     }
 }
 
-bool UVolumeVisibilityEvaluatorComp::IsFullyHiddenByVolumes() const
+bool UVolumeVisibilityEvaluatorComp3D::IsFullyHiddenByVolumes() const
 {
     const FString Ctx = TopDownVisionDebug::GetClientDebugName(this);
 
@@ -157,7 +157,7 @@ bool UVolumeVisibilityEvaluatorComp::IsFullyHiddenByVolumes() const
     return bFullyHidden;
 }
 
-void UVolumeVisibilityEvaluatorComp::BakeSamplePoints()
+void UVolumeVisibilityEvaluatorComp3D::BakeSamplePoints()
 {
     const FString Ctx = TopDownVisionDebug::GetClientDebugName(this);
 
@@ -182,7 +182,7 @@ void UVolumeVisibilityEvaluatorComp::BakeSamplePoints()
         *TargetShapeComp->GetClass()->GetName());
 }
 
-void UVolumeVisibilityEvaluatorComp::DebugDrawSamplePoints(float Duration) const
+void UVolumeVisibilityEvaluatorComp3D::DebugDrawSamplePoints(float Duration) const
 {
     const FString Ctx = TopDownVisionDebug::GetClientDebugName(this);
 
@@ -225,7 +225,7 @@ void UVolumeVisibilityEvaluatorComp::DebugDrawSamplePoints(float Duration) const
         *Ctx, LocalSamplePoints.Num(), *GetOwner()->GetName(), Duration);
 }
 
-void UVolumeVisibilityEvaluatorComp::OnVolumeOverlapBegin(
+void UVolumeVisibilityEvaluatorComp3D::OnVolumeOverlapBegin(
     UPrimitiveComponent* OverlappedComp,
     AActor* OtherActor,
     UPrimitiveComponent* OtherComp,
@@ -265,7 +265,7 @@ void UVolumeVisibilityEvaluatorComp::OnVolumeOverlapBegin(
     ActiveVolumes.Add(NewVolume);
 }
 
-void UVolumeVisibilityEvaluatorComp::OnVolumeOverlapEnd(
+void UVolumeVisibilityEvaluatorComp3D::OnVolumeOverlapEnd(
     UPrimitiveComponent* OverlappedComp,
     AActor* OtherActor,
     UPrimitiveComponent* OtherComp,
@@ -286,7 +286,7 @@ void UVolumeVisibilityEvaluatorComp::OnVolumeOverlapEnd(
 }
 
 
-TArray<FVector> UVolumeVisibilityEvaluatorComp::SampleShapeLocal(UPrimitiveComponent* ShapeComp) const
+TArray<FVector> UVolumeVisibilityEvaluatorComp3D::SampleShapeLocal(UPrimitiveComponent* ShapeComp) const
 {
     const FString Ctx = TopDownVisionDebug::GetClientDebugName(this);
 
@@ -321,7 +321,7 @@ TArray<FVector> UVolumeVisibilityEvaluatorComp::SampleShapeLocal(UPrimitiveCompo
 
 //Shape sampler internal functions
 
-TArray<FVector> UVolumeVisibilityEvaluatorComp::SampleSphere(const USphereComponent* Sphere) const
+TArray<FVector> UVolumeVisibilityEvaluatorComp3D::SampleSphere(const USphereComponent* Sphere) const
 {
     TArray<FVector> Points;
 
@@ -350,7 +350,7 @@ TArray<FVector> UVolumeVisibilityEvaluatorComp::SampleSphere(const USphereCompon
 }
 
 
-TArray<FVector> UVolumeVisibilityEvaluatorComp::SampleCapsule(const UCapsuleComponent* Capsule) const
+TArray<FVector> UVolumeVisibilityEvaluatorComp3D::SampleCapsule(const UCapsuleComponent* Capsule) const
 {
      TArray<FVector> Points;
 
@@ -402,7 +402,7 @@ TArray<FVector> UVolumeVisibilityEvaluatorComp::SampleCapsule(const UCapsuleComp
 
 
 
-TArray<FVector> UVolumeVisibilityEvaluatorComp::SampleBox(const UBoxComponent* Box) const
+TArray<FVector> UVolumeVisibilityEvaluatorComp3D::SampleBox(const UBoxComponent* Box) const
 {
     TArray<FVector> Points;
 
@@ -459,7 +459,7 @@ TArray<FVector> UVolumeVisibilityEvaluatorComp::SampleBox(const UBoxComponent* B
 }
 
 
-TArray<FVector> UVolumeVisibilityEvaluatorComp::SampleBounds(const UPrimitiveComponent* Comp) const
+TArray<FVector> UVolumeVisibilityEvaluatorComp3D::SampleBounds(const UPrimitiveComponent* Comp) const
 {
     TArray<FVector> Points;
 
@@ -518,7 +518,7 @@ TArray<FVector> UVolumeVisibilityEvaluatorComp::SampleBounds(const UPrimitiveCom
 }
 
 //internal function for face sampler
-void UVolumeVisibilityEvaluatorComp::SampleFace(TArray<FVector>& OutPoints, const FVector& FaceOffset,
+void UVolumeVisibilityEvaluatorComp3D::SampleFace(TArray<FVector>& OutPoints, const FVector& FaceOffset,
     const FVector& AxisU, float HalfU, const FVector& AxisV, float HalfV, const FVector& Origin) const
 {
     const int32 StepsU = FMath::Max(1, FMath::RoundToInt((HalfU * 2.f) / SampleSpacing));
@@ -536,7 +536,7 @@ void UVolumeVisibilityEvaluatorComp::SampleFace(TArray<FVector>& OutPoints, cons
 }
 
 //  Volume containment helper
-bool UVolumeVisibilityEvaluatorComp::IsPointInsideVolume(const FVector& WorldPoint, const FVolumeShape& Volume) const
+bool UVolumeVisibilityEvaluatorComp3D::IsPointInsideVolume(const FVector& WorldPoint, const FVolumeShape& Volume) const
 {
     if (!Volume.Component.IsValid())
         return false;

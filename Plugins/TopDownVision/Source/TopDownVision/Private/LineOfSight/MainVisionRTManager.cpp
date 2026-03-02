@@ -7,7 +7,9 @@
 #include "Kismet/KismetRenderingLibrary.h"
 #include "Materials/MaterialParameterCollectionInstance.h"
 #include "TopDownVisionDebug.h"
+#include "GameFramework/GameStateBase.h"
 #include "LineOfSight/GPU/LOSStampPass.h"
+#include "LineOfSight/Management/VisionGameStateComp.h"
 #include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
 
 
@@ -111,106 +113,114 @@ static bool RectOverlapsWorld(
 void UMainVisionRTManager::UpdateCameraLOS()
 {
 	if (!ShouldRunClientLogic())
-		return;
+        return;
 
-	if (!CameraLocalRT)
-	{
-		UE_LOG(LOSVision, Error,
-			TEXT("UMainVisionRTManager::UpdateCameraLOS >> CameraLocalRT is null!"));
-		return;
-	}
+    if (!CameraLocalRT)
+    {
+        UE_LOG(LOSVision, Error,
+            TEXT("UMainVisionRTManager::UpdateCameraLOS >> CameraLocalRT is null!"));
+        return;
+    }
 
-	TArray<UVision_VisualComp*> ActiveProviders;
-	if (!GetVisibleProviders(ActiveProviders))
-	{
-		UE_LOG(LOSVision, Error,
-			TEXT("UMainVisionRTManager::UpdateCameraLOS >> Failed to bring VisibleProviders"));
-		return;
-	}
+    TArray<UVision_VisualComp*> ActiveProviders;
+    if (!GetVisibleProviders(ActiveProviders))
+    {
+        UE_LOG(LOSVision, Error,
+            TEXT("UMainVisionRTManager::UpdateCameraLOS >> Failed to bring VisibleProviders"));
+        return;
+    }
 
-	const FVector CameraCenter = GetOwner()->GetActorLocation();
+    // Cache VisionGameStateComp for visibility filtering
+    UVisionGameStateComp* GSComp = nullptr;
+    if (AGameStateBase* GS = GetWorld()->GetGameState())
+        GSComp = GS->FindComponentByClass<UVisionGameStateComp>();
 
-	for (UVision_VisualComp* Provider : ActiveProviders)
-	{
-		if (!Provider || !Provider->GetOwner())
-			continue;
+    const FVector CameraCenter = GetOwner()->GetActorLocation();
 
-		const bool bVisible = RectOverlapsWorld(
-			CameraCenter,
-			CameraVisionRange,
-			Provider->GetOwner()->GetActorLocation(),
-			Provider->GetVisibleRange());
+    for (UVision_VisualComp* Provider : ActiveProviders)
+    {
+        if (!Provider || !Provider->GetOwner())
+            continue;
 
-		Provider->ToggleLOSStampUpdate(bVisible);
+        const bool bInRange = RectOverlapsWorld(
+            CameraCenter,
+            CameraVisionRange,
+            Provider->GetOwner()->GetActorLocation(),
+            Provider->GetVisibleRange());
 
-		if (bVisible)
-		{
-			Provider->UpdateVision();
-		}
-	}
+        // Skip LOS update if provider's owner is hidden
+        const bool bProviderVisible = GSComp
+            ? GSComp->IsActorVisibleToTeam(Provider->GetOwner(), VisionChannel)
+            : true;
 
-	if (bUseCPU)
-	{
-		CameraLocalRT->UpdateResource();
-		ApplyFeatheredBlurToRT();
-	}
-	else
-	{
-		TArray<FLOSStampData> StampData_GT;
-		StampData_GT.Reserve(ActiveProviders.Num());
+        Provider->ToggleLOSStampUpdate(bInRange && bProviderVisible);
 
-		for (UVision_VisualComp* Provider : ActiveProviders)
-		{
-			if (!Provider || !Provider->IsUpdating())
-				continue;
+        if (bInRange && bProviderVisible)
+            Provider->UpdateVision();
+    }
 
-			AActor* Owner = Provider->GetOwner();
-			if (!Owner)
-				continue;
+    if (bUseCPU)
+    {
+        CameraLocalRT->UpdateResource();
+        ApplyFeatheredBlurToRT();
+    }
+    else
+    {
+        TArray<FLOSStampData> StampData_GT;
+        StampData_GT.Reserve(ActiveProviders.Num());
 
-			const FVector WorldPos = Owner->GetActorLocation();
-			const float MaxRange = CameraVisionRange;
+        for (UVision_VisualComp* Provider : ActiveProviders)
+        {
+            if (!Provider || !Provider->IsUpdating())
+                continue;
 
-			const FVector2f CenterUV(
-				(WorldPos.X - CameraCenter.X) / (MaxRange * 2.f) + 0.5f,
-				(WorldPos.Y - CameraCenter.Y) / (MaxRange * 2.f) + 0.5f
-			);
+            AActor* Owner = Provider->GetOwner();
+            if (!Owner)
+                continue;
 
-			const float RadiusUV = Provider->GetVisibleRange() / (MaxRange * 2.f);
+            const FVector WorldPos = Owner->GetActorLocation();
+            const float MaxRange   = CameraVisionRange;
 
-			const EVisionChannel V_Channel = Provider->GetVisionChannel();
-			const uint32 ChannelBitMask =
-				(V_Channel == EVisionChannel::None)
-					? 0u
-					: (1u << static_cast<uint32>(V_Channel));
+            const FVector2f CenterUV(
+                (WorldPos.X - CameraCenter.X) / (MaxRange * 2.f) + 0.5f,
+                (WorldPos.Y - CameraCenter.Y) / (MaxRange * 2.f) + 0.5f
+            );
 
-			FLOSStampData& Stamp = StampData_GT.AddDefaulted_GetRef();
-			Stamp.CenterRadiusStrength = FVector4f(CenterUV.X, CenterUV.Y, RadiusUV, 1.0f);
-			Stamp.ChannelBitMask = ChannelBitMask;
-		}
+            const float RadiusUV = Provider->GetVisibleRange() / (MaxRange * 2.f);
 
-		const TArray<FLOSStampData> StampData_RT = StampData_GT;
-		const uint32 ViewMask = CameraViewChannelMask;
+            const EVisionChannel V_Channel = Provider->GetVisionChannel();
+            const uint32 ChannelBitMask =
+                (V_Channel == EVisionChannel::None)
+                    ? 0u
+                    : (1u << static_cast<uint32>(V_Channel));
 
-		ENQUEUE_RENDER_COMMAND(UpdateLOS_GPU)(
-			[this, StampData_RT, ViewMask](FRHICommandListImmediate& RHICmdList)
-			{
-				FRDGBuilder GraphBuilder(RHICmdList);
-				FRDGTextureRef LOSTexture = RegisterExternalTexture(
-					GraphBuilder,
-					CameraLocalRT->GetRenderTargetResource()->GetRenderTargetTexture(),
-					TEXT("CameraLOS_GPU"));
-				AddLOSStampPass(GraphBuilder, LOSTexture, StampData_RT, ViewMask, true);
-				GraphBuilder.Execute();
-			});
-	}
+            FLOSStampData& Stamp = StampData_GT.AddDefaulted_GetRef();
+            Stamp.CenterRadiusStrength = FVector4f(CenterUV.X, CenterUV.Y, RadiusUV, Provider->GetVisibilityAlpha());
+            Stamp.ChannelBitMask = ChannelBitMask;
+        }
 
-	if (MPCInstance)
-	{
-		FVector WorldLocation = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
-		MPCInstance->SetVectorParameterValue(MPCLocationParam,
-			FLinearColor(WorldLocation.X, WorldLocation.Y, WorldLocation.Z));
-	}
+        const TArray<FLOSStampData> StampData_RT = StampData_GT;
+        const uint32 ViewMask = CameraViewChannelMask;
+
+        ENQUEUE_RENDER_COMMAND(UpdateLOS_GPU)(
+            [this, StampData_RT, ViewMask](FRHICommandListImmediate& RHICmdList)
+            {
+                FRDGBuilder GraphBuilder(RHICmdList);
+                FRDGTextureRef LOSTexture = RegisterExternalTexture(
+                    GraphBuilder,
+                    CameraLocalRT->GetRenderTargetResource()->GetRenderTargetTexture(),
+                    TEXT("CameraLOS_GPU"));
+                AddLOSStampPass(GraphBuilder, LOSTexture, StampData_RT, ViewMask, true);
+                GraphBuilder.Execute();
+            });
+    }
+
+    if (MPCInstance)
+    {
+        FVector WorldLocation = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
+        MPCInstance->SetVectorParameterValue(MPCLocationParam,
+            FLinearColor(WorldLocation.X, WorldLocation.Y, WorldLocation.Z));
+    }
 }
 
 void UMainVisionRTManager::DrawLOSStamp(UCanvas* Canvas,
@@ -219,20 +229,25 @@ void UMainVisionRTManager::DrawLOSStamp(UCanvas* Canvas,
 {
 	if (!Canvas || Providers.Num() == 0)
 		return;
-	
+
 	for (UVision_VisualComp* Provider : Providers)
 	{
 		if (!Provider || !Provider->GetOwner() || !Provider->GetStampMID())
 			continue;
-		
+
 		FVector2D PixelPos;
 		float TileSize;
-		
+
 		if (!ConvertWorldToRT(
 			Provider->GetOwner()->GetActorLocation(),
 			Provider->GetVisibleRange(),
 			PixelPos, TileSize))
 			continue;
+
+		// Use VisibilityAlpha for fade — stamp fades in/out with the unit
+		const float Alpha = Provider->GetVisibilityAlpha();
+		if (Alpha <= KINDA_SMALL_NUMBER)
+			continue; // fully hidden — skip draw entirely
 
 		FCanvasTileItem Tile(
 			PixelPos - FVector2D(TileSize * 0.5f, TileSize * 0.5f),
@@ -240,7 +255,7 @@ void UMainVisionRTManager::DrawLOSStamp(UCanvas* Canvas,
 			FVector2D(TileSize, TileSize)
 		);
 		Tile.BlendMode = SE_BLEND_AlphaBlend;
-		Tile.SetColor(Color);
+		Tile.SetColor(FLinearColor(Color.R, Color.G, Color.B, Color.A * Alpha));
 		Canvas->DrawItem(Tile);
 	}
 }

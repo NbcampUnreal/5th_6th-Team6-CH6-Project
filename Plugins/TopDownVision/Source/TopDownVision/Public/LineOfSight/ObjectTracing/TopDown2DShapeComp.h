@@ -42,6 +42,12 @@ public:
 
     UFUNCTION(BlueprintCallable, Category="2DShapeComp")
     void DrawDebugShape(float Duration = 0.f) const;
+
+    //Editor Setter function for spline
+    UFUNCTION(BlueprintCallable, Category="2DShapeComp")//!!! not for gameplay runtime!!!!
+    void SetSplineComp(USplineComponent* InSplineComp);//Spline Setter (need to be called before generation)
+
+    float GetPointSpacingDistance() const { return PointSpacingDistance; }// for shape aware fan making
     
 private:
     //circle
@@ -54,7 +60,7 @@ private:
     void GenerateInnerSamplePoints_FreePoints();
     void GenerateOutlineSamplePoints_FreePoints();
 
-    void SetSplineComp(USplineComponent* InSplineComp);//Spline Setter(need to be called before generation)
+   
 
     //internal evaluation for point population
     bool IsPointInsidePolygon(const FVector2D& Point) const;
@@ -87,6 +93,22 @@ protected:
 
     UPROPERTY(VisibleAnywhere, Category="2DShapeComp|Output")
     TArray<FVector2D> InnerSamplePoints;
+
+    // --- Debug --- //
+    UPROPERTY(EditAnywhere, Category="2DShapeComp|Debug")
+    FColor ShapeBoundaryColor = FColor::Cyan;
+
+    UPROPERTY(EditAnywhere, Category="2DShapeComp|Debug")
+    FColor InnerPointColor = FColor::Green;
+
+    UPROPERTY(EditAnywhere, Category="2DShapeComp|Debug")
+    FColor OutlinePointColor = FColor::Yellow;
+
+    UPROPERTY(EditAnywhere, Category="2DShapeComp|Debug", meta=(ClampMin="1.0"))
+    float DebugPointSize = 4.f;
+
+    UPROPERTY(EditAnywhere, Category="2DShapeComp|Debug", meta=(ClampMin="1.0"))
+    float DebugLineThickness = 1.f;
 
 private:
     UPROPERTY()

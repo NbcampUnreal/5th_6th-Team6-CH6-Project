@@ -89,8 +89,9 @@ void ULOSObstacleDrawerComponent::CreateResources()
         FString RTName = FString::Printf(TEXT("ObstacleRT_%s"), *GetOwner()->GetName());
         ObstacleRenderTarget = NewObject<UTextureRenderTarget2D>(this, FName(*RTName));
         ObstacleRenderTarget->InitAutoFormat(PixelResolution, PixelResolution);
-        ObstacleRenderTarget->ClearColor        = FLinearColor::Black;
-        ObstacleRenderTarget->RenderTargetFormat = RTF_R8;
+        ObstacleRenderTarget->ClearColor         = FLinearColor::Black;
+        ObstacleRenderTarget->RenderTargetFormat  = RTF_R8;
+        ObstacleRenderTarget->UpdateResourceImmediate(); // flush to GPU before first draw
 
         UE_LOG(LOSVision, Log,
             TEXT("[%s] ULOSObstacleDrawerComponent::CreateResources >> RT created: %s (%p)"),
@@ -99,17 +100,29 @@ void ULOSObstacleDrawerComponent::CreateResources()
     }
 
     // ---- Local Texture Sampler ---- //
-    if (!LocalTextureSampler)
+    if (LocalTextureSampler)
     {
-        UE_LOG(LOSVision, Error,
-            TEXT("[%s] ULOSObstacleDrawerComponent::CreateResources >> LocalTextureSampler default subobject missing"),
-            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
-        return;
-    }
+        USceneComponent* BestRoot = nullptr;
 
-    LocalTextureSampler->SetLocalRenderTarget(ObstacleRenderTarget);
-    LocalTextureSampler->SetLocationRoot(GetOwner()->GetRootComponent());
-    LocalTextureSampler->SetWorldSampleRadius(MaxVisionRange);
+        if (USceneComponent* OuterComp = Cast<USceneComponent>(GetOuter()))
+            BestRoot = OuterComp;
+        else
+            BestRoot = GetOwner() ? GetOwner()->GetRootComponent() : nullptr;
+
+        if (BestRoot)
+        {
+            LocalTextureSampler->SetLocationRoot(BestRoot);
+        }
+        else
+        {
+            UE_LOG(LOSVision, Error,
+                TEXT("[%s] ULOSObstacleDrawerComponent::CreateResources >> Could not find valid root"),
+                *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+        }
+
+        LocalTextureSampler->SetWorldSampleRadius(MaxVisionRange);
+        LocalTextureSampler->SetLocalRenderTarget(ObstacleRenderTarget); // set last — triggers first draw
+    }
 
     // ---- Material Instance Dynamic ---- //
     if (ObstacleMaterial)

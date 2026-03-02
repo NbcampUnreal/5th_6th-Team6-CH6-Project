@@ -56,6 +56,8 @@ public class TopDownVision : ModuleRules
 				"EditorScriptingUtilities", 
 				"AssetTools",
 				"KismetCompiler",
+				
+				"NetCore",// for FastArraySerializer
 			});
 		
 		

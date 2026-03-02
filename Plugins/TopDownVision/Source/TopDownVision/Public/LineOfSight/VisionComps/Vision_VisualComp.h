@@ -7,6 +7,7 @@
 
 
 #pragma region Forward Declarations
+
 //ForwardDeclares
 class ULineOfSightComponent;
 class ULOSObstacleDrawerComponent;
@@ -14,7 +15,7 @@ class ULOSStampDrawerComp;
 class UMaterialInstanceDynamic;
 class UVisibilityMeshComp;
 class UTopDown2DShapeComp;
-
+class UVision_EvaluatorComp;
 
 
 #pragma endregion Forward Declarations
@@ -39,6 +40,8 @@ public:
 
 protected:
     virtual void BeginPlay() override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+    virtual void OnRegister() override;
 
 public:
     // --- Called by the RT manager --- //
@@ -81,6 +84,8 @@ public:
     ULOSStampDrawerComp* GetStampDrawer()             const { return StampDrawer; }
     UVisibilityMeshComp* GetVisibilityMeshComp()           const { return VisibilityMesh; }
     UTopDown2DShapeComp*         GetShapeComp()         const { return ShapeComp; }
+
+
     
 private:
     bool ShouldRunClientLogic() const;
@@ -109,7 +114,7 @@ private:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
     EVisionChannel VisionChannel= EVisionChannel::None;//default none
     
-    // --- Range --- //
+    // --- Range --- // !!!! 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
     float VisionRange = 800.f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
@@ -124,4 +129,12 @@ private:
     float VisibilityAlpha = 0.0f;
     float TargetVisibilityAlpha = 0.0f;
     FTimerHandle FadeTimerHandle;
+
+
+
+private:
+
+    //Cached Evaluator comp
+    UPROPERTY(Transient)
+    UVision_EvaluatorComp* CachedEvaluatorComp = nullptr;
 };

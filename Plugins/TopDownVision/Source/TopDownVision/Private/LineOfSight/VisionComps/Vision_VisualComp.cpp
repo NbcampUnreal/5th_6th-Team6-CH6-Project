@@ -7,10 +7,12 @@
 #include "LineOfSight/LOSVisual/LOSStampDrawerComp.h"
 #include "LineOfSight/WorldObstacle/LOSObstacleDrawerComponent.h"
 #include "LineOfSight/LOSVisual/VisibilityMeshComp.h"
+#include "LineOfSight/ObjectTracing/TopDown2DShapeComp.h"
 
 //Debug
 #include "TopDownVisionDebug.h"
-
+#include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
+#include "LineOfSight/VisionComps/Vision_EvaluatorComp.h"
 
 
 UVision_VisualComp::UVision_VisualComp()
@@ -18,14 +20,39 @@ UVision_VisualComp::UVision_VisualComp()
     PrimaryComponentTick.bCanEverTick = false;
     
     ObstacleDrawer = CreateDefaultSubobject<ULOSObstacleDrawerComponent>(TEXT("ObstacleDrawer"));
-    StampDrawer      = CreateDefaultSubobject<ULOSStampDrawerComp>(TEXT("StampDrawer"));
-    VisibilityMesh   = CreateDefaultSubobject<UVisibilityMeshComp>(TEXT("VisibilityMesh"));
+    StampDrawer =    CreateDefaultSubobject<ULOSStampDrawerComp>(TEXT("StampDrawer"));
+    VisibilityMesh = CreateDefaultSubobject<UVisibilityMeshComp>(TEXT("VisibilityMesh"));
+    ShapeComp =      CreateDefaultSubobject<UTopDown2DShapeComp>(TEXT("2DShapeComp"));
+    //ShapeComp->SetupAttachment(GetOwner()->GetRootComponent());-> do this on runtime, not right now
 }
 
 void UVision_VisualComp::BeginPlay()
 {
     Super::BeginPlay();
 
+    if (ShapeComp)//attachment happens here
+    {
+        if (USceneComponent* Root = GetOwner()->GetRootComponent())
+        {
+            ShapeComp->AttachToComponent(
+                Root,
+                FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+        }
+        else
+        {
+            UE_LOG(LOSVision, Warning,
+                TEXT("[%s] UVision_VisualComp::BeginPlay >> Owner has no root component, cannot attach ShapeComp"),
+                *GetOwner()->GetName());
+        }
+    }
+    else
+    {
+        UE_LOG(LOSVision, Error,
+            TEXT("[%s] UVision_VisualComp::BeginPlay >> ShapeComp subobject is missing"),
+            *GetOwner()->GetName());
+    }
+
+    
     if (!ShouldRunClientLogic())
         return;
 
@@ -40,6 +67,39 @@ void UVision_VisualComp::BeginPlay()
     // Create MIDs from whatever meshes were registered in editor or via AddMesh
     if (VisibilityMesh)
         VisibilityMesh->Initialize();
+    
+    // Pre-warm evaluator cache — null is valid for visual-only actors
+    CachedEvaluatorComp = GetOwner()->FindComponentByClass<UVision_EvaluatorComp>();
+
+
+    //==== Registration ====//
+    if (ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>())
+    {
+        Subsystem->RegisterProvider(this, VisionChannel);
+    }
+    else
+    {
+        UE_LOG(LOSVision, Warning,
+            TEXT("[%s] UVision_VisualComp::BeginPlay >> LOSVisionSubsystem not found"),
+            *GetOwner()->GetName());
+    }
+}
+
+void UVision_VisualComp::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    Super::EndPlay(EndPlayReason);
+
+    //Clean up!
+    if (ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>())
+        Subsystem->UnregisterProvider(this, VisionChannel);
+}
+
+void UVision_VisualComp::OnRegister()
+{
+    Super::OnRegister();
+
+ 
+    
 }
 
 // -------------------------------------------------------------------------- //
@@ -116,10 +176,12 @@ void UVision_VisualComp::SetVisionRange(float NewRange)
     if (StampDrawer)
         StampDrawer->OnVisionRangeChanged(VisionRange, MaxVisionRange);
 
-    UE_LOG(LOSVision, Verbose,
-        TEXT("[%s] UVisionTargetComp::SetVisionRange >> %.1f"),
-        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-        VisionRange);
+    // Lazy cache — null is valid for actors without an evaluator
+    if (!CachedEvaluatorComp)
+        CachedEvaluatorComp = GetOwner()->FindComponentByClass<UVision_EvaluatorComp>();
+
+    if (CachedEvaluatorComp)
+        CachedEvaluatorComp->SyncDetectionRadius();
 }
 
 UMaterialInstanceDynamic* UVision_VisualComp::GetStampMID() const

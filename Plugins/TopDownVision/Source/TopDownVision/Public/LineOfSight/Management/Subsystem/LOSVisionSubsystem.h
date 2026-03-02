@@ -4,28 +4,30 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
+#include "LineOfSight/VisionData.h"
 #include "LOSVisionSubsystem.generated.h"
 
-/**
- *  This is for the LOS vision provider comp.
- */
-
-
-enum class EVisionChannel : uint8;
-//forward declare
-class UVision_VisualComp;//changed source of the update
-
+class UVision_VisualComp;
+class UVisionGameStateComp;
 
 USTRUCT()
 struct FRegisteredProviders
 {
 	GENERATED_BODY()
-	
+
 	UPROPERTY()
 	TArray<UVision_VisualComp*> RegisteredList;
 };
 
-//Log
+// Tracks how many observers per team currently see a given target
+USTRUCT()
+struct FTargetVisibilityVotes
+{
+	GENERATED_BODY()
+
+	// TeamID -> number of observers currently seeing this target
+	TMap<uint8, int32> VotesByTeam;
+};
 
 TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(LOSVisionSubsystem, Log, All);
 
@@ -34,19 +36,35 @@ class TOPDOWNVISION_API ULOSVisionSubsystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
 
-
-public:	
-
-	//Registration
+public:
+	// --- Provider registration --- //
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
 	bool RegisterProvider(UVision_VisualComp* Provider, EVisionChannel InVisionChannel);
+
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
 	void UnregisterProvider(UVision_VisualComp* Provider, EVisionChannel InVisionChannel);
 
-	// getter of same team+shared vision
+	// --- Provider access --- //
 	TArray<UVision_VisualComp*> GetProvidersForTeam(EVisionChannel TeamChannel) const;
 
-	// Registered actor-local LOS providers
+	// --- Visibility reporting --- //
+
+	/** Called by Vision_EvaluatorComp every evaluation tick.
+	 *  Aggregates votes and updates VisionGameStateComp when state changes. */
+	void ReportTargetVisibility(
+		AActor* Observer,
+		EVisionChannel ObserverTeam,
+		AActor* Target,
+		bool bVisible);
+
+private:
+	UVisionGameStateComp* GetVisionGameStateComp() const;
+
+public:
 	UPROPERTY()
 	TMap<EVisionChannel, FRegisteredProviders> VisionMap;
+
+private:
+	// Target -> vote counts per team
+	TMap<AActor*, FTargetVisibilityVotes> VisibilityVotes;
 };

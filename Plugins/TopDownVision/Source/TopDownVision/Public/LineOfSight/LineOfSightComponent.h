@@ -19,7 +19,7 @@ class UBoundaryAwareVisibilityTracer;
 class UPrimitiveComponent;
 
 class ULOSVisionSubsystem;
-class UVolumeVisibilityEvaluatorComp;
+class UVolumeVisibilityEvaluatorComp3D;
 class UVisionGameStateComp;
 
 

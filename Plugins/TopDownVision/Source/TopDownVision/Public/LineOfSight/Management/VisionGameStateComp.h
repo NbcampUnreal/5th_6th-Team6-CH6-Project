@@ -4,45 +4,97 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Net/Serialization/FastArraySerializer.h"// no need for array update, just update the entering and exiting target
-#include "LineOfSight/Management/VisionProviderInterface.h"
+#include "Net/Serialization/FastArraySerializer.h"
+#include "LineOfSight/VisionData.h"
 #include "VisionGameStateComp.generated.h"
 
-/**
- * GameState component to manage shared vision state per team
- */
+class UVision_VisualComp;
 
+TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(VisionGameStateComp, Log, All);
+
+// -------------------------------------------------------------------------- //
+//  Fast Array Entry
+// -------------------------------------------------------------------------- //
+
+USTRUCT()
+struct FVisibleActorEntry : public FFastArraySerializerItem
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    AActor* Target = nullptr;
+
+    UPROPERTY()
+    uint8 TeamID = 0;
+};
+
+// -------------------------------------------------------------------------- //
+//  Fast Array Container
+// -------------------------------------------------------------------------- //
+
+USTRUCT()
+struct FVisibleActorArray : public FFastArraySerializer
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    TArray<FVisibleActorEntry> Items;
+
+    UVisionGameStateComp* OwnerComp = nullptr;
+
+    void PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize);
+    void PreReplicatedRemove(const TArrayView<int32>& RemovedIndices, int32 FinalSize); // fires BEFORE removal
+    void PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize);
+
+    bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParms)
+    {
+        return FFastArraySerializer::FastArrayDeltaSerialize<FVisibleActorEntry, FVisibleActorArray>(
+            Items, DeltaParms, *this);
+    }
+};
+
+template<>
+struct TStructOpsTypeTraits<FVisibleActorArray> : public TStructOpsTypeTraitsBase2<FVisibleActorArray>
+{
+    enum { WithNetDeltaSerializer = true };
+};
+
+// -------------------------------------------------------------------------- //
+//  Component
+// -------------------------------------------------------------------------- //
 
 UCLASS(ClassGroup=(Vision), meta=(BlueprintSpawnableComponent))
 class TOPDOWNVISION_API UVisionGameStateComp : public UActorComponent
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	UVisionGameStateComp();
+    UVisionGameStateComp();
 
 protected:
-	virtual void BeginPlay() override;
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+    virtual void BeginPlay() override;
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+public:
+    // --- Server API --- //
 
+    /** Called by Vision_EvaluatorComp on server to report a target as visible to a team. */
+    UFUNCTION(BlueprintCallable, Category="Vision")
+    void SetActorVisibleToTeam(AActor* Target, EVisionChannel Team);
 
+    /** Called by Vision_EvaluatorComp on server when no observer can see the target. */
+    UFUNCTION(BlueprintCallable, Category="Vision")
+    void ClearActorVisibleToTeam(AActor* Target, EVisionChannel Team);
 
+    /** Returns true if the target is currently visible to the given team. */
+    UFUNCTION(BlueprintCallable, Category="Vision")
+    bool IsActorVisibleToTeam(AActor* Target, EVisionChannel Team) const;
 
+    // --- Called by FastArray callbacks on clients --- //
+    void OnTargetBecameVisible(AActor* Target, uint8 TeamID);
+    void OnTargetBecameHidden(AActor* Target, uint8 TeamID);
 
-
-public:	
-	// ---------------- Registration ----------------
-	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	void RegisterVisionProvider(TScriptInterface<IVisionProviderInterface> Provider);
-	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	void UnregisterVisionProvider(TScriptInterface<IVisionProviderInterface> Provider);
-
-
-	//Server
-
-	void SetActorVisibleToTeam(uint8 Team, AActor* Target);
-	void ClearActorVisibleToTeam(uint8 Team, AActor* Target);
-
+private:
+    UPROPERTY(Replicated)
+    FVisibleActorArray VisibleActors;
 };
