@@ -16,6 +16,7 @@
 #include "Components/ProgressBar.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "ItemSystem/Component/LootableComponent.h"
+#include "Components/AudioComponent.h"
 
 #include "Net/UnrealNetwork.h"
 #include "AbilitySystemComponent.h"
@@ -70,6 +71,9 @@ ABaseMonster::ABaseMonster()
 	HPBarWidgetComp->SetupAttachment(GetMesh());
 	HPBarWidgetComp->SetWidgetSpace(EWidgetSpace::Screen); // 체력바 크기가 일정할거같으니까?
 	HPBarWidgetComp->SetVisibility(false);
+
+	SoundComp = CreateDefaultSubobject<UAudioComponent>(TEXT("AudioComponent"));
+	SoundComp->SetupAttachment(RootComponent);
 
 	TeamID = ETeamType::Neutral;
 

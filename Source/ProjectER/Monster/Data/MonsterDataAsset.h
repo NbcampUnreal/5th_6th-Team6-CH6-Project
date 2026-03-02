@@ -84,6 +84,15 @@ struct FMonsterNiagaraData
 
 };
 
+USTRUCT(BlueprintType)
+struct FMonsterSoundData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TObjectPtr<USoundBase> TestSound;
+};
+
 
 // 몬스터 데이터
 UCLASS()
@@ -124,8 +133,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
 	TMap<EMonsterMontageType, TObjectPtr<UAnimMontage>> Montages;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Niagara")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Effect")
 	TMap<EMonsterNiagaraType, FMonsterNiagaraData> Niagaras;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Effect")
+	TMap<EMonsterNiagaraType, FMonsterSoundData> Sounds;
 
 
 

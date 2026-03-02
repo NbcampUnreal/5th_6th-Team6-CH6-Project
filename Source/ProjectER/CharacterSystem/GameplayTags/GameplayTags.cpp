@@ -133,6 +133,55 @@ namespace ProjectER
 
 	namespace GameplayCue
 	{
+		namespace Particle
+		{
+			namespace Action
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "GameplayCue.Particle.Action.Death", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Sit, "GameplayCue.Particle.Action.Sit", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Idle, "GameplayCue.Particle.Action.Idle", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Combat, "GameplayCue.Particle.Action.Combat", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Chase, "GameplayCue.Particle.Action.Chase", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "GameplayCue.Particle.Action.Attack", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "GameplayCue.Particle.Action.Return", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyStart, "GameplayCue.Particle.Action.FlyStart", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyIdle, "GameplayCue.Particle.Action.FlyIdle", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyEnd, "GameplayCue.Particle.Action.FlyEnd", "");
+			}
+			namespace Skill
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "GameplayCue.Particle.Skill.AutoAttack", "AutoAttack Particle");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Q, "GameplayCue.Particle.Skill.Q", "Q Particle");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(W, "GameplayCue.Particle.Skill.W", "W Particle");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(E, "GameplayCue.Particle.Skill.E", "E Particle");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(R, "GameplayCue.Particle.Skill.R", "R Particle");
+			}
+		}
+		namespace Sound
+		{
+			namespace Action
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "GameplayCue.Sound.Action.Death", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Sit, "GameplayCue.Sound.Action.Sit", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Idle, "GameplayCue.Sound.Action.Idle", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Combat, "GameplayCue.Sound.Action.Combat", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Chase, "GameplayCue.Sound.Action.Chase", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "GameplayCue.Sound.Action.Attack", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "GameplayCue.Sound.Action.Return", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyStart, "GameplayCue.Sound.Action.FlyStart", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyIdle, "GameplayCue.Sound.Action.FlyIdle", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyEnd, "GameplayCue.Sound.Action.FlyEnd", "");
+			}
+			namespace Skill
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "GameplayCue.Sound.Skill.AutoAttack", "AutoAttack Particle");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Q, "GameplayCue.Sound.Skill.Q", "Q Particle");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(W, "GameplayCue.Sound.Skill.W", "W Particle");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(E, "GameplayCue.Sound.Skill.E", "E Particle");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(R, "GameplayCue.Sound.Skill.R", "R Particle");
+			}
+		}
+
 		namespace State
 		{
 			namespace Life
