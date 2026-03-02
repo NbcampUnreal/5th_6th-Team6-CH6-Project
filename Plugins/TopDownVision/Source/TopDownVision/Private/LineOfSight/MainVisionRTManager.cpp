@@ -1,7 +1,7 @@
 ﻿#include "LineOfSight/MainVisionRTManager.h"
 
 #include "RenderGraphUtils.h"
-#include "LineOfSight/ObjectTracing/VisiblityTarget/VisionTargetComp.h"
+#include "LineOfSight/VisiblityTarget/VisionTargetComp.h"
 #include "Engine/World.h"
 #include "Engine/Canvas.h"
 #include "Kismet/KismetRenderingLibrary.h"

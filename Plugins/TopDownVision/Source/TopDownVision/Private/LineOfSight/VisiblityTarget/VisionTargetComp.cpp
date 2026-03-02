@@ -1,10 +1,9 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 //Class
-#include "LineOfSight/ObjectTracing/VisiblityTarget/VisionTargetComp.h"
+#include "LineOfSight//VisiblityTarget/VisionTargetComp.h"
 
 //comps
-#include "LineOfSight/LineOfSightComponent.h"
 #include "LineOfSight/LOSVisual/LOSStampDrawerComp.h"
 #include "LineOfSight/WorldObstacle/LOSObstacleDrawerComponent.h"
 #include "LineOfSight/LOSVisual/VisibilityMeshComp.h"
@@ -17,8 +16,7 @@
 UVisionTargetComp::UVisionTargetComp()
 {
     PrimaryComponentTick.bCanEverTick = false;
-
-    LOSComp        = CreateDefaultSubobject<ULineOfSightComponent>(TEXT("LineOfSightComp"));
+    
     ObstacleDrawer = CreateDefaultSubobject<ULOSObstacleDrawerComponent>(TEXT("ObstacleDrawer"));
     StampDrawer      = CreateDefaultSubobject<ULOSStampDrawerComp>(TEXT("StampDrawer"));
     VisibilityMesh   = CreateDefaultSubobject<UVisibilityMeshComp>(TEXT("VisibilityMesh"));
@@ -122,15 +120,6 @@ void UVisionTargetComp::SetVisionRange(float NewRange)
         TEXT("[%s] UVisionTargetComp::SetVisionRange >> %.1f"),
         *TopDownVisionDebug::GetClientDebugName(GetOwner()),
         VisionRange);
-}
-
-// -------------------------------------------------------------------------- //
-//  Pass-through getters
-// -------------------------------------------------------------------------- //
-
-EVisionChannel UVisionTargetComp::GetVisionChannel() const
-{
-    return LOSComp ? LOSComp->GetVisionChannel() : EVisionChannel::None;
 }
 
 UMaterialInstanceDynamic* UVisionTargetComp::GetStampMID() const

@@ -22,13 +22,12 @@ public:
     UVisibilityMeshComp();
 
 public:
-    /** Called in-editor to find tagged skeletal mesh components on the actor
+    /** Called in-editor to find tagged mesh components on the actor
      *  and populate MeshTargets. */
     UFUNCTION(CallInEditor, Category="Visibility")
-    void FindMeshesByName();
+    void FindMeshesByTag();
 
-    /** Manually register a mesh that isn't directly on the actor
-     *  (e.g. inside another component's hierarchy).
+    /** Manually register a mesh outside the actor's direct hierarchy.
      *  Call before Initialize. */
     void AddMesh(TSoftObjectPtr<USkeletalMeshComponent> Mesh);
     void AddMesh(TSoftObjectPtr<UStaticMeshComponent> Mesh);
@@ -41,7 +40,7 @@ public:
     void UpdateVisibility(float Alpha);
 
 protected:
-    /** Tag to filter skeletal mesh components on the actor.
+    /** Tag to filter mesh components on the actor.
      *  Add this tag to any mesh component in the editor to include it. */
     UPROPERTY(EditAnywhere, Category="Visibility")
     FName VisibilityMeshTag = TEXT("VisibilityMesh");
@@ -54,14 +53,9 @@ protected:
     UPROPERTY(VisibleAnywhere, Category="Visibility")
     TArray<TSoftObjectPtr<UStaticMeshComponent>> StaticMeshTargets;
 
-    /** Only material slots whose parent chain contains this material will get a MID.
-     *  Leave null to skip parent filtering and rely on param check only. */
-    UPROPERTY(EditAnywhere, Category="Visibility")
-    UMaterialInterface* RequiredParentMaterial = nullptr;
-
     /** Scalar parameter name in the materials that controls visibility (0~1). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Visibility")
-    FName VisibilityParam = NAME_None;
+    FName VisibilityParam = TEXT("VisibilityAlpha");
 
 private:
     /** Flat list of all MIDs across all tracked meshes and their slots.

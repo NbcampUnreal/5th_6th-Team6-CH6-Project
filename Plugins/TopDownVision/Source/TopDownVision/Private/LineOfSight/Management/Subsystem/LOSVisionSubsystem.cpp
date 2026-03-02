@@ -2,7 +2,7 @@
 
 
 #include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
-#include "LineOfSight/ObjectTracing/VisiblityTarget/VisionTargetComp.h"// now the new porvider
+#include "LineOfSight/VisiblityTarget/VisionTargetComp.h"// now the new porvider
 #include "LineOfSight/LineOfSightComponent.h"
 
 

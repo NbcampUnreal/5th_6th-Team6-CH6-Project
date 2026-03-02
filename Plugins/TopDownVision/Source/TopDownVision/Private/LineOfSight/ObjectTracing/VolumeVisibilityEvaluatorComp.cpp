@@ -1,7 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "LineOfSight/ObjectTracing/VisiblityTarget/VolumeVisibilityEvaluatorComp.h"
+#include "LineOfSight/ObjectTracing/VolumeVisibilityEvaluatorComp.h"
 
 #include "Components/SphereComponent.h"
 #include "Components/CapsuleComponent.h"

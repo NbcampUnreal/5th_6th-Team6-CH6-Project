@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "LineOfSight/VisionData.h"//vision channel
 #include "VisionTargetComp.generated.h"
 
 
@@ -69,14 +70,13 @@ public:
     // --- Pass-through getters for the RT manager --- //
 
     UFUNCTION(BlueprintCallable, Category="Vision")
-    EVisionChannel GetVisionChannel() const;
+    EVisionChannel GetVisionChannel() const {return VisionChannel;}
 
     /** The LOS stamp MID used by the RT manager to composite this unit's vision. */
     UFUNCTION(BlueprintCallable, Category="Vision")
     UMaterialInstanceDynamic* GetStampMID() const;
 
     // --- Subobject access --- //
-    ULineOfSightComponent* GetLOSComp()               const { return LOSComp; }
     ULOSObstacleDrawerComponent* GetObstacleDrawer()  const { return ObstacleDrawer; }
     ULOSStampDrawerComp* GetStampDrawer()             const { return StampDrawer; }
     UVisibilityMeshComp* GetVisibilityMeshComp()           const { return VisibilityMesh; }
@@ -88,21 +88,22 @@ private:
 private:
 
 #pragma region Components
-    
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision", meta=(AllowPrivateAccess="true"))
-    ULineOfSightComponent* LOSComp = nullptr;
 
+    //obstacle RT drawer
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision", meta=(AllowPrivateAccess="true"))
     ULOSObstacleDrawerComponent* ObstacleDrawer = nullptr;
-
+    // LOS vision RT Drawer
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision", meta=(AllowPrivateAccess="true"))
     ULOSStampDrawerComp* StampDrawer = nullptr;
-    
+    //Vision opacity updater
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision", meta=(AllowPrivateAccess="true"))
     UVisibilityMeshComp* VisibilityMesh = nullptr;
 
 #pragma endregion Components
 
+    // --- Vision channel ---//
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
+    EVisionChannel VisionChannel= EVisionChannel::None;//default none
     
     // --- Range --- //
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
@@ -112,11 +113,11 @@ private:
 
 
     
-    // --- Fade --- //
+    // --- Dynamic Fade --- //
     UPROPERTY(EditAnywhere, Category="Vision", meta=(AllowPrivateAccess="true"))
     float FadeSpeed = 5.0f;
 
-    float VisibilityAlpha       = 0.0f;
+    float VisibilityAlpha = 0.0f;
     float TargetVisibilityAlpha = 0.0f;
     FTimerHandle FadeTimerHandle;
 };
