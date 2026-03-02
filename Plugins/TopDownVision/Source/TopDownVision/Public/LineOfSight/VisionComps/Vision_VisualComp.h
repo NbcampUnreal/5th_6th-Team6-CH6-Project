@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "LineOfSight/VisionData.h"//vision channel
-#include "VisionTargetComp.generated.h"
+#include "Vision_VisualComp.generated.h"
 
 
 #pragma region Forward Declarations
@@ -13,7 +13,7 @@ class ULOSObstacleDrawerComponent;
 class ULOSStampDrawerComp;
 class UMaterialInstanceDynamic;
 class UVisibilityMeshComp;
-
+class UTopDown2DShapeComp;
 
 
 
@@ -30,12 +30,12 @@ class UVisibilityMeshComp;
  * Gates all client-only work behind ShouldRunClientLogic.
  */
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOPDOWNVISION_API UVisionTargetComp : public UActorComponent
+class TOPDOWNVISION_API UVision_VisualComp : public UActorComponent
 {
     GENERATED_BODY()
 
 public:
-    UVisionTargetComp();
+    UVision_VisualComp();
 
 protected:
     virtual void BeginPlay() override;
@@ -80,7 +80,8 @@ public:
     ULOSObstacleDrawerComponent* GetObstacleDrawer()  const { return ObstacleDrawer; }
     ULOSStampDrawerComp* GetStampDrawer()             const { return StampDrawer; }
     UVisibilityMeshComp* GetVisibilityMeshComp()           const { return VisibilityMesh; }
-
+    UTopDown2DShapeComp*         GetShapeComp()         const { return ShapeComp; }
+    
 private:
     bool ShouldRunClientLogic() const;
     void UpdateVisibilityFade();
@@ -98,6 +99,9 @@ private:
     //Vision opacity updater
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision", meta=(AllowPrivateAccess="true"))
     UVisibilityMeshComp* VisibilityMesh = nullptr;
+    //2d Shape for sample poionts+Shape type for being used for evaluation by Vision_Evaluator
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision", meta=(AllowPrivateAccess="true"))
+    UTopDown2DShapeComp* ShapeComp = nullptr;
 
 #pragma endregion Components
 

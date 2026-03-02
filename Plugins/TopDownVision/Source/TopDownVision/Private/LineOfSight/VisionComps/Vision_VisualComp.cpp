@@ -1,7 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 //Class
-#include "LineOfSight//VisiblityTarget/VisionTargetComp.h"
+#include "TopDownVision/Public/LineOfSight/VisionComps/Vision_VisualComp.h"
 
 //comps
 #include "LineOfSight/LOSVisual/LOSStampDrawerComp.h"
@@ -13,7 +13,7 @@
 
 
 
-UVisionTargetComp::UVisionTargetComp()
+UVision_VisualComp::UVision_VisualComp()
 {
     PrimaryComponentTick.bCanEverTick = false;
     
@@ -22,7 +22,7 @@ UVisionTargetComp::UVisionTargetComp()
     VisibilityMesh   = CreateDefaultSubobject<UVisibilityMeshComp>(TEXT("VisibilityMesh"));
 }
 
-void UVisionTargetComp::BeginPlay()
+void UVision_VisualComp::BeginPlay()
 {
     Super::BeginPlay();
 
@@ -46,7 +46,7 @@ void UVisionTargetComp::BeginPlay()
 //  Update
 // -------------------------------------------------------------------------- //
 
-void UVisionTargetComp::UpdateVision()
+void UVision_VisualComp::UpdateVision()
 {
     if (!ShouldRunClientLogic())
         return;
@@ -59,13 +59,13 @@ void UVisionTargetComp::UpdateVision()
             ObstacleDrawer ? ObstacleDrawer->GetObstacleRenderTarget() : nullptr);
 }
 
-void UVisionTargetComp::ToggleLOSStampUpdate(bool bIsOn)
+void UVision_VisualComp::ToggleLOSStampUpdate(bool bIsOn)
 {
     if (StampDrawer)
         StampDrawer->ToggleLOSStampUpdate(bIsOn);
 }
 
-bool UVisionTargetComp::IsUpdating() const
+bool UVision_VisualComp::IsUpdating() const
 {
     return StampDrawer ? StampDrawer->IsUpdating() : false;
 }
@@ -74,7 +74,7 @@ bool UVisionTargetComp::IsUpdating() const
 //  Visibility Fade
 // -------------------------------------------------------------------------- //
 
-void UVisionTargetComp::SetVisible(bool bVisible)
+void UVision_VisualComp::SetVisible(bool bVisible)
 {
     TargetVisibilityAlpha = bVisible ? 1.0f : 0.0f;
 
@@ -82,12 +82,12 @@ void UVisionTargetComp::SetVisible(bool bVisible)
     {
         GetWorld()->GetTimerManager().SetTimer(
             FadeTimerHandle, this,
-            &UVisionTargetComp::UpdateVisibilityFade,
+            &UVision_VisualComp::UpdateVisibilityFade,
             0.016f, true);
     }
 }
 
-void UVisionTargetComp::UpdateVisibilityFade()
+void UVision_VisualComp::UpdateVisibilityFade()
 {
     VisibilityAlpha = FMath::FInterpTo(VisibilityAlpha, TargetVisibilityAlpha, 0.016f, FadeSpeed);
 
@@ -109,7 +109,7 @@ void UVisionTargetComp::UpdateVisibilityFade()
 //  Range
 // -------------------------------------------------------------------------- //
 
-void UVisionTargetComp::SetVisionRange(float NewRange)
+void UVision_VisualComp::SetVisionRange(float NewRange)
 {
     VisionRange = FMath::Clamp(NewRange, 0.f, MaxVisionRange);
 
@@ -122,14 +122,14 @@ void UVisionTargetComp::SetVisionRange(float NewRange)
         VisionRange);
 }
 
-UMaterialInstanceDynamic* UVisionTargetComp::GetStampMID() const
+UMaterialInstanceDynamic* UVision_VisualComp::GetStampMID() const
 {
     return StampDrawer ? StampDrawer->GetLOSMaterialMID() : nullptr;
 }
 
 // -------------------------------------------------------------------------- //
 
-bool UVisionTargetComp::ShouldRunClientLogic() const
+bool UVision_VisualComp::ShouldRunClientLogic() const
 {
     return GetNetMode() != NM_DedicatedServer;
 }

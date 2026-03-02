@@ -1,7 +1,7 @@
 ﻿#include "LineOfSight/MainVisionRTManager.h"
 
 #include "RenderGraphUtils.h"
-#include "LineOfSight/VisiblityTarget/VisionTargetComp.h"
+#include "TopDownVision/Public/LineOfSight/VisionComps/Vision_VisualComp.h"
 #include "Engine/World.h"
 #include "Engine/Canvas.h"
 #include "Kismet/KismetRenderingLibrary.h"
@@ -120,7 +120,7 @@ void UMainVisionRTManager::UpdateCameraLOS()
 		return;
 	}
 
-	TArray<UVisionTargetComp*> ActiveProviders;
+	TArray<UVision_VisualComp*> ActiveProviders;
 	if (!GetVisibleProviders(ActiveProviders))
 	{
 		UE_LOG(LOSVision, Error,
@@ -130,7 +130,7 @@ void UMainVisionRTManager::UpdateCameraLOS()
 
 	const FVector CameraCenter = GetOwner()->GetActorLocation();
 
-	for (UVisionTargetComp* Provider : ActiveProviders)
+	for (UVision_VisualComp* Provider : ActiveProviders)
 	{
 		if (!Provider || !Provider->GetOwner())
 			continue;
@@ -159,7 +159,7 @@ void UMainVisionRTManager::UpdateCameraLOS()
 		TArray<FLOSStampData> StampData_GT;
 		StampData_GT.Reserve(ActiveProviders.Num());
 
-		for (UVisionTargetComp* Provider : ActiveProviders)
+		for (UVision_VisualComp* Provider : ActiveProviders)
 		{
 			if (!Provider || !Provider->IsUpdating())
 				continue;
@@ -214,13 +214,13 @@ void UMainVisionRTManager::UpdateCameraLOS()
 }
 
 void UMainVisionRTManager::DrawLOSStamp(UCanvas* Canvas,
-	const TArray<UVisionTargetComp*>& Providers,
+	const TArray<UVision_VisualComp*>& Providers,
 	const FLinearColor& Color)
 {
 	if (!Canvas || Providers.Num() == 0)
 		return;
 	
-	for (UVisionTargetComp* Provider : Providers)
+	for (UVision_VisualComp* Provider : Providers)
 	{
 		if (!Provider || !Provider->GetOwner() || !Provider->GetStampMID())
 			continue;
@@ -247,14 +247,14 @@ void UMainVisionRTManager::DrawLOSStamp(UCanvas* Canvas,
 
 void UMainVisionRTManager::RenderLOS_GPU(FRDGBuilder& GraphBuilder, FRDGTextureRef LOSTexture)
 {
-	TArray<UVisionTargetComp*> ActiveProviders;
+	TArray<UVision_VisualComp*> ActiveProviders;
 	if (!GetVisibleProviders(ActiveProviders))
 		return;
 
 	TArray<FLOSStampData> Stamps;
 	Stamps.Reserve(ActiveProviders.Num());
 
-	for (UVisionTargetComp* Provider : ActiveProviders)
+	for (UVision_VisualComp* Provider : ActiveProviders)
 	{
 		if (!Provider || !Provider->IsUpdating())
 			continue;
@@ -295,18 +295,18 @@ void UMainVisionRTManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Heigh
 	ClearTile.BlendMode = SE_BLEND_Opaque;
 	Canvas->DrawItem(ClearTile);
 
-	TArray<UVisionTargetComp*> ActiveProviders;
+	TArray<UVision_VisualComp*> ActiveProviders;
 	if (!GetVisibleProviders(ActiveProviders))
 		return;
 
 	int32 CompositedCount = 0;
 
-	TArray<UVisionTargetComp*> VCShared;
-	TArray<UVisionTargetComp*> VCTeamA;
-	TArray<UVisionTargetComp*> VCTeamB;
-	TArray<UVisionTargetComp*> VCTeamC;
+	TArray<UVision_VisualComp*> VCShared;
+	TArray<UVision_VisualComp*> VCTeamA;
+	TArray<UVision_VisualComp*> VCTeamB;
+	TArray<UVision_VisualComp*> VCTeamC;
 
-	for (UVisionTargetComp* Provider : ActiveProviders)
+	for (UVision_VisualComp* Provider : ActiveProviders)
 	{
 		if (!Provider || !Provider->IsUpdating() || !Provider->GetStampMID())
 			continue;
@@ -358,7 +358,7 @@ bool UMainVisionRTManager::ConvertWorldToRT(
 	return true;
 }
 
-bool UMainVisionRTManager::GetVisibleProviders(TArray<UVisionTargetComp*>& OutProviders) const
+bool UMainVisionRTManager::GetVisibleProviders(TArray<UVision_VisualComp*>& OutProviders) const
 {
 	if (VisionChannel == EVisionChannel::None)
 		return false;

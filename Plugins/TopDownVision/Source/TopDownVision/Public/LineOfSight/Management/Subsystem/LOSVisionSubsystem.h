@@ -13,7 +13,7 @@
 
 enum class EVisionChannel : uint8;
 //forward declare
-class UVisionTargetComp;//changed source of the update
+class UVision_VisualComp;//changed source of the update
 
 
 USTRUCT()
@@ -22,7 +22,7 @@ struct FRegisteredProviders
 	GENERATED_BODY()
 	
 	UPROPERTY()
-	TArray<UVisionTargetComp*> RegisteredList;
+	TArray<UVision_VisualComp*> RegisteredList;
 };
 
 //Log
@@ -39,12 +39,12 @@ public:
 
 	//Registration
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	bool RegisterProvider(UVisionTargetComp* Provider, EVisionChannel InVisionChannel);
+	bool RegisterProvider(UVision_VisualComp* Provider, EVisionChannel InVisionChannel);
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	void UnregisterProvider(UVisionTargetComp* Provider, EVisionChannel InVisionChannel);
+	void UnregisterProvider(UVision_VisualComp* Provider, EVisionChannel InVisionChannel);
 
 	// getter of same team+shared vision
-	TArray<UVisionTargetComp*> GetProvidersForTeam(EVisionChannel TeamChannel) const;
+	TArray<UVision_VisualComp*> GetProvidersForTeam(EVisionChannel TeamChannel) const;
 
 	// Registered actor-local LOS providers
 	UPROPERTY()
