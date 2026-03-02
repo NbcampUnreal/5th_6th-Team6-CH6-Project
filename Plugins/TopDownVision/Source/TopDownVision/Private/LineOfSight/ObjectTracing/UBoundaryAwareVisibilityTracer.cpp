@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "LineOfSight/ObjectTracing/ShapeAwareVisibilityTracer.h"
+#include "LineOfSight/ObjectTracing/UBoundaryAwareVisibilityTracer.h"
 
 //Shapes
 #include "Components/BoxComponent.h"
@@ -15,7 +15,7 @@
 //Log
 DEFINE_LOG_CATEGORY(VisibilityTrace);
 
-bool UShapeAwareVisibilityTracer::IsTargetVisible(
+bool UBoundaryAwareVisibilityTracer::IsTargetVisible(
     UWorld* ContextWorld,
     const FVector& ObserverLocation,
     UPrimitiveComponent* TargetShape,
@@ -116,7 +116,7 @@ bool UShapeAwareVisibilityTracer::IsTargetVisible(
 
 //  Private — Bounding Span
 
-bool UShapeAwareVisibilityTracer::ComputeBoundingSpanRadians(
+bool UBoundaryAwareVisibilityTracer::ComputeBoundingSpanRadians(
     const FVector& ObserverLocation,
     UPrimitiveComponent* TargetShape,
     float& OutCenterRad,
@@ -161,7 +161,7 @@ bool UShapeAwareVisibilityTracer::ComputeBoundingSpanRadians(
 
 //  Single Ray Trace
 
-bool UShapeAwareVisibilityTracer::TraceVisibilityRay(
+bool UBoundaryAwareVisibilityTracer::TraceVisibilityRay(
     UWorld* ContextWorld,
     const FVector& Start,
     const FVector& End,

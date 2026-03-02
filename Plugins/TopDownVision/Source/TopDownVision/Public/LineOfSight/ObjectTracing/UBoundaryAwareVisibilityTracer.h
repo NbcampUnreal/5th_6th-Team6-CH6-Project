@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
-#include "ShapeAwareVisibilityTracer.generated.h"
+#include "UBoundaryAwareVisibilityTracer.generated.h"
 
 
 
@@ -27,14 +27,14 @@ class UBoxComponent;
 TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(VisibilityTrace, Log, All);
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOPDOWNVISION_API UShapeAwareVisibilityTracer : public UObject
+class TOPDOWNVISION_API UBoundaryAwareVisibilityTracer : public UObject
 {
 	GENERATED_BODY()
 	
 public:
 	
 
-	bool IsTargetVisible(//final wrapper for handling both shadow castable and low object type
+	/*bool IsTargetVisible(//final wrapper for handling both shadow castable and low object type
 		UWorld* ContextWorld,
 		const FVector& ObserverLocation,
 		UPrimitiveComponent* TargetShape,
@@ -42,8 +42,21 @@ public:
 		ECollisionChannel ObstacleChannel,
 		const TArray<AActor*>& IgnoredActors,
 		bool bDrawDebugLine=false,
-		float RayGapDegrees = 5.f);//default 5 degrees
-	
+		float RayGapDegrees = 5.f);//default 5 degrees*/
+
+
+	UFUNCTION(BlueprintCallable, Category = "Vision")// now just make it take the radius of the target
+	bool IsTargetVisible(
+		UWorld* ContextWorld,
+		const FVector& ObserverLocation,
+		AActor* TargetActor,           // The Actor we want to hit
+		float TargetRadius,            // Simplified footprint
+		float MaxDistance,
+		ECollisionChannel ObstacleChannel,
+		const TArray<AActor*>& IgnoredActors,
+		bool bDrawDebugLine = false,
+		float RayGapDegrees = 5.f
+	);
 
 
 //private: -> temp
