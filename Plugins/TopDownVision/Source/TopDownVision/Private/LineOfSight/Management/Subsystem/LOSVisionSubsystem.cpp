@@ -2,14 +2,14 @@
 
 
 #include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
-
+#include "LineOfSight/ObjectTracing/VisiblityTarget/VisionTargetComp.h"// now the new porvider
 #include "LineOfSight/LineOfSightComponent.h"
 
 
 //Log
 DEFINE_LOG_CATEGORY(LOSVisionSubsystem);
 
-bool ULOSVisionSubsystem::RegisterProvider(ULineOfSightComponent* Provider, EVisionChannel InVisionChannel)
+bool ULOSVisionSubsystem::RegisterProvider(UVisionTargetComp* Provider, EVisionChannel InVisionChannel)
 {
 	if (!Provider)
 	{
@@ -45,7 +45,7 @@ bool ULOSVisionSubsystem::RegisterProvider(ULineOfSightComponent* Provider, EVis
 	return true;
 }
 
-void ULOSVisionSubsystem::UnregisterProvider(ULineOfSightComponent* Provider, EVisionChannel InVisionChannel)
+void ULOSVisionSubsystem::UnregisterProvider(UVisionTargetComp* Provider, EVisionChannel InVisionChannel)
 {
 	if (!Provider)
 	{
@@ -74,9 +74,9 @@ void ULOSVisionSubsystem::UnregisterProvider(ULineOfSightComponent* Provider, EV
 		InVisionChannel);
 }
 
-TArray<ULineOfSightComponent*> ULOSVisionSubsystem::GetProvidersForTeam(EVisionChannel TeamChannel) const
+TArray<UVisionTargetComp*> ULOSVisionSubsystem::GetProvidersForTeam(EVisionChannel TeamChannel) const
 {
-	TArray<ULineOfSightComponent*> OutProviders;
+	TArray<UVisionTargetComp*> OutProviders;
 
 	// Add providers from the requested team channel
 	if (const FRegisteredProviders* TeamEntry = VisionMap.Find(TeamChannel))

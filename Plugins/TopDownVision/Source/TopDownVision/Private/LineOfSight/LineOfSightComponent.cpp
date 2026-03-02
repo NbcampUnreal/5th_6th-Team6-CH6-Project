@@ -355,7 +355,7 @@ void ULineOfSightComponent::UpdateTargetDetection()
             continue;
         }
 
-        bool bCurrentlyVisible = VisibilityTracer->IsTargetVisible(
+        /*bool bCurrentlyVisible = VisibilityTracer->IsTargetVisible(
             GetWorld(),
             ObserverLocation,
             TargetShape,
@@ -385,7 +385,7 @@ void ULineOfSightComponent::UpdateTargetDetection()
                 *TopDownVisionDebug::GetClientDebugName(GetOwner()),
                 *TargetActor->GetName(),
                 bCurrentlyVisible);
-        }
+        }*/
     }
 }
 
@@ -458,7 +458,7 @@ UPrimitiveComponent* ULineOfSightComponent::ResolveVisibilityShape(AActor* Targe
 
 void ULineOfSightComponent::HandleTargetVisibilityChanged(AActor* DetectedTarget, bool bIsVisible)
 {
-    if (!DetectedTarget)
+    /*if (!DetectedTarget)
         return;
 
     // Get GameState // using lazy load method
@@ -507,7 +507,7 @@ void ULineOfSightComponent::HandleTargetVisibilityChanged(AActor* DetectedTarget
             &ULineOfSightComponent::UpdateAlphaFade, 
             0.016f, // ~60fps update
             true);
-    }
+    }*/
 }
 
 UVisionGameStateComp* ULineOfSightComponent::GetVisionGameStateComp()

@@ -15,7 +15,7 @@
 //Log
 DEFINE_LOG_CATEGORY(VisibilityTrace);
 
-bool UBoundaryAwareVisibilityTracer::IsTargetVisible(
+/*bool UBoundaryAwareVisibilityTracer::IsTargetVisible(
     UWorld* ContextWorld,
     const FVector& ObserverLocation,
     UPrimitiveComponent* TargetShape,
@@ -111,7 +111,7 @@ bool UBoundaryAwareVisibilityTracer::IsTargetVisible(
         *Ctx, *TargetActor->GetName(), NumRays + 1);
 
     return false;
-}
+}*/
 
 
 //  Private — Bounding Span

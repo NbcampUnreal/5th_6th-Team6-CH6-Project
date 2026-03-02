@@ -12,7 +12,7 @@
 
 
 // Forward declaration
-class ULineOfSightComponent;// for the local LOS stamps
+class UVisionTargetComp;// for the local LOS stamps
 
 /*
  * This is the Main RT which will Layer the LOS stamps which are visible, exist in camera vision range.
@@ -53,7 +53,7 @@ private:
 	//Helper function for drawing LOS Stamps
 	void DrawLOSStamp(
 		UCanvas* Canvas,
-		const TArray<ULineOfSightComponent*>& Providers,
+		const TArray<UVisionTargetComp*>& Providers,
 		const FLinearColor& Color);
 	//This uses CPU method. Every LOS Stamps use its own DrawCall and it is causing bottle neck. need better solution
 
@@ -72,7 +72,7 @@ private:
 
 	bool GetVisibleProviders(
 		//Out
-		TArray<ULineOfSightComponent*>& OutProviders) const;
+		TArray<UVisionTargetComp*>& OutProviders) const;
 
 	bool ShouldRunClientLogic() const;// can it run as client or no
 

@@ -13,7 +13,8 @@
 
 enum class EVisionChannel : uint8;
 //forward declare
-class ULineOfSightComponent;// the source of the texture
+class UVisionTargetComp;//changed source of the update
+
 
 USTRUCT()
 struct FRegisteredProviders
@@ -21,7 +22,7 @@ struct FRegisteredProviders
 	GENERATED_BODY()
 	
 	UPROPERTY()
-	TArray<ULineOfSightComponent*> RegisteredList;
+	TArray<UVisionTargetComp*> RegisteredList;
 };
 
 //Log
@@ -38,12 +39,12 @@ public:
 
 	//Registration
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	bool RegisterProvider(ULineOfSightComponent* Provider, EVisionChannel InVisionChannel);
+	bool RegisterProvider(UVisionTargetComp* Provider, EVisionChannel InVisionChannel);
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	void UnregisterProvider(ULineOfSightComponent* Provider, EVisionChannel InVisionChannel);
+	void UnregisterProvider(UVisionTargetComp* Provider, EVisionChannel InVisionChannel);
 
 	// getter of same team+shared vision
-	TArray<ULineOfSightComponent*> GetProvidersForTeam(EVisionChannel TeamChannel) const;
+	TArray<UVisionTargetComp*> GetProvidersForTeam(EVisionChannel TeamChannel) const;
 
 	// Registered actor-local LOS providers
 	UPROPERTY()

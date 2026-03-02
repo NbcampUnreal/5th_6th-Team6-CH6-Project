@@ -1,88 +1,122 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "VisionTargetComp.generated.h"
 
-/**
- *  To replace the current approach of evaluating sample point overlapping with volumes,
- *   --> this takes the RT made by LOS comp and reads the points of 2d sample points.
- *
- *  
- */
 
+#pragma region Forward Declarations
 //ForwardDeclares
-class UMeshComponent;
+class ULineOfSightComponent;
+class ULOSObstacleDrawerComponent;
+class ULOSStampDrawerComp;
 class UMaterialInstanceDynamic;
-class UTextureRenderTarget2D;
+class UVisibilityMeshComp;
 
-UCLASS()
+
+
+
+#pragma endregion Forward Declarations
+
+/**
+ * Hub component for vision-related logic on a unit.
+ *
+ * Owns LOSComp, ObstacleDrawer, and StampDrawer as subobjects.
+ * Holds vision range as the source of truth.
+ * Manages the reveal/hide visibility fade via timer.
+ * Registered with ULOSVisionSubsystem as the provider.
+ * Updated externally by the vision RT manager.
+ * Gates all client-only work behind ShouldRunClientLogic.
+ */
+UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class TOPDOWNVISION_API UVisionTargetComp : public UActorComponent
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
+
 public:
-
-	UVisionTargetComp();
-
-	/*
-	/** check if the point are overlapping with the obstacle entirely or not #1#
-	bool EvaluateVisibility(
-		UTextureRenderTarget2D* VisionRenderTarget
-		);
-
-	/** Force visibility state #1#
-	void SetVisible(bool bNewVisible);
-
-	bool IsVisible() const { return bIsVisible; }
+    UVisionTargetComp();
 
 protected:
+    virtual void BeginPlay() override;
 
-	virtual void BeginPlay() override;
-	virtual void TickComponent(
-		float DeltaTime,
-		ELevelTick TickType,
-		FActorComponentTickFunction* ThisTickFunction) override;
+public:
+    // --- Called by the RT manager --- //
 
-	/** Build sample points relative to actor #1#
-	void InitializeSamplePoints();
+    /** Drive obstacle sampling and LOS stamp rendering for this frame. */
+    UFUNCTION(BlueprintCallable, Category="Vision")
+    void UpdateVision();
 
-	/** Reads render target at world location #1#
-	bool IsWorldLocationVisible(
-		const FVector& WorldLocation,
-		UTextureRenderTarget2D* VisionRenderTarget) const;
+    /** Toggle whether the stamp should update this frame. */
+    void ToggleLOSStampUpdate(bool bIsOn);
+    bool IsUpdating() const;
 
-	/** Updates material reveal value #1#
-	void UpdateReveal(float DeltaTime);
+    // --- Visibility fade --- //
 
-protected:
+    /** Trigger reveal or hide lerp. Called by the vision evaluator on detection change. */
+    UFUNCTION(BlueprintCallable, Category="Vision")
+    void SetVisible(bool bVisible);
 
-	/** Mesh to control visibility on  #1#
-	UPROPERTY(EditAnywhere, Category="Vision")
-	UMeshComponent* TargetMesh;
+    float GetVisibilityAlpha() const { return VisibilityAlpha; }
 
-	/** Parameter name inside material #1#
-	UPROPERTY(EditAnywhere, Category="Vision")
-	FName RevealParameterName = "Reveal";
+    // --- Range (source of truth) --- //
 
-	/** Speed of fade in/out #1#
-	UPROPERTY(EditAnywhere, Category="Vision")
-	float RevealInterpSpeed = 5.f;
+    UFUNCTION(BlueprintCallable, Category="Vision")
+    void SetVisionRange(float NewRange);
 
-	/** 2D sample offsets (relative to actor origin, XY plane) #1#
-	UPROPERTY(EditAnywhere, Category="Vision")
-	TArray<FVector2D> SamplePoints;
+    float GetVisibleRange()    const { return VisionRange; }
+    float GetMaxVisibleRange() const { return MaxVisionRange; }
+
+    // --- Pass-through getters for the RT manager --- //
+
+    UFUNCTION(BlueprintCallable, Category="Vision")
+    EVisionChannel GetVisionChannel() const;
+
+    /** The LOS stamp MID used by the RT manager to composite this unit's vision. */
+    UFUNCTION(BlueprintCallable, Category="Vision")
+    UMaterialInstanceDynamic* GetStampMID() const;
+
+    // --- Subobject access --- //
+    ULineOfSightComponent* GetLOSComp()               const { return LOSComp; }
+    ULOSObstacleDrawerComponent* GetObstacleDrawer()  const { return ObstacleDrawer; }
+    ULOSStampDrawerComp* GetStampDrawer()             const { return StampDrawer; }
+    UVisibilityMeshComp* GetVisibilityMeshComp()           const { return VisibilityMesh; }
+
+private:
+    bool ShouldRunClientLogic() const;
+    void UpdateVisibilityFade();
 
 private:
 
-	/** Runtime material instance #1#
-	UPROPERTY(Transient)
-	UMaterialInstanceDynamic* OwnerMID = nullptr;
+#pragma region Components
+    
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision", meta=(AllowPrivateAccess="true"))
+    ULineOfSightComponent* LOSComp = nullptr;
 
-	/** Current visibility state #1#
-	bool bIsVisible = false;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision", meta=(AllowPrivateAccess="true"))
+    ULOSObstacleDrawerComponent* ObstacleDrawer = nullptr;
 
-	/** Smoothed reveal value #1#
-	float CurrentRevealValue = 0.f;*/
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision", meta=(AllowPrivateAccess="true"))
+    ULOSStampDrawerComp* StampDrawer = nullptr;
+    
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision", meta=(AllowPrivateAccess="true"))
+    UVisibilityMeshComp* VisibilityMesh = nullptr;
+
+#pragma endregion Components
+
+    
+    // --- Range --- //
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
+    float VisionRange = 800.f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
+    float MaxVisionRange = 800.f;
+
+
+    
+    // --- Fade --- //
+    UPROPERTY(EditAnywhere, Category="Vision", meta=(AllowPrivateAccess="true"))
+    float FadeSpeed = 5.0f;
+
+    float VisibilityAlpha       = 0.0f;
+    float TargetVisibilityAlpha = 0.0f;
+    FTimerHandle FadeTimerHandle;
 };

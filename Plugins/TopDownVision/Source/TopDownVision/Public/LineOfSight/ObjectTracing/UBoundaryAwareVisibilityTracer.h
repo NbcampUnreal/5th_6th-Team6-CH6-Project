@@ -45,7 +45,7 @@ public:
 		float RayGapDegrees = 5.f);//default 5 degrees*/
 
 
-	UFUNCTION(BlueprintCallable, Category = "Vision")// now just make it take the radius of the target
+	/*UFUNCTION(BlueprintCallable, Category = "Vision")// now just make it take the radius of the target
 	bool IsTargetVisible(
 		UWorld* ContextWorld,
 		const FVector& ObserverLocation,
@@ -56,7 +56,7 @@ public:
 		const TArray<AActor*>& IgnoredActors,
 		bool bDrawDebugLine = false,
 		float RayGapDegrees = 5.f
-	);
+	);*/
 
 
 //private: -> temp
