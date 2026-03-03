@@ -257,32 +257,55 @@ void ABaseCharacter::OnRep_PlayerState()
 
 void ABaseCharacter::HandleLevelUp()
 {
-	// 서버 권한 확인
 	if (!HasAuthority()) return;
+	UE_LOG(LogTemp, Warning, TEXT("Level up!! here"));
+	UBaseAttributeSet* AS = nullptr;
+	if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
+	{
+		AS = ERPS->GetAttributeSet();
+	}
+	else if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	{
+		AS = PS->GetAttributeSet();
+	}
 
-	// 스탯 재계산 (변경된 Level을 기준으로 CurveTable 값을 다시 읽어옴)
-	// InitAttributes 내부에서 GetCharacterLevel()을 호출하는데, 
-	// 이미 AttributeSet에서 Level을 올렸으므로 오른 레벨의 스탯이 적용됩니다.
+	float OldMaxHealth = 0.0f;
+	float OldMaxStamina = 0.0f;
+
+	if (AS)
+	{
+		OldMaxHealth = AS->GetMaxHealth();
+		OldMaxStamina = AS->GetMaxStamina();
+	}
+	
 	InitAttributes();
     
 	// 레벨업 시 체력/마나 회복
-	if (GetAbilitySystemComponent())
+	if (AS)
 	{
-		// AttributeSet을 가져와서 직접 채워주거나 GameplayEffect 적용
-		if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+		// 스탯 상승량 계산
+		float HealthIncrease = AS->GetMaxHealth() - OldMaxHealth;
+		float StaminaIncrease = AS->GetMaxStamina() - OldMaxStamina;
+
+		// 상승량이 0보다 크면 현재 스탯에 더해줌
+		if (HealthIncrease > 0.0f)
 		{
-			if (UBaseAttributeSet* AS = PS->GetAttributeSet())
-			{
-				AS->SetHealth(AS->GetMaxHealth());
-				AS->SetStamina(AS->GetMaxStamina());
-			}
+			AS->SetHealth(AS->GetHealth() + HealthIncrease);
 		}
+		
+		if (StaminaIncrease > 0.0f)
+		{
+			AS->SetStamina(AS->GetStamina() + StaminaIncrease);
+		}
+		
+		// 스킬 포인트 지급
+		AS->SetSkillPoint(AS->GetSkillPoint() + 1.0f);
 	}
 
 	// 이펙트 및 UI 처리 (Multicast)
 	// Multicast_LevelUpVFX(); 
     
-	UE_LOG(LogTemp, Warning, TEXT("[LevelUp] New Level: %f"), GetCharacterLevel());
+	// UE_LOG(LogTemp, Warning, TEXT("[LevelUp] New Level: %f"), GetCharacterLevel());
 }
 
 float ABaseCharacter::GetCharacterLevel() const
@@ -360,6 +383,76 @@ void ABaseCharacter::PreloadMontages()
 	if (!HeroData->BasicHitVFX.IsNull())
 	{
 		CachedBasicHitVFX = HeroData->BasicHitVFX.LoadSynchronous();
+	}
+}
+
+void ABaseCharacter::Server_UpgradeSkill_Implementation(FGameplayTag SkillTag)
+{
+	// 함수 진입 확인 로그 (무슨 태그가 넘어왔는지 확인)
+	UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 함수 진입! 전달받은 태그: %s"), *SkillTag.ToString());
+
+	if (!AbilitySystemComponent.IsValid())
+	{
+		UE_LOG(LogTemp, Error, TEXT("[UpgradeSkill] 실패: ASC가 유효하지 않음!"));
+		return;
+	}
+
+	// 스킬 포인트 여부 확인
+	UBaseAttributeSet* AS = nullptr;
+	if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
+	{
+		AS = ERPS->GetAttributeSet();
+	}
+	else if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	{
+		AS = PS->GetAttributeSet();
+	}
+
+	if (!AS)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[UpgradeSkill] 실패: AttributeSet을 찾을 수 없음!"));
+		return;
+	}
+
+	if (AS->GetSkillPoint() <= 0.0f)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 실패: 스킬 포인트 부족! 현재 SP: %f"), AS->GetSkillPoint());
+		return; 
+	}
+
+	// 전달받은 태그에 해당하는 어빌리티 스펙(Spec) 찾기
+	FGameplayAbilitySpec* TargetSpec = nullptr;
+	
+	for (FGameplayAbilitySpec& Spec : AbilitySystemComponent->GetActivatableAbilities())
+	{
+		// 스킬 식별용 태그(Dynamic Tags 혹은 AbilityTags)와 일치 여부 검사
+		if (Spec.GetDynamicSpecSourceTags().HasTagExact(SkillTag) || 
+			Spec.Ability->AbilityTags.HasTagExact(SkillTag))
+		{
+			TargetSpec = &Spec;
+			break;
+		}
+	}
+
+	// 결과 처리
+	if (TargetSpec)
+	{
+		if (TargetSpec->Level >= 5) 
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 이미 마스터한 스킬입니다! (현재 레벨: %d)"), TargetSpec->Level);
+			return;
+		}
+
+		TargetSpec->Level += 1;
+		AbilitySystemComponent->MarkAbilitySpecDirty(*TargetSpec);
+		AS->SetSkillPoint(AS->GetSkillPoint() - 1.0f);
+		
+		UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 대성공! [%s] 스킬 레벨업 완료! 현재 레벨: %d"), *SkillTag.ToString(), TargetSpec->Level);
+	}
+	else
+	{
+		// 이 로그가 뜬다면 태그 매칭이 안 된 것입니다!
+		UE_LOG(LogTemp, Error, TEXT("[UpgradeSkill] 실패: [%s] 태그를 가진 어빌리티를 찾을 수 없습니다! GA 블루프린트에 태그를 넣었는지 확인하세요."), *SkillTag.ToString());
 	}
 }
 
@@ -1042,23 +1135,6 @@ FName ABaseCharacter::GetNextAutoAttackSectionName()
 	AutoAttackIndex = (AutoAttackIndex + 1) % 3;
 
 	return SectionName;
-}
-
-void ABaseCharacter::Multicast_PlayBasicHitVFX_Implementation(FVector HitLocation, FRotator HitRotation)
-{
-	if (CachedBasicHitVFX)
-	{
-		if (CachedBasicHitVFX && HeroData)
-		{
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-				GetWorld(), 
-				CachedBasicHitVFX, 
-				HitLocation, 
-				HitRotation, // 동적 회전값
-				HeroData->BasicHitVFXScale // 데이터 에셋에서 설정한 크기
-			);
-		}
-	}
 }
 
 void ABaseCharacter::OnRep_TargetActor()

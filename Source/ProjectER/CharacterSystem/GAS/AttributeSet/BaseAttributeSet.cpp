@@ -376,12 +376,17 @@ void UBaseAttributeSet::OnRep_MoveSpeed(const FGameplayAttributeData& OldMoveSpe
 
 void UBaseAttributeSet::OnRep_CooldownReduction(const FGameplayAttributeData& OldCooldownReduction)
 {
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, MoveSpeed, OldCooldownReduction);
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, CooldownReduction, OldCooldownReduction);
 }
 
 void UBaseAttributeSet::OnRep_Tenacity(const FGameplayAttributeData& OldTenacity)
 {
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, MoveSpeed, OldTenacity);
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, Tenacity, OldTenacity);
+}
+
+void UBaseAttributeSet::OnRep_SkillPoint(const FGameplayAttributeData& OldSkillPoint)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, SkillPoint, OldSkillPoint);
 }
 
 
