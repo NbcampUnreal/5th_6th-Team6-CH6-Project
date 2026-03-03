@@ -21,3 +21,52 @@ FGameplayAbilitySpec USkillDataAsset::MakeSpec()
 
     return Spec;
 }
+
+FSkillTooltipData USkillDataAsset::GetSkillTooltipData(float InLevel) const
+{
+	FSkillTooltipData Result;
+
+	if (!IsValid(SkillConfig))
+	{
+		return Result;
+	}
+
+	const FSkillDefaultData& DefaultData = SkillConfig->Data;
+	Result.SkillName = SkillName;
+	Result.ShortDescription = ShortDescription;
+	Result.DetailedDescription = DetailedDescription;
+
+	TArray<FString> EffectDescriptions;
+	for (USkillEffectDataAsset* EffectDataAsset : SkillConfig->GetExcutionEffects())
+	{
+		if (!IsValid(EffectDataAsset))
+		{
+			continue;
+		}
+
+		const FString EffectDescription = EffectDataAsset->BuildEffectDescription(InLevel).ToString();
+		if (!EffectDescription.IsEmpty())
+		{
+			EffectDescriptions.Add(EffectDescription);
+		}
+	}
+
+	Result.SkillEffectDescription = FText::FromString(FString::Join(EffectDescriptions, TEXT("\n")));
+
+	if (!Result.SkillEffectDescription.IsEmpty())
+	{
+		if (!Result.DetailedDescription.IsEmpty())
+		{
+			Result.DetailedDescription = FText::FromString(FString::Printf(TEXT("%s\n\n%s"), *Result.DetailedDescription.ToString(), *Result.SkillEffectDescription.ToString()));
+		}
+		else
+		{
+			Result.DetailedDescription = Result.SkillEffectDescription;
+		}
+	}
+
+	//Result.InputKeyTag = DefaultData.InputKeyTag;
+	Result.CooldownSeconds = DefaultData.BaseCoolTime.GetValueAtLevel(InLevel);
+
+	return Result;
+}
