@@ -28,6 +28,7 @@ public class ProjectER : ModuleRules
             "PathFindingLibrary",
             "WorldBender",
             "TopDownVision",
+            "AssetRegistry"
         });
         PrivateDependencyModuleNames.AddRange(new string[] { });
         PublicIncludePaths.AddRange(new string[]
