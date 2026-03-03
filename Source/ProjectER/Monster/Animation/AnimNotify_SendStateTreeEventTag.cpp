@@ -22,6 +22,6 @@ void UAnimNotify_SendStateTreeEventTag::Notify(USkeletalMeshComponent* MeshComp,
 		UE_LOG(LogTemp, Warning, TEXT("UAnimNotify_SendStateTreeEventTag::Notify : Not Monster"));
 		return;
 	}
-
+	//UE_LOG(LogTemp, Warning, TEXT("Animation : %s"), *Animation->GetName());
 	Monster->SendStateTreeEvent(EventTag);
 }
