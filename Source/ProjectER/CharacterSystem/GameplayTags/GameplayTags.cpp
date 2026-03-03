@@ -133,7 +133,6 @@ namespace ProjectER
 
 	namespace GameplayCue
 	{
-<<<<<<< HEAD
 		namespace State
 		{
 			namespace Life
@@ -162,8 +161,7 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(E, "GameplayCue.Skill.E", "E Particle");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(R, "GameplayCue.Skill.R", "R Particle");
 		}
-	
-=======
+		
 		namespace Particle
 		{
 			namespace Action
@@ -208,8 +206,7 @@ namespace ProjectER
 				UE_DEFINE_GAMEPLAY_TAG_COMMENT(R, "GameplayCue.Sound.Skill.R", "R Particle");
 			}
 		}
-
->>>>>>> Develop
+		
 		namespace Combat
 		{
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Hit, "GameplayCue.Combat.Hit", "Cue for Attack Hit");

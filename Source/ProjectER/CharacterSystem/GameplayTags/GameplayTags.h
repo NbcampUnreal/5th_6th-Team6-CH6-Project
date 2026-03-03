@@ -134,7 +134,6 @@ namespace ProjectER
 
 	namespace GameplayCue
 	{
-<<<<<<< HEAD
 		namespace State
 		{
 			namespace Life
@@ -165,7 +164,6 @@ namespace ProjectER
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(R);
 		}
 		
-=======
 		namespace Particle
 		{
 			namespace Action
@@ -210,8 +208,7 @@ namespace ProjectER
 				UE_DECLARE_GAMEPLAY_TAG_EXTERN(R);
 			}
 		}
-
->>>>>>> Develop
+		
 		namespace Combat
 		{
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Hit);
