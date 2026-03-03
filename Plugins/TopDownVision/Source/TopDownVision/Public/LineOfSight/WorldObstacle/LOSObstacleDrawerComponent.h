@@ -46,6 +46,9 @@ public:
     UFUNCTION(BlueprintCallable, Category="LOSObstacle")
     UTextureRenderTarget2D* GetObstacleRenderTarget() const { return ObstacleRenderTarget; }
 
+    UFUNCTION(BlueprintCallable, Category="LOSObstacle")
+    ULocalTextureSampler* GetLocalTextureSampler() const { return LocalTextureSampler; }
+    
     /*/** The MID whose texture parameter is bound to the obstacle RT. #1#
     UFUNCTION(BlueprintCallable, Category="LOSObstacle")
     UMaterialInstanceDynamic* GetObstacleMID() const { return ObstacleMaterialMID; }*/
@@ -74,6 +77,7 @@ protected:
     int32 PixelResolution = 256;
 
     /** Passed in from VisionTargetComp before BeginPlay resources are created. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSObstacle")
     float MaxVisionRange = 0.f;
 
     // material merge is not used any more
