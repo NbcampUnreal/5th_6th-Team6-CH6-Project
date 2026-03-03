@@ -16,7 +16,7 @@ struct FRegisteredProviders
 	GENERATED_BODY()
 
 	UPROPERTY()
-	TArray<UVision_VisualComp*> RegisteredList;
+	TArray<UVision_VisualComp*> RegisteredList; //!!!! The comp is null at initial setting!!! fuck
 };
 
 // Tracks how many observers per team currently see a given target
@@ -66,5 +66,6 @@ public:
 
 private:
 	// Target -> vote counts per team
+	UPROPERTY()
 	TMap<AActor*, FTargetVisibilityVotes> VisibilityVotes;
 };

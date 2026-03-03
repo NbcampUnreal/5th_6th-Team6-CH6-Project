@@ -67,9 +67,10 @@ public:
 	void SetLocationRoot(USceneComponent* NewRoot);
 	//Line of sight comp is now a actor comp with no location. make a function to set the location
 	
-private:
+//private:
+	UFUNCTION(BlueprintCallable, Category="LocalSampler")
 	void PrepareSetups();
-
+	UFUNCTION(BlueprintCallable, Category="LocalSampler")
 	bool ShouldRunClientLogic() const;
 
 protected:

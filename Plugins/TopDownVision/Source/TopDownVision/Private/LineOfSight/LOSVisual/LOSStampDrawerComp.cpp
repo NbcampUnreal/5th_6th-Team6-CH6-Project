@@ -19,7 +19,7 @@ ULOSStampDrawerComp::ULOSStampDrawerComp()
 void ULOSStampDrawerComp::BeginPlay()
 {
     Super::BeginPlay();
-    CreateResources();
+   // CreateResources(); -> do this outside of this comp manually
 }
 
 // -------------------------------------------------------------------------- //

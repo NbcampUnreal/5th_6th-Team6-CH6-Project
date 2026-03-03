@@ -62,8 +62,11 @@ void UVision_VisualComp::BeginPlay()
 
     // Pass initial range into StampDrawer for material param
     if (StampDrawer)
+    {
+        StampDrawer->CreateResources();
         StampDrawer->OnVisionRangeChanged(VisionRange, MaxVisionRange);
-
+    }
+    
     // Create MIDs from whatever meshes were registered in editor or via AddMesh
     if (VisibilityMesh)
         VisibilityMesh->Initialize();

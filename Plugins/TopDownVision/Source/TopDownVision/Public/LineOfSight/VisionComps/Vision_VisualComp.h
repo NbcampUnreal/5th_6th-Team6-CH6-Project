@@ -112,7 +112,7 @@ private:
     //Vision opacity updater
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision", meta=(AllowPrivateAccess="true"))
     UVisibilityMeshComp* VisibilityMesh = nullptr;
-    //2d Shape for sample poionts+Shape type for being used for evaluation by Vision_Evaluator
+    //2d Shape for sample points+Shape type for being used for evaluation by Vision_Evaluator
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision", meta=(AllowPrivateAccess="true"))
     UTopDown2DShapeComp* ShapeComp = nullptr;
 

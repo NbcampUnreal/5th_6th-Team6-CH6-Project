@@ -48,8 +48,6 @@ void ULocalTextureSampler::BeginPlay()
 void ULocalTextureSampler::OnComponentCreated()
 {
 	Super::OnComponentCreated();
-
-	
 }
 
 void ULocalTextureSampler::UpdateLocalTexture()

@@ -227,7 +227,6 @@ void ULineOfSightComponent::UpdateLocalLOS()
     {
         return;// not for server
     }
-
     
     if (!ShouldUpdateLOSStamp)
     {

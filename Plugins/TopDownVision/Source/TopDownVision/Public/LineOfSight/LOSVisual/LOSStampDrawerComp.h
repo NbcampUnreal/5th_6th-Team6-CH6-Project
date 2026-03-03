@@ -48,8 +48,10 @@ public:
     UTextureRenderTarget2D*   GetLOSRenderTarget() const { return LOSRenderTarget; }
     UMaterialInstanceDynamic* GetLOSMaterialMID()  const { return LOSMaterialMID; }
 
+    
+    void CreateResources();// now make it public function for manual creation
 private:
-    void CreateResources();
+    
 
 protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSStamp")

@@ -34,6 +34,7 @@ protected:
 public:
     /** Called by VisionTargetComp::BeginPlay. Sets the RT world coverage and creates resources.
      *  MaxVisionRange must come from VisionTargetComp — it is not editable here. */
+    UFUNCTION(BlueprintCallable, Category="LOSObstacle")
     void Initialize(float InMaxVisionRange);
 
     /** Sample the pre-baked obstacle texture into the local RT.
@@ -48,10 +49,12 @@ public:
     /*/** The MID whose texture parameter is bound to the obstacle RT. #1#
     UFUNCTION(BlueprintCallable, Category="LOSObstacle")
     UMaterialInstanceDynamic* GetObstacleMID() const { return ObstacleMaterialMID; }*/
-    
+
+    UFUNCTION(BlueprintCallable, Category="LOSObstacle")
+    void CreateResources();
     //  Private helpers
 private:
-    void CreateResources();
+    
     
     //  Properties
 protected:

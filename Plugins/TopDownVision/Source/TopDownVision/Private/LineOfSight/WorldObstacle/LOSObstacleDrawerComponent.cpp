@@ -43,7 +43,7 @@ void ULOSObstacleDrawerComponent::Initialize(float InMaxVisionRange)
 void ULOSObstacleDrawerComponent::UpdateObstacleTexture()
 {
     //Temp Testing
-    FString Current=TopDownVisionDebug::GetClientDebugName(GetOwner());
+    FString Current=TopDownVisionDebug::GetClientDebugName(GetOwner()->GetOwner());
     
     if (!ObstacleRenderTarget)
     {
