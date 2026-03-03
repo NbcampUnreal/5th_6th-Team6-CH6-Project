@@ -31,9 +31,6 @@ public:
 protected:
     virtual void BeginPlay() override;
 
-    // ------------------------------------------------------------------ //
-    //  Public API
-    // ------------------------------------------------------------------ //
 public:
     /** Called by VisionTargetComp::BeginPlay. Sets the RT world coverage and creates resources.
      *  MaxVisionRange must come from VisionTargetComp — it is not editable here. */
@@ -45,21 +42,18 @@ public:
     void UpdateObstacleTexture();
 
     /** The RT that holds the merged obstacle frame for this actor. */
+    UFUNCTION(BlueprintCallable, Category="LOSObstacle")
     UTextureRenderTarget2D* GetObstacleRenderTarget() const { return ObstacleRenderTarget; }
 
-    /** The MID whose texture parameter is bound to the obstacle RT. */
+    /*/** The MID whose texture parameter is bound to the obstacle RT. #1#
     UFUNCTION(BlueprintCallable, Category="LOSObstacle")
-    UMaterialInstanceDynamic* GetObstacleMID() const { return ObstacleMaterialMID; }
-
-    // ------------------------------------------------------------------ //
+    UMaterialInstanceDynamic* GetObstacleMID() const { return ObstacleMaterialMID; }*/
+    
     //  Private helpers
-    // ------------------------------------------------------------------ //
 private:
     void CreateResources();
-
-    // ------------------------------------------------------------------ //
+    
     //  Properties
-    // ------------------------------------------------------------------ //
 protected:
     // --- Debug ---
     UPROPERTY(EditAnywhere, Category="LOSObstacle|Debug")
@@ -69,7 +63,7 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSObstacle")
     ULocalTextureSampler* LocalTextureSampler = nullptr;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="LOSObstacle")
+    UPROPERTY(Transient)
     UTextureRenderTarget2D* ObstacleRenderTarget = nullptr;
 
     /** How many pixels wide/tall the local RT is. */
@@ -79,14 +73,15 @@ protected:
     /** Passed in from VisionTargetComp before BeginPlay resources are created. */
     float MaxVisionRange = 0.f;
 
-    // --- Material ---
+    // material merge is not used any more
+    /*// --- Material ---
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSObstacle")
     UMaterialInterface* ObstacleMaterial = nullptr;
 
     UPROPERTY(Transient)
     UMaterialInstanceDynamic* ObstacleMaterialMID = nullptr;
 
-    /** Name of the texture parameter in ObstacleMaterial to bind the RT to. */
+    /** Name of the texture parameter in ObstacleMaterial to bind the RT to. #1#
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSObstacle")
-    FName MIDTextureParam = TEXT("ObstacleMaskRT");
+    FName MIDTextureParam = TEXT("ObstacleMaskRT");*/
 };

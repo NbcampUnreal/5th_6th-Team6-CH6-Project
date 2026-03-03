@@ -376,6 +376,9 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
 		const FObstacleMaskTile& Tile = ObstacleSubsystem->GetTiles()[TileIndex];
 		if (!Tile.Mask) continue;
 
+		if (!Tile.Mask->GetResource()) continue;
+
+
 		// --- Math Section (Your original logic) ---
 		FVector2D LocalRelative = Tile.WorldCenter - LocalWorldBounds.Min;
 		FVector2D RotatedLocal;

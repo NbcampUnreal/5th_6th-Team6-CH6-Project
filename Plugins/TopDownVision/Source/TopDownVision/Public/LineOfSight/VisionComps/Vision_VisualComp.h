@@ -52,6 +52,7 @@ public:
 
     /** Toggle whether the stamp should update this frame. */
     void ToggleLOSStampUpdate(bool bIsOn);
+    UFUNCTION(BlueprintCallable, Category="Vision")
     bool IsUpdating() const;
 
     // --- Visibility fade --- //
@@ -80,9 +81,16 @@ public:
     UMaterialInstanceDynamic* GetStampMID() const;
 
     // --- Subobject access --- //
+    UFUNCTION(BlueprintCallable, Category="Vision")
     ULOSObstacleDrawerComponent* GetObstacleDrawer()  const { return ObstacleDrawer; }
+    
+    UFUNCTION(BlueprintCallable, Category="Vision")
     ULOSStampDrawerComp* GetStampDrawer()             const { return StampDrawer; }
+    
+    UFUNCTION(BlueprintCallable, Category="Vision")
     UVisibilityMeshComp* GetVisibilityMeshComp()           const { return VisibilityMesh; }
+    
+    UFUNCTION(BlueprintCallable, Category="Vision")
     UTopDown2DShapeComp*         GetShapeComp()         const { return ShapeComp; }
 
 

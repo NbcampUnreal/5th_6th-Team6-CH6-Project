@@ -4,7 +4,7 @@
 #include "LineOfSight/WorldObstacle/LOSObstacleDrawerComponent.h"
 
 #include "Engine/TextureRenderTarget2D.h"
-#include "Materials/MaterialInstanceDynamic.h"
+//#include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
 
@@ -42,6 +42,9 @@ void ULOSObstacleDrawerComponent::Initialize(float InMaxVisionRange)
 
 void ULOSObstacleDrawerComponent::UpdateObstacleTexture()
 {
+    //Temp Testing
+    FString Current=TopDownVisionDebug::GetClientDebugName(GetOwner());
+    
     if (!ObstacleRenderTarget)
     {
         UE_LOG(LOSVision, Warning,
@@ -124,7 +127,7 @@ void ULOSObstacleDrawerComponent::CreateResources()
         LocalTextureSampler->SetLocalRenderTarget(ObstacleRenderTarget); // set last — triggers first draw
     }
 
-    // ---- Material Instance Dynamic ---- //
+    /*// ---- Material Instance Dynamic ---- //
     if (ObstacleMaterial)
     {
         FString MIDName = FString::Printf(TEXT("ObstacleMID_%s"), *GetOwner()->GetName());
@@ -139,5 +142,5 @@ void ULOSObstacleDrawerComponent::CreateResources()
                 *TopDownVisionDebug::GetClientDebugName(GetOwner()),
                 *ObstacleMaterialMID->GetName(), ObstacleMaterialMID);
         }
-    }
+    }*/
 }
