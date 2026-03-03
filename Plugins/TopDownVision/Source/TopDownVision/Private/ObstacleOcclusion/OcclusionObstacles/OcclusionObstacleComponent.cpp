@@ -16,11 +16,6 @@ UOcclusionObstacleComponent::UOcclusionObstacleComponent()
 void UOcclusionObstacleComponent::BeginPlay()//set up for the visual
 {
 	Super::BeginPlay();
-
-	//Initialize the MID
-	InitializeMaterials();
-	//Setup the collision
-	InitializeCollision();
 }
 
 void UOcclusionObstacleComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -34,7 +29,7 @@ void UOcclusionObstacleComponent::InitializeCollision()
 		TEXT("UOcclusionObstacleComponent::InitializeCollision>> Initializing collision for %s"),
 		*GetOwner()->GetName());
 
-	for (TSoftObjectPtr<UStaticMeshComponent> Mesh : NormalMeshes)
+	for (UStaticMeshComponent* Mesh : NormalMeshes)
 	{
 		if (!Mesh) continue;
 
@@ -59,7 +54,7 @@ void UOcclusionObstacleComponent::InitializeCollision()
 			*Mesh->GetName());
 	}
 
-	for (TSoftObjectPtr<UStaticMeshComponent> Mesh : OccludedMeshes)
+	for (UStaticMeshComponent* Mesh : OccludedMeshes)
 	{
 		if (!Mesh) continue;
 
@@ -143,7 +138,10 @@ void UOcclusionObstacleComponent::DiscoverChildMeshes()
 			*GetOwner()->GetName());
 	}
 
+	Modify();
 
+	bool DidMarked=MarkPackageDirty();
+	
 }
 
 void UOcclusionObstacleComponent::TickComponent(float DeltaTime, ELevelTick TickType,
@@ -174,20 +172,8 @@ void UOcclusionObstacleComponent::TickComponent(float DeltaTime, ELevelTick Tick
 void UOcclusionObstacleComponent::SetupOcclusionMeshes()
 {
 	DiscoverChildMeshes();
-	//InitializeCollision(); --> the collision settings are not saved-> so do this in beginplay
-	//InitializeMaterials(); --> now, making MID cannot be done in the editor. do this in the beginplay
-
-	if (GetOwner())//call marking in the owner actor
-	{
-		GetOwner()->Modify();//indicate the change to the component
-
-		UE_LOG(Occlusion, Log,
-		TEXT("UOcclusionObstacleComponent::SetupOcclusionMeshes>> Completed setup for %s"),
-		*GetOwner()->GetName());
-	}
-
-	Modify();//call in the component
-	
+	InitializeCollision();
+	InitializeMaterials();
 
 	UE_LOG(Occlusion, Log,
 		TEXT("UOcclusionObstacleComponent::SetupOcclusionMeshes>> Completed setup for %s"),
@@ -240,10 +226,10 @@ void UOcclusionObstacleComponent::InitializeMaterials()
 		*GetOwner()->GetName());
 
 	auto SetupArray =
-		[this](const TArray<TSoftObjectPtr<UStaticMeshComponent>>& MeshArray,
+		[this](const TArray<UStaticMeshComponent*>& MeshArray,
 			   TArray<UMaterialInstanceDynamic*>& OutArray)
 		{
-			for (TSoftObjectPtr<UStaticMeshComponent> Mesh : MeshArray)
+			for (UStaticMeshComponent* Mesh : MeshArray)
 			{
 				if (!Mesh) continue;
 

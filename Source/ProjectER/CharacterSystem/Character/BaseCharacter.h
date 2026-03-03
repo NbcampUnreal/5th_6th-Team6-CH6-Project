@@ -72,6 +72,7 @@ public:
 	virtual ETeamType GetTeamType() const override;
 
 	// 타겟팅 가능 여부 반환
+	UFUNCTION(BlueprintCallable, Category = "Targetable")
 	virtual bool IsTargetable() const override;
     
 	// [인터페이스 구현] 하이라이트 (나중에 포스트 프로세스로 구현)
@@ -102,7 +103,8 @@ protected:
 	
 #pragma region GAS
 public:
-	// [추가] 레벨업 시 AttributeSet에서 호출
+	// 레벨업 시 AttributeSet에서 호출
+	UFUNCTION(BlueprintCallable, Category = "GAS")
 	virtual void HandleLevelUp();
 	
 	UFUNCTION(BlueprintCallable, Category = "GAS")
@@ -117,6 +119,10 @@ public:
 	
 	// 몽타주 Pre-Load
 	void PreloadMontages();
+	
+	// 스킬(Gameplay Ability) 레벨업 호출
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "GAS|Skill")
+	void Server_UpgradeSkill(FGameplayTag SkillTag);
 	
 protected:
 	// 이동 속도 스탯 변경 감지 델리게이트
@@ -220,10 +226,6 @@ public:
 	// 몽타주 섹션 이름 반환 및 인덱스 관리
 	UFUNCTION(BlueprintCallable, Category = "Combat|Combo")
 	FName GetNextAutoAttackSectionName();
-	
-	// 타격 위치 피격 이펙트 재생
-	UFUNCTION(NetMulticast, Unreliable, BlueprintCallable, Category = "Combat|VFX")
-	void Multicast_PlayBasicHitVFX(FVector HitLocation, FRotator HitRotation);
 	
 protected:
 	UFUNCTION()

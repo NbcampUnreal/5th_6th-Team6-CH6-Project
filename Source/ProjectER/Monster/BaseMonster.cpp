@@ -16,7 +16,6 @@
 #include "Components/ProgressBar.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "ItemSystem/Component/LootableComponent.h"
-#include "Components/AudioComponent.h"
 
 #include "Net/UnrealNetwork.h"
 #include "AbilitySystemComponent.h"
@@ -71,9 +70,6 @@ ABaseMonster::ABaseMonster()
 	HPBarWidgetComp->SetupAttachment(GetMesh());
 	HPBarWidgetComp->SetWidgetSpace(EWidgetSpace::Screen); // 체력바 크기가 일정할거같으니까?
 	HPBarWidgetComp->SetVisibility(false);
-
-	SoundComp = CreateDefaultSubobject<UAudioComponent>(TEXT("AudioComponent"));
-	SoundComp->SetupAttachment(RootComponent);
 
 	TeamID = ETeamType::Neutral;
 
@@ -178,17 +174,13 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 		UE_LOG(LogTemp, Error, TEXT("ABaseMonster::InitMonsterData - MonsterData is Not Valid!"));
 	}
 
-
+	InitVisuals();
+	InitCollision();
 	if (HasAuthority())
 	{
 		ASC->AddLooseGameplayTag(MonsterData->AttackType);
 		InitAttributes(Level);
 		InitGiveAbilities();
-	}
-	InitVisuals();
-	InitCollision();
-	if (HasAuthority())
-	{
 		InitStateTree();
 	}
 }
@@ -458,10 +450,7 @@ void ABaseMonster::TryActivateByDynamicTag(FGameplayTag InputTag)
 	{
 		if (Spec.DynamicAbilityTags.HasTagExact(InputTag))
 		{
-			if (!ASC->TryActivateAbility(Spec.Handle))
-			{
-				UE_LOG(LogTemp, Error, TEXT("ABaseMonster::TryActivateByDynamicTag : Skill Fail"));
-			}
+			ASC->TryActivateAbility(Spec.Handle);
 			break;
 		}
 	}
@@ -583,7 +572,6 @@ void ABaseMonster::SendStateTreeEvent(FGameplayTag InputTag)
 		return;
 	}
 	StateTreeComp->SendStateTreeEvent(InputTag);
-	//UE_LOG(LogTemp, Error, TEXT("ABaseMonster::SendStateTreeEvent"));
 }
 
 UStateTreeComponent* ABaseMonster::GetStateTreeComponent()
