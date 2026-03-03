@@ -65,8 +65,8 @@ FSkillTooltipData USkillDataAsset::GetSkillTooltipData(float InLevel) const
 		}
 	}
 
-	//Result.InputKeyTag = DefaultData.InputKeyTag;
 	Result.CooldownSeconds = DefaultData.BaseCoolTime.GetValueAtLevel(InLevel);
+	Result.CostDescription = SkillConfig->BuildCostDescription(InLevel);
 
 	return Result;
 }

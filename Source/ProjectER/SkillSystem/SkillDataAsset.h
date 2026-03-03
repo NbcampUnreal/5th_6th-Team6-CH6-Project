@@ -41,6 +41,9 @@ struct FSkillTooltipData
 
     UPROPERTY(BlueprintReadOnly, Category = "Skill")
     float CooldownSeconds = 0.0f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Skill|UI", meta = (MultiLine = "true"))
+    FText CostDescription;
 };
 
 class UAbilitySystemComponent;

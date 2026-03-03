@@ -39,6 +39,30 @@ UGameplayEffect* UBaseSkillConfig::CreateCostGameplayEffect(UObject* Outer)
     return NewCostGE;
 }
 
+FText UBaseSkillConfig::BuildCostDescription(float InLevel) const
+{
+    TArray<FString> CostTerms;
+
+    for (const FSkillCostInfo& SkillCost : SkillCosts)
+    {
+        if (SkillCost.Attribute.IsValid())
+        {
+            const float CostValue = SkillCost.CostValue.GetValueAtLevel(InLevel);
+            FString Term = FString::Printf(TEXT("%s %.0f"), *SkillCost.Attribute.GetName(), CostValue);
+            CostTerms.Add(Term);
+        }
+    }
+
+    if (CostTerms.Num() > 0)
+    {
+        FString Combined = TEXT("소모: ") + FString::Join(CostTerms, TEXT(", "));
+        return FText::FromString(Combined);
+    }
+
+    return FText::GetEmpty();
+}
+
+
 UMouseTargetSkillConfig::UMouseTargetSkillConfig()
 {
 	AbilityClass = UMouseTargetSkill::StaticClass();
