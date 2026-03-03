@@ -12,29 +12,19 @@
 #include "SkillSystem/GameplayAbilityTargetActor/TargetActor.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
-#include "MouseClickSkill.h"
 
 #define ECC_SKill ECC_GameTraceChannel6
 
 UMouseTargetSkill::UMouseTargetSkill()
 {
-
+	ExternalTargetActorEventTag = FGameplayTag::RequestGameplayTag(FName("Skill.Data.Target"));
 }
 
 void UMouseTargetSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+	SetWaitExternalTargetEventTask();
 	SetWaitTargetTask();
-
-	//if (IsLocallyControlled())
-	//{
-	//	SetWaitTargetTask();
-	//	/*if (CastInstantly() == false)
-	//	{
-	//		UE_LOG(LogTemp, Warning, TEXT("SetWaitTargetTask"));
-	//		SetWaitTargetTask();
-	//	}*/
-	//}
 }
 
 void UMouseTargetSkill::ExecuteSkill()
@@ -98,6 +88,44 @@ void UMouseTargetSkill::SetWaitTargetTask()
 	}
 }
 
+void UMouseTargetSkill::SetWaitExternalTargetEventTask()
+{
+	if (!ExternalTargetActorEventTag.IsValid()) return;
+
+	UAbilityTask_WaitGameplayEvent* WaitEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, ExternalTargetActorEventTag, nullptr, false, true);
+	if (!IsValid(WaitEventTask)) return;
+
+	WaitEventTask->EventReceived.AddDynamic(this, &UMouseTargetSkill::OnExternalTargetActorReceived);
+	WaitEventTask->ReadyForActivation();
+}
+
+void UMouseTargetSkill::SubmitExternalTargetActor(AActor* InTargetActor)
+{
+	if (!IsTargetActorInRange(InTargetActor))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SubmitExternalTargetActor::OutOfRange"));
+		return;
+	}
+
+	if (CurrentTargetActor.IsValid())
+	{
+		CurrentTargetActor->SubmitExternalTarget(InTargetActor);
+		return;
+	}
+
+	PendingExternalTargetActor = InTargetActor;
+}
+
+bool UMouseTargetSkill::ConsumePendingExternalTargetActor(AActor*& OutTargetActor)
+{
+	if (!PendingExternalTargetActor.IsValid()) return false;
+
+	OutTargetActor = PendingExternalTargetActor.Get();
+	PendingExternalTargetActor = nullptr;
+	return true;
+}
+
+
 void UMouseTargetSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle& DataHandle)
 {
 	TArray<AActor*> TargetActors = UAbilitySystemBlueprintLibrary::GetActorsFromTargetData(DataHandle, 0);
@@ -120,7 +148,19 @@ void UMouseTargetSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle
 
 void UMouseTargetSkill::OnTargetCancelled(const FGameplayAbilityTargetDataHandle& DataHandle)
 {
+	CurrentTargetActor = nullptr;
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+}
+
+void UMouseTargetSkill::OnExternalTargetActorReceived(FGameplayEventData Payload)
+{
+	const AActor* Target = Payload.Target;
+
+	if (IsValid(Target))
+	{
+		AActor* NonConstTarget = const_cast<AActor*>(Target);
+		SubmitExternalTargetActor(NonConstTarget);
+	}
 }
 
 AActor* UMouseTargetSkill::GetTargetUnderCursorInRange()
@@ -133,12 +173,17 @@ AActor* UMouseTargetSkill::GetTargetUnderCursorInRange()
 
 	if (!IsValid(HitActor)) return nullptr;
 
-	if (IsInRange(HitActor) && IsValidRelationship(HitActor))
+	if (IsTargetActorInRange(HitActor))
 	{
 		return HitActor;
 	}
 
 	return nullptr;
+}
+
+bool UMouseTargetSkill::IsTargetActorInRange(AActor* InTargetActor)
+{
+	return IsInRange(InTargetActor) && IsValidRelationship(InTargetActor);
 }
 
 AActor* UMouseTargetSkill::GetTargetUnderCursor()
@@ -199,15 +244,10 @@ void UMouseTargetSkill::RotateToTarget(AActor* Actor)
 	NewRotation.Yaw = LookAtRotation.Yaw;
 
 	Avatar->SetActorRotation(NewRotation);
-
-	//컨트롤러값도 수정 이후 확인 필요
-	/*if (APlayerController* PC = Cast<APlayerController>(GetActorInfo().PlayerController.Get()))
-	{
-		PC->SetControlRotation(NewRotation);
-	}*/
 }
 
 void UMouseTargetSkill::CleanUpSkill()
 {
+	CurrentTargetActor = nullptr;
 	AffectedActors.Empty();
 }
