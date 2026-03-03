@@ -27,31 +27,35 @@ enum class EMonsterMontageType : uint8
 	
 	FlyStart,
 	FlyAttack,
-	FlyEnd
+	FlyEnd,
+	None
 };
 
 UENUM(BlueprintType)
-enum class EMonsterNiagaraType : uint8
+enum class EMonsterSkillType : uint8
 {
 	NormalAttack,
 	QSkill,
 	WSkill,
 	ESkill,
-	RSkill
+	RSkill,
+	None
 };
 
 UENUM(BlueprintType)
 enum class ENiagaraAttachType : uint8
 {
 	Mine,
-	Target
+	Target,
+	None
 };
 
 UENUM(BlueprintType)
 enum class ENiagaraSpawnPositionType : uint8
 {
 	TargetPosition,
-	TargetDirection
+	TargetDirection,
+	None
 };
 
 USTRUCT(BlueprintType)
@@ -137,10 +141,10 @@ public:
 	TMap<EMonsterMontageType, TObjectPtr<UAnimMontage>> Montages;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Effect")
-	TMap<EMonsterNiagaraType, FMonsterNiagaraData> Niagaras;
+	TMap<EMonsterSkillType, FMonsterNiagaraData> Niagaras;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Effect")
-	TMap<EMonsterNiagaraType, FMonsterSoundData> Sounds;
+	TMap<EMonsterSkillType, FMonsterSoundData> Sounds;
 
 
 

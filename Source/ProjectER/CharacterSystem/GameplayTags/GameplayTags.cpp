@@ -178,34 +178,6 @@ namespace ProjectER
 			}
 		}
 
-		namespace State
-		{
-			namespace Life
-			{
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "GameplayCue.State.Life.Death", "");
-			}
-		
-			namespace Action
-			{
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Sit, "GameplayCue.State.Action.Sit", "");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Idle, "GameplayCue.State.Action.Idle", "");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Combat, "GameplayCue.State.Action.Combat", "");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Chase, "GameplayCue.State.Action.Chase", "");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "GameplayCue.State.Action.Attack", "");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "GameplayCue.State.Action.Return", "");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyStart, "GameplayCue.State.Action.FlyStart", "");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyIdle, "GameplayCue.State.Action.FlyIdle", "");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyEnd, "GameplayCue.State.Action.FlyEnd", "");
-			}
-		}
-		namespace Skill
-		{
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "GameplayCue.Skill.AutoAttack", "AutoAttack Particle");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Q, "GameplayCue.Skill.Q", "Q Particle");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(W, "GameplayCue.Skill.W", "W Particle");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(E, "GameplayCue.Skill.E", "E Particle");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(R, "GameplayCue.Skill.R", "R Particle");
-		}
 		namespace Combat
 		{
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Hit, "GameplayCue.Combat.Hit", "Cue for Attack Hit");
