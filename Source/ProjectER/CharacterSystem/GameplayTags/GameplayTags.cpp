@@ -160,144 +160,144 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(W, "GameplayCue.Skill.W", "W Particle");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(E, "GameplayCue.Skill.E", "E Particle");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(R, "GameplayCue.Skill.R", "R Particle");
-		
+		}
+	
 		namespace Combat
 		{
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Hit, "GameplayCue.Combat.Hit", "Cue for Attack Hit");
 		}
 	}
-	
-	namespace State
-	{
-		namespace Action
+		namespace State
 		{
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction, "State.Action.Interaction", "Interaction State");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Casting, "State.Action.Casting", "Casting State");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Combat, "State.Action.Combat", "Combat State");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Sit, "State.Action.Sit", "Sit State");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Idle, "State.Action.Idle", "Idle State");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Move, "State.Action.Move", "Move State");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "State.Action.Attack", "Attack State");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "State.Action.Return", "Return State");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Reviving, "State.Action.Reviving", "Reviving State");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyStart, "State.Action.FlyStart", "FlyStart State");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyIdle, "State.Action.FlyIdle", "FlyIdle State");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyEnd, "State.Action.FlyEnd", "FlyEnd State");
-		}
-
-		namespace Buff
-		{
-			namespace Immune
+			namespace Action
 			{
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(CC, "State.Buff.Immune.CC", "Immune to CC effects State");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage, "State.Buff.Immune.Damage", "Immune to Damage (Invulnerable) State");
-			}
-		}
-
-		namespace Debuff
-		{
-			namespace Soft
-			{
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slow, "State.Debuff.Soft.Slow", "Movement Speed Slow");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Root, "State.Debuff.Soft.Root", "Cannot Move");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Silence, "State.Debuff.Soft.Silence", "Cannot use Skills");
-			}
-			namespace Hard
-			{
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Stun, "State.Debuff.Hard.Stun", "Cannot Move or Act");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Airborne, "State.Debuff.Hard.Airborne", "Knocked Up (Airborne)");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction, "State.Action.Interaction", "Interaction State");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Casting, "State.Action.Casting", "Casting State");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Combat, "State.Action.Combat", "Combat State");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Sit, "State.Action.Sit", "Sit State");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Idle, "State.Action.Idle", "Idle State");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Move, "State.Action.Move", "Move State");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "State.Action.Attack", "Attack State");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "State.Action.Return", "Return State");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Reviving, "State.Action.Reviving", "Reviving State");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyStart, "State.Action.FlyStart", "FlyStart State");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyIdle, "State.Action.FlyIdle", "FlyIdle State");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyEnd, "State.Action.FlyEnd", "FlyEnd State");
 			}
 
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(BlockRegen, "State.Debuff.BlockRegen", "Cannot Regenerate Health");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(ReduceHealing, "State.Debuff.ReduceHealing", "Healing effectiveness reduced");
+			namespace Buff
+			{
+				namespace Immune
+				{
+					UE_DEFINE_GAMEPLAY_TAG_COMMENT(CC, "State.Buff.Immune.CC", "Immune to CC effects State");
+					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage, "State.Buff.Immune.Damage", "Immune to Damage (Invulnerable) State");
+				}
+			}
+
+			namespace Debuff
+			{
+				namespace Soft
+				{
+					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slow, "State.Debuff.Soft.Slow", "Movement Speed Slow");
+					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Root, "State.Debuff.Soft.Root", "Cannot Move");
+					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Silence, "State.Debuff.Soft.Silence", "Cannot use Skills");
+				}
+				namespace Hard
+				{
+					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Stun, "State.Debuff.Hard.Stun", "Cannot Move or Act");
+					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Airborne, "State.Debuff.Hard.Airborne", "Knocked Up (Airborne)");
+				}
+
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(BlockRegen, "State.Debuff.BlockRegen", "Cannot Regenerate Health");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(ReduceHealing, "State.Debuff.ReduceHealing", "Healing effectiveness reduced");
+			}
+
+			namespace Life
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "State.Life.Death", "Death State");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Down, "State.Life.Down", "Groggy State");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Alive, "State.Life.Alive", "Alive State");
+			}
+		
+			/*namespace Status
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unselectable, "State.Status.Unselectable", "Unselectable State"); // 적 타겟팅은 되지만 일부 스킬 불가(Down 시 부여)
+			}*/
 		}
 
-		namespace Life
+		namespace Status
 		{
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "State.Life.Death", "Death State");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Down, "State.Life.Down", "Groggy State");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Alive, "State.Life.Alive", "Alive State");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Level, "Status.Level", "Current Level");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(MaxLevel, "Status.MaxLevel", "Max Level");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(XP, "Status.XP", "Current XP");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(MaxXP, "Status.MaxXP", "XP required for next level");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Health, "Status.Health", "Current Health");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(MaxHealth, "Status.MaxHealth", "Maximum Health");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(HealthRegen, "Status.HealthRegen", "Health Regeneration per second");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Stamina, "Status.Stamina", "Current Stamina/Mana");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(MaxStamina, "Status.MaxStamina", "Maximum Stamina/Mana");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(StaminaRegen, "Status.StaminaRegen", "Stamina Regeneration per second");
+		
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(AttackPower, "Status.AttackPower", "Physical Attack Power");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(AttackSpeed, "Status.AttackSpeed", "Attack Speed"); 
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(AttackRange, "Status.AttackRange", "Attack Range"); 
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(SkillAmp, "Status.SkillAmp", "Skill Amplification");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(CritChance, "Status.CritChance", "Critical Hit Chance");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(CritDamage, "Status.CritDamage", "Critical Hit Damage Multiplier");
+		
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Defense, "Status.Defense", "Physical/Skill Defense");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(MoveSpeed, "Status.MoveSpeed", "Movement Speed");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(CooldownReduction, "Status.CooldownReduction", "Cooldown Reduction %");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Tenacity, "Status.Tenacity", "Crowd Control Reduction %");
 		}
-		
-		/*namespace Status
-		{
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unselectable, "State.Status.Unselectable", "Unselectable State"); // 적 타겟팅은 되지만 일부 스킬 불가(Down 시 부여)
-		}*/
-	}
-
-	namespace Status
-	{
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Level, "Status.Level", "Current Level");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(MaxLevel, "Status.MaxLevel", "Max Level");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(XP, "Status.XP", "Current XP");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(MaxXP, "Status.MaxXP", "XP required for next level");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Health, "Status.Health", "Current Health");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(MaxHealth, "Status.MaxHealth", "Maximum Health");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(HealthRegen, "Status.HealthRegen", "Health Regeneration per second");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Stamina, "Status.Stamina", "Current Stamina/Mana");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(MaxStamina, "Status.MaxStamina", "Maximum Stamina/Mana");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(StaminaRegen, "Status.StaminaRegen", "Stamina Regeneration per second");
-		
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(AttackPower, "Status.AttackPower", "Physical Attack Power");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(AttackSpeed, "Status.AttackSpeed", "Attack Speed"); 
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(AttackRange, "Status.AttackRange", "Attack Range"); 
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(SkillAmp, "Status.SkillAmp", "Skill Amplification");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(CritChance, "Status.CritChance", "Critical Hit Chance");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(CritDamage, "Status.CritDamage", "Critical Hit Damage Multiplier");
-		
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Defense, "Status.Defense", "Physical/Skill Defense");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(MoveSpeed, "Status.MoveSpeed", "Movement Speed");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(CooldownReduction, "Status.CooldownReduction", "Cooldown Reduction %");
-		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Tenacity, "Status.Tenacity", "Crowd Control Reduction %");
-	}
 	
-	namespace Team
-	{
-		namespace Relation
+		namespace Team
 		{
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Self, "Team.Relation.Self", "Target is Self");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Friendly, "Team.Relation.Friendly", "Target is Friendly");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Hostile, "Team.Relation.Hostile", "Target is Hostile");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Neutral, "Team.Relation.Neutral", "Target is Neutral");
+			namespace Relation
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Self, "Team.Relation.Self", "Target is Self");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Friendly, "Team.Relation.Friendly", "Target is Friendly");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Hostile, "Team.Relation.Hostile", "Target is Hostile");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Neutral, "Team.Relation.Neutral", "Target is Neutral");
+			}
 		}
-	}
 	
-	namespace Unit 
-	{
-		namespace AttackType
+		namespace Unit 
 		{
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Melee, "Unit.AttackType.Melee", "Melee Attack Range");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ranged, "Unit.AttackType.Ranged", "Ranged Attack Range");
-		}
+			namespace AttackType
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Melee, "Unit.AttackType.Melee", "Melee Attack Range");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ranged, "Unit.AttackType.Ranged", "Ranged Attack Range");
+			}
 
-		namespace Type 
-		{
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Player, "Unit.Type.Player", "Unit is a Player Character");
+			namespace Type 
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Player, "Unit.Type.Player", "Unit is a Player Character");
 			
-			namespace Monster 
-			{
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mob, "Unit.Type.Monster.Mob", "Normal Monster");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Epic, "Unit.Type.Monster.Epic", "Epic Monster");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Boss, "Unit.Type.Monster.Boss", "Boss Monster");
-			}
+				namespace Monster 
+				{
+					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mob, "Unit.Type.Monster.Mob", "Normal Monster");
+					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Epic, "Unit.Type.Monster.Epic", "Epic Monster");
+					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Boss, "Unit.Type.Monster.Boss", "Boss Monster");
+				}
 			
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Structure, "Unit.Type.Structure", "Static Structures");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Object, "Unit.Type.Object", "Interactable Objects");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Structure, "Unit.Type.Structure", "Static Structures");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Object, "Unit.Type.Object", "Interactable Objects");
+			}
 		}
-	}
 
-	namespace Montage
-	{
-		namespace Common
+		namespace Montage
 		{
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "Montage.Common.Death", "Death Action Montage");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "Montage.Common.AutoAttack", "AutoAttack Action Montage");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(PrimaryA, "Montage.Common.PrimaryA", "Primary A Action Montage");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(PrimaryB, "Montage.Common.PrimaryB", "Primary B Action Montage");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(PrimaryC, "Montage.Common.PrimaryB", "Primary C Action Montage");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(CriticalHit, "Montage.Common.CriticalHit", "CriticalHit Action Montage");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(TryRevive, "Montage.Common.TryRevive", "TryRevive Action Montage");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Revive, "Montage.Common.Revive", "Revive Action Montage");
+			namespace Common
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "Montage.Common.Death", "Death Action Montage");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "Montage.Common.AutoAttack", "AutoAttack Action Montage");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(PrimaryA, "Montage.Common.PrimaryA", "Primary A Action Montage");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(PrimaryB, "Montage.Common.PrimaryB", "Primary B Action Montage");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(PrimaryC, "Montage.Common.PrimaryB", "Primary C Action Montage");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(CriticalHit, "Montage.Common.CriticalHit", "CriticalHit Action Montage");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(TryRevive, "Montage.Common.TryRevive", "TryRevive Action Montage");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Revive, "Montage.Common.Revive", "Revive Action Montage");
+			}
 		}
 	}
-}
