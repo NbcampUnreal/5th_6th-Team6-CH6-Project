@@ -28,6 +28,7 @@
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/GameMode/ER_OutGameMode.h"
 #include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "GameModeBase/Subsystem/Preload/ER_AssetPreloadSubsystem.h"
 #include "Blueprint/UserWidget.h"
 
 //Camera comp added
@@ -830,6 +831,39 @@ void ABasePlayerController::Client_ReturnToMainMenu_Implementation(const FString
 	UGameplayStatics::OpenLevel(this, FName(TEXT("/Game/Level/Level_MainMenu")));
 }
 
+void ABasePlayerController::Client_StartPreload_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("[Client] Client_StartPreload_Implementation called."));
+
+	Client_OpenLoadingUI();
+
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UER_AssetPreloadSubsystem* PSS = GI->GetSubsystem<UER_AssetPreloadSubsystem>())
+		{
+			// 이벤트 바인딩
+			PSS->OnPreloadComplete.AddDynamic(this, &ABasePlayerController::OnPreloadComplete);
+			// 로드 요청
+			PSS->StartPreloadMonsterAssets();
+		}
+	}
+}
+
+void ABasePlayerController::OnPreloadComplete()
+{
+	UE_LOG(LogTemp, Warning, TEXT("[Client] OnPreloadComplete: All assets loaded. Notifying Server..."));
+	Server_NotifyLoadComplete();
+	Client_CloseLoadingUI();
+}
+
+void ABasePlayerController::Server_NotifyLoadComplete_Implementation()
+{
+	if (AER_InGameMode* GM = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode()))
+	{
+		GM->HandlePlayerLoadComplete(this);
+	}
+}
+
 void ABasePlayerController::Server_StartGame_Implementation()
 {
 	auto OutGameMode = Cast<AER_OutGameMode>(GetWorld()->GetAuthGameMode());
@@ -1040,6 +1074,33 @@ void ABasePlayerController::Client_CloseLootUI_Implementation()
 	LootWidgetInstance = nullptr;
 }
 
+void ABasePlayerController::Client_OpenLoadingUI_Implementation()
+{
+	if (!LoadingUIClass)
+	{
+		return;
+	}
+
+	if (IsValid(LoadingUIInstance))
+	{
+		return;
+	}
+
+	LoadingUIInstance = CreateWidget<UUserWidget>(this, LoadingUIClass);
+	LoadingUIInstance->AddToViewport();
+}
+
+void ABasePlayerController::Client_CloseLoadingUI_Implementation()
+{
+	if (!IsValid(LoadingUIInstance))
+	{
+		return;
+	}
+	LoadingUIInstance->RemoveFromParent();
+	LoadingUIInstance = nullptr;
+
+}
+
 void ABasePlayerController::Server_BeginLootFromActor_Implementation(AActor* TargetActor)
 {
 	if (!TargetActor)
@@ -1116,7 +1177,6 @@ void ABasePlayerController::Server_TakeItemFromActor_Implementation(const AActor
 		UE_LOG(LogTemp, Warning, TEXT("Server_TakeItemFromActor: Failed to take item"));
 	}
 }
-
 
 
 

@@ -24,7 +24,6 @@ enum class EMonsterMontageType : uint8
 	ESkill,
 	RSkill,
 	Dead,
-	
 	FlyStart,
 	FlyAttack,
 	FlyEnd,
@@ -75,6 +74,8 @@ struct FMonsterNiagaraData
 
 
 
+
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	FVector PositionOffset = FVector(0,0,0);
 
@@ -106,7 +107,6 @@ struct FMonsterSoundData
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	TObjectPtr<USoundBase> TestSound;
 };
-
 
 // 몬스터 데이터
 UCLASS()
@@ -146,13 +146,12 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
 	TMap<EMonsterMontageType, TObjectPtr<UAnimMontage>> Montages;
-
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Effect")
 	TMap<EMonsterActionType, FMonsterNiagaraData> Niagaras;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Effect")
 	TMap<EMonsterActionType, FMonsterSoundData> Sounds;
-
 
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
