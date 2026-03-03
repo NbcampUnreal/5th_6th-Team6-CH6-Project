@@ -37,6 +37,7 @@ enum class EMonsterActionType : uint8
 	Idle,
 	Alert,
 	Move,
+	Death,
 	NormalAttack,
 	QSkill,
 	WSkill,
