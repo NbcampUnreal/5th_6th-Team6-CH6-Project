@@ -34,8 +34,6 @@ UGameplayEffect* UBaseSkillConfig::CreateCostGameplayEffect(UObject* Outer)
         ModInfo.ModifierOp = EGameplayModOp::Additive;
         ModInfo.ModifierMagnitude = FGameplayEffectModifierMagnitude(CostInfo.CostValue);
         NewCostGE->Modifiers.Add(ModInfo);
-        float DebugVal1 = CostInfo.CostValue.GetValueAtLevel(1.0f);
-        UE_LOG(LogTemp, Warning, TEXT("CostValue Debug: %f"), DebugVal1);
     }
 
     return NewCostGE;
