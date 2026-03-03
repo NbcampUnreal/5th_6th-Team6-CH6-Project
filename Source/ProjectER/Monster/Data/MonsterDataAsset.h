@@ -16,21 +16,18 @@ UENUM(BlueprintType)
 enum class EMonsterMontageType : uint8
 {
 	Idle,
+	Alert,
 	Move,
 	Attack,
 	QSkill,
-	Sit,
+	WSkill,
+	ESkill,
+	RSkill,
 	Dead,
-	
 	FlyStart,
-<<<<<<< HEAD
-	FlyIdle,
-	FlyEnd
-=======
 	FlyAttack,
 	FlyEnd,
 	None
->>>>>>> Develop
 };
 
 UENUM(BlueprintType)
@@ -42,8 +39,6 @@ enum class EMonsterActionType : uint8
 	Death,
 	NormalAttack,
 	QSkill,
-<<<<<<< HEAD
-=======
 	WSkill,
 	ESkill,
 	RSkill,
@@ -67,7 +62,6 @@ enum class ENiagaraSpawnPositionType : uint8
 	TargetPosition,
 	TargetDirection,
 	None
->>>>>>> Develop
 };
 
 USTRUCT(BlueprintType)
@@ -78,17 +72,41 @@ struct FMonsterNiagaraData
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	TObjectPtr<UNiagaraSystem> NiagaraSystem;
 
+
+
+
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	FVector Scale = FVector(1.f);
+	FVector PositionOffset = FVector(0,0,0);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	FRotator RotationOffset = FRotator(0,0,0);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	bool bFollow = false;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (EditCondition = "bFollow", EditConditionHides))
+	ENiagaraAttachType AttachType = ENiagaraAttachType::Mine;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (EditCondition = "bFollow", EditConditionHides))
 	FName AttachSocket = NAME_None;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (EditCondition = "!bFollow", EditConditionHides))
+	ENiagaraSpawnPositionType SpawnType = ENiagaraSpawnPositionType::TargetPosition;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (EditCondition = "!bFollow", EditConditionHides))
+	FVector Scale = FVector(1.f);
 
 };
 
+USTRUCT(BlueprintType)
+struct FMonsterSoundData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TObjectPtr<USoundBase> TestSound;
+};
 
 // 몬스터 데이터
 UCLASS()
@@ -128,19 +146,12 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
 	TMap<EMonsterMontageType, TObjectPtr<UAnimMontage>> Montages;
-
-<<<<<<< HEAD
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Niagara")
-	TMap<EMonsterNiagaraType, FMonsterNiagaraData> Niagaras;
-
-=======
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Effect")
 	TMap<EMonsterActionType, FMonsterNiagaraData> Niagaras;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Effect")
 	TMap<EMonsterActionType, FMonsterSoundData> Sounds;
-
->>>>>>> Develop
 
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
