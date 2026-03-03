@@ -23,15 +23,51 @@ enum class EMonsterMontageType : uint8
 	Dead,
 	
 	FlyStart,
+<<<<<<< HEAD
 	FlyIdle,
 	FlyEnd
+=======
+	FlyAttack,
+	FlyEnd,
+	None
+>>>>>>> Develop
 };
 
 UENUM(BlueprintType)
-enum class EMonsterNiagaraType : uint8
+enum class EMonsterActionType : uint8
 {
+	Idle,
+	Alert,
+	Move,
+	Death,
 	NormalAttack,
 	QSkill,
+<<<<<<< HEAD
+=======
+	WSkill,
+	ESkill,
+	RSkill,
+	FlyStart,
+	FlyAttack,
+	FlyEnd,
+	None
+};
+
+UENUM(BlueprintType)
+enum class ENiagaraAttachType : uint8
+{
+	Mine,
+	Target,
+	None
+};
+
+UENUM(BlueprintType)
+enum class ENiagaraSpawnPositionType : uint8
+{
+	TargetPosition,
+	TargetDirection,
+	None
+>>>>>>> Develop
 };
 
 USTRUCT(BlueprintType)
@@ -93,9 +129,18 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
 	TMap<EMonsterMontageType, TObjectPtr<UAnimMontage>> Montages;
 
+<<<<<<< HEAD
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Niagara")
 	TMap<EMonsterNiagaraType, FMonsterNiagaraData> Niagaras;
 
+=======
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Effect")
+	TMap<EMonsterActionType, FMonsterNiagaraData> Niagaras;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Effect")
+	TMap<EMonsterActionType, FMonsterSoundData> Sounds;
+
+>>>>>>> Develop
 
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")

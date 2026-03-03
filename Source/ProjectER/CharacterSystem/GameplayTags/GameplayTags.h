@@ -134,6 +134,7 @@ namespace ProjectER
 
 	namespace GameplayCue
 	{
+<<<<<<< HEAD
 		namespace State
 		{
 			namespace Life
@@ -164,6 +165,53 @@ namespace ProjectER
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(R);
 		}
 		
+=======
+		namespace Particle
+		{
+			namespace Action
+			{
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(Death);//
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(Alert);//
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(Idle);//
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(Combat);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(Move);//
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(FlyStart);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(FlyAttack);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(FlyEnd);
+			}
+			namespace Skill
+			{
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(AutoAttack);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(Q);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(W);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(E);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(R);
+			}
+		}
+		namespace Sound
+		{
+			namespace Action
+			{
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(Death);//
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(Alert);//
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(Idle);//
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(Combat);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(Move);//
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(FlyStart);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(FlyAttack);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(FlyEnd);
+			}
+			namespace Skill
+			{
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(AutoAttack);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(Q);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(W);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(E);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(R);
+			}
+		}
+
+>>>>>>> Develop
 		namespace Combat
 		{
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Hit);

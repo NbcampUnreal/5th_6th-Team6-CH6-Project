@@ -107,3 +107,29 @@ void USummonRangeGEC::OnGameplayEffectExecuted(FActiveGameplayEffectsContainer& 
 
 	DeferredSpawnedActor->FinishSpawning(SpawnTransform);
 }
+
+FText USummonRangeByWorldOriginGECConfig::BuildTooltipDescription(float InLevel) const
+{
+	TArray<FString> AppliedDescriptions;
+
+	for (const USkillEffectDataAsset* SkillEffectDataAsset : Applied)
+	{
+		if (!IsValid(SkillEffectDataAsset))
+		{
+			continue;
+		}
+
+		const FString Desc = SkillEffectDataAsset->BuildEffectDescription(InLevel).ToString();
+		if (!Desc.IsEmpty())
+		{
+			AppliedDescriptions.Add(Desc);
+		}
+	}
+
+	if (AppliedDescriptions.IsEmpty())
+	{
+		return FText::GetEmpty();
+	}
+
+	return FText::FromString(FString::Join(AppliedDescriptions, TEXT("\n")));
+}

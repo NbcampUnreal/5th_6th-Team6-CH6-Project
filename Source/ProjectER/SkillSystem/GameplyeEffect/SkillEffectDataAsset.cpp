@@ -10,6 +10,8 @@
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGEC.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGECConfig.h"
+#include "Containers/UnrealString.h"
+
 
 
 USkillEffectDataAsset::USkillEffectDataAsset()
@@ -140,4 +142,55 @@ void USkillEffectDataAsset::RefreshConfigsFromGE()
     MarkPackageDirty();
     UE_LOG(LogTemp, Log, TEXT("SkillEffectDataAsset: Configs Refreshed from GE Components."));
 #endif
+}
+
+FText USkillEffectDataAsset::BuildEffectDescription(float InLevel) const
+{
+    TArray<FString> EffectLines;
+
+    for (const FSkillEffectDefinition& Def : Data.SkillEffectDefinition)
+    {
+        TArray<FString> FormulaTerms;
+        for (const FSkillAttributeData& AttrData : Def.SkillAttributeData)
+        {
+            if (AttrData.SourceAttribute.IsValid())
+            {
+                const FString SourceAttrName = AttrData.SourceAttribute.GetName();
+                const float Coeff = AttrData.Coefficients.GetValueAtLevel(InLevel);
+                const float BaseVal = AttrData.BasedValues.GetValueAtLevel(InLevel);
+
+                if (Coeff != 0.f || BaseVal != 0.f)
+                {
+                    FormulaTerms.Add(FString::Printf(TEXT("%s(x%.1f + %.0f)"), *AttrData.SourceAttribute.GetName(), Coeff, BaseVal));
+                }
+            }
+        }
+
+        const FString FormulaText = FormulaTerms.Num() > 0 ? FString::Join(FormulaTerms, TEXT(" + ")) : TEXT("");
+        const FString EffectText = EffectDescription.ToString();
+        const FString ConfigText = IsValid(Def.Config) ? Def.Config->BuildTooltipDescription(InLevel).ToString() : TEXT("");
+
+        TArray<FString> Segments;
+        if (!EffectText.IsEmpty())
+        {
+            Segments.Add(EffectText);
+        }
+
+        if (!FormulaText.IsEmpty())
+        {
+            Segments.Add(FormulaText);
+        }
+
+        if (!ConfigText.IsEmpty())
+        {
+            Segments.Add(ConfigText);
+        }
+
+        if (Segments.Num() > 0)
+        {
+            EffectLines.Add(FString::Join(Segments, TEXT(" | ")));
+        }
+    }
+
+    return FText::FromString(FString::Join(EffectLines, TEXT("\n")));
 }
