@@ -439,7 +439,7 @@ void ABaseCharacter::Server_UpgradeSkill_Implementation(FGameplayTag SkillTag)
 	{
 		if (TargetSpec->Level >= 5) 
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 이미 마스터한 스킬입니다! (현재 레벨: %d)"), TargetSpec->Level);
+			UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 이미 마스터한 스킬! (현재 레벨: %d)"), TargetSpec->Level);
 			return;
 		}
 
@@ -451,8 +451,7 @@ void ABaseCharacter::Server_UpgradeSkill_Implementation(FGameplayTag SkillTag)
 	}
 	else
 	{
-		// 이 로그가 뜬다면 태그 매칭이 안 된 것입니다!
-		UE_LOG(LogTemp, Error, TEXT("[UpgradeSkill] 실패: [%s] 태그를 가진 어빌리티를 찾을 수 없습니다! GA 블루프린트에 태그를 넣었는지 확인하세요."), *SkillTag.ToString());
+		UE_LOG(LogTemp, Error, TEXT("[UpgradeSkill] 실패: [%s] 태그를 가진 어빌리티를 찾을 수 없습니다!"), *SkillTag.ToString());
 	}
 }
 
