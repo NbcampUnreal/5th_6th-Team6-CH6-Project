@@ -32,13 +32,19 @@ enum class EMonsterMontageType : uint8
 };
 
 UENUM(BlueprintType)
-enum class EMonsterSkillType : uint8
+enum class EMonsterActionType : uint8
 {
+	Idle,
+	Alert,
+	Move,
 	NormalAttack,
 	QSkill,
 	WSkill,
 	ESkill,
 	RSkill,
+	FlyStart,
+	FlyAttack,
+	FlyEnd,
 	None
 };
 
@@ -141,10 +147,10 @@ public:
 	TMap<EMonsterMontageType, TObjectPtr<UAnimMontage>> Montages;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Effect")
-	TMap<EMonsterSkillType, FMonsterNiagaraData> Niagaras;
+	TMap<EMonsterActionType, FMonsterNiagaraData> Niagaras;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Effect")
-	TMap<EMonsterSkillType, FMonsterSoundData> Sounds;
+	TMap<EMonsterActionType, FMonsterSoundData> Sounds;
 
 
 
