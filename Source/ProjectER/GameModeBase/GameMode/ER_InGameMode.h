@@ -44,6 +44,8 @@ public:
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 	virtual void Logout(AController* Exiting) override;
 
+	void HandlePlayerLoadComplete(APlayerController* PC);
+
 	void StartGame();
 	void StartGame_Initialize();
 	void StartGame_Internal();
@@ -72,7 +74,8 @@ public:
 
 private:
 	bool bIsGameStarted = false;
-	int32 PlayersInitialized = 0;
+	int32 PlayersInitialized = 0; // Number of players connected
+	int32 PlayersReady = 0;       // Number of players who finished preloading
 	int32 ExpectedPlayers = 0;
 	float PhaseDuration = 30.f;
 

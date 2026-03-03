@@ -180,7 +180,15 @@ public:
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 	void Client_ReturnToMainMenu(const FString& Reason);
 
+	// [Asset Preloading]
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_StartPreload();
 
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_NotifyLoadComplete();
+
+	UFUNCTION()
+	void OnPreloadComplete();
 
 	// 아이템 루팅 RPC
 
@@ -209,6 +217,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 	void Client_CloseLootUI(); // UI 닫기(로컬 전용)
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_OpenLoadingUI();
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_CloseLoadingUI();
 
 	// 박스 아이템 루팅 RPC 끝
 
@@ -283,6 +297,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<class UW_LootingPopup> LootWidgetInstance;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> LoadingUIClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> LoadingUIInstance;
 
 	// Currently bound loot component for automatic popup close
 	TWeakObjectPtr<class ULootableComponent> BoundLootComponent;

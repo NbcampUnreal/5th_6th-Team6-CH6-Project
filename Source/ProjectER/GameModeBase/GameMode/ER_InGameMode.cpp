@@ -46,12 +46,12 @@ void AER_InGameMode::HandleLoadingTimeout()
 {
 	if (bIsGameStarted) return;
 
-	UE_LOG(LogTemp, Error, TEXT("[GM] Loading timeout! Arrrived: %d / Expected: %d"), PlayersInitialized, ExpectedPlayers);
+	UE_LOG(LogTemp, Error, TEXT("[GM] Loading timeout! Arrrived: %d / Ready: %d / Expected: %d"), PlayersInitialized, PlayersReady, ExpectedPlayers);
 
-	if (PlayersInitialized > 1)
+	if (PlayersReady > 0)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[GM] Forcing start with %d players."), PlayersInitialized);
-		ExpectedPlayers = PlayersInitialized;
+		UE_LOG(LogTemp, Warning, TEXT("[GM] Forcing start with %d ready players."), PlayersReady);
+		ExpectedPlayers = PlayersReady;
 		StartGame();
 	}
 	else
@@ -108,7 +108,7 @@ void AER_InGameMode::Logout(AController* Exiting)
 			GetWorld()->GetTimerManager().ClearTimer(LoadingTimeoutHandle);
 			EndGame();
 		}
-		else if (PlayersInitialized >= ExpectedPlayers)
+		else if (PlayersReady >= ExpectedPlayers)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("[GM] All remaining players loaded. Starting game."));
 			GetWorld()->GetTimerManager().ClearTimer(LoadingTimeoutHandle);
@@ -121,6 +121,7 @@ void AER_InGameMode::Logout(AController* Exiting)
 		if (RemainingPlayers <= 1)
 		{
 			//로그아웃 시점에 플레이어가 1명일 시에 서버 초기화
+			//여기서 서버가 바로꺼지면 안되고 승리 패배 판정하고 나가야 할듯?
 			EndGame();
 		}
 	}
@@ -136,18 +137,27 @@ void AER_InGameMode::HandleStartingNewPlayer_Implementation(APlayerController* N
 	if (ABasePlayerController* PC = Cast<ABasePlayerController>(NewPlayer))
 	{
 		PC->Client_InGameInputMode();
+		PC->Client_StartPreload(); // 방에 들어온 클라이언트에게 에셋 로딩을 지시
 	}
 	UE_LOG(LogTemp, Warning, TEXT("[GM] HSNPlayer this=%p world=%p map=%s PI=%d/%d"),
 		this, GetWorld(), *GetWorld()->GetMapName(), PlayersInitialized, ExpectedPlayers);
-	UE_LOG(LogTemp, Warning, TEXT("[GM] HandleStartingNewPlayer_Implementation"));
+
 	PlayersInitialized++;
 
-	UE_LOG(LogTemp, Warning, TEXT("[GM] HandleStartingNewPlayer %d/%d"), PlayersInitialized, ExpectedPlayers);
+	UE_LOG(LogTemp, Warning, TEXT("[GM] HandleStartingNewPlayer (Connected: %d/%d)"), PlayersInitialized, ExpectedPlayers);
 
-	if (!bIsGameStarted && PlayersInitialized >= ExpectedPlayers)
+	// 게임 진입 판단은 로딩 완료 이후에 진행
+}
+
+void AER_InGameMode::HandlePlayerLoadComplete(APlayerController* PC)
+{
+	PlayersReady++;
+
+	UE_LOG(LogTemp, Warning, TEXT("[GM] HandlePlayerLoadComplete -> %d / %d Ready"), PlayersReady, ExpectedPlayers);
+
+	if (!bIsGameStarted && PlayersReady >= ExpectedPlayers)
 	{
-		// 모든 플레이어가 준비된 상황에서 실행
-		UE_LOG(LogTemp, Warning, TEXT("[GM] HandleStartingNewPlayer_Implementation -> StartGame"));
+		UE_LOG(LogTemp, Warning, TEXT("[GM] All players ready -> StartGame"));
 		GetWorld()->GetTimerManager().ClearTimer(LoadingTimeoutHandle);
 		StartGame();
 	}
@@ -255,6 +265,7 @@ void AER_InGameMode::EndGame_Internal()
 	}
 
 	PlayersInitialized = 0;
+	PlayersReady = 0;
 
 	UE_LOG(LogTemp, Warning, TEXT("[GM] Player is Zero -> ServerTravel to Lobby"));
 
