@@ -172,12 +172,7 @@ void UER_ObjectSubsystem::SpawnSupplyObject()
         return;
     }
 
-    if (!bIsInitialized)
-    {
-        return;
-    }
-
-    if (PendingSupplyPicks.Num() == 0)
+    if (!bIsInitialized || PendingSupplyPicks.Num() == 0)
     {
         return;
     }
@@ -195,43 +190,14 @@ void UER_ObjectSubsystem::SpawnSupplyObject()
 
         FObjectInfo& Info = (*InfosPtr)[Pick.Index];
 
-        // 스폰 직전 재검증
-        if (Info.bIsSpawned || !Info.ObjectClass || !IsValid(Info.SpawnPoint.Get()))
-        {
-            // 실패 시 예약 해제
-            Info.bIsReserved = false;
-            PendingSupplyPicks.RemoveAtSwap(p);
-            continue;
-        }
-
-        const FTransform SpawnTM = Info.SpawnPoint->GetActorTransform();
-
-        AActor* Spawned = World->SpawnActorDeferred<AActor>(
-            Info.ObjectClass,
-            SpawnTM,
-            nullptr,
-            nullptr,
-            ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn
-        );
-
-        if (!Spawned)
+        if (Info.bIsSpawned)
         {
             Info.bIsReserved = false;
             PendingSupplyPicks.RemoveAtSwap(p);
             continue;
         }
 
-        UGameplayStatics::FinishSpawningActor(Spawned, SpawnTM);
-
-        // 스폰 완료 시 예약 해제
-        Info.bIsSpawned = true;
-        Info.bIsReserved = false;
-
-        if (AER_PointActor* PA = Cast<AER_PointActor>(Info.SpawnPoint.Get()))
-        {
-            PA->SetSelectedVisual(false);
-        }
-
+        SpawnObjectInternal(Info);
         PendingSupplyPicks.RemoveAtSwap(p);
     }
 }
@@ -294,70 +260,85 @@ void UER_ObjectSubsystem::SpawnBossObject()
         return;
     }
 
-    if (!bIsInitialized)
+    if (!bIsInitialized || PendingBossPicks.Num() == 0)
     {
         return;
     }
 
-    if (PendingBossPicks.Num() == 0)
-    {
-        return;
-    }
-
-    for (int p = 0; p < PendingBossPicks.Num(); ++p)
+    for (int32 p = PendingBossPicks.Num() - 1; p >= 0; --p)
     {
         const FSupplySpawnPick Pick = PendingBossPicks[p];
 
+        if (!BossPoints.IsValidIndex(Pick.Index))
+        {
+            PendingBossPicks.RemoveAtSwap(p);
+            continue;
+        }
+
         FObjectInfo& Info = BossPoints[Pick.Index];
 
-        // 스폰 직전 재검증
-        if (Info.bIsSpawned || !Info.ObjectClass || !IsValid(Info.SpawnPoint.Get()))
+        if (Info.bIsSpawned)
         {
-            // 실패 시 예약 해제
             Info.bIsReserved = false;
             PendingBossPicks.RemoveAtSwap(p);
             continue;
         }
 
-        const FTransform SpawnTM = Info.SpawnPoint->GetActorTransform();
-
-        ABaseMonster* Spawned = World->SpawnActorDeferred<ABaseMonster>(
-            Info.ObjectClass,
-            SpawnTM,
-            nullptr,
-            nullptr,
-            ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn
-        );
-
-        if (!Spawned)
-        {
-            Info.bIsReserved = false;
-            PendingSupplyPicks.RemoveAtSwap(p);
-            continue;
-        }
-        FPrimaryAssetId MonsterAssetId(TEXT("Monster"), Info.DAName);
-        // 현재 페이즈의 값을 GameState에서 받아와 페이즈 정보 전달
-        AER_GameState* ERGS = GetWorld()->GetAuthGameMode()->GetGameState<AER_GameState>();
-        Spawned->InitMonsterData(MonsterAssetId, ERGS->GetCurrentPhase());
-
-        // 몬스터에게 SpawnPoint의 Key값 전달
-        const int32 Key = Info.SpawnPoint->GetUniqueID();
-        Spawned->SetSpawnPoint(Key);
-
-        UGameplayStatics::FinishSpawningActor(Spawned, SpawnTM);
-
-        // 스폰 완료 시 예약 해제
-        Info.bIsSpawned = true;
-        Info.bIsReserved = false;
-
-        if (AER_PointActor* PA = Cast<AER_PointActor>(Info.SpawnPoint.Get()))
-        {
-            PA->SetSelectedVisual(false);
-        }
-
+        SpawnObjectInternal(Info);
         PendingBossPicks.RemoveAtSwap(p);
     }
+}
 
+void UER_ObjectSubsystem::SpawnObjectInternal(FObjectInfo& Info)
+{
+    UWorld* World = GetWorld();
+    if (!World) 
+    {
+        return;
+    }
+
+    if (!IsValid(Info.SpawnPoint.Get()) || !Info.ObjectClass)
+    {
+        Info.bIsReserved = false;
+        return;
+    }
+
+    const FTransform SpawnTM = Info.SpawnPoint->GetActorTransform();
+
+    AActor* Spawned = World->SpawnActorDeferred<AActor>(
+        Info.ObjectClass,
+        SpawnTM,
+        nullptr,
+        nullptr,
+        ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn
+    );
+
+    if (!Spawned)
+    {
+        Info.bIsReserved = false;
+        return;
+    }
+
+    if (ABaseMonster* BossMonster = Cast<ABaseMonster>(Spawned))
+    {
+        FPrimaryAssetId MonsterAssetId(TEXT("Monster"), Info.DAName);
+        AER_GameState* ERGS = World->GetAuthGameMode()->GetGameState<AER_GameState>();
+        int32 Phase = (ERGS && ERGS->GetCurrentPhase() > 0) ? ERGS->GetCurrentPhase() : 1;
+        BossMonster->InitMonsterData(MonsterAssetId, Phase);
+
+        const int32 Key = Info.SpawnPoint->GetUniqueID();
+        BossMonster->SetSpawnPoint(Key);
+    }
+
+    UGameplayStatics::FinishSpawningActor(Spawned, SpawnTM);
+
+    Info.bIsSpawned = true;
+    Info.bIsReserved = false;
+
+    if (AER_PointActor* PA = Cast<AER_PointActor>(Info.SpawnPoint.Get()))
+    {
+        PA->SetSelectedVisual(false);
+    }
 }
 
 void UER_ObjectSubsystem::RegisterPoint(AActor* Point)
