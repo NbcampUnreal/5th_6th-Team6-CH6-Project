@@ -1311,6 +1311,21 @@ void ABaseCharacter::Revive(FVector RespawnLocation)
 
 	// 클라이언트 동기화 (위치 이동 및 비주얼/물리 복구)
 	Multicast_Revive(RespawnLocation);
+	
+	// 부활 이펙트 GC 호출 (멀티캐스트로 모든 클라이언트에 재생 요청)
+	if (AbilitySystemComponent.IsValid())
+	{
+		// 부활 대상 정보, 위치 Context
+		FGameplayCueParameters CueParams;
+		CueParams.Location = RespawnLocation;
+		CueParams.Instigator = this;
+		CueParams.EffectCauser = this;
+
+		AbilitySystemComponent->ExecuteGameplayCue(
+			ProjectER::GameplayCue::Combat::Revive, 
+			CueParams
+		);
+	}
 }
 
 void ABaseCharacter::HandleDown()

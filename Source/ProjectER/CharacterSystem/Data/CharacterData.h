@@ -32,12 +32,20 @@ public:
 	TMap<FGameplayTag, TSoftObjectPtr<UAnimMontage>> CharacterMontages;
 	
 	// 일반 공격 피격 이펙트 (나이아가라)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "VFX|AutoAttack")
 	TSoftObjectPtr<UNiagaraSystem> BasicHitVFX;
 	
 	// 피격 이펙트 크기 (Scale) 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "VFX|AutoAttack")
 	FVector BasicHitVFXScale = FVector(1.0f);
+	
+	// 부활 시 출력 이펙트
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VFX|Revive")
+	TSoftObjectPtr<class UNiagaraSystem> ReviveVFX;
+    
+	// 부활 이펙트 크기 (Scale) 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VFX|Revive")
+	FVector ReviveVFXScale = FVector(1.0f);
 	
 	// 공통 스킬 (일반 공격, 아군 살리기 등)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Common")
