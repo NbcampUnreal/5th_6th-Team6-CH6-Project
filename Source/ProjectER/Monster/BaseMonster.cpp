@@ -158,14 +158,24 @@ void ABaseMonster::InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level)
 
 void ABaseMonster::InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float Level)
 {
-	UAssetManager::Get().LoadPrimaryAsset(MonsterAssetId,
-		TArray<FName>(),
-		FStreamableDelegate::CreateUObject(
-			this,
-			&ABaseMonster::OnMonsterDataLoaded,
-			MonsterAssetId,
-			Level
-		));
+	UObject* PreloadedData = UAssetManager::Get().GetPrimaryAssetObject(MonsterAssetId);
+	if (PreloadedData)
+	{
+		// 이전에 ER_AssetPreloadSubsystem 등에 의해 이미 메모리에 올라와있다면 즉시 초기화
+		OnMonsterDataLoaded(MonsterAssetId, Level);
+	}
+	else
+	{
+		// 로딩이 안된 경우 비동기 로딩 진행 (예방 차원)
+		UAssetManager::Get().LoadPrimaryAsset(MonsterAssetId,
+			TArray<FName>(),
+			FStreamableDelegate::CreateUObject(
+				this,
+				&ABaseMonster::OnMonsterDataLoaded,
+				MonsterAssetId,
+				Level
+			));
+	}
 }
 
 void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Level)
