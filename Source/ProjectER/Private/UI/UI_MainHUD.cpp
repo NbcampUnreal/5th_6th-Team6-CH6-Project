@@ -626,22 +626,22 @@ void UUI_MainHUD::OnAbilityActivated(UGameplayAbility* ActivatedAbility)
     {
         for (const FGameplayTag& Tag : Spec->DynamicAbilityTags)
         {
-            // UE_LOG(LogTemp, Log, TEXT("Spec 보유 태그: %s"), *Tag.ToString());
+            // UE_LOG(LogTemp, Error, TEXT("Spec 보유 태그: %s"), *Tag.ToString());
             
             // 좀 더 스마트한 방법이 없을지 더 찾아보자...
-            if (Tag.ToString() == "Input.Action.Skill.Q")
+            if (Tag.ToString() == "Ability.Input.Skill.Q")
             {
                 OnActivateSkillCoolTime(ESkillKey::Q);
             }
-            else if (Tag.ToString() == "Input.Action.Skill.W")
+            else if (Tag.ToString() == "Ability.Input.Skill.W")
             {
                 OnActivateSkillCoolTime(ESkillKey::W);
             }
-            else if (Tag.ToString() == "Input.Action.Skill.E")
+            else if (Tag.ToString() == "Ability.Input.Skill.E")
             {
                 OnActivateSkillCoolTime(ESkillKey::E);
             }
-            else if (Tag.ToString() == "Input.Action.Skill.R")
+            else if (Tag.ToString() == "Ability.Input.Skill.R")
             {
                 OnActivateSkillCoolTime(ESkillKey::R);
             }
@@ -652,7 +652,7 @@ void UUI_MainHUD::OnAbilityActivated(UGameplayAbility* ActivatedAbility)
 void UUI_MainHUD::OnActivateSkillCoolTime(ESkillKey Skill_Index)
 {
     int32 Index = static_cast<int32>(Skill_Index);
-
+	// UE_LOG(LogTemp, Error, TEXT("스킬 %d 사용됨, 쿨타임 시작"), Index);
     // 인덱스 범위 체크 (Q~R)
     if (!SkillCoolTexts[Index] || Index < 0 || Index >= 4) return;
 
