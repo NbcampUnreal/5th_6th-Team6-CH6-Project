@@ -528,13 +528,15 @@ void UUI_MainHUD::SkillFirePressed(ESkillKey _Index)
     if (!ASC) return;
 
     int32 Index = static_cast<int32>(_Index);
+	UE_LOG(LogTemp, Error, TEXT("SkillFirePressed called with index: %d"), Index);
 
     if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
     {
         USkillDataAsset* SkillAsset = HeroData->SkillDataAsset[Index].LoadSynchronous();
-
+		UE_LOG(LogTemp, Error, TEXT("Loaded SkillDataAsset for index %d: %s"), Index, *GetNameSafe(SkillAsset));
         if (SkillAsset && SkillAsset->SkillConfig)
         {
+			UE_LOG(LogTemp, Error, TEXT("SkillConfig found for index %d: %s"), Index, *GetNameSafe(SkillAsset->SkillConfig));
             FGameplayTag InputTag = SkillAsset->SkillConfig->Data.InputKeyTag;
             ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
 
