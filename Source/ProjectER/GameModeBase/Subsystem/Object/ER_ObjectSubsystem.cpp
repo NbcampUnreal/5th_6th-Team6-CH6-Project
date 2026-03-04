@@ -321,16 +321,21 @@ void UER_ObjectSubsystem::SpawnObjectInternal(FObjectInfo& Info)
 
     if (ABaseMonster* BossMonster = Cast<ABaseMonster>(Spawned))
     {
-        FPrimaryAssetId MonsterAssetId(TEXT("Monster"), Info.DAName);
-        AER_GameState* ERGS = World->GetAuthGameMode()->GetGameState<AER_GameState>();
-        int32 Phase = (ERGS && ERGS->GetCurrentPhase() > 0) ? ERGS->GetCurrentPhase() : 1;
-        BossMonster->InitMonsterData(MonsterAssetId, Phase);
-
         const int32 Key = Info.SpawnPoint->GetUniqueID();
         BossMonster->SetSpawnPoint(Key);
     }
 
+    // 1. 스폰부터 완벽하게 끝내기 (BeginPlay -> PossessedBy 등 호출 보장)
     UGameplayStatics::FinishSpawningActor(Spawned, SpawnTM);
+
+    // 2. 그 이후에 스탯/스킬 꽂아넣기
+    if (ABaseMonster* BossMonster = Cast<ABaseMonster>(Spawned))
+    {
+        FPrimaryAssetId MonsterAssetId(TEXT("Monster"), Info.DAName);
+        AER_GameState* ERGS = World->GetAuthGameMode()->GetGameState<AER_GameState>();
+        int32 Phase = (ERGS && ERGS->GetCurrentPhase() > 0) ? ERGS->GetCurrentPhase() : 1;
+        BossMonster->InitMonsterData(MonsterAssetId, Phase);
+    }
 
     Info.bIsSpawned = true;
     Info.bIsReserved = false;
