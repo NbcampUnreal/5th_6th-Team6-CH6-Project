@@ -33,6 +33,7 @@ public:
     void AddMesh(TSoftObjectPtr<UStaticMeshComponent> Mesh);
 
     /** Called by VisionTargetComp::BeginPlay to create MIDs from MeshTargets. */
+    UFUNCTION(BlueprintCallable, Category="Visibility")
     void Initialize();
 
     /** Called every fade tick by VisionTargetComp with the current alpha. */

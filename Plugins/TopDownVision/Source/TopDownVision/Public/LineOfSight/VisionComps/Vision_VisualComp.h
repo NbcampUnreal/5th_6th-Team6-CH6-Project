@@ -59,7 +59,7 @@ public:
 
     /** Trigger reveal or hide lerp. Called by the vision evaluator on detection change. */
     UFUNCTION(BlueprintCallable, Category="Vision")
-    void SetVisible(bool bVisible);
+    void SetVisible(bool bVisiblem, bool bInstant/* change instantly or not*/=false);
     
     UFUNCTION(BlueprintCallable, Category="Vision")
     float GetVisibilityAlpha() const { return VisibilityAlpha; }

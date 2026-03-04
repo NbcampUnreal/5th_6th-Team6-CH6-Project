@@ -137,10 +137,17 @@ bool UVision_VisualComp::IsUpdating() const
 //  Visibility Fade
 // -------------------------------------------------------------------------- //
 
-void UVision_VisualComp::SetVisible(bool bVisible)
+void UVision_VisualComp::SetVisible(bool bVisible, bool bInstant)
 {
     TargetVisibilityAlpha = bVisible ? 1.0f : 0.0f;
 
+    if (bInstant)//update instantly
+    {
+        if (VisibilityMesh)
+            VisibilityMesh->UpdateVisibility(bVisible);
+        return;
+    }
+    
     if (!GetWorld()->GetTimerManager().IsTimerActive(FadeTimerHandle))
     {
         GetWorld()->GetTimerManager().SetTimer(

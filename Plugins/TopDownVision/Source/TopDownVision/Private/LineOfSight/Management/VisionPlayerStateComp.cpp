@@ -41,6 +41,11 @@ void UVisionPlayerStateComp::SetTeamChannel(EVisionChannel InTeam)
     UE_LOG(VisionPlayerStateComp, Log,
         TEXT("[%s] SetTeamChannel >> Team set to %d"),
         *GetOwner()->GetName(), (uint8)TeamChannel);
+
+    // Re-evaluate all tracked visible actors now that we know the local team.
+    // This corrects any reveals that were deferred during early BeginPlay
+    // when VisionPS was not yet ready in OnTargetBecameVisible.
+    RefreshVisibility();
 }
 
 void UVisionPlayerStateComp::OnRep_TeamChannel()
@@ -72,6 +77,8 @@ void UVisionPlayerStateComp::SetAllReveal(bool bEnabled)
         TEXT("[%s] SetAllReveal >> AllReveal set to %s"),
         *GetOwner()->GetName(),
         bAllReveal ? TEXT("ON") : TEXT("OFF"));
+
+    RefreshVisibility();
 }
 
 void UVisionPlayerStateComp::OnRep_AllReveal()
@@ -123,14 +130,14 @@ void UVisionPlayerStateComp::RefreshVisibility()
         if (!VisualComp)
             continue;
 
-        const bool bShouldBeVisible = CanSeeTeam((EVisionChannel)Entry.TeamChannel);
+        const bool bShouldBeVisible = CanSeeTeam(Entry.TeamChannel);
         VisualComp->SetVisible(bShouldBeVisible);
 
         UE_LOG(VisionPlayerStateComp, Verbose,
             TEXT("[%s] RefreshVisibility >> %s | TeamID=%d | ShouldBeVisible=%d"),
             *GetOwner()->GetName(),
             *Entry.Target->GetName(),
-            Entry.TeamChannel,
+            (uint8)Entry.TeamChannel,
             bShouldBeVisible);
     }
 }
