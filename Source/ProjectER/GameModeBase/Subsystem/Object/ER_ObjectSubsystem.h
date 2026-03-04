@@ -64,6 +64,8 @@ public:
 
 
 private:
+	void SpawnObjectInternal(FObjectInfo& Info);
+
 	UPROPERTY()
 	bool bIsInitialized = false;
 
