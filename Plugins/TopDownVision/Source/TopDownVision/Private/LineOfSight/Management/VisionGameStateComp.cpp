@@ -86,13 +86,14 @@ void UVisionGameStateComp::SetActorVisibleToTeam(AActor* Target, EVisionChannel 
     NewEntry.Target = Target;
     NewEntry.TeamChannel = Team;
     VisibleActors.MarkItemDirty(NewEntry);
-
-    // Fire locally — PostReplicatedAdd only fires on remote clients
+    
     OnTargetBecameVisible(Target, Team);
-
+    
     UE_LOG(VisionGameStateComp, Log,
         TEXT("SetActorVisibleToTeam >> %s visible to team [%s]"),
         *Target->GetName(), *UEnum::GetValueAsString(Team));
+    
+    
 }
 
 void UVisionGameStateComp::ClearActorVisibleToTeam(AActor* Target, EVisionChannel Team)
@@ -103,7 +104,7 @@ void UVisionGameStateComp::ClearActorVisibleToTeam(AActor* Target, EVisionChanne
             TEXT("ClearActorVisibleToTeam >> Null target"));
         return;
     }
-
+    
     for (int32 i = VisibleActors.Items.Num() - 1; i >= 0; --i)
     {
         const FVisibleActorEntry& Entry = VisibleActors.Items[i];
@@ -112,16 +113,15 @@ void UVisionGameStateComp::ClearActorVisibleToTeam(AActor* Target, EVisionChanne
             VisibleActors.Items.RemoveAt(i);
             VisibleActors.MarkArrayDirty();
 
-            // Fire locally — PreReplicatedRemove only fires on remote clients
-            OnTargetBecameHidden(Target, Team);
-
             UE_LOG(VisionGameStateComp, Log,
-                TEXT("ClearActorVisibleToTeam >> %s hidden from team [%s]"),
-                *Target->GetName(), *UEnum::GetValueAsString(Team));
+             TEXT("ClearActorVisibleToTeam >> %s hidden from team [%s]"),
+             *Target->GetName(), *UEnum::GetValueAsString(Team));
             return;
         }
     }
 
+    OnTargetBecameHidden(Target, Team);
+    
     UE_LOG(VisionGameStateComp, Verbose,
         TEXT("ClearActorVisibleToTeam >> %s was not visible to team [%s], nothing to clear"),
         *Target->GetName(), *UEnum::GetValueAsString(Team));
@@ -129,6 +129,7 @@ void UVisionGameStateComp::ClearActorVisibleToTeam(AActor* Target, EVisionChanne
 
 bool UVisionGameStateComp::IsActorVisibleToTeam(AActor* Target, EVisionChannel Team) const
 {
+    
     for (const FVisibleActorEntry& Entry : VisibleActors.Items)
     {
         if (Entry.Target == Target && Entry.TeamChannel == Team)
@@ -139,10 +140,10 @@ bool UVisionGameStateComp::IsActorVisibleToTeam(AActor* Target, EVisionChannel T
 }
 
 // -------------------------------------------------------------------------- //
-//  Client callbacks — fired by FastArray or directly on server/listen
+//  Client callbacks — fired by FastArray
 // -------------------------------------------------------------------------- //
 
-void UVisionGameStateComp::OnTargetBecameVisible(AActor* Target, EVisionChannel Team)
+void UVisionGameStateComp::OnTargetBecameVisible(AActor* Target, EVisionChannel TeamID)
 {
     if (!Target)
         return;
@@ -157,29 +158,33 @@ void UVisionGameStateComp::OnTargetBecameVisible(AActor* Target, EVisionChannel 
     {
         if (UVision_VisualComp* VisualComp = Target->FindComponentByClass<UVision_VisualComp>())
         {
-            if (VisualComp->GetVisionChannel() == Team)
+            const bool bSameTeam =
+                VisualComp->GetVisionChannel() == TeamID ||
+                VisualComp->GetVisionChannel() == EVisionChannel::SharedVision;
+
+            if (bSameTeam)
                 VisualComp->SetVisible(true);
         }
         return;
     }
 
-    if (!VisionPS->CanSeeTeam(Team))
+    if (!VisionPS->CanSeeTeam((EVisionChannel)TeamID))
     {
         UE_LOG(VisionGameStateComp, Verbose,
             TEXT("OnTargetBecameVisible >> %s skipped — local player cannot see team [%s]"),
-            *Target->GetName(), *UEnum::GetValueAsString(Team));
+            *Target->GetName(), *UEnum::GetValueAsString(TeamID));
         return;
     }
 
     UE_LOG(VisionGameStateComp, Log,
         TEXT("OnTargetBecameVisible >> %s visible to team [%s]"),
-        *Target->GetName(), *UEnum::GetValueAsString(Team));
+        *Target->GetName(), *UEnum::GetValueAsString(TeamID));
 
     if (UVision_VisualComp* VisualComp = Target->FindComponentByClass<UVision_VisualComp>())
         VisualComp->SetVisible(true);
 }
 
-void UVisionGameStateComp::OnTargetBecameHidden(AActor* Target, EVisionChannel Team)
+void UVisionGameStateComp::OnTargetBecameHidden(AActor* Target, EVisionChannel TeamID)
 {
     if (!Target)
         return;
@@ -192,25 +197,21 @@ void UVisionGameStateComp::OnTargetBecameHidden(AActor* Target, EVisionChannel T
     if (!VisionPS)
         return;
 
-    if (!VisionPS->CanSeeTeam(Team))
+    if (!VisionPS->CanSeeTeam((EVisionChannel)TeamID))
     {
         UE_LOG(VisionGameStateComp, Verbose,
             TEXT("OnTargetBecameHidden >> %s skipped — local player cannot see team [%s]"),
-            *Target->GetName(), *UEnum::GetValueAsString(Team));
+            *Target->GetName(), *UEnum::GetValueAsString(TeamID));
         return;
     }
 
     UE_LOG(VisionGameStateComp, Log,
         TEXT("OnTargetBecameHidden >> %s hidden from team [%s]"),
-        *Target->GetName(), *UEnum::GetValueAsString(Team));
+        *Target->GetName(), *UEnum::GetValueAsString(TeamID));
 
     if (UVision_VisualComp* VisualComp = Target->FindComponentByClass<UVision_VisualComp>())
         VisualComp->SetVisible(false);
 }
-
-// -------------------------------------------------------------------------- //
-//  Provider registration callback
-// -------------------------------------------------------------------------- //
 
 void UVisionGameStateComp::OnProviderRegistered(UVision_VisualComp* NewProvider, EVisionChannel Channel)
 {
@@ -229,6 +230,7 @@ void UVisionGameStateComp::OnProviderRegistered(UVision_VisualComp* NewProvider,
         if (!Existing || !Existing->GetOwner())
             continue;
 
+        // Reveal existing providers to the new provider's team
         SetActorVisibleToTeam(Existing->GetOwner(), Channel);
 
         UE_LOG(VisionGameStateComp, Log,
@@ -236,3 +238,4 @@ void UVisionGameStateComp::OnProviderRegistered(UVision_VisualComp* NewProvider,
             *Existing->GetOwner()->GetName(), *UEnum::GetValueAsString(Channel));
     }
 }
+

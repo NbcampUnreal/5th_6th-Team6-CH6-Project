@@ -164,6 +164,10 @@ void UVisibilityMeshComp::Initialize()
         ProcessMesh(SoftMesh.Get());
     }
 
+    //now set the visibility as 0 for default
+    
+    UpdateVisibility(0.f);
+
     UE_LOG(VisibilityMeshComp, Log,
         TEXT("[%s] UVisibilityMeshComp::Initialize >> %d MIDs created total"),
         *TopDownVisionDebug::GetClientDebugName(GetOwner()),

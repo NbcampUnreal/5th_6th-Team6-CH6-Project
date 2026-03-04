@@ -86,6 +86,7 @@ void UMainVisionRTManager::Initialize()
 	{
 		UE_LOG(LOSVision, Warning, TEXT("UMainVisionRTManager::Initialize >> FeatherOutMaterial is not assigned"));
 	}
+	
 }
 
 // -------------------------------------------------------------------------- //
