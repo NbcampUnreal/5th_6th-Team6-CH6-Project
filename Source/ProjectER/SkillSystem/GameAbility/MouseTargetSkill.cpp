@@ -73,6 +73,7 @@ void UMouseTargetSkill::SetWaitTargetTask()
 		MyTargetActor = Cast<ATargetActor>(SpawnedActor);
 		if (MyTargetActor)
 		{
+			CurrentTargetActor = MyTargetActor;
 			MyTargetActor->PrimaryPC = Cast<APlayerController>(GetActorInfo().PlayerController);
 			WaitTargetTask->FinishSpawningActor(this, SpawnedActor);
 		}
