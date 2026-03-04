@@ -30,6 +30,8 @@ void UVision_VisualComp::BeginPlay()
 {
     Super::BeginPlay();
 
+    AActor* DebugCheckingActor = GetOwner();
+    
     if (ShapeComp)//attachment happens here
     {
         if (USceneComponent* Root = GetOwner()->GetRootComponent())

@@ -22,6 +22,8 @@ class UMonsterDataAsset;
 class ULootableComponent;
 struct FOnAttributeChangeData;
 
+
+
 UCLASS()
 class PROJECTER_API ABaseMonster : public ACharacter, public IAbilitySystemInterface, public ITargetableInterface
 {
@@ -101,7 +103,9 @@ private:
 
 public:
 	// 몬스터 스폰 후 데이터를 초기화해주는 함수
+	UFUNCTION(BlueprintCallable)
 	void InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level);
+	
 private:
 	// 초기화 
 	void InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float Level);
@@ -147,6 +151,10 @@ public:
 	// 블루프린트에서 사용중
 	UPROPERTY(BlueprintReadOnly, Category = "MonsterData")
 	TObjectPtr<UMonsterDataAsset> MonsterData;
+
+	UFUNCTION(BlueprintImplementableEvent, Category="Monster|Event")
+	void OnMonsterDataLoadedEvent(FPrimaryAssetId MonsterAssetId, float Level);
+	
 private:
 	UPROPERTY(ReplicatedUsing = OnRep_MonsterData)
 	FPrimaryAssetId MonsterId;
