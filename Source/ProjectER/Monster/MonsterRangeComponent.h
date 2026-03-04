@@ -72,4 +72,6 @@ private:
 
 	TObjectPtr<USphereComponent> OutSphere;
 
+	TArray<TObjectPtr<AActor>> MonsterGroup;
+
 };

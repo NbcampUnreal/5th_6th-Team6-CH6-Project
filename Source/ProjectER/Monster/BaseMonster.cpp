@@ -384,7 +384,24 @@ void ABaseMonster::InitHPBar()
 // 서버에서만
 void ABaseMonster::OnMonterHitHandle(AActor* Target)
 {
-	SetTargetPlayer(Target);
+	if (IsValid(TargetPlayer) && TargetPlayer != Target)
+	{
+		const float OldTargetDistance = FVector::DistSquared(TargetPlayer->GetActorLocation(), GetActorLocation());
+		const float NewTargetDistance = FVector::DistSquared(Target->GetActorLocation(), GetActorLocation());
+
+		if (NewTargetDistance < OldTargetDistance)
+		{
+			if (ABaseCharacter* OldTargetPlayer = Cast<ABaseCharacter>(TargetPlayer))
+			{
+				OldTargetPlayer->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+			}
+			SetTargetPlayer(Target);
+		}
+	}
+	else if (!IsValid(TargetPlayer))
+	{
+		SetTargetPlayer(Target);
+	}
 
 	if (bIsPhaseTrigger == false && AttributeSet->GetHPPersent() <= 0.5f)
 	{
@@ -392,10 +409,12 @@ void ABaseMonster::OnMonterHitHandle(AActor* Target)
 		SendStateTreeEvent(MonsterTags.Phase2EventTag);
 	}
 
-	ABaseCharacter* BC = Cast<ABaseCharacter>(Target);
-	if (!BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+	if (ABaseCharacter* BC = Cast<ABaseCharacter>(TargetPlayer))
 	{
-		BC->OnDeath.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
+		if (!BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+		{
+			BC->OnDeath.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
+		}
 	}
 	
 	if (IsValid(StateTreeComp) == false)
