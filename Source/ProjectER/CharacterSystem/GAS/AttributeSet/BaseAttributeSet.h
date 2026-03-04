@@ -133,7 +133,11 @@ class PROJECTER_API UBaseAttributeSet : public UAttributeSet
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Combat", ReplicatedUsing = OnRep_Tenacity)
 	FGameplayAttributeData Tenacity;
 	ATTRIBUTE_ACCESSORS(UBaseAttributeSet, Tenacity)
-
+	
+	// SkillPoint (스킬 포인트)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Combat", ReplicatedUsing = OnRep_SkillPoint)
+	FGameplayAttributeData SkillPoint;
+	ATTRIBUTE_ACCESSORS(UBaseAttributeSet, SkillPoint)
 	
 #pragma endregion
 	
@@ -207,5 +211,6 @@ protected:
 	virtual void OnRep_CooldownReduction(const FGameplayAttributeData& OldCooldownReduction);
 	UFUNCTION() 
 	virtual void OnRep_Tenacity(const FGameplayAttributeData& OldTenacity);
-	
+	UFUNCTION()
+	virtual void OnRep_SkillPoint(const FGameplayAttributeData& OldSkillPoint);
 };

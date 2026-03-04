@@ -53,6 +53,9 @@ protected:
 
 public:
 	UGameplayEffect* CreateCostGameplayEffect(UObject* Outer);
+
+	UFUNCTION(BlueprintPure, Category = "Skill|UI")
+	FText BuildCostDescription(float InLevel = 1.0f) const;
 };
 
 UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced)

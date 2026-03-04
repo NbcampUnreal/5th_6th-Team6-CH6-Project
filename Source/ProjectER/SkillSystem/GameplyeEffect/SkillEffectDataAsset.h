@@ -82,6 +82,10 @@ public:
     USkillEffectDataAsset();
 
     TArray<FGameplayEffectSpecHandle> MakeSpecs(UAbilitySystemComponent* InstigatorASC, USkillBase* InstigatorSkill, AActor* InEffectCauser, const FGameplayEffectContextHandle InEffectContextHandle = FGameplayEffectContextHandle()) const;
+
+    UFUNCTION(BlueprintPure, Category = "Skill|UI")
+    FText BuildEffectDescription(float InLevel = 1.0f) const;
+
     FORCEINLINE FGameplayTag GetIndexTag() const { return IndexTag; }
     FORCEINLINE FSkillEffectContainer GetData() const { return Data; }
     FORCEINLINE FGameplayAttribute GetTargetAttribute() const { return Data.TargetAttribute; }
@@ -92,10 +96,12 @@ private:
 
 public:
     
-
 protected:
 
 private:
+    UPROPERTY(EditDefaultsOnly, Category = "UI", meta = (MultiLine = "true"))
+    FText EffectDescription;
+
     UPROPERTY(EditDefaultsOnly)
     FSkillEffectContainer Data;
 

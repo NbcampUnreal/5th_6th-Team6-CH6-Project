@@ -12,12 +12,12 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Move, "Ability.Action.Move", "Move Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Chase, "Ability.Action.Chase", "Chase Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "Ability.Action.Return", "Return Ability");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Sit, "Ability.Action.Sit", "Sit Ability");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Alert, "Ability.Action.Alert", "Alert Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Idle, "Ability.Action.Idle", "Idle Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Combat, "Ability.Action.Combat", "Combat Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction, "Ability.Action.Interaction", "Interaction Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyStart, "Ability.Action.FlyStart", "FlyStart Ability");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyIdle, "Ability.Action.FlyIdle", "FlyIdle Ability");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyAttack, "Ability.Action.FlyAttack", "FlyAttack Ability");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyEnd, "Ability.Action.FlyEnd", "FlyEnd Ability");
 		}
 
@@ -133,34 +133,51 @@ namespace ProjectER
 
 	namespace GameplayCue
 	{
-		namespace State
+		namespace Particle
 		{
-			namespace Life
-			{
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "GameplayCue.State.Life.Death", "");
-			}
-
 			namespace Action
 			{
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Sit, "GameplayCue.State.Action.Sit", "");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Idle, "GameplayCue.State.Action.Idle", "");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Combat, "GameplayCue.State.Action.Combat", "");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Chase, "GameplayCue.State.Action.Chase", "");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "GameplayCue.State.Action.Attack", "");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "GameplayCue.State.Action.Return", "");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyStart, "GameplayCue.State.Action.FlyStart", "");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyIdle, "GameplayCue.State.Action.FlyIdle", "");
-				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyEnd, "GameplayCue.State.Action.FlyEnd", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "GameplayCue.Particle.Action.Death", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Alert, "GameplayCue.Particle.Action.Alert", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Idle, "GameplayCue.Particle.Action.Idle", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Combat, "GameplayCue.Particle.Action.Combat", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Move, "GameplayCue.Particle.Action.Move", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyStart, "GameplayCue.Particle.Action.FlyStart", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyAttack, "GameplayCue.Particle.Action.FlyAttack", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyEnd, "GameplayCue.Particle.Action.FlyEnd", "");
+			}
+			namespace Skill
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "GameplayCue.Particle.Skill.AutoAttack", "AutoAttack Particle");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Q, "GameplayCue.Particle.Skill.Q", "Q Particle");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(W, "GameplayCue.Particle.Skill.W", "W Particle");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(E, "GameplayCue.Particle.Skill.E", "E Particle");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(R, "GameplayCue.Particle.Skill.R", "R Particle");
 			}
 		}
-		namespace Skill
+		namespace Sound
 		{
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "GameplayCue.Skill.AutoAttack", "AutoAttack Particle");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Q, "GameplayCue.Skill.Q", "Q Particle");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(W, "GameplayCue.Skill.W", "W Particle");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(E, "GameplayCue.Skill.E", "E Particle");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(R, "GameplayCue.Skill.R", "R Particle");
+			namespace Action
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "GameplayCue.Sound.Action.Death", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Alert, "GameplayCue.Sound.Action.Alert", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Idle, "GameplayCue.Sound.Action.Idle", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Combat, "GameplayCue.Sound.Action.Combat", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Move, "GameplayCue.Sound.Action.Move", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyStart, "GameplayCue.Sound.Action.FlyStart", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyAttack, "GameplayCue.Sound.Action.FlyAttack", "");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyEnd, "GameplayCue.Sound.Action.FlyEnd", "");
+			}
+			namespace Skill
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "GameplayCue.Sound.Skill.AutoAttack", "AutoAttack Particle");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Q, "GameplayCue.Sound.Skill.Q", "Q Particle");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(W, "GameplayCue.Sound.Skill.W", "W Particle");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(E, "GameplayCue.Sound.Skill.E", "E Particle");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(R, "GameplayCue.Sound.Skill.R", "R Particle");
+			}
 		}
+
 		namespace Combat
 		{
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Hit, "GameplayCue.Combat.Hit", "Cue for Attack Hit");
@@ -174,14 +191,13 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction, "State.Action.Interaction", "Interaction State");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Casting, "State.Action.Casting", "Casting State");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Combat, "State.Action.Combat", "Combat State");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Sit, "State.Action.Sit", "Sit State");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Alert, "State.Action.Alert", "Alert State");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Idle, "State.Action.Idle", "Idle State");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Move, "State.Action.Move", "Move State");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack, "State.Action.Attack", "Attack State");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Return, "State.Action.Return", "Return State");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Reviving, "State.Action.Reviving", "Reviving State");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyStart, "State.Action.FlyStart", "FlyStart State");
-			UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyIdle, "State.Action.FlyIdle", "FlyIdle State");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyAttack, "State.Action.FlyAttack", "FlyAttack State");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(FlyEnd, "State.Action.FlyEnd", "FlyEnd State");
 		}
 

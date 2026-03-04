@@ -175,6 +175,9 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Collision", meta = (AllowprivateAccess = "true"))
 	TObjectPtr<UBoxComponent> HitBoxComp;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Sound", meta = (AllowprivateAccess = "true"))
+	TObjectPtr<UAudioComponent> SoundComp;
+
 
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))

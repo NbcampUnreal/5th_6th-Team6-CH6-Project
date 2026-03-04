@@ -16,39 +16,53 @@ UENUM(BlueprintType)
 enum class EMonsterMontageType : uint8
 {
 	Idle,
+	Alert,
 	Move,
 	Attack,
 	QSkill,
-	Sit,
+	WSkill,
+	ESkill,
+	RSkill,
 	Dead,
 	
 	FlyStart,
-	FlyIdle,
-	FlyEnd
+	FlyAttack,
+	FlyEnd,
+	None
 };
 
 UENUM(BlueprintType)
-enum class EMonsterNiagaraType : uint8
+enum class EMonsterActionType : uint8
 {
+	Idle,
+	Alert,
+	Move,
+	Death,
 	NormalAttack,
 	QSkill,
 	WSkill,
 	ESkill,
-	RSkill
+	RSkill,
+	FlyStart,
+	FlyAttack,
+	FlyEnd,
+	None
 };
 
 UENUM(BlueprintType)
 enum class ENiagaraAttachType : uint8
 {
 	Mine,
-	Target
+	Target,
+	None
 };
 
 UENUM(BlueprintType)
 enum class ENiagaraSpawnPositionType : uint8
 {
 	TargetPosition,
-	TargetDirection
+	TargetDirection,
+	None
 };
 
 USTRUCT(BlueprintType)
@@ -82,6 +96,15 @@ struct FMonsterNiagaraData
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (EditCondition = "!bFollow", EditConditionHides))
 	FVector Scale = FVector(1.f);
 
+};
+
+USTRUCT(BlueprintType)
+struct FMonsterSoundData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TObjectPtr<USoundBase> TestSound;
 };
 
 
@@ -124,8 +147,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Montage")
 	TMap<EMonsterMontageType, TObjectPtr<UAnimMontage>> Montages;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Niagara")
-	TMap<EMonsterNiagaraType, FMonsterNiagaraData> Niagaras;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Effect")
+	TMap<EMonsterActionType, FMonsterNiagaraData> Niagaras;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Effect")
+	TMap<EMonsterActionType, FMonsterSoundData> Sounds;
 
 
 

@@ -20,6 +20,9 @@ class PROJECTER_API USummonRangeByWorldOriginGECConfig : public UBaseGECConfig
 	GENERATED_BODY()
 
 public:
+	virtual FText BuildTooltipDescription(float InLevel) const override;
+
+public:
 	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<ABaseRangeOverlapEffectActor> RangeActorClass;
 

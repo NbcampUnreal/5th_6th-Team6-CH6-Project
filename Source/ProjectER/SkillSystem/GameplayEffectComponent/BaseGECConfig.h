@@ -16,7 +16,7 @@ class PROJECTER_API UBaseGECConfig : public UObject
 	GENERATED_BODY()
 
 public:
-
+	virtual FText BuildTooltipDescription(float InLevel) const;
 protected:
 	
 private:
@@ -29,22 +29,22 @@ private:
 	
 };
 
-UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced)
-class PROJECTER_API UTESTConfig : public UBaseGECConfig
-{
-	GENERATED_BODY()
-
-public:
-
-protected:
-	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
-	float Range;
-private:
-
-public:
-
-protected:
-
-private:
-
-};
+//UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced)
+//class PROJECTER_API UTESTConfig : public UBaseGECConfig
+//{
+//	GENERATED_BODY()
+//
+//public:
+//
+//protected:
+//	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
+//	float Range;
+//private:
+//
+//public:
+//
+//protected:
+//
+//private:
+//
+//};

@@ -92,17 +92,16 @@ private:
 	bool bShouldBeOccluded = false;
 
 	/** Cached dynamic materials */
-	UPROPERTY(Transient)
+	UPROPERTY()
 	TArray<UMaterialInstanceDynamic*> NormalDynamicMaterials;
-	UPROPERTY(Transient)
+	UPROPERTY()
 	TArray<UMaterialInstanceDynamic*> OccludedDynamicMaterials;
 
 	//registered meshes
-	UPROPERTY(VisibleAnywhere)
-	TArray<TSoftObjectPtr<UStaticMeshComponent>> NormalMeshes;
-	UPROPERTY(VisibleAnywhere)
-	TArray<TSoftObjectPtr<UStaticMeshComponent>> OccludedMeshes;
-	
+	UPROPERTY(VisibleAnywhere, Instanced)
+	TArray<UStaticMeshComponent*> NormalMeshes;
+	UPROPERTY(VisibleAnywhere, Instanced)
+	TArray<UStaticMeshComponent*> OccludedMeshes;
 
 	bool bLastOcclusionState = false;
 
