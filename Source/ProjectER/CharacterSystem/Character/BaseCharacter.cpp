@@ -554,13 +554,26 @@ void ABaseCharacter::InitAbilitySystem()
 		{
 			FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
 			Context.AddSourceObject(this);
+			
 			FGameplayEffectSpecHandle EffectSpec = AbilitySystemComponent->MakeOutgoingSpec(AliveStateEffectClass, 1.0f, Context);
 			if (EffectSpec.IsValid())
 			{
 				AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*EffectSpec.Data.Get());
 			}
 		}
-
+		
+		if (RegenEffectClass)
+		{
+			FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+			Context.AddSourceObject(this);
+		
+			FGameplayEffectSpecHandle RegenSpec = AbilitySystemComponent->MakeOutgoingSpec(RegenEffectClass, 1.0f, Context);
+			if (RegenSpec.IsValid())
+			{
+				AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*RegenSpec.Data.Get());
+			}
+		}
+		
 		// Attribute Set 초기화
 		InitAttributes();
 	}

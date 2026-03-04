@@ -143,6 +143,10 @@ public:
 	UPROPERTY(EditDefaultsOnly,Category = "GAS") 
 	TSubclassOf<UGameplayEffect> InitStatusEffectClass;
 	
+	// 패시브 재생(Regen) 이펙트 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Life")
+	TSubclassOf<UGameplayEffect> RegenEffectClass;
+	
 	// 기본 상태(Alive) 이펙트 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Life")
 	TSubclassOf<UGameplayEffect> AliveStateEffectClass;
@@ -155,7 +159,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Life")
 	TSubclassOf<UGameplayEffect> DeathStateEffectClass;
 	
-	// 사망 상태(Death) 이펙트 클래스
+	// 이동 상태(Moving) 이펙트 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|State")
 	TSubclassOf<UGameplayEffect> MovingStateEffectClass;
 	
