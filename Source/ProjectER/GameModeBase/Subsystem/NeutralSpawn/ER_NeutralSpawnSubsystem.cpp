@@ -114,7 +114,8 @@ void UER_NeutralSpawnSubsystem::StartRespawnNeutral(const int32 SpawnPointIdx)
                 AER_GameState* ERGS = GetWorld()->GetAuthGameMode()->GetGameState<AER_GameState>();
 
                 // 현재 페이즈의 값을 GameState에서 받아와 페이즈 정보 전달
-                Spawned->InitMonsterData(MonsterAssetId, ERGS->GetCurrentPhase());
+                int32 Phase = ERGS->GetCurrentPhase() > 0 ? ERGS->GetCurrentPhase() : 1;
+                Spawned->InitMonsterData(MonsterAssetId, Phase);
 
                 // 몬스터에게 Map의 Key값 전달
                 Spawned->SetSpawnPoint(SpawnPointIdx);
@@ -123,7 +124,7 @@ void UER_NeutralSpawnSubsystem::StartRespawnNeutral(const int32 SpawnPointIdx)
                 Info->SpawnedActor = Spawned;
                 Info->bIsSpawned = true;
 
-                UE_LOG(LogTemp, Log, TEXT("[NSS] Complete Neutral Respawn DA_Name : %s , Phase : %d"), *Info->DAName.ToString(), ERGS->GetCurrentPhase());
+                UE_LOG(LogTemp, Log, TEXT("[NSS] Complete Neutral Respawn DA_Name : %s , Phase : %d"), *Info->DAName.ToString(), Phase);
             }),
         Info->RespawnDelay,
         false
@@ -147,32 +148,12 @@ void UER_NeutralSpawnSubsystem::FirstSpawnNeutral()
         FNeutralInfo& Info = Pair.Value;
 
         if (Info.bIsSpawned)
+        {
             continue;
+        }
 
-        FActorSpawnParameters Params;
-        Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+        SpawnMonsterInternal(Info, Pair.Key);
 
-        // 액터 클래스 소환
-        ABaseMonster* Spawned = World->SpawnActor<ABaseMonster>(
-            Info.NeutralActorClass,
-            Info.SpawnPoint->GetActorTransform(),
-            Params
-        );
-
-        // FPrimaryAssetId의 값 지정
-        FPrimaryAssetId MonsterAssetId(TEXT("Monster"), Info.DAName);
-        AER_GameState* ERGS = GetWorld()->GetAuthGameMode()->GetGameState<AER_GameState>();
-
-        // 현재 페이즈의 값을 GameState에서 받아와 페이즈 정보 전달
-        Spawned->InitMonsterData(MonsterAssetId, ERGS->GetCurrentPhase());
-
-        // 몬스터에게 Map의 Key값 전달
-        Spawned->SetSpawnPoint(Pair.Key);
-
-        // FNeutralInfo 값 갱신
-        Info.SpawnedActor = Spawned;
-        Info.bIsSpawned = true;
-        UE_LOG(LogTemp, Log, TEXT("[NSS] Complete NeutralSpawn DA_Name : %s , Phase : %d"), *Info.DAName.ToString(), ERGS->GetCurrentPhase());
 
     }
 }
@@ -222,24 +203,7 @@ void UER_NeutralSpawnSubsystem::TEMP_SpawnNeutrals()
         if (Info.bIsSpawned)
             continue;
 
-        FActorSpawnParameters Params;
-        Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-
-        ABaseMonster* Spawned = World->SpawnActor<ABaseMonster>(
-            Info.NeutralActorClass,
-            Info.SpawnPoint->GetActorTransform(),
-            Params
-        );
-        FPrimaryAssetId MonsterAssetId(TEXT("Monster"), TEXT("DA_Monster_Orc"));
-        Spawned->InitMonsterData(MonsterAssetId, 1);
-        Spawned->SetSpawnPoint(Pair.Key);
-
-        if (!Spawned)
-            continue;
-
-        Info.SpawnedActor = Spawned;
-
-        //Spawned->OnDestroyed.AddDynamic(this, &ThisClass::OnNeutralDestroyed);
+        SpawnMonsterInternal(Info, Pair.Key);
     }
 }
 
@@ -262,7 +226,40 @@ void UER_NeutralSpawnSubsystem::TEMP_NeutralsALLDespawn()
         {
             N->Death();
         }
-
     }
 }
 
+void UER_NeutralSpawnSubsystem::SpawnMonsterInternal(FNeutralInfo& Info, int32 SpawnPointIdx)
+{
+    if (!Info.SpawnPoint.IsValid()) 
+    {
+        return;
+    }
+
+    FActorSpawnParameters Params;
+    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+    ABaseMonster* Spawned = GetWorld()->SpawnActor<ABaseMonster>(
+        Info.NeutralActorClass,
+        Info.SpawnPoint->GetActorTransform(),
+        Params
+    );
+
+    if (!Spawned) 
+    {
+        return;
+    }
+    AER_GameState* ERGS = GetWorld()->GetGameState<AER_GameState>();
+
+    int32 Phase = (ERGS && ERGS->GetCurrentPhase() > 0) ? ERGS->GetCurrentPhase() : 1;
+
+    FPrimaryAssetId MonsterAssetId(TEXT("Monster"), Info.DAName);
+
+    Spawned->InitMonsterData(MonsterAssetId, Phase);
+    Spawned->SetSpawnPoint(SpawnPointIdx);
+
+    Info.SpawnedActor = Spawned;
+    Info.bIsSpawned = true;
+
+    UE_LOG(LogTemp, Log, TEXT("[NSS] Neutral Spawned! DA_Name: %s, Phase: %d"), *Info.DAName.ToString(), Phase);
+}

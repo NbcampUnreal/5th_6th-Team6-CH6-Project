@@ -52,6 +52,9 @@ public:
 	void TEMP_SpawnNeutrals();
 	void TEMP_NeutralsALLDespawn();
 
+private:
+	void SpawnMonsterInternal(FNeutralInfo& Info, int32 SpawnPointIdx);
+
 
 public:
 	TArray<TWeakObjectPtr<AActor>> Points;
