@@ -214,6 +214,26 @@ void UUI_MainHUD::NativeConstruct()
 {
     Super::NativeConstruct();
 
+    // [김현수 추가분]Grid_item이 BindWidget으로 바인딩 안됐으면 직접 찾기
+    if (!Grid_item)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Grid_item not bound, trying to find manually..."));
+        Grid_item = Cast<UUniformGridPanel>(GetWidgetFromName(TEXT("Grid_item")));
+
+        if (Grid_item)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Grid_item found manually!"));
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("[UI_MainHUD] Grid_item not found even manually!"));
+        }
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Grid_item already bound via BindWidget!"));
+    }
+
     // 툴팁 init
     if (IsValid(TooltipClass) && !TooltipInstance)
     {
@@ -528,13 +548,15 @@ void UUI_MainHUD::SkillFirePressed(ESkillKey _Index)
     if (!ASC) return;
 
     int32 Index = static_cast<int32>(_Index);
+	UE_LOG(LogTemp, Error, TEXT("SkillFirePressed called with index: %d"), Index);
 
     if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
     {
         USkillDataAsset* SkillAsset = HeroData->SkillDataAsset[Index].LoadSynchronous();
-
+		UE_LOG(LogTemp, Error, TEXT("Loaded SkillDataAsset for index %d: %s"), Index, *GetNameSafe(SkillAsset));
         if (SkillAsset && SkillAsset->SkillConfig)
         {
+			UE_LOG(LogTemp, Error, TEXT("SkillConfig found for index %d: %s"), Index, *GetNameSafe(SkillAsset->SkillConfig));
             FGameplayTag InputTag = SkillAsset->SkillConfig->Data.InputKeyTag;
             ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
 
@@ -626,22 +648,22 @@ void UUI_MainHUD::OnAbilityActivated(UGameplayAbility* ActivatedAbility)
     {
         for (const FGameplayTag& Tag : Spec->DynamicAbilityTags)
         {
-            // UE_LOG(LogTemp, Log, TEXT("Spec 보유 태그: %s"), *Tag.ToString());
+            // UE_LOG(LogTemp, Error, TEXT("Spec 보유 태그: %s"), *Tag.ToString());
             
             // 좀 더 스마트한 방법이 없을지 더 찾아보자...
-            if (Tag.ToString() == "Input.Action.Skill.Q")
+            if (Tag.ToString() == "Ability.Input.Skill.Q")
             {
                 OnActivateSkillCoolTime(ESkillKey::Q);
             }
-            else if (Tag.ToString() == "Input.Action.Skill.W")
+            else if (Tag.ToString() == "Ability.Input.Skill.W")
             {
                 OnActivateSkillCoolTime(ESkillKey::W);
             }
-            else if (Tag.ToString() == "Input.Action.Skill.E")
+            else if (Tag.ToString() == "Ability.Input.Skill.E")
             {
                 OnActivateSkillCoolTime(ESkillKey::E);
             }
-            else if (Tag.ToString() == "Input.Action.Skill.R")
+            else if (Tag.ToString() == "Ability.Input.Skill.R")
             {
                 OnActivateSkillCoolTime(ESkillKey::R);
             }
@@ -652,7 +674,7 @@ void UUI_MainHUD::OnAbilityActivated(UGameplayAbility* ActivatedAbility)
 void UUI_MainHUD::OnActivateSkillCoolTime(ESkillKey Skill_Index)
 {
     int32 Index = static_cast<int32>(Skill_Index);
-
+	// UE_LOG(LogTemp, Error, TEXT("스킬 %d 사용됨, 쿨타임 시작"), Index);
     // 인덱스 범위 체크 (Q~R)
     if (!SkillCoolTexts[Index] || Index < 0 || Index >= 4) return;
 
@@ -968,30 +990,42 @@ UWidgetAnimation* UUI_MainHUD::GetWidgetAnimationByName(FName AnimName) const
 // 인벤토리 UI 업데이트 함수
 void UUI_MainHUD::UpdateInventoryUI()
 {
+    UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] UpdateInventoryUI called!"));
     if (!Grid_item)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Grid_item is null!"));
+        UE_LOG(LogTemp, Error, TEXT("[UI_MainHUD] Grid_item is null!"));
         return;
     }
+
+    UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Grid_item found!"));
 
     // 플레이어의 인벤토리 컴포넌트 가져오기
     APlayerController* PC = GetOwningPlayer();
     if (!PC)
+    {
+        UE_LOG(LogTemp, Error, TEXT("[UI_MainHUD] PlayerController is null!"));
         return;
+    }
 
     APawn* Pawn = PC->GetPawn();
     if (!Pawn)
+    {
+        UE_LOG(LogTemp, Error, TEXT("[UI_MainHUD] Pawn is null!"));
         return;
+    }
 
     UBaseInventoryComponent* InventoryComp = Pawn->FindComponentByClass<UBaseInventoryComponent>();
     if (!InventoryComp)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] InventoryComponent not found!"));
+        UE_LOG(LogTemp, Error, TEXT("[UI_MainHUD] InventoryComponent not found!"));
         return;
     }
 
+    UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] InventoryComponent found!"));
+
     // Grid의 모든 자식 위젯 가져오기 (Button들)
     TArray<UWidget*> GridChildren = Grid_item->GetAllChildren();
+    UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Grid has %d children"), GridChildren.Num());
 
     // 인벤토리 데이터는 private이므로 reflection 사용
     UClass* InventoryClass = InventoryComp->GetClass();
@@ -1007,30 +1041,51 @@ void UUI_MainHUD::UpdateInventoryUI()
     void* PropertyPtr = InventoryProperty->ContainerPtrToValuePtr<void>(InventoryComp);
     FArrayProperty* ArrayProp = CastField<FArrayProperty>(InventoryProperty);
     if (!ArrayProp)
+    {
+        UE_LOG(LogTemp, Error, TEXT("[UI_MainHUD] ArrayProp is null!"));
         return;
+    }
 
     FScriptArrayHelper ArrayHelper(ArrayProp, PropertyPtr);
+    UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Inventory has %d items"), ArrayHelper.Num());
 
     // Grid의 각 버튼에 아이템 아이콘 설정
     for (int32 i = 0; i < GridChildren.Num(); ++i)
     {
         UButton* ItemButton = Cast<UButton>(GridChildren[i]);
         if (!ItemButton)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Child %d is not a Button, type: %s"),
+                i, *GridChildren[i]->GetClass()->GetName());
             continue;
+        }
 
-        // 버튼의 자식 이미지 찾기 (첫 번째 자식이 이미지라고 가정)
+        UE_LOG(LogTemp, Log, TEXT("[UI_MainHUD] Processing Button %d: %s"), i, *ItemButton->GetName());
+
+        // 버튼의 자식 이미지 찾기
         TArray<UWidget*> ButtonChildren = ItemButton->GetAllChildren();
+        UE_LOG(LogTemp, Log, TEXT("[UI_MainHUD] Button %d has %d children"), i, ButtonChildren.Num());
 
         UImage* IconImage = nullptr;
-        for (UWidget* Child : ButtonChildren)
+        for (int32 j = 0; j < ButtonChildren.Num(); ++j)
         {
+            UWidget* Child = ButtonChildren[j];
+            UE_LOG(LogTemp, Log, TEXT("[UI_MainHUD] Button child %d type: %s, name: %s"),
+                j, *Child->GetClass()->GetName(), *Child->GetName());
+
             IconImage = Cast<UImage>(Child);
             if (IconImage)
+            {
+                UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Found Image in Button %d!"), i);
                 break;
+            }
         }
 
         if (!IconImage)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Button %d has no Image child!"), i);
             continue;
+        }
 
         // 인벤토리에 아이템이 있으면 아이콘 설정
         if (i < ArrayHelper.Num())
@@ -1039,6 +1094,8 @@ void UUI_MainHUD::UpdateInventoryUI()
             if (ItemDataPtr && *ItemDataPtr)
             {
                 UBaseItemData* ItemData = *ItemDataPtr;
+                UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Slot %d has item: %s"),
+                    i, *ItemData->ItemName.ToString());
 
                 // ItemIcon 로드 및 설정
                 if (!ItemData->ItemIcon.IsNull())
@@ -1048,19 +1105,32 @@ void UUI_MainHUD::UpdateInventoryUI()
                     {
                         IconImage->SetBrushFromTexture(IconTexture);
                         IconImage->SetVisibility(ESlateVisibility::Visible);
+                        UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Icon set for slot %d!"), i);
                     }
+                    else
+                    {
+                        UE_LOG(LogTemp, Error, TEXT("[UI_MainHUD] Failed to load icon for slot %d"), i);
+                    }
+                }
+                else
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Item in slot %d has no icon"), i);
                 }
             }
             else
             {
                 // 빈 슬롯
                 IconImage->SetVisibility(ESlateVisibility::Hidden);
+                UE_LOG(LogTemp, Log, TEXT("[UI_MainHUD] Slot %d is empty"), i);
             }
         }
         else
         {
             // 인벤토리 범위 밖
             IconImage->SetVisibility(ESlateVisibility::Hidden);
+            UE_LOG(LogTemp, Log, TEXT("[UI_MainHUD] Slot %d is out of inventory range"), i);
         }
     }
+
+    UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] UpdateInventoryUI completed!"));
 }
