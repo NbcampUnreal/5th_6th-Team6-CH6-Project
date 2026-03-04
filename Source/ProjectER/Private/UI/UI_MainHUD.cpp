@@ -213,7 +213,7 @@ void UUI_MainHUD::StartRespawn(float _RespawnTime)
 void UUI_MainHUD::NativeConstruct()
 {
     Super::NativeConstruct();
-
+    UE_LOG(LogTemp, Error, TEXT("!!!!!!!!!!!!!!!!!!!!!!!!!!"));
     // 툴팁 init
     if (IsValid(TooltipClass) && !TooltipInstance)
     {

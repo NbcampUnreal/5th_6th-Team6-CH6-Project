@@ -14,6 +14,8 @@ class UAbilitySystemComponent;
 class UBaseAttributeSet;
 class UGameplayEffect;
 class UCharacterData;
+class UWidgetComponent; // 체력 바 머리 위에 띄우는 용
+class UUI_HP_Bar; // 체력 바 머리 위에 띄우는 용
 
 class UTopDownCameraComp;//main camera comp
 
@@ -295,9 +297,26 @@ public:
 	UFUNCTION()
 	void InitUI();
 
+	UFUNCTION()
+	void UpdateOverheadUI();
+
+	UFUNCTION()
+	void OnHealthChanged();
+	UFUNCTION()
+	void OnStaminaChanged();
+	UFUNCTION()
+	void OnLevelChanged();
 protected:
 	// 미니맵용 씬 캡처 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI|Minimap")
 	class USceneCaptureComponent2D* MinimapCaptureComponent;
+	
+	// HP Bar를 담을 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI|Bar")
+	UWidgetComponent* HP_MP_BarWidget;
+
+	UPROPERTY()
+	UUI_HP_Bar* HPBarWidgetInstance;
+	
 #pragma endregion
 };
