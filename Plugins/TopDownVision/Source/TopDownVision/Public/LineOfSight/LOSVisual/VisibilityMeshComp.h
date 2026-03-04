@@ -24,7 +24,7 @@ public:
 public:
     /** Called in-editor to find tagged mesh components on the actor
      *  and populate MeshTargets. */
-    UFUNCTION(CallInEditor, Category="Visibility")
+    UFUNCTION(BlueprintCallable, Category="Visibility")
     void FindMeshesByTag();
 
     /** Manually register a mesh outside the actor's direct hierarchy.

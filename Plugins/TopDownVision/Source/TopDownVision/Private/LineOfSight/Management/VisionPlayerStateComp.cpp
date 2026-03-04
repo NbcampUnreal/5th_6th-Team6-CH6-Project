@@ -3,8 +3,10 @@
 #include "LineOfSight/Management/VisionPlayerStateComp.h"
 
 #include "Net/UnrealNetwork.h"
+#include "GameFramework/GameStateBase.h"
+#include "LineOfSight/Management/VisionGameStateComp.h"
+#include "LineOfSight/VisionComps/Vision_VisualComp.h"
 
-//Log
 DEFINE_LOG_CATEGORY(VisionPlayerStateComp);
 
 UVisionPlayerStateComp::UVisionPlayerStateComp()
@@ -46,6 +48,8 @@ void UVisionPlayerStateComp::OnRep_TeamChannel()
     UE_LOG(VisionPlayerStateComp, Log,
         TEXT("[%s] OnRep_TeamChannel >> Team replicated: %d"),
         *GetOwner()->GetName(), (uint8)TeamChannel);
+
+    RefreshVisibility();
 }
 
 // -------------------------------------------------------------------------- //
@@ -77,8 +81,7 @@ void UVisionPlayerStateComp::OnRep_AllReveal()
         *GetOwner()->GetName(),
         bAllReveal ? TEXT("ON") : TEXT("OFF"));
 
-    // TODO: when AllReveal turns on, force-reveal all currently tracked targets
-    // when it turns off, re-evaluate visibility based on team
+    RefreshVisibility();
 }
 
 // -------------------------------------------------------------------------- //
@@ -91,4 +94,43 @@ bool UVisionPlayerStateComp::CanSeeTeam(EVisionChannel InTeam) const
         return true;
 
     return TeamChannel == InTeam;
+}
+
+// -------------------------------------------------------------------------- //
+//  Refresh
+// -------------------------------------------------------------------------- //
+
+void UVisionPlayerStateComp::RefreshVisibility()
+{
+    UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    AGameStateBase* GS = World->GetGameState();
+    if (!GS)
+        return;
+
+    UVisionGameStateComp* GSComp = GS->FindComponentByClass<UVisionGameStateComp>();
+    if (!GSComp)
+        return;
+
+    for (const FVisibleActorEntry& Entry : GSComp->GetVisibleActors())
+    {
+        if (!Entry.Target)
+            continue;
+
+        UVision_VisualComp* VisualComp = Entry.Target->FindComponentByClass<UVision_VisualComp>();
+        if (!VisualComp)
+            continue;
+
+        const bool bShouldBeVisible = CanSeeTeam((EVisionChannel)Entry.TeamChannel);
+        VisualComp->SetVisible(bShouldBeVisible);
+
+        UE_LOG(VisionPlayerStateComp, Verbose,
+            TEXT("[%s] RefreshVisibility >> %s | TeamID=%d | ShouldBeVisible=%d"),
+            *GetOwner()->GetName(),
+            *Entry.Target->GetName(),
+            Entry.TeamChannel,
+            bShouldBeVisible);
+    }
 }

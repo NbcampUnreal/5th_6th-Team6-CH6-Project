@@ -2,7 +2,6 @@
 
 #pragma once
 
-
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "LineOfSight/VisionData.h"
@@ -41,6 +40,11 @@ public:
 
 	/** Returns true if this player can see targets belonging to the given team. */
 	bool CanSeeTeam(EVisionChannel InTeam) const;
+
+	/** Re-evaluates visibility for all currently tracked actors based on current
+	 *  team channel and AllReveal state. Called on rep and after team assignment. */
+	UFUNCTION(BlueprintCallable, Category="Vision")
+	void RefreshVisibility();
 
 private:
 	UPROPERTY(ReplicatedUsing=OnRep_TeamChannel)

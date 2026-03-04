@@ -279,6 +279,21 @@ void UMainVisionRTManager::RenderLOS_GPU(FRDGBuilder& GraphBuilder, FRDGTextureR
 
 // -------------------------------------------------------------------------- //
 
+void UMainVisionRTManager::SetObservedActor(AActor* InActor)
+{
+	ObservedActor = InActor;
+	if (InActor)
+	{
+		if (UVision_VisualComp* VisualComp = InActor->FindComponentByClass<UVision_VisualComp>())
+		{
+			VisionChannel = VisualComp->GetVisionChannel();
+			UE_LOG(LOSVision, Log,
+				TEXT("UMainVisionRTManager::SetObservedActor >> Actor=%s | VisionChannel=%d"),
+				*InActor->GetName(), (int32)VisionChannel);
+		}
+	}
+}
+
 void UMainVisionRTManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Height)
 {
 	if (!Canvas || !CameraLocalRT)
@@ -297,11 +312,7 @@ void UMainVisionRTManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Heigh
 	if (!GetVisibleProviders(ActiveProviders))
 		return;
 
-	TArray<UVision_VisualComp*> VCShared;
-	TArray<UVision_VisualComp*> VCTeamA;
-	TArray<UVision_VisualComp*> VCTeamB;
-	TArray<UVision_VisualComp*> VCTeamC;
-
+	TArray<UVision_VisualComp*> ValidProviders;
 	for (UVision_VisualComp* Provider : ActiveProviders)
 	{
 		if (!Provider || !Provider->IsUpdating() || !Provider->GetStampMID())
@@ -313,22 +324,11 @@ void UMainVisionRTManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Heigh
 				Provider ? (Provider->GetStampMID() != nullptr) : 0);
 			continue;
 		}
-
-		switch (Provider->GetVisionChannel())
-		{
-		case EVisionChannel::SharedVision: VCShared.Add(Provider); break;
-		case EVisionChannel::TeamA:        VCTeamA.Add(Provider);  break;
-		case EVisionChannel::TeamB:        VCTeamB.Add(Provider);  break;
-		case EVisionChannel::TeamC:        VCTeamC.Add(Provider);  break;
-		case EVisionChannel::None:
-		default: break;
-		}
+		ValidProviders.Add(Provider);
 	}
 
-	DrawLOSStamp(Canvas, VCShared, FLinearColor(1, 1, 1, 1));
-	DrawLOSStamp(Canvas, VCTeamA,  FLinearColor(1, 0, 0, 1));
-	DrawLOSStamp(Canvas, VCTeamB,  FLinearColor(0, 1, 0, 1));
-	DrawLOSStamp(Canvas, VCTeamC,  FLinearColor(0, 0, 1, 1));
+	// All providers draw into the same white channel
+	DrawLOSStamp(Canvas, ValidProviders, FLinearColor(1, 1, 1, 1));
 
 	if (bDrawTextureRange)
 	{

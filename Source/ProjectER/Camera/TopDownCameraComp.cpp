@@ -177,7 +177,7 @@ void UTopDownCameraComp::SetFreeCamMode(bool bIsKeyPressed)
 
 void UTopDownCameraComp::InitializeCompRequirements()
 {
-	const FString DebugName = DebugLogHelper::GetClientDebugName(this);
+	const FString DebugName = DebugLogHelper::GetClientDebugName(GetOwner());
 
 	UE_LOG(MainCameraComp, Log,
 		TEXT("%s UTopDownCameraComp::InitializeCompRequirements >> Called"),

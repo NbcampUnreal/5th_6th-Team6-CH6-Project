@@ -25,7 +25,7 @@ struct FVisibleActorEntry : public FFastArraySerializerItem
     AActor* Target = nullptr;
 
     UPROPERTY()
-    uint8 TeamID = 0;
+    EVisionChannel TeamChannel = EVisionChannel::None;
 };
 
 // -------------------------------------------------------------------------- //
@@ -39,7 +39,8 @@ struct FVisibleActorArray : public FFastArraySerializer
 
     UPROPERTY()
     TArray<FVisibleActorEntry> Items;
-
+    
+    UPROPERTY()
     UVisionGameStateComp* OwnerComp = nullptr;
 
     void PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize);
@@ -91,8 +92,14 @@ public:
     bool IsActorVisibleToTeam(AActor* Target, EVisionChannel Team) const;
 
     // --- Called by FastArray callbacks on clients --- //
-    void OnTargetBecameVisible(AActor* Target, uint8 TeamID);
-    void OnTargetBecameHidden(AActor* Target, uint8 TeamID);
+    void OnTargetBecameVisible(AActor* Target, EVisionChannel Team);
+    void OnTargetBecameHidden(AActor* Target, EVisionChannel Team);
+
+    /** Called by LOSVisionSubsystem when a new provider registers.
+    *  Reveals all existing same-team providers to each other automatically. */
+    void OnProviderRegistered(UVision_VisualComp* NewProvider, EVisionChannel Channel);
+
+    const TArray<FVisibleActorEntry>& GetVisibleActors() const { return VisibleActors.Items; }
 
 private:
     UPROPERTY(Replicated)

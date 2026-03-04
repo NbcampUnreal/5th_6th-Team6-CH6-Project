@@ -8,6 +8,8 @@
 
 DEFINE_LOG_CATEGORY(LOSVisionSubsystem);
 
+// Replace RegisterProvider in LOSVisionSubsystem.cpp with this:
+
 bool ULOSVisionSubsystem::RegisterProvider(UVision_VisualComp* Provider, EVisionChannel InVisionChannel)
 {
     if (!Provider)
@@ -37,8 +39,13 @@ bool ULOSVisionSubsystem::RegisterProvider(UVision_VisualComp* Provider, EVision
         TEXT("ULOSVisionSubsystem::RegisterProvider >> Provider[%s] registered. channel:%d"),
         *Provider->GetOwner()->GetName(), (uint8)InVisionChannel);
 
+    // Notify GameStateComp to reveal all same-team providers to each other
+    if (UVisionGameStateComp* GSComp = GetVisionGameStateComp())
+        GSComp->OnProviderRegistered(Provider, InVisionChannel);
+
     return true;
 }
+
 
 void ULOSVisionSubsystem::UnregisterProvider(UVision_VisualComp* Provider, EVisionChannel InVisionChannel)
 {
@@ -75,9 +82,6 @@ TArray<UVision_VisualComp*> ULOSVisionSubsystem::GetProvidersForTeam(EVisionChan
         UE_LOG(LOSVisionSubsystem, Error,
             TEXT("ULOSVisionSubsystem::GetProvidersForTeam >> No providers for channel:%d"),
             (uint8)TeamChannel);
-
-    if (const FRegisteredProviders* SharedEntry = VisionMap.Find(EVisionChannel::SharedVision))
-        OutProviders.Append(SharedEntry->RegisteredList);
 
     return OutProviders;
 }

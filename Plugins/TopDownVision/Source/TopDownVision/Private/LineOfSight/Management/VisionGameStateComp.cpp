@@ -4,6 +4,7 @@
 
 #include "GameFramework/PlayerState.h"
 #include "LineOfSight/Management/VisionPlayerStateComp.h"
+#include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "LineOfSight/VisionComps/Vision_VisualComp.h"
 
@@ -21,7 +22,7 @@ void FVisibleActorArray::PostReplicatedAdd(const TArrayView<int32>& AddedIndices
     for (int32 Idx : AddedIndices)
     {
         if (Items.IsValidIndex(Idx))
-            OwnerComp->OnTargetBecameVisible(Items[Idx].Target, Items[Idx].TeamID);
+            OwnerComp->OnTargetBecameVisible(Items[Idx].Target, Items[Idx].TeamChannel);
     }
 }
 
@@ -34,7 +35,7 @@ void FVisibleActorArray::PreReplicatedRemove(const TArrayView<int32>& RemovedInd
     for (int32 Idx : RemovedIndices)
     {
         if (Items.IsValidIndex(Idx))
-            OwnerComp->OnTargetBecameHidden(Items[Idx].Target, Items[Idx].TeamID);
+            OwnerComp->OnTargetBecameHidden(Items[Idx].Target, Items[Idx].TeamChannel);
     }
 }
 
@@ -83,12 +84,15 @@ void UVisionGameStateComp::SetActorVisibleToTeam(AActor* Target, EVisionChannel 
 
     FVisibleActorEntry& NewEntry = VisibleActors.Items.AddDefaulted_GetRef();
     NewEntry.Target = Target;
-    NewEntry.TeamID = (uint8)Team;
+    NewEntry.TeamChannel = Team;
     VisibleActors.MarkItemDirty(NewEntry);
 
+    // Fire locally — PostReplicatedAdd only fires on remote clients
+    OnTargetBecameVisible(Target, Team);
+
     UE_LOG(VisionGameStateComp, Log,
-        TEXT("SetActorVisibleToTeam >> %s visible to team %d"),
-        *Target->GetName(), (uint8)Team);
+        TEXT("SetActorVisibleToTeam >> %s visible to team [%s]"),
+        *Target->GetName(), *UEnum::GetValueAsString(Team));
 }
 
 void UVisionGameStateComp::ClearActorVisibleToTeam(AActor* Target, EVisionChannel Team)
@@ -100,35 +104,34 @@ void UVisionGameStateComp::ClearActorVisibleToTeam(AActor* Target, EVisionChanne
         return;
     }
 
-    const uint8 TeamID = (uint8)Team;
-
     for (int32 i = VisibleActors.Items.Num() - 1; i >= 0; --i)
     {
         const FVisibleActorEntry& Entry = VisibleActors.Items[i];
-        if (Entry.Target == Target && Entry.TeamID == TeamID)
+        if (Entry.Target == Target && Entry.TeamChannel == Team)
         {
             VisibleActors.Items.RemoveAt(i);
             VisibleActors.MarkArrayDirty();
 
+            // Fire locally — PreReplicatedRemove only fires on remote clients
+            OnTargetBecameHidden(Target, Team);
+
             UE_LOG(VisionGameStateComp, Log,
-                TEXT("ClearActorVisibleToTeam >> %s hidden from team %d"),
-                *Target->GetName(), TeamID);
+                TEXT("ClearActorVisibleToTeam >> %s hidden from team [%s]"),
+                *Target->GetName(), *UEnum::GetValueAsString(Team));
             return;
         }
     }
 
     UE_LOG(VisionGameStateComp, Verbose,
-        TEXT("ClearActorVisibleToTeam >> %s was not visible to team %d, nothing to clear"),
-        *Target->GetName(), TeamID);
+        TEXT("ClearActorVisibleToTeam >> %s was not visible to team [%s], nothing to clear"),
+        *Target->GetName(), *UEnum::GetValueAsString(Team));
 }
 
 bool UVisionGameStateComp::IsActorVisibleToTeam(AActor* Target, EVisionChannel Team) const
 {
-    const uint8 TeamID = (uint8)Team;
-
     for (const FVisibleActorEntry& Entry : VisibleActors.Items)
     {
-        if (Entry.Target == Target && Entry.TeamID == TeamID)
+        if (Entry.Target == Target && Entry.TeamChannel == Team)
             return true;
     }
 
@@ -136,41 +139,47 @@ bool UVisionGameStateComp::IsActorVisibleToTeam(AActor* Target, EVisionChannel T
 }
 
 // -------------------------------------------------------------------------- //
-//  Client callbacks — fired by FastArray
+//  Client callbacks — fired by FastArray or directly on server/listen
 // -------------------------------------------------------------------------- //
 
-void UVisionGameStateComp::OnTargetBecameVisible(AActor* Target, uint8 TeamID)
+void UVisionGameStateComp::OnTargetBecameVisible(AActor* Target, EVisionChannel Team)
 {
     if (!Target)
         return;
 
-    // Get local player's VisionPlayerStateComp
     APlayerController* PC = GEngine->GetFirstLocalPlayerController(GetWorld());
-    if (!PC || !PC->PlayerState)
-        return;
+    UVisionPlayerStateComp* VisionPS = PC && PC->PlayerState
+        ? PC->PlayerState->FindComponentByClass<UVisionPlayerStateComp>()
+        : nullptr;
 
-    UVisionPlayerStateComp* VisionPS = PC->PlayerState->FindComponentByClass<UVisionPlayerStateComp>();
+    // PlayerState not ready yet (early BeginPlay) — fall back to direct channel check
     if (!VisionPS)
+    {
+        if (UVision_VisualComp* VisualComp = Target->FindComponentByClass<UVision_VisualComp>())
+        {
+            if (VisualComp->GetVisionChannel() == Team)
+                VisualComp->SetVisible(true);
+        }
         return;
+    }
 
-    // Filter — only reveal if local player can see this team
-    if (!VisionPS->CanSeeTeam((EVisionChannel)TeamID))
+    if (!VisionPS->CanSeeTeam(Team))
     {
         UE_LOG(VisionGameStateComp, Verbose,
-            TEXT("OnTargetBecameVisible >> %s skipped — local player cannot see team %d"),
-            *Target->GetName(), TeamID);
+            TEXT("OnTargetBecameVisible >> %s skipped — local player cannot see team [%s]"),
+            *Target->GetName(), *UEnum::GetValueAsString(Team));
         return;
     }
 
     UE_LOG(VisionGameStateComp, Log,
-        TEXT("OnTargetBecameVisible >> %s visible to team %d"),
-        *Target->GetName(), TeamID);
+        TEXT("OnTargetBecameVisible >> %s visible to team [%s]"),
+        *Target->GetName(), *UEnum::GetValueAsString(Team));
 
     if (UVision_VisualComp* VisualComp = Target->FindComponentByClass<UVision_VisualComp>())
         VisualComp->SetVisible(true);
 }
 
-void UVisionGameStateComp::OnTargetBecameHidden(AActor* Target, uint8 TeamID)
+void UVisionGameStateComp::OnTargetBecameHidden(AActor* Target, EVisionChannel Team)
 {
     if (!Target)
         return;
@@ -183,18 +192,47 @@ void UVisionGameStateComp::OnTargetBecameHidden(AActor* Target, uint8 TeamID)
     if (!VisionPS)
         return;
 
-    if (!VisionPS->CanSeeTeam((EVisionChannel)TeamID))
+    if (!VisionPS->CanSeeTeam(Team))
     {
         UE_LOG(VisionGameStateComp, Verbose,
-            TEXT("OnTargetBecameHidden >> %s skipped — local player cannot see team %d"),
-            *Target->GetName(), TeamID);
+            TEXT("OnTargetBecameHidden >> %s skipped — local player cannot see team [%s]"),
+            *Target->GetName(), *UEnum::GetValueAsString(Team));
         return;
     }
 
     UE_LOG(VisionGameStateComp, Log,
-        TEXT("OnTargetBecameHidden >> %s hidden from team %d"),
-        *Target->GetName(), TeamID);
+        TEXT("OnTargetBecameHidden >> %s hidden from team [%s]"),
+        *Target->GetName(), *UEnum::GetValueAsString(Team));
 
     if (UVision_VisualComp* VisualComp = Target->FindComponentByClass<UVision_VisualComp>())
         VisualComp->SetVisible(false);
+}
+
+// -------------------------------------------------------------------------- //
+//  Provider registration callback
+// -------------------------------------------------------------------------- //
+
+void UVisionGameStateComp::OnProviderRegistered(UVision_VisualComp* NewProvider, EVisionChannel Channel)
+{
+    if (!NewProvider || !NewProvider->GetOwner() || Channel == EVisionChannel::None)
+        return;
+
+    ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
+    if (!Subsystem)
+        return;
+
+    // Get all providers already registered on this channel (includes the new one)
+    TArray<UVision_VisualComp*> TeamProviders = Subsystem->GetProvidersForTeam(Channel);
+
+    for (UVision_VisualComp* Existing : TeamProviders)
+    {
+        if (!Existing || !Existing->GetOwner())
+            continue;
+
+        SetActorVisibleToTeam(Existing->GetOwner(), Channel);
+
+        UE_LOG(VisionGameStateComp, Log,
+            TEXT("OnProviderRegistered >> Revealed %s to channel [%s]"),
+            *Existing->GetOwner()->GetName(), *UEnum::GetValueAsString(Channel));
+    }
 }

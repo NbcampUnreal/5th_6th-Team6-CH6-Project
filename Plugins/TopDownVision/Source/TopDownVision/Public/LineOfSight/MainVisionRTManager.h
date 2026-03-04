@@ -42,6 +42,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
 	UMaterialInstanceDynamic* GetLayeredMID() const {return LayeredLOSInterfaceMID;}
+
+	UFUNCTION(BlueprintCallable, Category="LineOfSight")// owner actor setter
+	void SetObservedActor(AActor* InActor);
+
+
+
 	
 private:
 	//Internal helpers
@@ -181,5 +187,9 @@ protected:
 	//-*///--> the CRT is already made in the Content browser, so no need to have resoultion in here
 
 	static uint32 MakeChannelBitMask(const TArray<EVisionChannel>& ChannelEnums);
+
+private:
+	UPROPERTY(Transient)
+	AActor* ObservedActor = nullptr;
 
 };

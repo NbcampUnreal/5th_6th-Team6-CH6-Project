@@ -21,12 +21,20 @@ UVisibilityMeshComp::UVisibilityMeshComp()
 
 void UVisibilityMeshComp::FindMeshesByTag()
 {
-    // This comp is owned by VisionTargetComp which is owned by the actor
+    /*// This comp is owned by VisionTargetComp which is owned by the actor
     AActor* Actor = GetOwner() ? Cast<AActor>(GetOwner()->GetOwner()) : nullptr;
     if (!Actor)
     {
         UE_LOG(VisibilityMeshComp, Warning,
             TEXT("UVisibilityMeshComp::FindMeshesByTag >> Could not resolve actor (owner's owner)"));
+        return;
+    }*/
+
+    AActor* Actor = GetOwner();
+    if (!Actor)
+    {
+        UE_LOG(VisibilityMeshComp, Warning,
+            TEXT("UVisibilityMeshComp::FindMeshesByTag >> No owning actor"));
         return;
     }
 
