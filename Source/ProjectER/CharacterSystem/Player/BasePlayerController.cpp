@@ -24,6 +24,8 @@
 #include "ItemSystem/UI/W_LootingPopup.h"
 #include "ItemSystem/Component/BaseInventoryComponent.h"
 #include "ItemSystem/Component/LootableComponent.h"
+#include "UI/UI_MainHUD.h"
+#include "UI/UI_HUDController.h"
 
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/GameMode/ER_OutGameMode.h"
@@ -84,6 +86,24 @@ void ABasePlayerController::BeginPlay()
 			UE_LOG(LogTemp, Warning, TEXT("CurvedWorldSubsystem not found!"));
 		}
 	}
+
+	// [김현수 추가분] HUDController 찾기
+	FTimerHandle TimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
+		{
+			TArray<UObject*> FoundControllers;
+			GetObjectsOfClass(UUI_HUDController::StaticClass(), FoundControllers, true, RF_NoFlags);
+
+			if (FoundControllers.Num() > 0)
+			{
+				CachedHUDController = Cast<UUI_HUDController>(FoundControllers[0]);
+				UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] HUDController cached!"));
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] HUDController not found yet"));
+			}
+		}, 0.5f, false);
 }
 
 void ABasePlayerController::OnPossess(APawn* InPawn)
@@ -96,6 +116,13 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 	{
 		// 포제스 할 때 캐릭터의 TopDownCameraComp를 가져오는 게 없었음 그래서 추가
 		TopDownCameraComp = ControlledBaseChar->GetComponentByClass<UTopDownCameraComp>();
+
+		// [김현수 추가분] 인벤토리 델리게이트 바인딩
+		if (UBaseInventoryComponent* InvComp = InPawn->FindComponentByClass<UBaseInventoryComponent>())
+		{
+			InvComp->OnInventoryUpdated.AddDynamic(this, &ABasePlayerController::OnInventoryUpdated);
+			UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] Inventory delegate bound!"));
+		}
 	}
 	else
 	{
@@ -1196,3 +1223,49 @@ bool ABasePlayerController::GetCurvedHitResultUnderCursor(ECollisionChannel Trac
 
 
 
+
+
+
+// [김현수 추가분] 인벤토리 업데이트 핸들러
+void ABasePlayerController::OnInventoryUpdated()
+{
+	UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] OnInventoryUpdated called!"));
+
+	// HUDController를 통해 MainHUD 접근 (올바른 인스턴스!)
+	if (CachedHUDController && CachedHUDController->MainHUDWidget)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] Calling UpdateInventoryUI via HUDController!"));
+		CachedHUDController->MainHUDWidget->UpdateInventoryUI();
+		return;
+	}
+
+	// 캐시 실패 시 HUDController 찾기
+	UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] CachedHUDController or MainHUDWidget is null, searching..."));
+
+	TArray<UObject*> FoundControllers;
+	GetObjectsOfClass(UUI_HUDController::StaticClass(), FoundControllers, true, RF_NoFlags);
+
+	UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] Found %d HUDControllers"), FoundControllers.Num());
+
+	for (UObject* Obj : FoundControllers)
+	{
+		UUI_HUDController* HUDCtrl = Cast<UUI_HUDController>(Obj);
+		if (HUDCtrl && HUDCtrl->MainHUDWidget)
+		{
+			// Grid_item이 있는 올바른 위젯인지 확인
+			if (HUDCtrl->MainHUDWidget->Grid_item)
+			{
+				CachedHUDController = HUDCtrl;
+				UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] Found valid HUDController with Grid_item! Calling UpdateInventoryUI!"));
+				HUDCtrl->MainHUDWidget->UpdateInventoryUI();
+				return;
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] HUDController found but MainHUDWidget has no Grid_item, skipping..."));
+			}
+		}
+	}
+
+	UE_LOG(LogTemp, Error, TEXT("[BasePlayerController] Failed to find valid HUDController with MainHUDWidget!"));
+}
