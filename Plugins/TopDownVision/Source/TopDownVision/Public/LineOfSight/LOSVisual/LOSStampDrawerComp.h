@@ -13,9 +13,9 @@ class UMaterialInstanceDynamic;
 
 
 /**
- * Responsible solely for rendering the local LOS raymarching stamp.
- * Takes the obstacle RT from ULOSObstacleDrawerComponent as input,
- * binds it into the LOS material, and produces the final LOS stamp RT.
+ * Responsible solely for binding the obstacle RT into the LOS raymarching material.
+ * MainVisionRTManager draws the MID directly onto the camera RT each frame —
+ * no intermediate stamp RT needed.
  *
  * Server/client gating is the caller's responsibility.
  */
@@ -31,8 +31,8 @@ protected:
     virtual void BeginPlay() override;
 
 public:
-    /** Render the LOS stamp for this frame using the provided obstacle RT.
-     *  Caller is responsible for only invoking this on the correct net role. */
+    /** Bind the obstacle RT into the MID each frame.
+     *  No pre-render — MainVisionRTManager draws the MID directly. */
     UFUNCTION(BlueprintCallable, Category="LOSStamp")
     void UpdateLOSStamp(UTextureRenderTarget2D* ObstacleRT);
 
@@ -44,33 +44,24 @@ public:
     UFUNCTION(BlueprintCallable, Category="LOSStamp")
     void OnVisionRangeChanged(float NewRange, float MaxRange);
 
-    // --- Getters --- //
-    UTextureRenderTarget2D*   GetLOSRenderTarget() const { return LOSRenderTarget; }
-    UMaterialInstanceDynamic* GetLOSMaterialMID()  const { return LOSMaterialMID; }
+    /** Called by Vision_VisualComp::BeginPlay to create the MID. */
+    void CreateResources();
 
-    
-    void CreateResources();// now make it public function for manual creation
-private:
-    
+    // --- Getters --- //
+    UMaterialInstanceDynamic* GetLOSMaterialMID() const { return LOSMaterialMID; }
 
 protected:
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSStamp")
-    int32 PixelResolution = 256;
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="LOSStamp")
-    UTextureRenderTarget2D* LOSRenderTarget = nullptr;
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSStamp")
     UMaterialInterface* LOSMaterial = nullptr;
 
     UPROPERTY(Transient)
     UMaterialInstanceDynamic* LOSMaterialMID = nullptr;
 
-    /** Texture parameter name for the obstacle RT input in the LOS material. */
+    /** Texture parameter name for the obstacle RT in the LOS material. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSStamp")
     FName MIDObstacleTextureParam = TEXT("ObstacleMaskRT");
 
-    /** Scalar parameter name for the normalized vision range in the LOS material. */
+    /** Scalar parameter name for normalized vision range in the LOS material. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSStamp")
     FName MIDVisibleRangeParam = TEXT("NormalizedVisionRadius");
 
@@ -86,6 +77,5 @@ protected:
 
 private:
     bool  bShouldUpdateLOSStamp = false;
-    float CachedVisionRange = 0.f; // for debug draw only — source of truth is VisionTargetComp
-
+    float CachedVisionRange = 0.f;
 };

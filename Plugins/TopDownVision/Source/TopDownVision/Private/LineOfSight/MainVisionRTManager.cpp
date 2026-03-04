@@ -318,7 +318,14 @@ void UMainVisionRTManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Heigh
 	for (UVision_VisualComp* Provider : ActiveProviders)
 	{
 		if (!Provider || !Provider->IsUpdating() || !Provider->GetStampMID())
+		{
+			UE_LOG(LOSVision, Warning,
+				TEXT("UMainVisionRTManager::DrawLOS_CPU >> Skipping provider %s | IsUpdating=%d | StampMID=%d"),
+				Provider ? *Provider->GetOwner()->GetName() : TEXT("NULL"),
+				Provider ? Provider->IsUpdating() : 0,
+				Provider ? (Provider->GetStampMID() != nullptr) : 0);
 			continue;
+		}
 
 		switch (Provider->GetVisionChannel())
 		{
@@ -370,14 +377,28 @@ bool UMainVisionRTManager::ConvertWorldToRT(
 bool UMainVisionRTManager::GetVisibleProviders(TArray<UVision_VisualComp*>& OutProviders) const
 {
 	if (VisionChannel == EVisionChannel::None)
-		return false;
+    {
+        UE_LOG(LOSVision, Warning,
+            TEXT("UMainVisionRTManager::GetVisibleProviders >> VisionChannel is None"));
+        return false;
+    }
 
-	ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
-	if (!Subsystem)
-		return false;
+    ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
+    if (!Subsystem)
+    {
+        UE_LOG(LOSVision, Warning,
+            TEXT("UMainVisionRTManager::GetVisibleProviders >> Subsystem not found"));
+        return false;
+    }
 
-	OutProviders = Subsystem->GetProvidersForTeam(VisionChannel);
-	return true;
+    OutProviders = Subsystem->GetProvidersForTeam(VisionChannel);
+    
+    UE_LOG(LOSVision, Log,
+        TEXT("UMainVisionRTManager::GetVisibleProviders >> Channel=%d | Found=%d providers"),
+        (int32)VisionChannel,
+        OutProviders.Num());
+
+    return true;
 }
 
 bool UMainVisionRTManager::ShouldRunClientLogic() const
