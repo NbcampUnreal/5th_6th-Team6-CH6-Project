@@ -7,6 +7,7 @@
 #include "Monster/BaseMonster.h"
 #include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h"
+#include "Engine/AssetManager.h"
 
 void UER_NeutralSpawnSubsystem::InitializeSpawnPoints(TMap<FName, FNeutralClassConfig>& NeutralClass)
 {
@@ -236,30 +237,68 @@ void UER_NeutralSpawnSubsystem::SpawnMonsterInternal(FNeutralInfo& Info, int32 S
         return;
     }
 
+    FPrimaryAssetId MonsterAssetId(TEXT("Monster"), Info.DAName);
+    FTransform SpawnTM = Info.SpawnPoint->GetActorTransform();
+
+    // 에셋이 로딩되어 있는지 확인 후, 로드완료 콜백을 호출해 스폰 진행
+    UAssetManager::Get().LoadPrimaryAsset(
+        MonsterAssetId,
+        TArray<FName>(),
+        FStreamableDelegate::CreateUObject(
+            this,
+            &UER_NeutralSpawnSubsystem::OnMonsterDataLoadedForSpawn,
+            SpawnPointIdx,
+            MonsterAssetId,
+            SpawnTM
+        )
+    );
+}
+
+void UER_NeutralSpawnSubsystem::OnMonsterDataLoadedForSpawn(int32 SpawnPointIdx, FPrimaryAssetId AssetId, FTransform SpawnTM)
+{
+    // 로드 성공 여부 검사: 에셋을 찾지 못했다면 스폰을 취소합니다 (크래시 방지)
+    UObject* LoadedData = UAssetManager::Get().GetPrimaryAssetObject(AssetId);
+    if (!LoadedData)
+    {
+        UE_LOG(LogTemp, Error, TEXT("[NSS] Failed to Load MonsterAsset: %s. Aborting Spawn!"), *AssetId.ToString());
+        return;
+    }
+
+    FNeutralInfo* InfoPtr = NeutralSpawnMap.Find(SpawnPointIdx);
+    if (!InfoPtr || !InfoPtr->SpawnPoint.IsValid())
+    {
+        return;
+    }
+
     FActorSpawnParameters Params;
     Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-    ABaseMonster* Spawned = GetWorld()->SpawnActor<ABaseMonster>(
-        Info.NeutralActorClass,
-        Info.SpawnPoint->GetActorTransform(),
-        Params
+    // 비동기 로드 완료 후 스폰
+    ABaseMonster* Spawned = GetWorld()->SpawnActorDeferred<ABaseMonster>(
+        InfoPtr->NeutralActorClass,
+        SpawnTM,
+        nullptr,
+        nullptr,
+        Params.SpawnCollisionHandlingOverride
     );
 
     if (!Spawned) 
     {
         return;
     }
-    AER_GameState* ERGS = GetWorld()->GetGameState<AER_GameState>();
 
+    AER_GameState* ERGS = GetWorld()->GetGameState<AER_GameState>();
     int32 Phase = (ERGS && ERGS->GetCurrentPhase() > 0) ? ERGS->GetCurrentPhase() : 1;
 
-    FPrimaryAssetId MonsterAssetId(TEXT("Monster"), Info.DAName);
+    // 1. 껍데기만 있는 몬스터의 스폰을 먼저 완료 (BeginPlay, PossessedBy 내부 동작 등을 처리)
+    UGameplayStatics::FinishSpawningActor(Spawned, SpawnTM);
 
-    Spawned->InitMonsterData(MonsterAssetId, Phase);
+    // 2. 완전히 정상적인 형태를 갖춘 뒤에 데이터를 꽂아넣기
+    Spawned->InitMonsterData(AssetId, Phase);
     Spawned->SetSpawnPoint(SpawnPointIdx);
 
-    Info.SpawnedActor = Spawned;
-    Info.bIsSpawned = true;
+    InfoPtr->SpawnedActor = Spawned;
+    InfoPtr->bIsSpawned = true;
 
-    UE_LOG(LogTemp, Log, TEXT("[NSS] Neutral Spawned! DA_Name: %s, Phase: %d"), *Info.DAName.ToString(), Phase);
+    UE_LOG(LogTemp, Log, TEXT("[NSS] Neutral Spawned after Async Load! DA_Name: %s, Phase: %d"), *InfoPtr->DAName.ToString(), Phase);
 }

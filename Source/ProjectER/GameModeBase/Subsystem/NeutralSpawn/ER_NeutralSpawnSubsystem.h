@@ -54,6 +54,7 @@ public:
 
 private:
 	void SpawnMonsterInternal(FNeutralInfo& Info, int32 SpawnPointIdx);
+	void OnMonsterDataLoadedForSpawn(int32 SpawnPointIdx, FPrimaryAssetId AssetId, FTransform SpawnTM);
 
 
 public:
