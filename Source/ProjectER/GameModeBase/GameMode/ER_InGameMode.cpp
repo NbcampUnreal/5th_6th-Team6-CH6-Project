@@ -118,7 +118,7 @@ void AER_InGameMode::Logout(AController* Exiting)
 	else
 	{
 		// 게임 중 나감
-		if (RemainingPlayers <= 1)
+		if (RemainingPlayers < 1)
 		{
 			//로그아웃 시점에 플레이어가 1명일 시에 서버 초기화
 			//여기서 서버가 바로꺼지면 안되고 승리 패배 판정하고 나가야 할듯?
@@ -172,12 +172,15 @@ void AER_InGameMode::DisConnectClient(APlayerController* PC)
 		ERPC->Client_ReturnToMainMenu(TEXT("GameOver"));
 	}
 
+	TWeakObjectPtr<APlayerController> WeakPC(PC);
+	TWeakObjectPtr<AER_InGameMode> WeakThis(this);
+
 	FTimerHandle Tmp;
-	GetWorld()->GetTimerManager().SetTimer(Tmp, [this, PC]()
+	GetWorld()->GetTimerManager().SetTimer(Tmp, [WeakThis, WeakPC]()
 		{
-			if (GameSession)
+			if (WeakThis.IsValid() && WeakThis->GameSession && WeakPC.IsValid())
 			{
-				GameSession->KickPlayer(PC, FText::FromString(TEXT("Defeated")));
+				WeakThis->GameSession->KickPlayer(WeakPC.Get(), FText::FromString(TEXT("Defeated")));
 			}
 		}, 0.2f, false);
 }
@@ -217,9 +220,9 @@ void AER_InGameMode::TickCountdown()
 void AER_InGameMode::StartGame_Initialize()
 {
 	AER_GameState* ERGS = GetGameState<AER_GameState>();
-	if (!ERGS)
+	if (ERGS)
 	{
-		return;
+		ERGS->BuildTeamCache();
 	}
 
 	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
@@ -295,34 +298,24 @@ void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter, APlayerState*
 		const bool bCanEliminationProtect = (Phase == 1 || Phase == 2);
 
 		// 전멸 판정
-		if (!bCanEliminationProtect)
+		if (!bCanEliminationProtect && RespawnSS->EvaluateTeamElimination(*ERPS, *ERGS))
 		{
-			if (RespawnSS->EvaluateTeamElimination(*ERPS, *ERGS))
+			UE_LOG(LogTemp, Warning, TEXT("[GM] : NotifyPlayerDied , EvaluateTeamElimination = true"));
+
+			// 전멸 판정 true -> 해당 유저의 팀 사출 실행
+			const int32 TeamIdx = static_cast<int32>(ERPS->TeamType);
+
+			// 해당 팀의 리스폰 타이머 정지
+			RespawnSS->StopResapwnTimer(*ERGS, TeamIdx);
+
+			// 해당 팀 패배 처리
+			RespawnSS->SetTeamLose(*ERGS, TeamIdx);
+
+			// 승리 팀 체크
+			int32 LastTeamIdx = RespawnSS->CheckIsLastTeam(*ERGS);
+			if (LastTeamIdx != -1)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("[GM] : NotifyPlayerDied , EvaluateTeamElimination = true"));
-
-				// 전멸 판정 true -> 해당 유저의 팀 사출 실행
-				const int32 TeamIdx = static_cast<int32>(ERPS->TeamType);
-
-				// 해당 팀의 리스폰 타이머 정지
-				RespawnSS->StopResapwnTimer(*ERGS, TeamIdx);
-
-				// 해당 팀 패배 처리
-				RespawnSS->SetTeamLose(*ERGS, TeamIdx);
-
-				// 승리 팀 체크
-				int32 LastTeamIdx = RespawnSS->CheckIsLastTeam(*ERGS);
-				if (LastTeamIdx != -1)
-				{
-					RespawnSS->SetTeamWin(*ERGS, LastTeamIdx);
-				}
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("[GM] : NotifyPlayerDied , EvaluateTeamElimination = false"));
-
-				// 전멸 판정 false -> 리스폰 함수 실행
-				RespawnSS->StartRespawnTimer(*ERPS, *ERGS);
+				RespawnSS->SetTeamWin(*ERGS, LastTeamIdx);
 			}
 		}
 		else
@@ -338,13 +331,18 @@ void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter, APlayerState*
 void AER_InGameMode::NotifyNeutralDied(ACharacter* VictimCharacter)
 {
 	if (!HasAuthority() || !VictimCharacter)
+	{
 		return;
+	}
 
-	//임시니까 일단 캐릭터의 변수를 이용
 	UE_LOG(LogTemp, Log, TEXT("[GM] : NotifyNeutralDied Start"));
 
 	ABaseMonster* NC = Cast<ABaseMonster>(VictimCharacter);
-	NC->GetSpawnPoint();
+	if (!NC)
+	{
+		return;
+	}
+
 	int32 SpawnPoint = NC->GetSpawnPoint();
 	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
 	NeutralSS->SetFalsebIsSpawned(SpawnPoint);
