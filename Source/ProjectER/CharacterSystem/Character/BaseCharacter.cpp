@@ -60,7 +60,7 @@ ABaseCharacter::ABaseCharacter()
 	//new camera
 	TopDownCameraComp = CreateDefaultSubobject<UTopDownCameraComp>(TEXT("TopDownCameraComp"));
 	TopDownCameraComp->SetupAttachment(RootComponent);//temp attatchement-> it should follow the owner with lag
-	TopDownCameraComp->InitializeCompRequirements();
+	//TopDownCameraComp->InitializeCompRequirements();// this should not be done in the constructor!!!
 	TopDownCameraComp->SetAbsolute(true, true, true);
 
 	/* === 경로 설정 인덱스 초기화  === */
@@ -102,6 +102,13 @@ void ABaseCharacter::BeginPlay()
 	{
 		InitVisuals();
 	}
+	
+	if (TopDownCameraComp)//prepare the requirements for the topdown cameracomp
+	{
+		TopDownCameraComp->InitializeCompRequirements();
+	}
+	
+
 	
 	PreloadMontages();
 }

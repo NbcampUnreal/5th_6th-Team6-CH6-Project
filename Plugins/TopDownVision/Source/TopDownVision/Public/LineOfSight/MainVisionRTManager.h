@@ -101,38 +101,36 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	UCanvasRenderTarget2D* CameraLocalRT = nullptr;
 
+	// Replace the entire #pragma region Blur section in the header with this:
+
 #pragma region Blur
-	//Buffer RT
-	UPROPERTY(Transient)
-	UCanvasRenderTarget2D* TempBlurRT = nullptr;//buffer RT generated and used for the bluring
-	
-	//Feathered out mask drawing
+
+	/** RT that receives the feathered output — assign in BP, used by post process material.
+	 *  If not assigned, feather pass is skipped and post process reads CameraLocalRT directly. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
-	UMaterialInterface* FeatherOutMaterial = nullptr; // <-- your M_Blur material
+	UCanvasRenderTarget2D* FeatheredRT = nullptr;
+
+	/** Feather/blur material — reads CameraLocalRT, writes to FeatheredRT */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
+	UMaterialInterface* FeatherOutMaterial = nullptr;
+
 	UPROPERTY(Transient)
 	UMaterialInstanceDynamic* FeatherMID = nullptr;
 
-	//required paran names+value
-	
-	/** Material used for compositing / blurring the CameraLocalRT */
+	/** Material used for compositing / blurring (reserved for future use) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
-	UMaterialInterface* BlurMaterial = nullptr; // <-- your M_Blur material
+	UMaterialInterface* BlurMaterial = nullptr;
+
 	UPROPERTY(Transient)
 	UMaterialInstanceDynamic* BlurMID = nullptr;
 
-	/** Gaussian blur settings */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision|Blur")
-	float BlurRadiusPercent = 0.03f; // 3% of texture size
+	float BlurRadiusPercent = 0.03f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision|Blur")
 	int BlurNumSamples = 32;
 
-	/*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision|Blur")
-	FName */
-
-
-	//temp
-	FVector2D CanvasSize=FVector2D{512.f,512.f};
+	FVector2D CanvasSize = FVector2D{512.f, 512.f};
 
 #pragma endregion
 	
