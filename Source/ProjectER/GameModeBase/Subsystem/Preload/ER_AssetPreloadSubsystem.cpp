@@ -37,12 +37,13 @@ void UER_AssetPreloadSubsystem::StartPreloadMonsterAssets()
 	// 검색할 폴더 경로 (유저 지정 경로)
 	FARFilter Filter;
 	Filter.PackagePaths.Add(FName("/Game/BCW/Monster/MonsterData"));
+	// 하위 폴더까지 검색
 	Filter.bRecursivePaths = true;
 
-	// 우리는 UMonsterDataAsset 클래스를 상속받는 모든 에셋을 찾습니다.
-	// 엔진 버전에 따라 ClassName 또는 ClassPaths 사용
+	// AssetRegistry에 요청해서 특정 폴더에 있는 UMonsterDataAsset 클래스를 상속받는 모든 에셋을 검색
 	Filter.ClassPaths.Add(FTopLevelAssetPath(TEXT("/Script/ProjectER"), TEXT("MonsterDataAsset")));
 	
+	// 검색한 에셋들을 AssetDataList에 저장
 	AssetRegistryModule.Get().GetAssets(Filter, AssetDataList);
 
 	if (AssetDataList.Num() == 0)
@@ -52,7 +53,7 @@ void UER_AssetPreloadSubsystem::StartPreloadMonsterAssets()
 		return;
 	}
 
-	// 로드할 경로들 수집
+	// AssetDataList에 저장된 에셋들을 AssetsToLoad에 추가(경로 문자열)
 	TArray<FSoftObjectPath> AssetsToLoad;
 	for (const FAssetData& AssetData : AssetDataList)
 	{
@@ -61,7 +62,8 @@ void UER_AssetPreloadSubsystem::StartPreloadMonsterAssets()
 
 	UE_LOG(LogTemp, Warning, TEXT("[Preload] Starting async load for %d monster assets..."), AssetsToLoad.Num());
 
-	// 비동기 로딩 시작
+	// StreamableManager를 통해 비동기 로딩을 요청
+	// 로드 완료 시 OnMonsterAssetsLoadedAsync 실행
 	FStreamableManager& StreamableManager = UAssetManager::GetStreamableManager();
 	AssetLoadHandle = StreamableManager.RequestAsyncLoad(
 		AssetsToLoad,
