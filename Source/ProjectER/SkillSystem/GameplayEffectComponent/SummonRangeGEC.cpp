@@ -79,12 +79,12 @@ void USummonRangeGEC::OnGameplayEffectExecuted(FActiveGameplayEffectsContainer& 
 		return;
 	}
 
+	APawn* SpawnInstigator = Cast<APawn>(EffectContext.GetInstigator());
+
 	FVector SpawnLocation = EffectContextData->GetOrigin();
 	SpawnLocation.Z += SpawnConfig->ZOffset;
 
 	FTransform SpawnTransform(SpawnConfig->SpawnRotation, SpawnLocation);
-	APawn* SpawnInstigator = Cast<APawn>(EffectContext.GetInstigator());
-
 	AActor* DeferredSpawnedActor = World->SpawnActorDeferred<AActor>(SpawnConfig->RangeActorClass, SpawnTransform, EffectCauser, SpawnInstigator, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 
 	USkillBase* NonConstInstigatorSkill = const_cast<USkillBase*>(Cast<USkillBase>(EffectContext.GetAbility()));
