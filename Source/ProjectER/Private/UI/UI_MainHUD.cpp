@@ -213,8 +213,6 @@ void UUI_MainHUD::StartRespawn(float _RespawnTime)
 void UUI_MainHUD::NativeConstruct()
 {
     Super::NativeConstruct();
-<<<<<<< HEAD
-
 
     // [김현수 추가분]Grid_item이 BindWidget으로 바인딩 안됐으면 직접 찾기
     if (!Grid_item)
@@ -236,9 +234,6 @@ void UUI_MainHUD::NativeConstruct()
         UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Grid_item already bound via BindWidget!"));
     }
 
-=======
-    UE_LOG(LogTemp, Error, TEXT("!!!!!!!!!!!!!!!!!!!!!!!!!!"));
->>>>>>> feature/UI
     // 툴팁 init
     if (IsValid(TooltipClass) && !TooltipInstance)
     {
