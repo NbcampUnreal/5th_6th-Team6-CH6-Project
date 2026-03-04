@@ -3,8 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-//#include "Components/SceneComponent.h"
-#include "Components/ActorComponent.h" //-> now actor
+#include "Components/ActorComponent.h"
 #include "LocalTextureSampler.generated.h"
 
 /*
@@ -18,107 +17,94 @@
  * No collision or overlap queries
  * Pure AABB math + GPU projection
  * GPU-only merge using material passes
- * 
+ *
  * fuck yeah
- *
- *
- * s
  */
 
-
-//Forward declares
 class UTextureRenderTarget2D;
-class UMaterialInterface;
-class UMaterialInstanceDynamic;
 class UWorldObstacleSubsystem;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class TOPDOWNVISION_API ULocalTextureSampler : public UActorComponent
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	// Sets default values for this component's properties
-	ULocalTextureSampler();
+    ULocalTextureSampler();
 
 protected:
-	virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
+    virtual void OnComponentCreated() override;
 
-	virtual void OnComponentCreated() override;
-	
 public:
+    /** Force update of the local texture (teleport, vision change, etc.) */
+    UFUNCTION(BlueprintCallable, Category="LocalSampler")
+    void UpdateLocalTexture();
 
-	/** Force update of the local texture (teleport, vision change, etc.) */
-	UFUNCTION(BlueprintCallable, Category="LocalSampler")
-	void UpdateLocalTexture();
+    /** Change sampling radius (will trigger re-sample) */
+    UFUNCTION(BlueprintCallable, Category="LocalSampler")
+    void SetWorldSampleRadius(float NewRadius);
 
-	
-	/** Change sampling radius (will trigger re-sample) */
-	UFUNCTION(BlueprintCallable, Category="LocalSampler")
-	void SetWorldSampleRadius(float NewRadius);
+    UFUNCTION(BlueprintCallable, Category="LocalSampler")
+    void SetLocalRenderTarget(UTextureRenderTarget2D* InRT);
 
-	//local RenderTarget setter and getter
-	UFUNCTION(BlueprintCallable, Category="LocalSampler")
-	void SetLocalRenderTarget(UTextureRenderTarget2D* InRT);
-	
-	UFUNCTION(BlueprintCallable, Category="LocalSampler")
-	UTextureRenderTarget2D* GetLocalRenderTarget() const { return LocalMaskRT; }
+    UFUNCTION(BlueprintCallable, Category="LocalSampler")
+    UTextureRenderTarget2D* GetLocalRenderTarget() const { return LocalMaskRT; }
 
-	void SetLocationRoot(USceneComponent* NewRoot);
-	//Line of sight comp is now a actor comp with no location. make a function to set the location
-	
-//private:
-	UFUNCTION(BlueprintCallable, Category="LocalSampler")
-	void PrepareSetups();
-	UFUNCTION(BlueprintCallable, Category="LocalSampler")
-	bool ShouldRunClientLogic() const;
+    void SetLocationRoot(USceneComponent* NewRoot);
+
+    UFUNCTION(BlueprintCallable, Category="LocalSampler")
+    void PrepareSetups();
+
+    UFUNCTION(BlueprintCallable, Category="LocalSampler")
+    bool ShouldRunClientLogic() const;
+
+    /** Set the world explicitly — required when nested inside another component */
+    UFUNCTION(BlueprintCallable, Category="LocalSampler")
+    void SetCachedWorld(UWorld* InWorld);
 
 protected:
-	
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Render")
-	bool bDrawDebugRT=false;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Render")
-	TObjectPtr<UTextureRenderTarget2D> DebugRT;
-	
-	/** Local merged obstacle/height mask */
-  	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
-	TObjectPtr<UTextureRenderTarget2D> LocalMaskRT;
-	
-	
-	// Sampling Settings
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Render")
+    bool bDrawDebugRT = false;
 
-	/** World-space radius of the local sampling area */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Settings")
-	float WorldSampleRadius = 512.f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Render")
+    TObjectPtr<UTextureRenderTarget2D> DebugRT;
 
-	/** Resolution of the local render target */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Settings")
-	int32 LocalResolution = 256;
-	
-	
-	// Cached State
-	/** Last world-space center used for sampling */
-	UPROPERTY(Transient)
-	FVector LastSampleCenter = FVector::ZeroVector;
-	/** Cached local world bounds */
-	UPROPERTY(Transient)
-	FBox2D LocalWorldBounds;
-	/** Indices for overlapping Textures on local RT */
-	UPROPERTY(Transient)
-	TArray<int32> ActiveTileIndices;
+    /** Local merged obstacle/height mask */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LocalSampler|Render")
+    TObjectPtr<UTextureRenderTarget2D> LocalMaskRT;
+
+    /** World-space radius of the local sampling area */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Settings")
+    float WorldSampleRadius = 512.f;
+
+    /** Resolution of the local render target */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Settings")
+    int32 LocalResolution = 256;
+
+    UPROPERTY(Transient)
+    FVector LastSampleCenter = FVector::ZeroVector;
+
+    UPROPERTY(Transient)
+    FBox2D LocalWorldBounds;
+
+    UPROPERTY(Transient)
+    TArray<int32> ActiveTileIndices;
 
 private:
-	//Internal helpers
-	void RebuildLocalBounds(const FVector& WorldCenter);
-	void UpdateOverlappingTiles();
-	void DrawTilesIntoLocalRT();
+    void RebuildLocalBounds(const FVector& WorldCenter);
+    void UpdateOverlappingTiles();
+    void DrawTilesIntoLocalRT();
 
-	//Subsystem
+    /** Returns CachedWorld if set, falls back to GetWorld(). Logs warning if both null. */
+    UWorld* ResolveWorld() const;
 
-	UPROPERTY(Transient)
-	TObjectPtr<UWorldObstacleSubsystem> ObstacleSubsystem;
+    UPROPERTY(Transient)
+    TObjectPtr<UWorldObstacleSubsystem> ObstacleSubsystem;
 
-	UPROPERTY(Transient)
-	TWeakObjectPtr<USceneComponent> SourceRoot;// to read the world location
+    UPROPERTY(Transient)
+    TWeakObjectPtr<USceneComponent> SourceRoot;
+
+    UPROPERTY(Transient)
+    UWorld* CachedWorld = nullptr;
 };

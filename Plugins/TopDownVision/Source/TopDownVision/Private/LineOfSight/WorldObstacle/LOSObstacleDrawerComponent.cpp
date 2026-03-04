@@ -1,10 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "LineOfSight/WorldObstacle/LOSObstacleDrawerComponent.h"
 
 #include "Engine/TextureRenderTarget2D.h"
-//#include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
 
@@ -15,14 +13,13 @@
 ULOSObstacleDrawerComponent::ULOSObstacleDrawerComponent()
 {
     PrimaryComponentTick.bCanEverTick = false;
-
     LocalTextureSampler = CreateDefaultSubobject<ULocalTextureSampler>(TEXT("LocalTextureSampler"));
 }
 
 void ULOSObstacleDrawerComponent::BeginPlay()
 {
     Super::BeginPlay();
-    // CreateResources is called via Initialize() from VisionTargetComp::BeginPlay
+    // CreateResources is called via Initialize() from Vision_VisualComp::BeginPlay
 }
 
 // -------------------------------------------------------------------------- //
@@ -42,9 +39,6 @@ void ULOSObstacleDrawerComponent::Initialize(float InMaxVisionRange)
 
 void ULOSObstacleDrawerComponent::UpdateObstacleTexture()
 {
-    //Temp Testing
-    FString Current=TopDownVisionDebug::GetClientDebugName(GetOwner()->GetOwner());
-    
     if (!ObstacleRenderTarget)
     {
         UE_LOG(LOSVision, Warning,
@@ -83,7 +77,8 @@ void ULOSObstacleDrawerComponent::UpdateObstacleTexture()
 
 void ULOSObstacleDrawerComponent::CreateResources()
 {
-    if (!GetWorld())
+    UWorld* World = GetWorld();
+    if (!World)
         return;
 
     // ---- Render Target ---- //
@@ -92,9 +87,9 @@ void ULOSObstacleDrawerComponent::CreateResources()
         FString RTName = FString::Printf(TEXT("ObstacleRT_%s"), *GetOwner()->GetName());
         ObstacleRenderTarget = NewObject<UTextureRenderTarget2D>(this, FName(*RTName));
         ObstacleRenderTarget->InitAutoFormat(PixelResolution, PixelResolution);
-        ObstacleRenderTarget->ClearColor         = FLinearColor::Black;
-        ObstacleRenderTarget->RenderTargetFormat  = RTF_R8;
-        ObstacleRenderTarget->UpdateResourceImmediate(); // flush to GPU before first draw
+        ObstacleRenderTarget->ClearColor        = FLinearColor::Black;
+        ObstacleRenderTarget->RenderTargetFormat = RTF_R8;
+        ObstacleRenderTarget->UpdateResourceImmediate();
 
         UE_LOG(LOSVision, Log,
             TEXT("[%s] ULOSObstacleDrawerComponent::CreateResources >> RT created: %s (%p)"),
@@ -105,12 +100,22 @@ void ULOSObstacleDrawerComponent::CreateResources()
     // ---- Local Texture Sampler ---- //
     if (LocalTextureSampler)
     {
-        USceneComponent* BestRoot = nullptr;
+        // Inject world explicitly — GetWorld() inside LocalTextureSampler
+        // may fail when nested inside another component's subobject chain
+        LocalTextureSampler->SetCachedWorld(World);
 
-        if (USceneComponent* OuterComp = Cast<USceneComponent>(GetOuter()))
-            BestRoot = OuterComp;
-        else
-            BestRoot = GetOwner() ? GetOwner()->GetRootComponent() : nullptr;
+        // GetOwner() on ActorComponent always returns the actor directly
+        // regardless of how the component was constructed
+        USceneComponent* BestRoot = nullptr;
+        AActor* OwningActor = GetOwner();
+        if (OwningActor)
+        {
+            BestRoot = OwningActor->GetRootComponent();
+            UE_LOG(LOSVision, Log,
+                TEXT("[%s] ULOSObstacleDrawerComponent::CreateResources >> Root resolved: %s"),
+                *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+                *BestRoot->GetName());
+        }
 
         if (BestRoot)
         {
@@ -124,23 +129,6 @@ void ULOSObstacleDrawerComponent::CreateResources()
         }
 
         LocalTextureSampler->SetWorldSampleRadius(MaxVisionRange);
-        LocalTextureSampler->SetLocalRenderTarget(ObstacleRenderTarget); // set last — triggers first draw
+        LocalTextureSampler->SetLocalRenderTarget(ObstacleRenderTarget); // last — triggers first draw
     }
-
-    /*// ---- Material Instance Dynamic ---- //
-    if (ObstacleMaterial)
-    {
-        FString MIDName = FString::Printf(TEXT("ObstacleMID_%s"), *GetOwner()->GetName());
-        ObstacleMaterialMID = UMaterialInstanceDynamic::Create(ObstacleMaterial, this, FName(*MIDName));
-
-        if (ObstacleMaterialMID && ObstacleRenderTarget && MIDTextureParam != NAME_None)
-        {
-            ObstacleMaterialMID->SetTextureParameterValue(MIDTextureParam, ObstacleRenderTarget);
-
-            UE_LOG(LOSVision, Log,
-                TEXT("[%s] ULOSObstacleDrawerComponent::CreateResources >> MID created: %s (%p)"),
-                *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-                *ObstacleMaterialMID->GetName(), ObstacleMaterialMID);
-        }
-    }*/
 }

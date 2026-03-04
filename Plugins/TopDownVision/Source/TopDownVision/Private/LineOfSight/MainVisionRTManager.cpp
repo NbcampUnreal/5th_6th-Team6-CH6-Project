@@ -112,7 +112,7 @@ static bool RectOverlapsWorld(
 
 void UMainVisionRTManager::UpdateCameraLOS()
 {
-	if (!ShouldRunClientLogic())
+    if (!ShouldRunClientLogic())
         return;
 
     if (!CameraLocalRT)
@@ -130,11 +130,6 @@ void UMainVisionRTManager::UpdateCameraLOS()
         return;
     }
 
-    // Cache VisionGameStateComp for visibility filtering
-    UVisionGameStateComp* GSComp = nullptr;
-    if (AGameStateBase* GS = GetWorld()->GetGameState())
-        GSComp = GS->FindComponentByClass<UVisionGameStateComp>();
-
     const FVector CameraCenter = GetOwner()->GetActorLocation();
 
     for (UVision_VisualComp* Provider : ActiveProviders)
@@ -148,14 +143,12 @@ void UMainVisionRTManager::UpdateCameraLOS()
             Provider->GetOwner()->GetActorLocation(),
             Provider->GetVisibleRange());
 
-        // Skip LOS update if provider's owner is hidden
-        const bool bProviderVisible = GSComp
-            ? GSComp->IsActorVisibleToTeam(Provider->GetOwner(), VisionChannel)
-            : true;
+        // Observers always update their own LOS stamp —
+        // visibility filtering via GSComp is only for target actors,
+        // not for the observers doing the seeing
+        Provider->ToggleLOSStampUpdate(bInRange);
 
-        Provider->ToggleLOSStampUpdate(bInRange && bProviderVisible);
-
-        if (bInRange && bProviderVisible)
+        if (bInRange)
             Provider->UpdateVision();
     }
 
@@ -222,6 +215,7 @@ void UMainVisionRTManager::UpdateCameraLOS()
             FLinearColor(WorldLocation.X, WorldLocation.Y, WorldLocation.Z));
     }
 }
+
 
 void UMainVisionRTManager::DrawLOSStamp(UCanvas* Canvas,
 	const TArray<UVision_VisualComp*>& Providers,

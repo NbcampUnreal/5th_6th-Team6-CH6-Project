@@ -140,7 +140,18 @@ UVisionGameStateComp* ULOSVisionSubsystem::GetVisionGameStateComp() const
 {
     AGameStateBase* GS = GetWorld()->GetGameState();
     if (!GS)
+    {
+        UE_LOG(LOSVisionSubsystem, Warning, TEXT("GetVisionGameStateComp >> No GameState"));
         return nullptr;
+    }
 
-    return GS->FindComponentByClass<UVisionGameStateComp>();
+    UVisionGameStateComp* Comp = GS->FindComponentByClass<UVisionGameStateComp>();
+    if (!Comp)
+    {
+        UE_LOG(LOSVisionSubsystem, Warning,
+            TEXT("GetVisionGameStateComp >> VisionGameStateComp not found on %s"),
+            *GS->GetClass()->GetName());
+    }
+
+    return Comp;
 }

@@ -78,6 +78,12 @@ protected:
     UPROPERTY(EditAnywhere, Category="LOSStamp|Debug")
     bool bDrawStampRange = false;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSStamp|Debug")
+    bool bDrawDebugRT = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSStamp|Debug")
+    TObjectPtr<UTextureRenderTarget2D> DebugRT = nullptr;
+
 private:
     bool  bShouldUpdateLOSStamp = false;
     float CachedVisionRange = 0.f; // for debug draw only — source of truth is VisionTargetComp

@@ -1264,6 +1264,9 @@ void ABasePlayerController::HideRespawnTimerUI()
 bool ABasePlayerController::GetCurvedHitResultUnderCursor(ECollisionChannel TraceChannel, bool bTraceComplex,
 	FHitResult& OutHitResult)
 {
+	return GetHitResultUnderCursor(TraceChannel, bTraceComplex, OutHitResult);
+
+	//Temp lock till it is finished
 	if (!CurvedWorldSubsystem)
 	{
 		// Fallback to normal trace if subsystem not available
