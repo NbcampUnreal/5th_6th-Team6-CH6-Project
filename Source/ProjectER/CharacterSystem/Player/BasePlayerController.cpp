@@ -1,4 +1,4 @@
-﻿#include "CharacterSystem/Player/BasePlayerController.h"
+#include "CharacterSystem/Player/BasePlayerController.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -97,7 +97,6 @@ void ABasePlayerController::BeginPlay()
 
 			if (FoundControllers.Num() > 0)
 			{
-				CachedHUDController = Cast<UUI_HUDController>(FoundControllers[0]);
 				UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] HUDController cached!"));
 			}
 			else
@@ -121,8 +120,9 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 		// [김현수 추가분] 인벤토리 델리게이트 바인딩
 		if (UBaseInventoryComponent* InvComp = InPawn->FindComponentByClass<UBaseInventoryComponent>())
 		{
+			InvComp->OnInventoryUpdated.RemoveDynamic(this, &ABasePlayerController::OnInventoryUpdated);
 			InvComp->OnInventoryUpdated.AddDynamic(this, &ABasePlayerController::OnInventoryUpdated);
-			UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] Inventory delegate bound!"));
+			UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] Inventory delegate bound (Server)!"));
 		}
 	}
 	else
@@ -202,6 +202,40 @@ void ABasePlayerController::SetupInputComponent()
 				ETriggerEvent::Completed,
 				this, &ABasePlayerController::OnCameraHold_Completed);
 		}
+
+		// 아이템 사용 바인딩
+		if (InputConfig->UseItem1)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->UseItem1, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 0);
+		}
+		if (InputConfig->UseItem2)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->UseItem2, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 1);
+		}
+		if (InputConfig->UseItem3)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->UseItem3, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 2);
+		}
+		if (InputConfig->UseItem4)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->UseItem4, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 3);
+		}
+		if (InputConfig->UseItem5)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->UseItem5, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 4);
+		}
+		if (InputConfig->UseItem6)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->UseItem6, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 5);
+		}
+		if (InputConfig->UseItem7)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->UseItem7, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 6);
+		}
+		if (InputConfig->UseItem8)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->UseItem8, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 7);
+		}
 	}
 }
 
@@ -240,6 +274,14 @@ void ABasePlayerController::OnRep_Pawn()
 	if (ControlledBaseChar)
 	{
 		TopDownCameraComp = ControlledBaseChar->GetComponentByClass<UTopDownCameraComp>();
+
+		// 클라이언트에서도 인벤토리 델리게이트 바인딩
+		if (UBaseInventoryComponent* InvComp = ControlledBaseChar->GetComponentByClass<UBaseInventoryComponent>())
+		{
+			InvComp->OnInventoryUpdated.RemoveDynamic(this, &ABasePlayerController::OnInventoryUpdated);
+			InvComp->OnInventoryUpdated.AddDynamic(this, &ABasePlayerController::OnInventoryUpdated);
+			UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] Inventory delegate bound (Client)!"));
+		}
 	}
 
 }
@@ -1230,8 +1272,6 @@ void ABasePlayerController::Server_TakeItemFromActor_Implementation(const AActor
 	}
 }
 
-
-
 void ABasePlayerController::UI_RespawnStart(float RespawnTime)
 {
 	if (IsValid(MainHUD))
@@ -1318,41 +1358,36 @@ void ABasePlayerController::OnInventoryUpdated()
 {
 	UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] OnInventoryUpdated called!"));
 
-	// HUDController를 통해 MainHUD 접근 (올바른 인스턴스!)
-	if (CachedHUDController && CachedHUDController->MainHUDWidget)
+	// MainHUD 인스턴스가 유효한지 확인하고 바로 접근!
+	if (IsValid(MainHUD))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] Calling UpdateInventoryUI via HUDController!"));
-		CachedHUDController->MainHUDWidget->UpdateInventoryUI();
+		UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] Calling UpdateInventoryUI via MainHUD!"));
+		MainHUD->UpdateInventoryUI();
 		return;
 	}
 
-	// 캐시 실패 시 HUDController 찾기
-	UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] CachedHUDController or MainHUDWidget is null, searching..."));
+	UE_LOG(LogTemp, Error, TEXT("[BasePlayerController] Failed to find valid MainHUD!"));
+}
 
-	TArray<UObject*> FoundControllers;
-	GetObjectsOfClass(UUI_HUDController::StaticClass(), FoundControllers, true, RF_NoFlags);
+// 인벤토리 슬롯 사용
+void ABasePlayerController::UseInventorySlot(int32 SlotIndex)
+{
+	UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] UseInventorySlot called: Slot %d"), SlotIndex);
 
-	UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] Found %d HUDControllers"), FoundControllers.Num());
-
-	for (UObject* Obj : FoundControllers)
+	APawn* ControlledPawn = GetPawn();
+	if (!ControlledPawn)
 	{
-		UUI_HUDController* HUDCtrl = Cast<UUI_HUDController>(Obj);
-		if (HUDCtrl && HUDCtrl->MainHUDWidget)
-		{
-			// Grid_item이 있는 올바른 위젯인지 확인
-			if (HUDCtrl->MainHUDWidget->Grid_item)
-			{
-				CachedHUDController = HUDCtrl;
-				UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] Found valid HUDController with Grid_item! Calling UpdateInventoryUI!"));
-				HUDCtrl->MainHUDWidget->UpdateInventoryUI();
-				return;
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] HUDController found but MainHUDWidget has no Grid_item, skipping..."));
-			}
-		}
+		UE_LOG(LogTemp, Error, TEXT("[BasePlayerController] No pawn to use item!"));
+		return;
 	}
 
-	UE_LOG(LogTemp, Error, TEXT("[BasePlayerController] Failed to find valid HUDController with MainHUDWidget!"));
+	UBaseInventoryComponent* InventoryComp = ControlledPawn->FindComponentByClass<UBaseInventoryComponent>();
+	if (!InventoryComp)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[BasePlayerController] No inventory component found!"));
+		return;
+	}
+
+	// 슬롯 인덱스 사용 (0부터 시작)
+	InventoryComp->UseItem(SlotIndex);
 }
