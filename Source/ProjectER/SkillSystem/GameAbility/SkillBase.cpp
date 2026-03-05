@@ -275,40 +275,6 @@ void USkillBase::ApplyExcutionEffectToSelf(const TArray<TObjectPtr<USkillEffectD
 	}
 }
 
-//void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle)
-//{
-//	auto* ASC = GetASC();
-//	if (!ASC || Actors.Num() <= 0 || SkillEffectDataAssets.Num() <= 0) return;
-//
-//	// 1. 타겟 데이터 생성 (인라인 루프)
-//	auto* Data = new FGameplayAbilityTargetData_ActorArray();
-//	for (AActor* Target : Actors) {
-//		if (IsValidRelationship(Target)) {
-//			Data->TargetActorArray.Add(Target);
-//		}
-//	}
-//
-//	FGameplayAbilityTargetDataHandle Handle(Data);
-//
-//	// 2. 이펙트 순차 적용
-//	for (USkillEffectDataAsset* Effect : SkillEffectDataAssets)
-//	{
-//		if (!Effect) continue;
-//		TArray<FGameplayEffectSpecHandle> SpecHandles = Effect->MakeSpecs(ASC, this, GetAvatar(), InEffectContextHandle);
-//		for (auto& Spec : SpecHandles)
-//		{
-//			if (Spec.IsValid()) ApplyGameplayEffectSpecToTarget(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, Spec, Handle);
-//		}
-//	}
-//}
-//
-//void USkillBase::ApplyEffectsToActor(AActor* Actor, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle)
-//{
-//	TSet<TObjectPtr<AActor>> TempSet;
-//	TempSet.Add(Actor);
-//	ApplyEffectsToActors(TempSet, SkillEffectDataAssets, InEffectContextHandle);
-//}
-
 bool USkillBase::TryExecuteSkill()
 {
 	auto* ASC = GetASC();
