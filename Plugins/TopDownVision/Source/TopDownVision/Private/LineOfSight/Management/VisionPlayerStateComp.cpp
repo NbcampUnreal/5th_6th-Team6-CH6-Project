@@ -23,8 +23,29 @@ void UVisionPlayerStateComp::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 }
 
 // -------------------------------------------------------------------------- //
-//  Team
+//  BeginPlay
 // -------------------------------------------------------------------------- //
+
+void UVisionPlayerStateComp::BeginPlay()
+{
+    Super::BeginPlay();
+
+    // Schedule RefreshVisibility for next tick.(TEMP)
+    // By then PC->PlayerState will be assigned, so GetLocalVisionPS() in
+    // VisionGameStateComp will find this component via the fast path.
+    // This catches the case where all providers registered before BeginPlay ran.
+    if (UWorld* World = GetWorld())
+    {
+        World->GetTimerManager().SetTimerForNextTick(this, &UVisionPlayerStateComp::RefreshVisibility);
+
+        UE_LOG(VisionPlayerStateComp, Log,
+            TEXT("[%s] BeginPlay >> Scheduled RefreshVisibility for next tick"),
+            *GetOwner()->GetName());
+    }
+}
+
+
+//  Team
 
 void UVisionPlayerStateComp::SetTeamChannel(EVisionChannel InTeam)
 {
@@ -42,9 +63,6 @@ void UVisionPlayerStateComp::SetTeamChannel(EVisionChannel InTeam)
         TEXT("[%s] SetTeamChannel >> Team set to %d"),
         *GetOwner()->GetName(), (uint8)TeamChannel);
 
-    // Re-evaluate all tracked visible actors now that we know the local team.
-    // This corrects any reveals that were deferred during early BeginPlay
-    // when VisionPS was not yet ready in OnTargetBecameVisible.
     RefreshVisibility();
 }
 
@@ -120,6 +138,13 @@ void UVisionPlayerStateComp::RefreshVisibility()
     UVisionGameStateComp* GSComp = GS->FindComponentByClass<UVisionGameStateComp>();
     if (!GSComp)
         return;
+
+    UE_LOG(VisionPlayerStateComp, Log,
+        TEXT("[%s] RefreshVisibility >> Evaluating %d actors | Team:%d | AllReveal:%d"),
+        *GetOwner()->GetName(),
+        GSComp->GetVisibleActors().Num(),
+        (uint8)TeamChannel,
+        bAllReveal);
 
     for (const FVisibleActorEntry& Entry : GSComp->GetVisibleActors())
     {
