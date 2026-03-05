@@ -223,7 +223,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 	void Client_CloseLoadingUI();
-
 	// 박스 아이템 루팅 RPC 끝
 
 	//	mpyi 추가분 _ UI SYSTEM
@@ -316,10 +315,6 @@ private:
 	// 인벤토리 업데이트 핸들러
 	UFUNCTION()
 	void OnInventoryUpdated();
-
-	// UI_HUDController 캐시
-	UPROPERTY()
-	TObjectPtr<class UUI_HUDController> CachedHUDController;
 
 	// Add reference to curved world subsystem
 	UPROPERTY()
