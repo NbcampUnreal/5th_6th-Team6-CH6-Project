@@ -182,6 +182,8 @@ namespace ProjectER
 		namespace Combat
 		{
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Hit);
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Revive);
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(TryRevive);
 		}
 	}
 
