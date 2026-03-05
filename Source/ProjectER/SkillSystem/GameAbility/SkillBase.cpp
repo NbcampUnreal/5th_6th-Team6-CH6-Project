@@ -164,7 +164,7 @@ void USkillBase::ExecuteSkill()
 
 	// 메인 로직: 들여쓰기 없이 평탄하게 진행
 	SetSkillTagCount(ActiveTag, 1);
-	ApplyEffectsToActor(Avatar, CachedConfig->GetExcutionEffects());
+	ApplyExcutionEffectToSelf(CachedConfig->GetExcutionEffects());
 
 	if (HasAuthority(&CurrentActivationInfo))
 	{
@@ -253,37 +253,61 @@ void USkillBase::PrepareToActiveSkill()
 	if (IsLocallyControlled() || HasAuthority(&CurrentActivationInfo)) PlayAnimMontage();
 }
 
-void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle)
+void USkillBase::ApplyExcutionEffectToSelf(const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets)
 {
-	auto* ASC = GetASC();
-	if (!ASC || Actors.Num() <= 0 || SkillEffectDataAssets.Num() <= 0) return;
+	UAbilitySystemComponent* const ASC = GetASC();
+	AActor* const Avatar = GetAvatar();
+	if (!IsValid(ASC) || !IsValid(Avatar) || SkillEffectDataAssets.Num() <= 0) return;
 
-	// 1. 타겟 데이터 생성 (인라인 루프)
-	auto* Data = new FGameplayAbilityTargetData_ActorArray();
-	for (AActor* Target : Actors) {
-		if (IsValidRelationship(Target)) {
-			Data->TargetActorArray.Add(Target);
-		}
-	}
+	FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
+	ContextHandle.AddInstigator(Avatar, Avatar);
+	ContextHandle.SetAbility(this);
 
-	FGameplayAbilityTargetDataHandle Handle(Data);
-
-	// 2. 이펙트 순차 적용
-	for (USkillEffectDataAsset* Effect : SkillEffectDataAssets)
+	for (USkillEffectDataAsset* const Effect : SkillEffectDataAssets)
 	{
-		if (!Effect) continue;
-		TArray<FGameplayEffectSpecHandle> SpecHandles = Effect->MakeSpecs(ASC, this, GetAvatar(), InEffectContextHandle);
-		for (auto& Spec : SpecHandles)
+		if (!IsValid(Effect)) continue;
+
+		for (FGameplayEffectSpecHandle& Spec : Effect->MakeSpecs(ASC, this, Avatar, ContextHandle))
 		{
-			if (Spec.IsValid()) ApplyGameplayEffectSpecToTarget(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, Spec, Handle);
+			if (!Spec.IsValid() || !Spec.Data.IsValid()) continue;
+			ASC->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(), ASC);
 		}
 	}
 }
 
-void USkillBase::ApplyEffectsToActor(AActor* Actor, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle)
-{
-	ApplyEffectsToActors({Actor}, SkillEffectDataAssets, InEffectContextHandle);
-}
+//void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle)
+//{
+//	auto* ASC = GetASC();
+//	if (!ASC || Actors.Num() <= 0 || SkillEffectDataAssets.Num() <= 0) return;
+//
+//	// 1. 타겟 데이터 생성 (인라인 루프)
+//	auto* Data = new FGameplayAbilityTargetData_ActorArray();
+//	for (AActor* Target : Actors) {
+//		if (IsValidRelationship(Target)) {
+//			Data->TargetActorArray.Add(Target);
+//		}
+//	}
+//
+//	FGameplayAbilityTargetDataHandle Handle(Data);
+//
+//	// 2. 이펙트 순차 적용
+//	for (USkillEffectDataAsset* Effect : SkillEffectDataAssets)
+//	{
+//		if (!Effect) continue;
+//		TArray<FGameplayEffectSpecHandle> SpecHandles = Effect->MakeSpecs(ASC, this, GetAvatar(), InEffectContextHandle);
+//		for (auto& Spec : SpecHandles)
+//		{
+//			if (Spec.IsValid()) ApplyGameplayEffectSpecToTarget(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, Spec, Handle);
+//		}
+//	}
+//}
+//
+//void USkillBase::ApplyEffectsToActor(AActor* Actor, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets, const FGameplayEffectContextHandle InEffectContextHandle)
+//{
+//	TSet<TObjectPtr<AActor>> TempSet;
+//	TempSet.Add(Actor);
+//	ApplyEffectsToActors(TempSet, SkillEffectDataAssets, InEffectContextHandle);
+//}
 
 bool USkillBase::TryExecuteSkill()
 {
