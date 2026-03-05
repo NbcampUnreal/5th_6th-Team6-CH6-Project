@@ -321,4 +321,5 @@ private:
 	TObjectPtr<UCurvedWorldSubsystem> CurvedWorldSubsystem;//cahced subsystem
     
 
+	void UseInventorySlot(int32 SlotIndex);
 };

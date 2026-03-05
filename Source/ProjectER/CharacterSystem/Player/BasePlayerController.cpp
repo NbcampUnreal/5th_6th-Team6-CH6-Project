@@ -202,6 +202,40 @@ void ABasePlayerController::SetupInputComponent()
 				ETriggerEvent::Completed,
 				this, &ABasePlayerController::OnCameraHold_Completed);
 		}
+
+		// 아이템 사용 바인딩
+		if (InputConfig->UseItem1)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->UseItem1, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 0);
+		}
+		if (InputConfig->UseItem2)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->UseItem2, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 1);
+		}
+		if (InputConfig->UseItem3)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->UseItem3, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 2);
+		}
+		if (InputConfig->UseItem4)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->UseItem4, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 3);
+		}
+		if (InputConfig->UseItem5)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->UseItem5, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 4);
+		}
+		if (InputConfig->UseItem6)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->UseItem6, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 5);
+		}
+		if (InputConfig->UseItem7)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->UseItem7, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 6);
+		}
+		if (InputConfig->UseItem8)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->UseItem8, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 7);
+		}
 	}
 }
 
@@ -1306,4 +1340,27 @@ void ABasePlayerController::OnInventoryUpdated()
 	}
 
 	UE_LOG(LogTemp, Error, TEXT("[BasePlayerController] Failed to find valid MainHUD!"));
+}
+
+// 인벤토리 슬롯 사용
+void ABasePlayerController::UseInventorySlot(int32 SlotIndex)
+{
+	UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] UseInventorySlot called: Slot %d"), SlotIndex);
+
+	APawn* ControlledPawn = GetPawn();
+	if (!ControlledPawn)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[BasePlayerController] No pawn to use item!"));
+		return;
+	}
+
+	UBaseInventoryComponent* InventoryComp = ControlledPawn->FindComponentByClass<UBaseInventoryComponent>();
+	if (!InventoryComp)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[BasePlayerController] No inventory component found!"));
+		return;
+	}
+
+	// 슬롯 인덱스 사용 (0부터 시작)
+	InventoryComp->UseItem(SlotIndex);
 }
