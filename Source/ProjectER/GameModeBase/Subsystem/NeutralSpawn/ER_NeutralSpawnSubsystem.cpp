@@ -8,6 +8,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h"
 #include "Engine/AssetManager.h"
+#include "Monster/MonsterRangeComponent.h"
 
 void UER_NeutralSpawnSubsystem::InitializeSpawnPoints(TMap<FName, FNeutralClassConfig>& NeutralClass)
 {
@@ -120,6 +121,12 @@ void UER_NeutralSpawnSubsystem::StartRespawnNeutral(const int32 SpawnPointIdx)
 
                 // 몬스터에게 Map의 Key값 전달
                 Spawned->SetSpawnPoint(SpawnPointIdx);
+                
+                // 몬스터 스폰 완료 후, 범위를 확인하여 그룹을 형성
+                if (UMonsterRangeComponent* RangeComp = Spawned->GetMonsterRangeComp())
+                {
+                    RangeComp->InitMonsterGroup();
+                }
 
                 // FNeutralInfo 값 갱신
                 Info->SpawnedActor = Spawned;
@@ -296,6 +303,12 @@ void UER_NeutralSpawnSubsystem::OnMonsterDataLoadedForSpawn(int32 SpawnPointIdx,
     // 2. 완전히 정상적인 형태를 갖춘 뒤에 데이터를 꽂아넣기
     Spawned->InitMonsterData(AssetId, Phase);
     Spawned->SetSpawnPoint(SpawnPointIdx);
+    
+    // 3. 몬스터 스폰 완료 후, 범위를 확인하여 그룹을 형성
+    if (UMonsterRangeComponent* RangeComp = Spawned->GetMonsterRangeComp())
+    {
+        RangeComp->InitMonsterGroup();
+    }
 
     InfoPtr->SpawnedActor = Spawned;
     InfoPtr->bIsSpawned = true;

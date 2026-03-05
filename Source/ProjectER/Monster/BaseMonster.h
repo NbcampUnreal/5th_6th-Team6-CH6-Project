@@ -42,7 +42,8 @@ public:
 	bool GetbIsCombat();
 	void SetbIsDead(bool Target);
 	bool GetbIsDead();
-
+	UMonsterRangeComponent* GetMonsterRangeComp() { return MonsterRangeComp; };
+	FPrimaryAssetId GetMonsterId() const { return MonsterId; }
 	
 protected:
 
@@ -71,6 +72,9 @@ private:
 	void OnRep_MonsterData();
 	
 	// 이벤트 태그
+	UFUNCTION()
+	void MonsterGroupHitCall(AActor* Target);
+
 	UFUNCTION() // SendHitEvent()
 	void OnMonterHitHandle(AActor* Target);
 

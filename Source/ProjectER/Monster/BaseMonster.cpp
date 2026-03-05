@@ -116,7 +116,7 @@ void ABaseMonster::PossessedBy(AController* newController)
 
 	if (HasAuthority())
 	{
-		AttributeSet->OnMonsterHit.AddDynamic(this, &ABaseMonster::OnMonterHitHandle);
+		AttributeSet->OnMonsterHit.AddDynamic(this, &ABaseMonster::MonsterGroupHitCall);
 		AttributeSet->OnMonsterDeath.AddDynamic(this, &ABaseMonster::OnMonterDeathHandle);
 		AttributeSet->OnMoveSpeedChanged.AddDynamic(this, &ABaseMonster::OnMoveSpeedChangedHandle);
 		MonsterRangeComp->OnPlayerCountOne.AddDynamic(this, &ABaseMonster::OnPlayerCountOneHandle);
@@ -379,6 +379,24 @@ void ABaseMonster::InitHPBar()
 	}
 
 	HPBar->SetPercent(1.f);
+}
+
+void ABaseMonster::MonsterGroupHitCall(AActor* Target)
+{
+	OnMonterHitHandle(Target); // 자신
+	// 그룹 전파 
+	if (MonsterRangeComp)
+	{
+		for (TObjectPtr<ABaseMonster> GroupMember : MonsterRangeComp->GetMonsterGroup())
+		{
+			// 살아있고 현재 전투 중이 아닌 동료만 대상
+			if (IsValid(GroupMember) && !GroupMember->GetbIsDead() && !GroupMember->GetbIsCombat() && GroupMember != this)
+			{
+				// 동료가 직접 맞은 것처럼 OnMonterHitHandle 호출
+				GroupMember->OnMonterHitHandle(Target);
+			}
+		}
+	}
 }
 
 // 서버에서만

@@ -32,8 +32,8 @@ void UMonsterRangeComponent::BeginPlay()
     RangeSphere->InitSphereRadius(PlayerCountSphereRadius);
     RangeSphere->SetCollisionProfileName(TEXT("PlayerCounter"));
     RangeSphere->SetGenerateOverlapEvents(true);
-    RangeSphere->SetWorldLocation(GetOwner()->GetActorLocation());
-    RangeSphere->RegisterComponent();
+	RangeSphere->RegisterComponent();
+	RangeSphere->SetWorldLocation(GetOwner()->GetActorLocation());
 
     RangeSphere->OnComponentBeginOverlap.AddDynamic(
         this, &UMonsterRangeComponent::OnPlayerCountingBeginOverlap);
@@ -61,6 +61,45 @@ void UMonsterRangeComponent::SetPlayerCount(int32 Amount)
 int32 UMonsterRangeComponent::GetPlayerCount()
 {
 	return PlayerCount;
+}
+
+//이거 스폰하고  실행
+void UMonsterRangeComponent::InitMonsterGroup()
+{
+	ABaseMonster* OwnerMonster = Cast<ABaseMonster>(GetOwner());
+	if (!OwnerMonster || !OwnerMonster->HasAuthority()) return;
+
+	FPrimaryAssetId MyId = OwnerMonster->GetMonsterId();
+
+	if (!MyId.IsValid()) return;
+
+	if (!IsValid(this) || !IsValid(OwnerMonster) || !IsValid(RangeSphere)) return;
+
+	TArray<AActor*> GroupActors;
+	RangeSphere->GetOverlappingActors(GroupActors, AActor::StaticClass());
+
+
+	for (AActor* Actor : GroupActors)
+	{
+		ABaseMonster* Monster = Cast<ABaseMonster>(Actor);
+		// 죽지않고 같은 종류의 몬스터인 경우
+		if (Monster && !Monster->GetbIsDead() && Monster->GetMonsterId() == MyId)
+		{
+			MonsterGroup.AddUnique(Monster);
+
+			// 따로 스폰된 경우 자기를 다른 그룹에 넣어주려고
+			if (UMonsterRangeComponent* OtherRangeComp = Monster->GetMonsterRangeComp())
+			{
+				OtherRangeComp->GetMonsterGroup().AddUnique(OwnerMonster);
+			}
+		}
+	}
+}
+
+
+TArray<TObjectPtr<ABaseMonster>>& UMonsterRangeComponent::GetMonsterGroup()
+{
+	return MonsterGroup;
 }
 void UMonsterRangeComponent::OnPlayerCountingBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
