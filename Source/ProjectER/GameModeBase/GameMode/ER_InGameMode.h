@@ -72,11 +72,14 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void TEMP_DespawnNeutrals();
 
+
 private:
 	bool bIsGameStarted = false;
 	int32 PlayersInitialized = 0; // Number of players connected
 	int32 PlayersReady = 0;       // Number of players who finished preloading
 	int32 ExpectedPlayers = 0;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Phase")
 	float PhaseDuration = 30.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Subsystem|Neutral")
