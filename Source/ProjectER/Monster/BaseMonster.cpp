@@ -116,7 +116,7 @@ void ABaseMonster::PossessedBy(AController* newController)
 
 	if (HasAuthority())
 	{
-		AttributeSet->OnMonsterHit.AddDynamic(this, &ABaseMonster::OnMonterHitHandle);
+		AttributeSet->OnMonsterHit.AddDynamic(this, &ABaseMonster::MonsterGroupHitCall);
 		AttributeSet->OnMonsterDeath.AddDynamic(this, &ABaseMonster::OnMonterDeathHandle);
 		AttributeSet->OnMoveSpeedChanged.AddDynamic(this, &ABaseMonster::OnMoveSpeedChangedHandle);
 		MonsterRangeComp->OnPlayerCountOne.AddDynamic(this, &ABaseMonster::OnPlayerCountOneHandle);
@@ -158,14 +158,24 @@ void ABaseMonster::InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level)
 
 void ABaseMonster::InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float Level)
 {
-	UAssetManager::Get().LoadPrimaryAsset(MonsterAssetId,
-		TArray<FName>(),
-		FStreamableDelegate::CreateUObject(
-			this,
-			&ABaseMonster::OnMonsterDataLoaded,
-			MonsterAssetId,
-			Level
-		));
+	UObject* PreloadedData = UAssetManager::Get().GetPrimaryAssetObject(MonsterAssetId);
+	if (PreloadedData)
+	{
+		// 이전에 ER_AssetPreloadSubsystem 등에 의해 이미 메모리에 올라와있다면 즉시 초기화
+		OnMonsterDataLoaded(MonsterAssetId, Level);
+	}
+	else
+	{
+		// 로딩이 안된 경우 비동기 로딩 진행 (예방 차원)
+		UAssetManager::Get().LoadPrimaryAsset(MonsterAssetId,
+			TArray<FName>(),
+			FStreamableDelegate::CreateUObject(
+				this,
+				&ABaseMonster::OnMonsterDataLoaded,
+				MonsterAssetId,
+				Level
+			));
+	}
 }
 
 void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Level)
@@ -371,10 +381,45 @@ void ABaseMonster::InitHPBar()
 	HPBar->SetPercent(1.f);
 }
 
+void ABaseMonster::MonsterGroupHitCall(AActor* Target)
+{
+	OnMonterHitHandle(Target); // 자신
+	// 그룹 전파 
+	if (MonsterRangeComp)
+	{
+		for (TObjectPtr<ABaseMonster> GroupMember : MonsterRangeComp->GetMonsterGroup())
+		{
+			// 살아있고 현재 전투 중이 아닌 동료만 대상
+			if (IsValid(GroupMember) && !GroupMember->GetbIsDead() && !GroupMember->GetbIsCombat() && GroupMember != this)
+			{
+				// 동료가 직접 맞은 것처럼 OnMonterHitHandle 호출
+				GroupMember->OnMonterHitHandle(Target);
+			}
+		}
+	}
+}
+
 // 서버에서만
 void ABaseMonster::OnMonterHitHandle(AActor* Target)
 {
-	SetTargetPlayer(Target);
+	if (IsValid(TargetPlayer) && TargetPlayer != Target)
+	{
+		const float OldTargetDistance = FVector::DistSquared(TargetPlayer->GetActorLocation(), GetActorLocation());
+		const float NewTargetDistance = FVector::DistSquared(Target->GetActorLocation(), GetActorLocation());
+
+		if (NewTargetDistance < OldTargetDistance)
+		{
+			if (ABaseCharacter* OldTargetPlayer = Cast<ABaseCharacter>(TargetPlayer))
+			{
+				OldTargetPlayer->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+			}
+			SetTargetPlayer(Target);
+		}
+	}
+	else if (!IsValid(TargetPlayer))
+	{
+		SetTargetPlayer(Target);
+	}
 
 	if (bIsPhaseTrigger == false && AttributeSet->GetHPPersent() <= 0.5f)
 	{
@@ -382,10 +427,12 @@ void ABaseMonster::OnMonterHitHandle(AActor* Target)
 		SendStateTreeEvent(MonsterTags.Phase2EventTag);
 	}
 
-	ABaseCharacter* BC = Cast<ABaseCharacter>(Target);
-	if (!BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+	if (ABaseCharacter* BC = Cast<ABaseCharacter>(TargetPlayer))
 	{
-		BC->OnDeath.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
+		if (!BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+		{
+			BC->OnDeath.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
+		}
 	}
 	
 	if (IsValid(StateTreeComp) == false)

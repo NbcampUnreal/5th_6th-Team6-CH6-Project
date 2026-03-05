@@ -5,6 +5,7 @@
 #include "MonsterRangeComponent.generated.h"
 
 class USphereComponent;
+class ABaseMonster;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerCountChanged);
 
@@ -21,6 +22,11 @@ public:
 
 	void SetPlayerCount(int32 Amount);
 	int32 GetPlayerCount();
+
+	void InitMonsterGroup();
+
+	TArray<TObjectPtr<ABaseMonster>>& GetMonsterGroup();
+
 
 protected:
 	virtual void BeginPlay() override;
@@ -71,5 +77,7 @@ private:
 	TObjectPtr<USphereComponent> RangeSphere;
 
 	TObjectPtr<USphereComponent> OutSphere;
+
+	TArray<TObjectPtr<ABaseMonster>> MonsterGroup;
 
 };

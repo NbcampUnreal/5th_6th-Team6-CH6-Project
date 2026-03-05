@@ -15,10 +15,9 @@ class PROJECTER_API ATargetActor : public AGameplayAbilityTargetActor
 	GENERATED_BODY()
 public:
 	ATargetActor();
-	virtual void BeginPlay() override;
-	virtual void StartTargeting(UGameplayAbility* Ability) override;
 	virtual void ConfirmTargetingAndContinue() override;
 	bool TryConfirmMouseTarget();
+	bool SubmitExternalTarget(AActor* InTargetActor);
 private:
 	
 };

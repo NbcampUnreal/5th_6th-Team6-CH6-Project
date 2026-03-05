@@ -11,16 +11,6 @@ ATargetActor::ATargetActor()
     //bDestroyOnConfirmation = true;
 }
 
-void ATargetActor::BeginPlay()
-{
-    Super::BeginPlay();
-}
-
-void ATargetActor::StartTargeting(UGameplayAbility* Ability)
-{
-	Super::StartTargeting(Ability);
-}
-
 void ATargetActor::ConfirmTargetingAndContinue()
 {
     UMouseTargetSkill* MouseSkill = Cast<UMouseTargetSkill>(OwningAbility);
@@ -48,4 +38,15 @@ bool ATargetActor::TryConfirmMouseTarget()
     }
 
     return false;
+}
+
+bool ATargetActor::SubmitExternalTarget(AActor* InTargetActor)
+{
+    UMouseTargetSkill* MouseSkill = Cast<UMouseTargetSkill>(OwningAbility);
+    if (!IsValid(MouseSkill)) return false;
+    if (!MouseSkill->IsTargetActorInRange(InTargetActor)) return false;
+
+    FGameplayAbilityTargetDataHandle Handle = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(InTargetActor);
+    TargetDataReadyDelegate.Broadcast(Handle);
+    return true;
 }

@@ -5,10 +5,10 @@
 void UER_PhaseSubsystem::StartPhaseTimer(AER_GameState& GS, float Duration)
 {
     UWorld* World = GetWorld();
-    if (!World) return;
-
-    if (World->GetNetMode() == NM_Client)
+    if (!World || World->GetNetMode() == NM_Client)
+    {
         return;
+    }
 
     ClearPhaseTimer();
     GS.PhaseServerTime = GS.GetServerWorldTimeSeconds();
@@ -27,10 +27,10 @@ void UER_PhaseSubsystem::StartPhaseTimer(AER_GameState& GS, float Duration)
 void UER_PhaseSubsystem::StartNoticeTimer(float Duration)
 {
     UWorld* World = GetWorld();
-    if (!World) return;
-
-    if (World->GetNetMode() == NM_Client)
+    if (!World || World->GetNetMode() == NM_Client)
+    {
         return;
+    }
 
     float HalfDuration = Duration / 2;
 
@@ -45,41 +45,39 @@ void UER_PhaseSubsystem::StartNoticeTimer(float Duration)
 
 void UER_PhaseSubsystem::ClearPhaseTimer()
 {
-    if (GetWorld()->GetNetMode() == NM_Client)
-        return;
-
-    if (UWorld* World = GetWorld())
+    UWorld* World = GetWorld();
+    if (!World || World->GetNetMode() == NM_Client)
     {
-        World->GetTimerManager().ClearTimer(PhaseTimer);
+        return;
     }
+
+    World->GetTimerManager().ClearTimer(PhaseTimer);
 }
 
 void UER_PhaseSubsystem::OnPhaseTimeUp()
 {
     UWorld* World = GetWorld();
-    if (!World) 
-        return;
-
-    if (World->GetNetMode() == NM_Client)
-        return;
-
-    if (AGameModeBase* GM = World->GetAuthGameMode())
+    if (!World || World->GetNetMode() == NM_Client)
     {
-        Cast<AER_InGameMode>(GM)->HandlePhaseTimeUp();
+        return;
+    }
+
+    if (AER_InGameMode* GM = Cast<AER_InGameMode>(World->GetAuthGameMode()))
+    {
+        GM->HandlePhaseTimeUp();
     }
 }
 
 void UER_PhaseSubsystem::OnNoticeTimeUp()
 {
     UWorld* World = GetWorld();
-    if (!World)
-        return;
-
-    if (World->GetNetMode() == NM_Client)
-        return;
-
-    if (AGameModeBase* GM = World->GetAuthGameMode())
+    if (!World || World->GetNetMode() == NM_Client)
     {
-        Cast<AER_InGameMode>(GM)->HandleObjectNoticeTimeUp();
+        return;
+    }
+
+    if (AER_InGameMode* GM = Cast<AER_InGameMode>(World->GetAuthGameMode()))
+    {
+        GM->HandleObjectNoticeTimeUp();
     }
 }

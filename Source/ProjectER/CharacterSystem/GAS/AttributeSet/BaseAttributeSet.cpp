@@ -293,11 +293,23 @@ void UBaseAttributeSet::SetMaxXPCurve(UCurveTable* InTable, FName InRowName)
 void UBaseAttributeSet::OnRep_Level(const FGameplayAttributeData& OldLevel)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, Level, OldLevel);
+
+	/// mpyi _ 머리 위 HUD 모든 플레이어 동기화를 위함
+	if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(GetOwningAbilitySystemComponent()->GetAvatarActor()))
+	{
+		TargetChar->OnLevelChanged();
+	}
 }
 
 void UBaseAttributeSet::OnRep_MaxLevel(const FGameplayAttributeData& OldMaxLevel)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, MaxLevel, OldMaxLevel);
+
+	/// mpyi _ 머리 위 HUD 모든 플레이어 동기화를 위함
+	if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(GetOwningAbilitySystemComponent()->GetAvatarActor()))
+	{
+		TargetChar->OnLevelChanged();
+	}
 }
 
 void UBaseAttributeSet::OnRep_XP(const FGameplayAttributeData& OldXP)
@@ -313,11 +325,23 @@ void UBaseAttributeSet::OnRep_MaxXP(const FGameplayAttributeData& OldMaxXP)
 void UBaseAttributeSet::OnRep_Health(const FGameplayAttributeData& OldHealth)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, Health, OldHealth);
+	
+	/// mpyi _ 머리 위 HUD 모든 플레이어 동기화를 위함
+	if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(GetOwningAbilitySystemComponent()->GetAvatarActor()))
+	{
+		TargetChar->OnHealthChanged();
+	}
 }
 
 void UBaseAttributeSet::OnRep_MaxHealth(const FGameplayAttributeData& OldMaxHealth)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, MaxHealth, OldMaxHealth);
+
+	/// mpyi _ 머리 위 HUD 모든 플레이어 동기화를 위함
+	if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(GetOwningAbilitySystemComponent()->GetAvatarActor()))
+	{
+		TargetChar->OnHealthChanged();
+	}
 }
 
 void UBaseAttributeSet::OnRep_HealthRegen(const FGameplayAttributeData& OldHealthRegen)
@@ -328,11 +352,23 @@ void UBaseAttributeSet::OnRep_HealthRegen(const FGameplayAttributeData& OldHealt
 void UBaseAttributeSet::OnRep_Stamina(const FGameplayAttributeData& OldStamina)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, Stamina, OldStamina);
+
+	/// mpyi _ 머리 위 HUD 모든 플레이어 동기화를 위함
+	if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(GetOwningAbilitySystemComponent()->GetAvatarActor()))
+	{
+		TargetChar->OnStaminaChanged();
+	}
 }
 
 void UBaseAttributeSet::OnRep_MaxStamina(const FGameplayAttributeData& OldMaxStamina)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, MaxStamina, OldMaxStamina);
+
+	/// mpyi _ 머리 위 HUD 모든 플레이어 동기화를 위함
+	if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(GetOwningAbilitySystemComponent()->GetAvatarActor()))
+	{
+		TargetChar->OnStaminaChanged();
+	}
 }
 
 void UBaseAttributeSet::OnRep_StaminaRegen(const FGameplayAttributeData& OldStaminaRegen)

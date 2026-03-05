@@ -92,3 +92,12 @@ protected:
 	//TArray<TObjectPtr<USkillEffectDataAsset>> EffectsToApply;
 };
 
+UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced)
+class PROJECTER_API UInstantSkillConfig : public UBaseSkillConfig
+{
+	GENERATED_BODY()
+
+public:
+	UInstantSkillConfig();
+protected:
+};

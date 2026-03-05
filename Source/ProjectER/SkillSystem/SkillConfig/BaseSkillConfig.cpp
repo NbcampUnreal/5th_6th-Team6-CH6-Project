@@ -5,6 +5,7 @@
 #include "Skillsystem/GameAbility/SkillBase.h"
 #include "SkillSystem/GameAbility/MouseTargetSkill.h"
 #include "SkillSystem/GameAbility/MouseClickSkill.h"
+#include "SkillSystem/GameAbility/InstantSkill.h"
 
 UBaseSkillConfig::UBaseSkillConfig()
 {
@@ -73,4 +74,10 @@ UMouseClickSkillConfig::UMouseClickSkillConfig()
 {
 	AbilityClass = UMouseClickSkill::StaticClass();
 	Data.SkillActivationType = ESkillActivationType::PointClick;
+}
+
+UInstantSkillConfig::UInstantSkillConfig()
+{
+    AbilityClass = UInstantSkill::StaticClass();
+    Data.SkillActivationType = ESkillActivationType::Instant;
 }

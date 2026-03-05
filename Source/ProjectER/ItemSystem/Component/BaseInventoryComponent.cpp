@@ -6,7 +6,7 @@ UBaseInventoryComponent::UBaseInventoryComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 	MaxSlots = 20;
-	SetIsReplicatedByDefault(true); // 컴포넌트 리플리케이션 활성화
+	SetIsReplicatedByDefault(true);
 }
 
 void UBaseInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -19,7 +19,6 @@ bool UBaseInventoryComponent::AddItem(UBaseItemData* Item)
 {
 	if (!Item || InventoryContents.Num() >= MaxSlots) return false;
 
-	// 권한이 없으면 서버에 요청
 	if (!GetOwner()->HasAuthority())
 	{
 		Server_AddItem(Item);
@@ -32,10 +31,10 @@ bool UBaseInventoryComponent::AddItem(UBaseItemData* Item)
 	{
 		FString DebugMsg = FString::Printf(TEXT("가방에 추가됨: %s (현재 %d개)"),
 			*Item->ItemName.ToString(), InventoryContents.Num());
-
 		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan, DebugMsg);
 	}
 
+	UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] Broadcasting OnInventoryUpdated (AddItem)"));
 	OnInventoryUpdated.Broadcast();
 	return true;
 }
@@ -49,5 +48,6 @@ void UBaseInventoryComponent::Server_AddItem_Implementation(UBaseItemData* InDat
 
 void UBaseInventoryComponent::OnRep_InventoryContents()
 {
+	UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] Broadcasting OnInventoryUpdated (OnRep)"));
 	OnInventoryUpdated.Broadcast();
 }
