@@ -9,7 +9,7 @@ class UBaseItemData;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryUpdatedSignature);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class PROJECTER_API UBaseInventoryComponent : public UActorComponent 
+class PROJECTER_API UBaseInventoryComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
@@ -52,9 +52,11 @@ protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 private:
+	class UAbilitySystemComponent* ResolveOwnerAbilitySystemComponent() const;
+
 	// 아이템 효과 적용 헬퍼 함수
-	void ApplyItemEffect(class UUsableItemData* ItemData);
-	void ApplyStatIncrease(class UAbilitySystemComponent* ASC, class UUsableItemData* ItemData);
+	bool ApplyItemEffect(class UUsableItemData* ItemData);
+	bool ApplyStatIncrease(class UAbilitySystemComponent* ASC, class UUsableItemData* ItemData);
 
 public:
 	UPROPERTY(BlueprintAssignable, Category = "Inventory")
