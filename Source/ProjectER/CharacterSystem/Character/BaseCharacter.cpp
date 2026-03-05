@@ -475,14 +475,7 @@ void ABaseCharacter::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
 {
 	if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
 	{
-		// MovementComp->MaxWalkSpeed = Data.NewValue;
-        
-#if WITH_EDITOR
-		if (bShowDebug)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[%s] 이동 속도 변경됨: %f"), *GetName(), Data.NewValue);
-		}
-#endif
+		MovementComp->MaxWalkSpeed = Data.NewValue;
 	}
 }
 
@@ -529,7 +522,7 @@ void ABaseCharacter::InitAbilitySystem()
 	// 스탯 변경 감지 델리게이트 연결
 	if (AbilitySystemComponent.IsValid())
 	{
-		// AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBaseAttributeSet::GetMoveSpeedAttribute()).AddUObject(this, &ABaseCharacter::OnMoveSpeedChanged);
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBaseAttributeSet::GetMoveSpeedAttribute()).AddUObject(this, &ABaseCharacter::OnMoveSpeedChanged);
 	}
 
 	if (HasAuthority() && HeroData)
@@ -570,13 +563,26 @@ void ABaseCharacter::InitAbilitySystem()
 		{
 			FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
 			Context.AddSourceObject(this);
+			
 			FGameplayEffectSpecHandle EffectSpec = AbilitySystemComponent->MakeOutgoingSpec(AliveStateEffectClass, 1.0f, Context);
 			if (EffectSpec.IsValid())
 			{
 				AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*EffectSpec.Data.Get());
 			}
 		}
-
+		
+		if (RegenEffectClass)
+		{
+			FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+			Context.AddSourceObject(this);
+		
+			FGameplayEffectSpecHandle RegenSpec = AbilitySystemComponent->MakeOutgoingSpec(RegenEffectClass, 1.0f, Context);
+			if (RegenSpec.IsValid())
+			{
+				AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*RegenSpec.Data.Get());
+			}
+		}
+		
 		// Attribute Set 초기화
 		InitAttributes();
 	}
@@ -1327,6 +1333,21 @@ void ABaseCharacter::Revive(FVector RespawnLocation)
 
 	// 클라이언트 동기화 (위치 이동 및 비주얼/물리 복구)
 	Multicast_Revive(RespawnLocation);
+	
+	// 부활 이펙트 GC 호출 (멀티캐스트로 모든 클라이언트에 재생 요청)
+	if (AbilitySystemComponent.IsValid())
+	{
+		// 부활 대상 정보, 위치 Context
+		FGameplayCueParameters CueParams;
+		CueParams.Location = RespawnLocation;
+		CueParams.Instigator = this;
+		CueParams.EffectCauser = this;
+
+		AbilitySystemComponent->ExecuteGameplayCue(
+			ProjectER::GameplayCue::Combat::Revive, 
+			CueParams
+		);
+	}
 }
 
 void ABaseCharacter::HandleDown()

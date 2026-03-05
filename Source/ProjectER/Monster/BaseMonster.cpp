@@ -116,7 +116,7 @@ void ABaseMonster::PossessedBy(AController* newController)
 
 	if (HasAuthority())
 	{
-		AttributeSet->OnMonsterHit.AddDynamic(this, &ABaseMonster::OnMonterHitHandle);
+		AttributeSet->OnMonsterHit.AddDynamic(this, &ABaseMonster::MonsterGroupHitCall);
 		AttributeSet->OnMonsterDeath.AddDynamic(this, &ABaseMonster::OnMonterDeathHandle);
 		AttributeSet->OnMoveSpeedChanged.AddDynamic(this, &ABaseMonster::OnMoveSpeedChangedHandle);
 		MonsterRangeComp->OnPlayerCountOne.AddDynamic(this, &ABaseMonster::OnPlayerCountOneHandle);
@@ -381,10 +381,45 @@ void ABaseMonster::InitHPBar()
 	HPBar->SetPercent(1.f);
 }
 
+void ABaseMonster::MonsterGroupHitCall(AActor* Target)
+{
+	OnMonterHitHandle(Target); // 자신
+	// 그룹 전파 
+	if (MonsterRangeComp)
+	{
+		for (TObjectPtr<ABaseMonster> GroupMember : MonsterRangeComp->GetMonsterGroup())
+		{
+			// 살아있고 현재 전투 중이 아닌 동료만 대상
+			if (IsValid(GroupMember) && !GroupMember->GetbIsDead() && !GroupMember->GetbIsCombat() && GroupMember != this)
+			{
+				// 동료가 직접 맞은 것처럼 OnMonterHitHandle 호출
+				GroupMember->OnMonterHitHandle(Target);
+			}
+		}
+	}
+}
+
 // 서버에서만
 void ABaseMonster::OnMonterHitHandle(AActor* Target)
 {
-	SetTargetPlayer(Target);
+	if (IsValid(TargetPlayer) && TargetPlayer != Target)
+	{
+		const float OldTargetDistance = FVector::DistSquared(TargetPlayer->GetActorLocation(), GetActorLocation());
+		const float NewTargetDistance = FVector::DistSquared(Target->GetActorLocation(), GetActorLocation());
+
+		if (NewTargetDistance < OldTargetDistance)
+		{
+			if (ABaseCharacter* OldTargetPlayer = Cast<ABaseCharacter>(TargetPlayer))
+			{
+				OldTargetPlayer->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+			}
+			SetTargetPlayer(Target);
+		}
+	}
+	else if (!IsValid(TargetPlayer))
+	{
+		SetTargetPlayer(Target);
+	}
 
 	if (bIsPhaseTrigger == false && AttributeSet->GetHPPersent() <= 0.5f)
 	{
@@ -392,10 +427,12 @@ void ABaseMonster::OnMonterHitHandle(AActor* Target)
 		SendStateTreeEvent(MonsterTags.Phase2EventTag);
 	}
 
-	ABaseCharacter* BC = Cast<ABaseCharacter>(Target);
-	if (!BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+	if (ABaseCharacter* BC = Cast<ABaseCharacter>(TargetPlayer))
 	{
-		BC->OnDeath.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
+		if (!BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+		{
+			BC->OnDeath.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
+		}
 	}
 	
 	if (IsValid(StateTreeComp) == false)

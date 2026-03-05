@@ -24,6 +24,20 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_AddItem(UBaseItemData* InData);
 
+	// 아이템 사용
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void UseItem(int32 SlotIndex);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_UseItem(int32 SlotIndex);
+
+	// 인벤토리 정보 가져오기
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory")
+	int32 GetInventoryCount() const { return InventoryContents.Num(); }
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory")
+	UBaseItemData* GetItemAt(int32 SlotIndex) const;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory")
 	int32 MaxSlots = 20;
 
@@ -36,6 +50,11 @@ protected:
 	void OnRep_InventoryContents();
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+private:
+	// 아이템 효과 적용 헬퍼 함수
+	void ApplyItemEffect(class UUsableItemData* ItemData);
+	void ApplyStatIncrease(class UAbilitySystemComponent* ASC, class UUsableItemData* ItemData);
 
 public:
 	UPROPERTY(BlueprintAssignable, Category = "Inventory")
