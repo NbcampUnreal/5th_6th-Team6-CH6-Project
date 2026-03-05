@@ -74,6 +74,14 @@ public:
 	UFUNCTION()
 	void StartRespawn(float _RespawnTime);
 
+	// [김현수 추가분] 인벤토리 Grid (public으로 이동)
+	UPROPERTY(meta = (BindWidget))
+	class UUniformGridPanel* Grid_item;
+
+	// [김현수 추가분] 인벤토리 UI 업데이트 (아이템 시스템용)
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void UpdateInventoryUI();
+
 protected:
 	// 마우스 우클릭 확인용
 	virtual void NativeConstruct() override; // 생성자
@@ -253,10 +261,6 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* NowRespawnTime;
 
-	// 인벤토리 Grid (BP에서 만든 Grid_item)
-	UPROPERTY(meta = (BindWidget))
-	class UUniformGridPanel* Grid_item;
-
 	UFUNCTION()
 	void OnSkillClicked_Q();
 	UFUNCTION()
@@ -298,11 +302,11 @@ private:
 	// SEVEN SEGMENT MAKER
 protected:
 	TArray<int32> GetDigitsFromNumber(int32 InNumber);
-	
+
 	UPROPERTY(EditAnywhere, Category = "UI_Resources")
 	TArray<UTexture2D*> SegmentTextures;
 
-public :
+public:
 	void SetKillCount(int32 InKillCount);
 	void SetDeathCount(int32 InDeathCount);
 	void SetAssistCount(int32 InAssistCount);
@@ -323,10 +327,6 @@ private:
 public:
 	void UpdateTeamHP(int32 TeamIndex, float CurrentHP, float MaxHP);
 	void UpdateTeamLV(int32 TeamIndex, int32 CurrentLV);
-
-	// 인벤토리 UI 업데이트 (아이템 시스템용)
-	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	void UpdateInventoryUI();
 
 	// 체력 빨강 반짝 애니메이션 용
 protected:

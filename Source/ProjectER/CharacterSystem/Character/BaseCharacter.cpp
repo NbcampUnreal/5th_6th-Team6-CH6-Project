@@ -32,6 +32,8 @@
 #include "SkillSystem/SkillDataAsset.h"
 
 #include "Components/SceneCaptureComponent2D.h" // 미니맵용
+#include "Components/WidgetComponent.h" // HP바 위젯용
+#include "UI/UI_HP_Bar.h" // HP바 위젯용
 
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "LineOfSight/Management/VisionPlayerStateComp.h"
@@ -84,6 +86,20 @@ ABaseCharacter::ABaseCharacter()
 	MinimapCaptureComponent->SetRelativeRotation(FRotator(-90.0f, 0.0f, 0.0f));
 	MinimapCaptureComponent->ProjectionType = ECameraProjectionMode::Orthographic;
 	MinimapCaptureComponent->OrthoWidth = 2048.0f; // 이거로 미니맵 확대/축소 조절
+
+	// HP Bar 생성
+	HP_MP_BarWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("HPBarWidget"));
+	HP_MP_BarWidget->SetupAttachment(GetMesh());
+// 	HP_MP_BarWidget->SetDrawSize(FVector2D(250.0f, 130.0f));
+	HP_MP_BarWidget->SetRelativeLocation(FVector(0.0f, 0.0f, 300.0f));
+	HP_MP_BarWidget->SetWidgetSpace(EWidgetSpace::Screen);
+	
+	/// 콜리전 없애기
+	HP_MP_BarWidget->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	HP_MP_BarWidget->SetCollisionResponseToAllChannels(ECR_Ignore);
+	HP_MP_BarWidget->SetGenerateOverlapEvents(false);
+
+	HP_MP_BarWidget->SetDrawAtDesiredSize(true);
 
 	/// 최적화 필요시 아래 플래그 조절해가면서 해결해 보기
 	//MinimapCaptureComponent->ShowFlags.SetDynamicShadows(false); // 동적 그림자
@@ -467,14 +483,7 @@ void ABaseCharacter::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
 {
 	if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
 	{
-		// MovementComp->MaxWalkSpeed = Data.NewValue;
-        
-#if WITH_EDITOR
-		if (bShowDebug)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[%s] 이동 속도 변경됨: %f"), *GetName(), Data.NewValue);
-		}
-#endif
+		MovementComp->MaxWalkSpeed = Data.NewValue;
 	}
 }
 
@@ -521,7 +530,7 @@ void ABaseCharacter::InitAbilitySystem()
 	// 스탯 변경 감지 델리게이트 연결
 	if (AbilitySystemComponent.IsValid())
 	{
-		// AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBaseAttributeSet::GetMoveSpeedAttribute()).AddUObject(this, &ABaseCharacter::OnMoveSpeedChanged);
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBaseAttributeSet::GetMoveSpeedAttribute()).AddUObject(this, &ABaseCharacter::OnMoveSpeedChanged);
 	}
 
 	if (HasAuthority() && HeroData)
@@ -562,13 +571,26 @@ void ABaseCharacter::InitAbilitySystem()
 		{
 			FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
 			Context.AddSourceObject(this);
+			
 			FGameplayEffectSpecHandle EffectSpec = AbilitySystemComponent->MakeOutgoingSpec(AliveStateEffectClass, 1.0f, Context);
 			if (EffectSpec.IsValid())
 			{
 				AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*EffectSpec.Data.Get());
 			}
 		}
-
+		
+		if (RegenEffectClass)
+		{
+			FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+			Context.AddSourceObject(this);
+		
+			FGameplayEffectSpecHandle RegenSpec = AbilitySystemComponent->MakeOutgoingSpec(RegenEffectClass, 1.0f, Context);
+			if (RegenSpec.IsValid())
+			{
+				AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*RegenSpec.Data.Get());
+			}
+		}
+		
 		// Attribute Set 초기화
 		InitAttributes();
 	}
@@ -1319,6 +1341,21 @@ void ABaseCharacter::Revive(FVector RespawnLocation)
 
 	// 클라이언트 동기화 (위치 이동 및 비주얼/물리 복구)
 	Multicast_Revive(RespawnLocation);
+	
+	// 부활 이펙트 GC 호출 (멀티캐스트로 모든 클라이언트에 재생 요청)
+	if (AbilitySystemComponent.IsValid())
+	{
+		// 부활 대상 정보, 위치 Context
+		FGameplayCueParameters CueParams;
+		CueParams.Location = RespawnLocation;
+		CueParams.Instigator = this;
+		CueParams.EffectCauser = this;
+
+		AbilitySystemComponent->ExecuteGameplayCue(
+			ProjectER::GameplayCue::Combat::Revive, 
+			CueParams
+		);
+	}
 }
 
 void ABaseCharacter::HandleDown()
@@ -1466,12 +1503,17 @@ void ABaseCharacter::InitUI()
 			HUD->InitHeroDataFactory(HeroData);
 			HUD->InitASCFactory(GetAbilitySystemComponent());
 			PC->setMainHud(HUD->getMainHUD());
-			
+
 			UE_LOG(LogTemp, Warning, TEXT("HUD InitOverlay Success!"));
 		}
 		else
 		{
 			UE_LOG(LogTemp, Error, TEXT("!!! HUD Casting Fail! address : %s !!!"), *GenericHUD->GetName());
+		}
+
+		if (HP_MP_BarWidget && !HasAuthority())
+		{
+			HPBarWidgetInstance = Cast<UUI_HP_Bar>(HP_MP_BarWidget->GetUserWidgetObject());
 		}
 
 	}
@@ -1481,6 +1523,81 @@ void ABaseCharacter::InitUI()
 	{
 		/// '나' 이외는 캡쳐 컴포넌트를 꺼서 성능 최적화~
 		MinimapCaptureComponent->Deactivate();
+	}
+
+	// 서버가 아니면 HP Bar 초기화
+	if (!HasAuthority())
+	{
+		UpdateOverheadUI();
+	}
+}
+
+void ABaseCharacter::UpdateOverheadUI()
+{
+	if (!HPBarWidgetInstance)
+	{
+		HPBarWidgetInstance = Cast<UUI_HP_Bar>(HP_MP_BarWidget->GetUserWidgetObject());
+	}
+
+	if (HPBarWidgetInstance && GetAbilitySystemComponent())
+	{
+		float CurrentHP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetHealthAttribute());
+		float MaxHP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetMaxHealthAttribute());
+
+		HPBarWidgetInstance->Update_HP_bar(CurrentHP, MaxHP);
+	}
+}
+
+void ABaseCharacter::OnHealthChanged()
+{
+	if (HasAuthority()) return;
+
+	if (!HPBarWidgetInstance)
+	{
+		HPBarWidgetInstance = Cast<UUI_HP_Bar>(HP_MP_BarWidget->GetUserWidgetObject());
+	}
+
+	if (HPBarWidgetInstance && GetAbilitySystemComponent())
+	{
+		float CurrentHP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetHealthAttribute());
+		float MaxHP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetMaxHealthAttribute());
+
+		HPBarWidgetInstance->Update_HP_bar(CurrentHP, MaxHP);
+	}
+}
+
+void ABaseCharacter::OnStaminaChanged()
+{
+	if (HasAuthority()) return;
+
+	if (!HPBarWidgetInstance)
+	{
+		HPBarWidgetInstance = Cast<UUI_HP_Bar>(HP_MP_BarWidget->GetUserWidgetObject());
+	}
+
+	if (HPBarWidgetInstance && GetAbilitySystemComponent())
+	{
+		float CurrentSP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetStaminaAttribute());
+		float MaxSP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetMaxStaminaAttribute());
+
+		HPBarWidgetInstance->Update_MP_bar(CurrentSP, MaxSP);
+	}
+}
+
+void ABaseCharacter::OnLevelChanged()
+{
+	if (HasAuthority()) return;
+
+	if (!HPBarWidgetInstance)
+	{
+		HPBarWidgetInstance = Cast<UUI_HP_Bar>(HP_MP_BarWidget->GetUserWidgetObject());
+	}
+
+	if (HPBarWidgetInstance && GetAbilitySystemComponent())
+	{
+		float CurrentLV = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetLevelAttribute());
+
+		HPBarWidgetInstance->Update_LV_bar(CurrentLV);
 	}
 }
 
