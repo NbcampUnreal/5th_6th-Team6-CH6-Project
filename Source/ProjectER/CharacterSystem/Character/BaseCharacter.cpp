@@ -459,14 +459,14 @@ void ABaseCharacter::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
 {
 	if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
 	{
-		// MovementComp->MaxWalkSpeed = Data.NewValue;
-        
-#if WITH_EDITOR
-		if (bShowDebug)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[%s] 이동 속도 변경됨: %f"), *GetName(), Data.NewValue);
-		}
-#endif
+		MovementComp->MaxWalkSpeed = Data.NewValue;
+		
+		// [디버그 추가] 서버와 클라이언트가 각각 얼마의 속도를 가지는지 화면에 출력
+		FString RoleStr = HasAuthority() ? TEXT("Server") : TEXT("Client");
+		FString Msg = FString::Printf(TEXT("[%s] %s 속도 적용됨: %f"), *RoleStr, *GetName(), Data.NewValue);
+		
+		// 화면에 5초간 출력 (서버는 파란색, 클라이언트는 녹색)
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, HasAuthority() ? FColor::Blue : FColor::Green, Msg);
 	}
 }
 
@@ -513,7 +513,7 @@ void ABaseCharacter::InitAbilitySystem()
 	// 스탯 변경 감지 델리게이트 연결
 	if (AbilitySystemComponent.IsValid())
 	{
-		// AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBaseAttributeSet::GetMoveSpeedAttribute()).AddUObject(this, &ABaseCharacter::OnMoveSpeedChanged);
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBaseAttributeSet::GetMoveSpeedAttribute()).AddUObject(this, &ABaseCharacter::OnMoveSpeedChanged);
 	}
 
 	if (HasAuthority() && HeroData)
