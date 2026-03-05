@@ -19,6 +19,7 @@ DEFINE_LOG_CATEGORY(VisionGameStateComp);
  *  First tries PC->PlayerState (fast path, valid after initial setup).
  *  Falls back to iterating GameState->PlayerArray (works during early BeginPlay
  *  when PC->PlayerState is not yet assigned). */
+ 
 static UVisionPlayerStateComp* GetLocalVisionPS(UWorld* World)
 {
     if (!World)
@@ -54,9 +55,7 @@ static UVisionPlayerStateComp* GetLocalVisionPS(UWorld* World)
     return nullptr;
 }
 
-// -------------------------------------------------------------------------- //
 //  FastArray Callbacks — fire on clients
-// -------------------------------------------------------------------------- //
 
 void FVisibleActorArray::PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize)
 {
@@ -87,9 +86,7 @@ void FVisibleActorArray::PostReplicatedChange(const TArrayView<int32>& ChangedIn
     // Entries are only added or removed — no change events expected
 }
 
-// -------------------------------------------------------------------------- //
 //  Component
-// -------------------------------------------------------------------------- //
 
 UVisionGameStateComp::UVisionGameStateComp()
 {
@@ -239,9 +236,7 @@ void UVisionGameStateComp::OnTargetBecameHidden(AActor* Target, EVisionChannel T
         VisualComp->SetVisible(false);
 }
 
-// -------------------------------------------------------------------------- //
 //  Provider registration callback
-// -------------------------------------------------------------------------- //
 
 void UVisionGameStateComp::OnProviderRegistered(UVision_VisualComp* NewProvider, EVisionChannel Channel)
 {

@@ -11,6 +11,8 @@
 
 //Debug
 #include "TopDownVisionDebug.h"
+#include "GameFramework/PlayerState.h"
+#include "LineOfSight/Management/VisionPlayerStateComp.h"
 #include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
 #include "LineOfSight/VisionComps/Vision_EvaluatorComp.h"
 
@@ -29,8 +31,6 @@ UVision_VisualComp::UVision_VisualComp()
 void UVision_VisualComp::BeginPlay()
 {
     Super::BeginPlay();
-
-    AActor* DebugCheckingActor = GetOwner();
     
     if (ShapeComp)//attachment happens here
     {
@@ -43,21 +43,46 @@ void UVision_VisualComp::BeginPlay()
         else
         {
             UE_LOG(LOSVision, Warning,
-                TEXT("[%s] UVision_VisualComp::BeginPlay >> Owner has no root component, cannot attach ShapeComp"),
+                TEXT("[%s] UVision_VisualComp::Initialize >> Owner has no root component, cannot attach ShapeComp"),
                 *GetOwner()->GetName());
         }
     }
     else
     {
         UE_LOG(LOSVision, Error,
-            TEXT("[%s] UVision_VisualComp::BeginPlay >> ShapeComp subobject is missing"),
+            TEXT("[%s] UVision_VisualComp::Initialize >> ShapeComp subobject is missing"),
             *GetOwner()->GetName());
     }
 
     
-    if (!ShouldRunClientLogic())
+    if (!ShouldRunClientLogic())//server gate
         return;
 
+    
+    Initialize();//make separate function
+}
+
+void UVision_VisualComp::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    Super::EndPlay(EndPlayReason);
+
+    //Clean up!
+    if (ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>())
+        Subsystem->UnregisterProvider(this, VisionChannel);
+}
+
+void UVision_VisualComp::OnRegister()
+{
+    Super::OnRegister();
+
+ 
+    
+}
+
+void UVision_VisualComp::Initialize()
+{
+    AActor* DebugCheckingActor = GetOwner();
+    
     // Pass MaxVisionRange into ObstacleDrawer so it can size its RT correctly
     if (ObstacleDrawer)
         ObstacleDrawer->Initialize(MaxVisionRange);
@@ -77,6 +102,9 @@ void UVision_VisualComp::BeginPlay()
     CachedEvaluatorComp = GetOwner()->FindComponentByClass<UVision_EvaluatorComp>();
 
 
+    //get and set the Vision channel from the player state
+    
+    
     //==== Registration ====//
     if (ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>())
     {
@@ -85,26 +113,9 @@ void UVision_VisualComp::BeginPlay()
     else
     {
         UE_LOG(LOSVision, Warning,
-            TEXT("[%s] UVision_VisualComp::BeginPlay >> LOSVisionSubsystem not found"),
+            TEXT("[%s] UVision_VisualComp::Initialize >> LOSVisionSubsystem not found"),
             *GetOwner()->GetName());
     }
-}
-
-void UVision_VisualComp::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-    Super::EndPlay(EndPlayReason);
-
-    //Clean up!
-    if (ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>())
-        Subsystem->UnregisterProvider(this, VisionChannel);
-}
-
-void UVision_VisualComp::OnRegister()
-{
-    Super::OnRegister();
-
- 
-    
 }
 
 // -------------------------------------------------------------------------- //
@@ -202,6 +213,11 @@ UMaterialInstanceDynamic* UVision_VisualComp::GetStampMID() const
 }
 
 // -------------------------------------------------------------------------- //
+
+void UVision_VisualComp::UpdateVisionRange(float NewRange)
+{
+    VisionRange= FMath::Clamp(NewRange, 0.f, MaxVisionRange);
+}
 
 bool UVision_VisualComp::ShouldRunClientLogic() const
 {

@@ -5,6 +5,7 @@
 #include "AbilitySystemInterface.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
 #include "GameplayEffectTypes.h"
+#include "LineOfSight/VisionData.h"
 #include "BaseCharacter.generated.h"
 
 class UCameraComponent;
@@ -300,4 +301,12 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI|Minimap")
 	class USceneCaptureComponent2D* MinimapCaptureComponent;
 #pragma endregion
+
+#pragma region Vision
+
+	UFUNCTION(BlueprintPure, BlueprintCallable, Category = "Vision")//Helper for getting the vision channel from the PlayerStateComp
+	EVisionChannel GetVisionChannelFromVisionPlayerStateComp();
+	
+#pragma endregion
+	
 };

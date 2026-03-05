@@ -34,6 +34,7 @@
 #include "Components/SceneCaptureComponent2D.h" // 미니맵용
 
 #include "GameModeBase/State/ER_PlayerState.h"
+#include "LineOfSight/Management/VisionPlayerStateComp.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -1481,4 +1482,18 @@ void ABaseCharacter::InitUI()
 		/// '나' 이외는 캡쳐 컴포넌트를 꺼서 성능 최적화~
 		MinimapCaptureComponent->Deactivate();
 	}
+}
+
+EVisionChannel ABaseCharacter::GetVisionChannelFromVisionPlayerStateComp()
+{
+	if (APlayerState* PC=GetPlayerState())
+	{
+		if (UVisionPlayerStateComp* PVC=PC->FindComponentByClass<UVisionPlayerStateComp>())
+		{
+			return PVC->GetTeamChannel();
+		}
+	}
+
+	//failed to get the vision channel
+	return EVisionChannel::None;
 }

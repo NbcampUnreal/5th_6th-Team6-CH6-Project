@@ -119,6 +119,8 @@ void AER_OutGameMode::PostLogin(APlayerController* NewPlayer)
                 ERPS->TeamType = ETeamType::Team_C;
             }
 
+            OnPlayerTeamDecided(ERPS->TeamType);//Call the BP exposed Function -> use it in the editor // 2026/03/05 박세민
+
             UE_LOG(LogTemp, Log, TEXT("Team = %s"), *UEnum::GetValueAsString(ERPS->TeamType));
         }
 

@@ -30,9 +30,15 @@ void UVision_EvaluatorComp::BeginPlay()
 {
     Super::BeginPlay();
 
-    if (!ShouldRunServerLogic())
+    if (!ShouldRunServerLogic())//server gate
         return;
+    
+    Initialize();
 
+}
+
+void UVision_EvaluatorComp::Initialize()
+{
     // Resolve sibling Vision_VisualComp
     CachedVisualComp = GetOwner()->FindComponentByClass<UVision_VisualComp>();
     if (!CachedVisualComp)

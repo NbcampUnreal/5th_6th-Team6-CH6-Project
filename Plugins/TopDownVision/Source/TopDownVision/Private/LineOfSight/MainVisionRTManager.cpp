@@ -224,7 +224,7 @@ void UMainVisionRTManager::DrawLOSStamp(UCanvas* Canvas,
 			PixelPos, TileSize))
 			continue;
 
-		const float Alpha = Provider->GetVisibilityAlpha();
+		const float Alpha = 1.f; //Provider->GetVisibilityAlpha(); //temp
 		if (Alpha <= KINDA_SMALL_NUMBER)
 			continue;
 

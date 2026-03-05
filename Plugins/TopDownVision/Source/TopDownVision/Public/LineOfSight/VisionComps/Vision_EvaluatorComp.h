@@ -26,6 +26,11 @@ protected:
     virtual void BeginPlay() override;
 
 public:
+
+
+    UFUNCTION(BlueprintCallable, Category="Vision")
+    void Initialize();
+    
     // --- Called externally --- //
 
     /** Start/stop evaluation tick. Toggled by the RT manager or game logic. */

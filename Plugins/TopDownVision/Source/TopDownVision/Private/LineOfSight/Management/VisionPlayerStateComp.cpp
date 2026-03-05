@@ -29,18 +29,12 @@ void UVisionPlayerStateComp::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 void UVisionPlayerStateComp::BeginPlay()
 {
     Super::BeginPlay();
-
-    // Schedule RefreshVisibility for next tick.(TEMP)
-    // By then PC->PlayerState will be assigned, so GetLocalVisionPS() in
-    // VisionGameStateComp will find this component via the fast path.
-    // This catches the case where all providers registered before BeginPlay ran.
+    
+    // Catch-all refresh — by next tick PC->PlayerState is assigned
     if (UWorld* World = GetWorld())
     {
-        World->GetTimerManager().SetTimerForNextTick(this, &UVisionPlayerStateComp::RefreshVisibility);
-
-        UE_LOG(VisionPlayerStateComp, Log,
-            TEXT("[%s] BeginPlay >> Scheduled RefreshVisibility for next tick"),
-            *GetOwner()->GetName());
+        World->GetTimerManager().SetTimerForNextTick(
+            this, &UVisionPlayerStateComp::RefreshVisibility);
     }
 }
 

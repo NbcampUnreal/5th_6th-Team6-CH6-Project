@@ -44,6 +44,11 @@ protected:
     virtual void OnRegister() override;
 
 public:
+
+    UFUNCTION(BlueprintCallable, Category="Vision")
+    void Initialize();
+
+    
     // --- Called by the RT manager --- //
 
     /** Drive obstacle sampling and LOS stamp rendering for this frame. */
@@ -59,7 +64,7 @@ public:
 
     /** Trigger reveal or hide lerp. Called by the vision evaluator on detection change. */
     UFUNCTION(BlueprintCallable, Category="Vision")
-    void SetVisible(bool bVisiblem, bool bInstant/* change instantly or not*/=false);
+    void SetVisible(bool bVisible, bool bInstant/* change instantly or not*/=false);
     
     UFUNCTION(BlueprintCallable, Category="Vision")
     float GetVisibilityAlpha() const { return VisibilityAlpha; }
@@ -74,8 +79,6 @@ public:
 
     // --- Pass-through getters for the RT manager --- //
 
-    UFUNCTION(BlueprintCallable, Category="Vision")
-    EVisionChannel GetVisionChannel() const {return VisionChannel;}
 
     /** The LOS stamp MID used by the RT manager to composite this unit's vision. */
     UFUNCTION(BlueprintCallable, Category="Vision")
@@ -95,6 +98,14 @@ public:
     UTopDown2DShapeComp*         GetShapeComp()         const { return ShapeComp; }
 
 
+    //variable helper
+    UFUNCTION(BlueprintCallable, Category="Vision")
+    EVisionChannel GetVisionChannel() const {return VisionChannel;}
+    UFUNCTION(BlueprintCallable, Category="Vision")
+    void SetVisionChannel(EVisionChannel InVC) {VisionChannel = InVC;}
+
+    UFUNCTION(BlueprintCallable, Category="Vision")
+    void UpdateVisionRange(float NewRange);
     
 private:
     bool ShouldRunClientLogic() const;
