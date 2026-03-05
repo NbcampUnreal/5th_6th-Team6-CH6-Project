@@ -272,7 +272,8 @@ void USkillBase::ApplyEffectsToActors(TSet<TObjectPtr<AActor>> Actors, const TAr
 	for (USkillEffectDataAsset* Effect : SkillEffectDataAssets)
 	{
 		if (!Effect) continue;
-		for (auto& Spec : Effect->MakeSpecs(ASC, this, GetAvatar(), InEffectContextHandle))
+		TArray<FGameplayEffectSpecHandle> SpecHandles = Effect->MakeSpecs(ASC, this, GetAvatar(), InEffectContextHandle);
+		for (auto& Spec : SpecHandles)
 		{
 			if (Spec.IsValid()) ApplyGameplayEffectSpecToTarget(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, Spec, Handle);
 		}
