@@ -18,42 +18,42 @@ UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced)
 class PROJECTER_API ULaunchProjectileConfig : public UBaseGECConfig
 {
 	GENERATED_BODY()
-
 public:
 	virtual FText BuildTooltipDescription(float InLevel) const override;
 
 public:
-	/** 소환할 액터 및 수명 설정 */
-	UPROPERTY(EditDefaultsOnly, Category = "Range Actor", meta = (AllowPrivateAccess = "true"))
-	TSubclassOf<ABaseRangeOverlapEffectActor> RangeActorClass;
+	/** 발사체 기본 설정 */
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile | Base")
+	TSubclassOf<ABaseRangeOverlapEffectActor> ProjectileClass; // 발사체 본체 BP
 
-	UPROPERTY(EditDefaultsOnly, Category = "Range Actor", meta = (AllowPrivateAccess = "true"))
-	float LifeSpan = 1.0f;
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile | Base")
+	float LifeSpan = 5.0f; // 목표를 못 맞춰도 사라질 시간
 
-	/** 소환 위치 및 트랜스폼 관련 설정 */
-	UPROPERTY(EditDefaultsOnly, Category = "Spawn Settings", meta = (AllowPrivateAccess = "true"))
-	bool bUseBoneLocationSpawn = false;
+	/** 이동 속성 */
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile | Movement")
+	float InitialSpeed = 2000.0f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Spawn Settings", meta = (EditCondition = "bUseBoneLocationSpawn", AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile | Movement")
+	float GravityScale = 0.0f; // 0이면 직선으로 날아감
+
+	/** 충돌 로직 */
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile | Collision")
+	bool bDestroyOnHit = true; // 적중 시 제거 (관통이면 false)
+
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile | Collision")
+	FVector CollisionSize = FVector(20.0f); // 발사체 자체의 크기
+
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile | Spawn")
 	FName BoneName;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Spawn Settings", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile | Spawn")
 	FVector LocationOffset = FVector::ZeroVector;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Spawn Settings", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile | Spawn")
 	float ZOffset = 0.0f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Spawn Settings", meta = (AllowPrivateAccess = "true"))
-	FRotator SpawnRotation = FRotator::ZeroRotator;
-
-	/** 충돌 및 이펙트 적용 로직 설정 */
-	UPROPERTY(EditDefaultsOnly, Category = "Effect Logic", meta = (AllowPrivateAccess = "true"))
-	FVector CollisionRadius = FVector(100.0f);
-
-	UPROPERTY(EditDefaultsOnly, Category = "Effect Logic", meta = (AllowPrivateAccess = "true"))
-	bool bHitOnce = false;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Effect Logic", meta = (AllowPrivateAccess = "true"))
+	/** 적중 시 적용할 이펙트 */
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile | Effects")
 	TArray<TObjectPtr<USkillEffectDataAsset>> Applied;
 };
 
