@@ -2,14 +2,17 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "GameplayTagContainer.h"
+#include "ItemSystem/Data/UsableItemData.h"
 #include "BaseInventoryComponent.generated.h"
 
+class UAbilitySystemComponent;
 class UBaseItemData;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryUpdatedSignature);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class PROJECTER_API UBaseInventoryComponent : public UActorComponent 
+class PROJECTER_API UBaseInventoryComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
@@ -33,7 +36,7 @@ public:
 
 	// 인벤토리 정보 가져오기
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory")
-	int32 GetInventoryCount() const { return InventoryContents.Num(); }
+	int32 GetInventoryCount() const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory")
 	UBaseItemData* GetItemAt(int32 SlotIndex) const;
@@ -50,11 +53,14 @@ protected:
 	void OnRep_InventoryContents();
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void BeginPlay() override;
 
 private:
-	// 아이템 효과 적용 헬퍼 함수
-	void ApplyItemEffect(class UUsableItemData* ItemData);
-	void ApplyStatIncrease(class UAbilitySystemComponent* ASC, class UUsableItemData* ItemData);
+	UAbilitySystemComponent* ResolveOwnerAbilitySystemComponent() const;
+	FGameplayTag GetSetByCallerTagFromStatType(EItemStatType StatType) const;
+
+	bool ApplyItemEffect(UUsableItemData* ItemData);
+	bool ApplyStatIncrease(UAbilitySystemComponent* ASC, UUsableItemData* ItemData);
 
 public:
 	UPROPERTY(BlueprintAssignable, Category = "Inventory")

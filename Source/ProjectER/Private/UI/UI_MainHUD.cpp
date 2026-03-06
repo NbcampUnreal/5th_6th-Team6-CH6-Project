@@ -30,6 +30,8 @@
 #include "GameModeBase/State/ER_GameState.h" // gamestate
 #include "GameModeBase/State/ER_PlayerState.h"
 
+#include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"  // AttributeSet용
+
 // 인벤토리 UI용
 #include "Components/UniformGridPanel.h"
 #include "ItemSystem/Component/BaseInventoryComponent.h"
@@ -50,7 +52,7 @@ void UUI_MainHUD::Update_XP(float CurrentXP, float MaxXP)
         PB_XP->SetPercent(HealthPercent);
 
         // 디버깅용 색 변화
-        PB_XP->SetFillColorAndOpacity(FLinearColor::MakeRandomColor());
+        // PB_XP->SetFillColorAndOpacity(FLinearColor::MakeRandomColor());
     }
 }
 
@@ -61,8 +63,23 @@ void UUI_MainHUD::Update_HP(float CurrentHP, float MaxHP)
         float HealthPercent = CurrentHP / MaxHP;
         PB_HP->SetPercent(HealthPercent);
 
-        // 디버깅용 색 변화
-        PB_HP->SetFillColorAndOpacity(FLinearColor::MakeRandomColor());
+        // 체력 비율에 따른 색 변화
+        FLinearColor HealthColor;
+
+        if (HealthPercent >= 0.6f) // 60% 이상
+        {
+            HealthColor = FLinearColor::Green;
+        }
+        else if (HealthPercent >= 0.3f) // 30% ~ 60% 미만
+        {
+            HealthColor = FLinearColor::Yellow;
+        }
+        else // 30% 미만
+        {
+            HealthColor = FLinearColor::Red;
+        }
+        PB_HP->SetFillColorAndOpacity(HealthColor);
+
     }
 
     if (IsValid(current_HP))
@@ -70,7 +87,7 @@ void UUI_MainHUD::Update_HP(float CurrentHP, float MaxHP)
 		current_HP->SetText(FText::AsNumber(FMath::RoundToInt(CurrentHP)));
 
         // 디버깅용 색 변화
-        current_HP->SetColorAndOpacity(FSlateColor(FLinearColor::Red));
+        // current_HP->SetColorAndOpacity(FSlateColor(FLinearColor::Red));
     }
 
     if (IsValid(max_HP))
@@ -87,7 +104,7 @@ void UUI_MainHUD::UPdate_MP(float CurrentMP, float MaxMP)
         PB_MP->SetPercent(HealthPercent);
 
         // 디버깅용 색 변화
-        PB_MP->SetFillColorAndOpacity(FLinearColor::MakeRandomColor());
+        // PB_MP->SetFillColorAndOpacity(FLinearColor::MakeRandomColor());
     }
 
     if (IsValid(current_MP))
@@ -95,7 +112,7 @@ void UUI_MainHUD::UPdate_MP(float CurrentMP, float MaxMP)
         current_MP->SetText(FText::AsNumber(FMath::RoundToInt(CurrentMP)));
 
         // 디버깅용 색 변화
-        current_MP->SetColorAndOpacity(FSlateColor(FLinearColor::Red));
+        // current_MP->SetColorAndOpacity(FSlateColor(FLinearColor::Red));
     }
 
     if (IsValid(max_MP))
@@ -299,17 +316,25 @@ void UUI_MainHUD::NativeConstruct()
         1.0f,
         true);
 
-    // 디버그용
-    SetKillCount(0);
-    SetDeathCount(41);
-    SetAssistCount(411);
+    // 팀원 UI 기본값 숨겨놓기
+    TeamHead_01->SetVisibility(ESlateVisibility::Collapsed);
+    TeamHead_02->SetVisibility(ESlateVisibility::Collapsed);
+    PB_TeamHP_01->SetVisibility(ESlateVisibility::Collapsed);
+    PB_TeamHP_02->SetVisibility(ESlateVisibility::Collapsed);
+    TeamLevel_01->SetVisibility(ESlateVisibility::Collapsed);
+    TeamLevel_02->SetVisibility(ESlateVisibility::Collapsed);
 
-    GetWorld()->GetTimerManager().SetTimer(
-        KillTimerHandle,
-        this,
-        &UUI_MainHUD::AddKillPerSecond,
-        1.0f,
-        true);
+    // 디버그용
+    //SetKillCount(0);
+    //SetDeathCount(41);
+    //SetAssistCount(411);
+
+    //GetWorld()->GetTimerManager().SetTimer(
+    //    KillTimerHandle,
+    //    this,
+    //    &UUI_MainHUD::AddKillPerSecond,
+    //    1.0f,
+    //    true);
 }
 
 /// 마우스 이벤트!
@@ -343,29 +368,78 @@ FReply UUI_MainHUD::NativeOnMouseButtonDown(const FGeometry& InGeometry, const F
 void UUI_MainHUD::OnSkill01Hovered()
 {
     // 차후 스킬 데이터 애셋에서 정보를 읽어올 수 있도록 개선해야 함
-    ShowTooltip(skill_01, TEX_TempIcon, FText::FromString(TEXT("파이어볼")), FText::FromString(TEXT("화염 구체를 발사합니다.")), FText::FromString(TEXT("대미지: 100\n마나 소모: 50")), true);
+
+    int32 Index = 0;
+    if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
+    {
+        USkillDataAsset* SkillAsset = HeroData->SkillDataAsset[Index].LoadSynchronous();
+        if (IsValid(SkillAsset))
+        {
+            FSkillTooltipData nowSkill = SkillAsset->GetSkillTooltipData(1.0f);
+            
+            ShowTooltip(skill_01, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
+        }
+    }
+
+    // ShowTooltip(skill_01, TEX_TempIcon, FText::FromString(TEXT("파이어볼")), FText::FromString(TEXT("화염 구체를 발사합니다.")), FText::FromString(TEXT("대미지: 100\n마나 소모: 50")), true);
 }
 
 void UUI_MainHUD::OnSkill02Hovered()
 {
-    ShowTooltip(skill_02, TEX_TempIcon, FText::FromString(TEXT("파이어볼파이어볼파이어볼파이어볼")), FText::FromString(TEXT("기분 좋은 해피 슈퍼 사연발 파이어볼을 해피하게 슈퍼메가 해피합니다. 울트라 해피.")), FText::FromString(TEXT("대미지: 100\n마나 소모: 50")), false);
+    int32 Index = 1;
+    if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
+    {
+        USkillDataAsset* SkillAsset = HeroData->SkillDataAsset[Index].LoadSynchronous();
+        if (IsValid(SkillAsset))
+        {
+            FSkillTooltipData nowSkill = SkillAsset->GetSkillTooltipData(1.0f);
+
+            ShowTooltip(skill_01, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
+        }
+    }
+
+    // ShowTooltip(skill_02, TEX_TempIcon, FText::FromString(TEXT("파이어볼파이어볼파이어볼파이어볼")), FText::FromString(TEXT("기분 좋은 해피 슈퍼 사연발 파이어볼을 해피하게 슈퍼메가 해피합니다. 울트라 해피.")), FText::FromString(TEXT("대미지: 100\n마나 소모: 50")), false);
 }
 
 void UUI_MainHUD::OnSkill03Hovered()
 {
-    ShowTooltip(skill_03, TEX_TempIcon, FText::FromString(TEXT("파이어볼 파이어볼")), FText::FromString(TEXT("화염 구체를 발사합니다.화염 구체를 발사합니다.화염 구체를 발사합니다.화염 구체를 발사합니다.화염 구체를 발사합니다.화염 구체를 발사합니다.")), FText::FromString(TEXT("대미지: 100\n마나 소모: 50")), true);
+    int32 Index = 2;
+    if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
+    {
+        USkillDataAsset* SkillAsset = HeroData->SkillDataAsset[Index].LoadSynchronous();
+        if (IsValid(SkillAsset))
+        {
+            FSkillTooltipData nowSkill = SkillAsset->GetSkillTooltipData(1.0f);
+
+            ShowTooltip(skill_01, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
+        }
+    }
+
+    // ShowTooltip(skill_03, TEX_TempIcon, FText::FromString(TEXT("파이어볼 파이어볼")), FText::FromString(TEXT("화염 구체를 발사합니다.화염 구체를 발사합니다.화염 구체를 발사합니다.화염 구체를 발사합니다.화염 구체를 발사합니다.화염 구체를 발사합니다.")), FText::FromString(TEXT("대미지: 100\n마나 소모: 50")), true);
 }
 
 void UUI_MainHUD::OnSkill04Hovered()
 {
-    ShowTooltip(skill_04, TEX_TempIcon, FText::FromString(TEXT("파이어볼 파이어볼")), FText::FromString(TEXT("화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.")), FText::FromString(TEXT("대미지: 100\n마나 소모: 50")), true);
+    int32 Index = 3;
+    if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
+    {
+        USkillDataAsset* SkillAsset = HeroData->SkillDataAsset[Index].LoadSynchronous();
+        if (IsValid(SkillAsset))
+        {
+            FSkillTooltipData nowSkill = SkillAsset->GetSkillTooltipData(1.0f);
+
+            ShowTooltip(skill_01, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
+        }
+    }
+
+    // ShowTooltip(skill_04, TEX_TempIcon, FText::FromString(TEXT("파이어볼 파이어볼")), FText::FromString(TEXT("화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.")), FText::FromString(TEXT("대미지: 100\n마나 소모: 50")), true);
 }
 
-void UUI_MainHUD::ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, bool showUpper)
+void UUI_MainHUD::ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, FText CostDesc, bool showUpper)
 {
     if (TooltipManager)
     {
-		TooltipManager->ShowTooltip(AnchorWidget, Icon, Name, ShortDesc, DetailDesc, showUpper);
+		TooltipManager->ShowTooltip(AnchorWidget, Icon, Name, ShortDesc, DetailDesc, CostDesc, showUpper);
     }
 
 
@@ -889,6 +963,72 @@ void UUI_MainHUD::UpdatePhaseAndTimeText()
 
 }
 
+void UUI_MainHUD::SetTeamWidgetVisible(int32 TeamIndex, bool bIsVisible)
+{
+    ESlateVisibility NewVisibility = bIsVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
+
+    if (TeamIndex == 0)
+    {
+        if (TeamHead_01) TeamHead_01->SetVisibility(NewVisibility);
+        if (PB_TeamHP_01) PB_TeamHP_01->SetVisibility(NewVisibility);
+        if (TeamLevel_01) TeamLevel_01->SetVisibility(NewVisibility);
+    }
+    else if (TeamIndex == 1)
+    {
+        if (TeamHead_02) TeamHead_02->SetVisibility(NewVisibility);
+        if (PB_TeamHP_02) PB_TeamHP_02->SetVisibility(NewVisibility);
+        if (TeamLevel_02) TeamLevel_02->SetVisibility(NewVisibility);
+    }
+}
+
+void UUI_MainHUD::SetTeamMemberData(int32 TeamIndex, UAbilitySystemComponent* _ASC)
+{
+    if (_ASC == nullptr) return;
+    TeamASCMap.Add(TeamIndex, _ASC);
+}
+
+void UUI_MainHUD::InitTeamData()
+{
+    for (auto& Pair : TeamASCMap)
+    {
+        int32 TeamIndex = Pair.Key;
+        UAbilitySystemComponent* TargetASC = Pair.Value;
+
+        if (IsValid(TargetASC))
+        {
+            TargetASC->GetGameplayAttributeValueChangeDelegate(UBaseAttributeSet::GetHealthAttribute())
+                .AddUObject(this, &UUI_MainHUD::OnTeamHealthChanged, TeamIndex);
+            
+            TargetASC->GetGameplayAttributeValueChangeDelegate(UBaseAttributeSet::GetMaxHealthAttribute())
+                .AddUObject(this, &UUI_MainHUD::OnTeamHealthChanged, TeamIndex);
+
+            TargetASC->GetGameplayAttributeValueChangeDelegate(UBaseAttributeSet::GetLevelAttribute())
+                .AddUObject(this, &UUI_MainHUD::OnTeamLevelChanged, TeamIndex);
+
+			// 초기 HP, LV 세팅
+            const UBaseAttributeSet* BaseAS = TargetASC->GetSet<UBaseAttributeSet>();
+            if (BaseAS)
+            {
+                UpdateTeamHP(TeamIndex, BaseAS->GetHealth(), BaseAS->GetMaxHealth());
+				UpdateTeamLV(TeamIndex, BaseAS->GetLevel());
+            }
+        }
+    }
+}
+
+void UUI_MainHUD::OnTeamHealthChanged(const FOnAttributeChangeData& Data, int32 TeamIndex)
+{
+    float CurrentHP = Data.NewValue;
+    float MaxHP = TeamASCMap[TeamIndex]->GetNumericAttribute(UBaseAttributeSet::GetMaxHealthAttribute());
+
+    UpdateTeamHP(TeamIndex, CurrentHP, MaxHP);
+}
+
+void UUI_MainHUD::OnTeamLevelChanged(const FOnAttributeChangeData& Data, int32 TeamIndex)
+{
+    UpdateTeamLV(TeamIndex, Data.NewValue);
+}
+
 void UUI_MainHUD::AddKillPerSecond()
 {
 	SetKillCount(CurrentKillCount++);
@@ -956,6 +1096,7 @@ void UUI_MainHUD::UpdateTeamLV(int32 TeamIndex, int32 CurrentLV)
     {
         if(IsValid(TeamLevel_01))
         {
+			UE_LOG(LogTemp, Error, TEXT("Updating Team 1 Level: %d"), CurrentLV);
             TeamLevel_01->SetText(FText::AsNumber(CurrentLV));
         }
     }
@@ -963,6 +1104,7 @@ void UUI_MainHUD::UpdateTeamLV(int32 TeamIndex, int32 CurrentLV)
     {
         if (IsValid(TeamLevel_02))
         {
+            UE_LOG(LogTemp, Error, TEXT("Updating Team 1 Level: %d"), CurrentLV);
             TeamLevel_02->SetText(FText::AsNumber(CurrentLV));
         }
     }
