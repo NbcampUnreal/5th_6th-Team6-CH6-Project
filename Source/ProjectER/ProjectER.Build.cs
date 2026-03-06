@@ -29,6 +29,8 @@ public class ProjectER : ModuleRules
             "WorldBender",
             "TopDownVision",
             "AssetRegistry",
+            "OnlineSubsystemSteam",
+            "OnlineSubsystem",
             "UnrealEd",//for the editor function
         });
         
