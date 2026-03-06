@@ -36,6 +36,7 @@
 #include "UI/UI_HP_Bar.h" // HP바 위젯용
 
 #include "GameModeBase/State/ER_PlayerState.h"
+#include "LineOfSight/MainVisionRTManager.h"
 #include "LineOfSight/Management/VisionPlayerStateComp.h"
 
 ABaseCharacter::ABaseCharacter()
@@ -108,6 +109,7 @@ ABaseCharacter::ABaseCharacter()
 	//MinimapCaptureComponent->CaptureSource = ESceneCaptureSource::SCS_BaseColor; // 포스트 프로세싱 무효화
 }
 
+
 void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -119,13 +121,11 @@ void ABaseCharacter::BeginPlay()
 	{
 		InitVisuals();
 	}
-	
-	if (TopDownCameraComp)//prepare the requirements for the topdown cameracomp
-	{
-		TopDownCameraComp->InitializeCompRequirements();
-	}
-	
 
+	if (TopDownCameraComp)
+	{
+		TopDownCameraComp->InitializeComponent();
+	}
 	
 	PreloadMontages();
 }
@@ -241,12 +241,37 @@ void ABaseCharacter::OnRep_TeamID()
 	}
 	
 	UE_LOG(LogTemp, Warning, TEXT("%s"), *Message);
+
+	//BP Expose
+	OnTeamIDChosen();
 }
 
 void ABaseCharacter::Server_SetTeamID_Implementation(ETeamType NewTeamID)
 {
 	TeamID = NewTeamID;
 	OnRep_TeamID();
+}
+
+
+EVisionChannel ABaseCharacter::ConvertTeamToVisionChannel(ETeamType InTeamType)
+{
+	switch (InTeamType)
+	{
+		case ETeamType::None:
+		return EVisionChannel::None;
+		
+		case ETeamType::Team_A:
+		return EVisionChannel::TeamA;
+		
+		case ETeamType::Team_B:
+		return EVisionChannel::TeamB;
+		
+		case ETeamType::Team_C:
+		return EVisionChannel::TeamC;
+
+		default:
+		return EVisionChannel::None;
+	}
 }
 
 UAbilitySystemComponent* ABaseCharacter::GetAbilitySystemComponent() const
@@ -270,6 +295,15 @@ void ABaseCharacter::OnRep_PlayerState()
 		{
 			TopDownCameraComp->Activate();
 			TopDownCameraComp->SetComponentTickEnabled(true);
+
+			UMainVisionRTManager* MainVisionRT=TopDownCameraComp->GetMainVisionRTManager();
+			if (MainVisionRT)
+			{
+				MainVisionRT->SetVisionChannel(ConvertTeamToVisionChannel(TeamID));
+			}
+			
+			TopDownCameraComp->InitializeCompRequirements();
+			
 		}
 		else
 		{

@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -9,11 +7,12 @@
 #include "VisionGameStateComp.generated.h"
 
 class UVision_VisualComp;
+class UVisionPlayerStateComp;
 
 TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(VisionGameStateComp, Log, All);
 
 // -------------------------------------------------------------------------- //
-//  Fast Array Entry
+//  Fast Array
 // -------------------------------------------------------------------------- //
 
 USTRUCT()
@@ -28,10 +27,6 @@ struct FVisibleActorEntry : public FFastArraySerializerItem
     EVisionChannel TeamChannel = EVisionChannel::None;
 };
 
-// -------------------------------------------------------------------------- //
-//  Fast Array Container
-// -------------------------------------------------------------------------- //
-
 USTRUCT()
 struct FVisibleActorArray : public FFastArraySerializer
 {
@@ -39,12 +34,12 @@ struct FVisibleActorArray : public FFastArraySerializer
 
     UPROPERTY()
     TArray<FVisibleActorEntry> Items;
-    
+
     UPROPERTY()
     UVisionGameStateComp* OwnerComp = nullptr;
 
-    void PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize);
-    void PreReplicatedRemove(const TArrayView<int32>& RemovedIndices, int32 FinalSize); // fires BEFORE removal
+    void PostReplicatedAdd   (const TArrayView<int32>& AddedIndices,   int32 FinalSize);
+    void PreReplicatedRemove (const TArrayView<int32>& RemovedIndices, int32 FinalSize);
     void PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize);
 
     bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParms)
@@ -61,7 +56,18 @@ struct TStructOpsTypeTraits<FVisibleActorArray> : public TStructOpsTypeTraitsBas
 };
 
 // -------------------------------------------------------------------------- //
-//  Component
+//  Pending entry — used when VisionPS isn't ready during a push callback
+// -------------------------------------------------------------------------- //
+
+struct FPendingVisibilityEntry
+{
+    TWeakObjectPtr<AActor> Target;
+    EVisionChannel         Team    = EVisionChannel::None;
+    bool                   bVisible = false;
+};
+
+// -------------------------------------------------------------------------- //
+//  Component — pure replication pipe, no game logic
 // -------------------------------------------------------------------------- //
 
 UCLASS(ClassGroup=(Vision), meta=(BlueprintSpawnableComponent))
@@ -78,30 +84,28 @@ protected:
 
 public:
     // --- Server API --- //
-
-    /** Called by Vision_EvaluatorComp on server to report a target as visible to a team. */
     UFUNCTION(BlueprintCallable, Category="Vision")
     void SetActorVisibleToTeam(AActor* Target, EVisionChannel Team);
 
-    /** Called by Vision_EvaluatorComp on server when no observer can see the target. */
     UFUNCTION(BlueprintCallable, Category="Vision")
     void ClearActorVisibleToTeam(AActor* Target, EVisionChannel Team);
 
-    /** Returns true if the target is currently visible to the given team. */
     UFUNCTION(BlueprintCallable, Category="Vision")
     bool IsActorVisibleToTeam(AActor* Target, EVisionChannel Team) const;
 
-    // --- Called by FastArray callbacks on clients --- //
+    // --- FastArray callbacks (client) --- //
     void OnTargetBecameVisible(AActor* Target, EVisionChannel Team);
-    void OnTargetBecameHidden(AActor* Target, EVisionChannel Team);
+    void OnTargetBecameHidden (AActor* Target, EVisionChannel Team);
 
-    /** Called by LOSVisionSubsystem when a new provider registers.
-    *  Reveals all existing same-team providers to each other automatically. */
-    void OnProviderRegistered(UVision_VisualComp* NewProvider, EVisionChannel Channel);
+    // --- Called by VisionPlayerStateComp::RefreshVisibility to drain queued entries --- //
+    void FlushPendingReveals(UVisionPlayerStateComp* VisionPS);
 
     const TArray<FVisibleActorEntry>& GetVisibleActors() const { return VisibleActors.Items; }
 
 private:
     UPROPERTY(Replicated)
     FVisibleActorArray VisibleActors;
+
+    // Entries queued when VisionPS was null during a push callback
+    TArray<FPendingVisibilityEntry> PendingReveals;
 };

@@ -45,8 +45,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")// owner actor setter
 	void SetObservedActor(AActor* InActor);
-
-
+	
+	UFUNCTION(BlueprintCallable, Category="LineOfSight")
+	void SetVisionChannel(EVisionChannel InVisionChannel) {VisionChannel=InVisionChannel;}
 
 	
 private:
@@ -95,7 +96,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	bool bDrawTextureRange =false;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Vision")
 	EVisionChannel VisionChannel=EVisionChannel::None;
 	
 

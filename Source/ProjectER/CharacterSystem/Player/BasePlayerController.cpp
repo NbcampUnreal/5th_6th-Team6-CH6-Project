@@ -1334,7 +1334,7 @@ bool ABasePlayerController::GetCurvedHitResultUnderCursor(ECollisionChannel Trac
 	return GetHitResultUnderCursor(TraceChannel, bTraceComplex, OutHitResult);
 
 	//Temp lock till it is finished
-	if (!CurvedWorldSubsystem)
+	/*if (!CurvedWorldSubsystem)
 	{
 		// Fallback to normal trace if subsystem not available
 		return GetHitResultUnderCursor(TraceChannel, bTraceComplex, OutHitResult);
@@ -1345,7 +1345,7 @@ bool ABasePlayerController::GetCurvedHitResultUnderCursor(ECollisionChannel Trac
 		   this,
 		   CurvedWorldSubsystem,
 		   OutHitResult,
-		   TraceChannel);
+		   TraceChannel);*/
 }
 
 

@@ -1,6 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
@@ -9,6 +7,7 @@
 
 class UVision_VisualComp;
 class UVisionGameStateComp;
+class UVisionPlayerStateComp;
 
 USTRUCT()
 struct FRegisteredProviders
@@ -16,16 +15,14 @@ struct FRegisteredProviders
 	GENERATED_BODY()
 
 	UPROPERTY()
-	TArray<UVision_VisualComp*> RegisteredList; //!!!! The comp is null at initial setting!!! fuck
+	TArray<UVision_VisualComp*> RegisteredList;
 };
 
-// Tracks how many observers per team currently see a given target
 USTRUCT()
 struct FTargetVisibilityVotes
 {
 	GENERATED_BODY()
 
-	// TeamID -> number of observers currently seeing this target
 	TMap<uint8, int32> VotesByTeam;
 };
 
@@ -48,16 +45,19 @@ public:
 	TArray<UVision_VisualComp*> GetProvidersForTeam(EVisionChannel TeamChannel) const;
 
 	// --- Visibility reporting --- //
-
-	/** Called by Vision_EvaluatorComp every evaluation tick.
-	 *  Aggregates votes and updates VisionGameStateComp when state changes. */
 	void ReportTargetVisibility(
 		AActor* Observer,
 		EVisionChannel ObserverTeam,
 		AActor* Target,
 		bool bVisible);
 
+	// --- Local player lookup (used by GameStateComp) --- //
+	static UVisionPlayerStateComp* GetLocalVisionPS(UWorld* World);
+
 private:
+	// Handles reveal logic when a new provider joins — owns what was OnProviderRegistered
+	void HandleProviderRegistered(UVision_VisualComp* NewProvider, EVisionChannel Channel);
+
 	UVisionGameStateComp* GetVisionGameStateComp() const;
 
 public:
@@ -65,7 +65,6 @@ public:
 	TMap<EVisionChannel, FRegisteredProviders> VisionMap;
 
 private:
-	// Target -> vote counts per team
 	UPROPERTY()
 	TMap<AActor*, FTargetVisibilityVotes> VisibilityVotes;
 };

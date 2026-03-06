@@ -53,6 +53,10 @@ public:
 	USpringArmComponent* GetCameraBoomComp() const { return SpringArm; }
 	bool IsCameraPanFreeMode() const { return bIsFreeCamMode; }
 
+
+	UFUNCTION(BlueprintPure, BlueprintCallable, Category="CameraComp")
+	UMainVisionRTManager* GetMainVisionRTManager() { return MainVisionRTManager; }
+
 private:
 	// Tick helpers
 	void TickFollowMode(float DeltaTime);

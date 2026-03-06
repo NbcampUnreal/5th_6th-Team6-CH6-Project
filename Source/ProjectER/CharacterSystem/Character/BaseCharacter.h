@@ -29,12 +29,6 @@ class PROJECTER_API ABaseCharacter : public ACharacter,  public IAbilitySystemIn
 
 public:
 	ABaseCharacter();
-	
-	// no more camera and camera spring arm.
-	FORCEINLINE UCameraComponent* GetTopDownCameraComponent() const { return TopDownCameraComponent.Get(); }
-	
-	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom.Get(); }
-	
 
 protected:
 	virtual void BeginPlay() override;
@@ -61,7 +55,7 @@ protected:
 	TObjectPtr<USpringArmComponent> CameraBoom;
 
 	//replacement for camera comp
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess="true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Components", meta = (AllowPrivateAccess="true"))
 	TObjectPtr<UTopDownCameraComp> TopDownCameraComp=nullptr;
 	
 	UPROPERTY()
@@ -87,6 +81,16 @@ public:
 protected:
 	UFUNCTION()
 	void OnRep_TeamID();
+
+	//BP Exposed Function
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnTeamIDChosen();
+	
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Team")
+	ETeamType PassOnTeamMIDChosen() const {return TeamID;};
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Team")
+	EVisionChannel ConvertTeamToVisionChannel(ETeamType InTeamType);
 	
 protected:
 	// 팀 변수
@@ -329,6 +333,8 @@ protected:
 
 	UFUNCTION(BlueprintPure, BlueprintCallable, Category = "Vision")//Helper for getting the vision channel from the PlayerStateComp
 	EVisionChannel GetVisionChannelFromVisionPlayerStateComp();
+
+	
 	
 #pragma endregion
 	

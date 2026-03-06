@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #include "LineOfSight/Management/VisionGameStateComp.h"
 
 #include "GameFramework/PlayerState.h"
@@ -12,73 +10,23 @@
 DEFINE_LOG_CATEGORY(VisionGameStateComp);
 
 // -------------------------------------------------------------------------- //
-//  Helpers
+//  FastArray callbacks — fire on clients only
 // -------------------------------------------------------------------------- //
-
-/** Finds the local player's VisionPlayerStateComp.
- *  First tries PC->PlayerState (fast path, valid after initial setup).
- *  Falls back to iterating GameState->PlayerArray (works during early BeginPlay
- *  when PC->PlayerState is not yet assigned). */
- 
-static UVisionPlayerStateComp* GetLocalVisionPS(UWorld* World)
-{
-    if (!World)
-        return nullptr;
-
-    APlayerController* PC = GEngine->GetFirstLocalPlayerController(World);
-    if (!PC)
-        return nullptr;
-
-    // Fast path — works after PC has its PlayerState assigned
-    if (PC->PlayerState)
-    {
-        if (UVisionPlayerStateComp* VisionPS = PC->PlayerState->FindComponentByClass<UVisionPlayerStateComp>())
-            return VisionPS;
-    }
-
-    // Fallback — iterate PlayerArray on GameState.
-    // PC->PlayerState is null during early BeginPlay but PlayerArray is populated sooner.
-    if (AGameStateBase* GS = World->GetGameState())
-    {
-        for (APlayerState* PS : GS->PlayerArray)
-        {
-            if (PS && PS->GetOwningController() == PC)
-            {
-                if (UVisionPlayerStateComp* VisionPS = PS->FindComponentByClass<UVisionPlayerStateComp>())
-                {
-                    return VisionPS;
-                }
-            }
-        }
-    }
-
-    return nullptr;
-}
-
-//  FastArray Callbacks — fire on clients
 
 void FVisibleActorArray::PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize)
 {
-    if (!OwnerComp)
-        return;
-
+    if (!OwnerComp) return;
     for (int32 Idx : AddedIndices)
-    {
         if (Items.IsValidIndex(Idx))
             OwnerComp->OnTargetBecameVisible(Items[Idx].Target, Items[Idx].TeamChannel);
-    }
 }
 
 void FVisibleActorArray::PreReplicatedRemove(const TArrayView<int32>& RemovedIndices, int32 FinalSize)
 {
-    if (!OwnerComp)
-        return;
-
+    if (!OwnerComp) return;
     for (int32 Idx : RemovedIndices)
-    {
         if (Items.IsValidIndex(Idx))
             OwnerComp->OnTargetBecameHidden(Items[Idx].Target, Items[Idx].TeamChannel);
-    }
 }
 
 void FVisibleActorArray::PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize)
@@ -86,7 +34,9 @@ void FVisibleActorArray::PostReplicatedChange(const TArrayView<int32>& ChangedIn
     // Entries are only added or removed — no change events expected
 }
 
+// -------------------------------------------------------------------------- //
 //  Component
+// -------------------------------------------------------------------------- //
 
 UVisionGameStateComp::UVisionGameStateComp()
 {
@@ -114,20 +64,19 @@ void UVisionGameStateComp::SetActorVisibleToTeam(AActor* Target, EVisionChannel 
 {
     if (!Target)
     {
-        UE_LOG(VisionGameStateComp, Warning,
-            TEXT("SetActorVisibleToTeam >> Null target"));
+        UE_LOG(VisionGameStateComp, Warning, TEXT("SetActorVisibleToTeam >> Null target"));
         return;
     }
 
     if (IsActorVisibleToTeam(Target, Team))
         return;
 
-    FVisibleActorEntry& NewEntry = VisibleActors.Items.AddDefaulted_GetRef();
-    NewEntry.Target = Target;
-    NewEntry.TeamChannel = Team;
-    VisibleActors.MarkItemDirty(NewEntry);
+    FVisibleActorEntry& Entry = VisibleActors.Items.AddDefaulted_GetRef();
+    Entry.Target      = Target;
+    Entry.TeamChannel = Team;
+    VisibleActors.MarkItemDirty(Entry);
 
-    // Fire locally — PostReplicatedAdd only fires on remote clients
+    // Fire locally — PostReplicatedAdd only runs on remote clients
     OnTargetBecameVisible(Target, Team);
 
     UE_LOG(VisionGameStateComp, Log,
@@ -139,8 +88,7 @@ void UVisionGameStateComp::ClearActorVisibleToTeam(AActor* Target, EVisionChanne
 {
     if (!Target)
     {
-        UE_LOG(VisionGameStateComp, Warning,
-            TEXT("ClearActorVisibleToTeam >> Null target"));
+        UE_LOG(VisionGameStateComp, Warning, TEXT("ClearActorVisibleToTeam >> Null target"));
         return;
     }
 
@@ -169,111 +117,72 @@ void UVisionGameStateComp::ClearActorVisibleToTeam(AActor* Target, EVisionChanne
 bool UVisionGameStateComp::IsActorVisibleToTeam(AActor* Target, EVisionChannel Team) const
 {
     for (const FVisibleActorEntry& Entry : VisibleActors.Items)
-    {
         if (Entry.Target == Target && Entry.TeamChannel == Team)
             return true;
-    }
 
     return false;
 }
 
-//  Client callbacks
+// -------------------------------------------------------------------------- //
+//  Client callbacks — push to PlayerStateComp; queue if not ready yet
+// -------------------------------------------------------------------------- //
 
 void UVisionGameStateComp::OnTargetBecameVisible(AActor* Target, EVisionChannel Team)
 {
-    if (!Target)
-        return;
+    if (!Target) return;
 
-    UVisionPlayerStateComp* VisionPS = GetLocalVisionPS(GetWorld());
-
+    UVisionPlayerStateComp* VisionPS = ULOSVisionSubsystem::GetLocalVisionPS(GetWorld());
     if (!VisionPS)
     {
         UE_LOG(VisionGameStateComp, Verbose,
-            TEXT("OnTargetBecameVisible >> VisionPS not ready, deferring reveal of %s (team [%s])"),
-            *Target->GetName(), *UEnum::GetValueAsString(Team));
-        return;
-    }
-
-    if (!VisionPS->CanSeeTeam(Team))
-    {
-        UE_LOG(VisionGameStateComp, Verbose,
-            TEXT("OnTargetBecameVisible >> %s skipped — local player cannot see team [%s]"),
-            *Target->GetName(), *UEnum::GetValueAsString(Team));
+            TEXT("OnTargetBecameVisible >> VisionPS not ready, queuing reveal of %s"),
+            *Target->GetName());
+        PendingReveals.Add({ Target, Team, true });
         return;
     }
 
     UE_LOG(VisionGameStateComp, Log,
-        TEXT("OnTargetBecameVisible >> %s visible to team [%s]"),
-        *Target->GetName(), *UEnum::GetValueAsString(Team));
+        TEXT("OnTargetBecameVisible >> Pushing visible [%s] to VisionPS"),
+        *Target->GetName());
 
-    if (UVision_VisualComp* VisualComp = Target->FindComponentByClass<UVision_VisualComp>())
-        VisualComp->SetVisible(true);
+    VisionPS->ApplyActorVisibility(Target, Team, true);
 }
 
 void UVisionGameStateComp::OnTargetBecameHidden(AActor* Target, EVisionChannel Team)
 {
-    if (!Target)
-        return;
+    if (!Target) return;
 
-    UVisionPlayerStateComp* VisionPS = GetLocalVisionPS(GetWorld());
-
+    UVisionPlayerStateComp* VisionPS = ULOSVisionSubsystem::GetLocalVisionPS(GetWorld());
     if (!VisionPS)
-        return;
-
-    if (!VisionPS->CanSeeTeam(Team))
     {
-        UE_LOG(VisionGameStateComp, Verbose,
-            TEXT("OnTargetBecameHidden >> %s skipped — local player cannot see team [%s]"),
-            *Target->GetName(), *UEnum::GetValueAsString(Team));
+        PendingReveals.Add({ Target, Team, false });
         return;
     }
 
     UE_LOG(VisionGameStateComp, Log,
-        TEXT("OnTargetBecameHidden >> %s hidden from team [%s]"),
-        *Target->GetName(), *UEnum::GetValueAsString(Team));
+        TEXT("OnTargetBecameHidden >> Pushing hidden [%s] to VisionPS"),
+        *Target->GetName());
 
-    if (UVision_VisualComp* VisualComp = Target->FindComponentByClass<UVision_VisualComp>())
-        VisualComp->SetVisible(false);
+    VisionPS->ApplyActorVisibility(Target, Team, false);
 }
 
-//  Provider registration callback
+// -------------------------------------------------------------------------- //
+//  Pending queue drain — called by VisionPlayerStateComp::RefreshVisibility
+// -------------------------------------------------------------------------- //
 
-void UVisionGameStateComp::OnProviderRegistered(UVision_VisualComp* NewProvider, EVisionChannel Channel)
+void UVisionGameStateComp::FlushPendingReveals(UVisionPlayerStateComp* VisionPS)
 {
-    if (!NewProvider || !NewProvider->GetOwner() || Channel == EVisionChannel::None)
+    if (!VisionPS || PendingReveals.IsEmpty())
         return;
 
-    ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
-    if (!Subsystem)
-        return;
+    UE_LOG(VisionGameStateComp, Log,
+        TEXT("FlushPendingReveals >> Flushing %d queued entries"), PendingReveals.Num());
 
-    TArray<UVision_VisualComp*> TeamProviders = Subsystem->GetProvidersForTeam(Channel);
-
-    for (UVision_VisualComp* Existing : TeamProviders)
+    for (const FPendingVisibilityEntry& Entry : PendingReveals)
     {
-        if (!Existing || !Existing->GetOwner())
-            continue;
-
-        SetActorVisibleToTeam(Existing->GetOwner(), Channel);
-
-        UE_LOG(VisionGameStateComp, Log,
-            TEXT("OnProviderRegistered >> Revealed %s to channel [%s]"),
-            *Existing->GetOwner()->GetName(), *UEnum::GetValueAsString(Channel));
+        if (Entry.Target.IsValid())
+            VisionPS->ApplyActorVisibility(Entry.Target.Get(), Entry.Team, Entry.bVisible);
     }
 
-    // If VisionPS was found via PlayerArray fallback, refresh now.
-    // If still null, VisionPlayerStateComp::BeginPlay will call RefreshVisibility
-    // on next tick once the PC->PlayerState link is established.
-    UVisionPlayerStateComp* VisionPS = GetLocalVisionPS(GetWorld());
-    if (VisionPS)
-    {
-        UE_LOG(VisionGameStateComp, Log,
-            TEXT("OnProviderRegistered >> VisionPS found, calling RefreshVisibility"));
-        VisionPS->RefreshVisibility();
-    }
-    else
-    {
-        UE_LOG(VisionGameStateComp, Verbose,
-            TEXT("OnProviderRegistered >> VisionPS still null, deferring to VisionPlayerStateComp::BeginPlay"));
-    }
+    PendingReveals.Empty();
 }
