@@ -33,7 +33,7 @@ public:
 
 	// 인벤토리 정보 가져오기
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory")
-	int32 GetInventoryCount() const { return InventoryContents.Num(); }
+	int32 GetInventoryCount() const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory")
 	UBaseItemData* GetItemAt(int32 SlotIndex) const;
@@ -50,6 +50,7 @@ protected:
 	void OnRep_InventoryContents();
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void BeginPlay() override;
 
 private:
 	class UAbilitySystemComponent* ResolveOwnerAbilitySystemComponent() const;

@@ -17,6 +17,30 @@ UBaseInventoryComponent::UBaseInventoryComponent()
 	SetIsReplicatedByDefault(true);
 }
 
+int32 UBaseInventoryComponent::GetInventoryCount() const
+{
+	int32 Count = 0;
+	for (UBaseItemData* Item : InventoryContents)
+	{
+		if (Item != nullptr)
+		{
+			++Count;
+		}
+	}
+	return Count;
+}
+
+void UBaseInventoryComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// Initialize inventory slots with nullptrs on the server
+	if (GetOwner()->HasAuthority())
+	{
+		InventoryContents.Init(nullptr, MaxSlots);
+	}
+}
+
 void UBaseInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -25,7 +49,7 @@ void UBaseInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 
 bool UBaseInventoryComponent::AddItem(UBaseItemData* Item)
 {
-	if (!Item || InventoryContents.Num() >= MaxSlots) return false;
+	if (!Item) return false;
 
 	if (!GetOwner()->HasAuthority())
 	{
@@ -33,12 +57,30 @@ bool UBaseInventoryComponent::AddItem(UBaseItemData* Item)
 		return true;
 	}
 
-	InventoryContents.Add(Item);
+	// 빈 슬롯 찾기
+	int32 EmptySlotIndex = INDEX_NONE;
+	for (int32 i = 0; i < InventoryContents.Num(); ++i)
+	{
+		if (InventoryContents[i] == nullptr)
+		{
+			EmptySlotIndex = i;
+			break;
+		}
+	}
+
+	// 가방이 가득 찼으면 실패
+	if (EmptySlotIndex == INDEX_NONE)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] Inventory is full. Cannot add item: %s"), *Item->ItemName.ToString());
+		return false;
+	}
+
+	InventoryContents[EmptySlotIndex] = Item;
 
 	if (GEngine)
 	{
-		FString DebugMsg = FString::Printf(TEXT("가방에 추가됨: %s (현재 %d개)"),
-			*Item->ItemName.ToString(), InventoryContents.Num());
+		FString DebugMsg = FString::Printf(TEXT("가방에 추가됨: %s (슬롯 %d)"),
+			*Item->ItemName.ToString(), EmptySlotIndex);
 		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan, DebugMsg);
 	}
 
@@ -116,7 +158,7 @@ void UBaseInventoryComponent::UseItem(int32 SlotIndex)
 	// 소비 아이템이면 제거
 	if (UsableItem->bConsumable)
 	{
-		InventoryContents.RemoveAt(SlotIndex);
+		InventoryContents[SlotIndex] = nullptr;
 
 		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] Item consumed and removed from slot %d"), SlotIndex);
 

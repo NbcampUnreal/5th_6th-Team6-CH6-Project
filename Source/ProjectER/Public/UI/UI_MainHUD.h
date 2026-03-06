@@ -106,7 +106,8 @@ protected:
 	UFUNCTION() void OnSkill04Hovered();
 	// .............
 
-	void ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, bool showUpper);
+	// void ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, bool showUpper);
+	void ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, FText CostDesc, bool showUpper);
 	UFUNCTION()
 	void HideTooltip();
 
@@ -312,6 +313,25 @@ public:
 	void SetAssistCount(int32 InAssistCount);
 	void UpdatePhaseAndTimeText();
 	FTimerHandle PhaseAndTimeTimer;
+
+	// 팀원 UI 온/오브
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void SetTeamWidgetVisible(int32 TeamIndex, bool bIsVisible);
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void SetTeamMemberData(int32 TeamIndex, UAbilitySystemComponent* _ASC);
+
+	UFUNCTION()
+	void InitTeamData();
+protected:
+	UPROPERTY()
+	TMap<int32, UAbilitySystemComponent*> TeamASCMap;
+	
+	// 팀 UI 변화 콜백
+	void OnTeamHealthChanged(const FOnAttributeChangeData& Data, int32 TeamIndex);
+	void OnTeamLevelChanged(const FOnAttributeChangeData& Data, int32 TeamIndex);
+
 private:
 	UPROPERTY()
 	class AER_GameState* GS;
