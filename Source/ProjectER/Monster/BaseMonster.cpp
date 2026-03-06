@@ -402,6 +402,11 @@ void ABaseMonster::MonsterGroupHitCall(AActor* Target)
 // 서버에서만
 void ABaseMonster::OnMonterHitHandle(AActor* Target)
 {
+	if (!IsValid(Target))
+	{
+		return;
+	}
+
 	if (IsValid(TargetPlayer) && TargetPlayer != Target)
 	{
 		const float OldTargetDistance = FVector::DistSquared(TargetPlayer->GetActorLocation(), GetActorLocation());
@@ -457,10 +462,12 @@ void ABaseMonster::OnMonterDeathHandle(AActor* Target)
 		return;
 	}
 
-	ABaseCharacter* BC = Cast<ABaseCharacter>(Target);
-	if (BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+	if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(TargetPlayer))
 	{
-		BC->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+		if (TargetChar->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+		{
+			TargetChar->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+		}
 	}
 
 	Death(); 
@@ -542,10 +549,12 @@ void ABaseMonster::RemoveCooldownTag(FGameplayTag CooldownTag)
 
 void ABaseMonster::OnTargetLostHandle()
 {
-	ABaseCharacter* BC = Cast<ABaseCharacter>(TargetPlayer);
-	if (BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+	if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(TargetPlayer))
 	{
-		BC->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+		if (TargetChar->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+		{
+			TargetChar->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+		}
 	}
 	SendStateTreeEvent(MonsterTags.TargetOffEventTag);
 	TargetPlayer = nullptr;
