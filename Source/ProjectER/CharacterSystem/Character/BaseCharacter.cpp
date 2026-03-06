@@ -274,7 +274,7 @@ void ABaseCharacter::OnRep_PlayerState()
 void ABaseCharacter::HandleLevelUp()
 {
 	if (!HasAuthority()) return;
-	UE_LOG(LogTemp, Warning, TEXT("Level up!! here"));
+	
 	UBaseAttributeSet* AS = nullptr;
 	if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
 	{
@@ -318,8 +318,19 @@ void ABaseCharacter::HandleLevelUp()
 		AS->SetSkillPoint(AS->GetSkillPoint() + 1.0f);
 	}
 
-	// 이펙트 및 UI 처리 (Multicast)
-	// Multicast_LevelUpVFX(); 
+	// 레벨업 이펙트 GC 호출
+	if (AbilitySystemComponent.IsValid() && HasAuthority()) // 서버에서 실행
+	{
+		FGameplayCueParameters CueParams;
+		CueParams.Location = GetActorLocation(); 
+		CueParams.Instigator = this;
+		CueParams.EffectCauser = this;
+		
+		AbilitySystemComponent->ExecuteGameplayCue(
+			ProjectER::GameplayCue::Combat::LevelUp, 
+			CueParams
+		);
+	}
     
 	// UE_LOG(LogTemp, Warning, TEXT("[LevelUp] New Level: %f"), GetCharacterLevel());
 }
