@@ -5,5 +5,6 @@ UUsableItemData::UUsableItemData()
 	EffectType = EItemEffectType::None;
 	StatType = EItemStatType::AttackPower;
 	EffectValue = 0.0f;
+	ItemStatEffectClass = nullptr;
 	bConsumable = true;
 }

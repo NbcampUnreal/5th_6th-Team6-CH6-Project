@@ -453,7 +453,7 @@ void ABaseMonster::OnMonterHitHandle(AActor* Target)
 		return;
 	}
 
-	StateTreeComp->SendStateTreeEvent(FStateTreeEvent(MonsterTags.HitEventTag));
+	SendStateTreeEvent(MonsterTags.HitEventTag);
 }
 
 void ABaseMonster::OnMonterDeathHandle(AActor* Target)
@@ -554,7 +554,7 @@ void ABaseMonster::OnTargetLostHandle()
 	{
 		BC->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
 	}
-	StateTreeComp->SendStateTreeEvent(FGameplayTag(MonsterTags.TargetOffEventTag));
+	SendStateTreeEvent(MonsterTags.TargetOffEventTag);
 	TargetPlayer = nullptr;
 }
 
@@ -572,7 +572,7 @@ void ABaseMonster::OnPlayerCountOneHandle()
 	}
 	FGameplayEventData* Payload = new FGameplayEventData();
 	ASC->HandleGameplayEvent(MonsterTags.BeginSearchEventTag, Payload);
-	StateTreeComp->SendStateTreeEvent(MonsterTags.BeginSearchEventTag);
+	SendStateTreeEvent(MonsterTags.BeginSearchEventTag);
 }  
 
 void ABaseMonster::OnPlayerCountZeroHandle()
@@ -592,7 +592,7 @@ void ABaseMonster::OnPlayerCountZeroHandle()
 	{
 		FGameplayEventData* Payload = new FGameplayEventData();
 		ASC->HandleGameplayEvent(FGameplayTag(MonsterTags.EndSearchEventTag), Payload);
-		StateTreeComp->SendStateTreeEvent(FStateTreeEvent(MonsterTags.EndSearchEventTag));
+		SendStateTreeEvent(MonsterTags.EndSearchEventTag);
 	}
 }
 
@@ -610,12 +610,12 @@ void ABaseMonster::SendAttackRangeEvent(float AttackRange)
 	if (Distance <= AttackRange * AttackRange)
 	{
 		// 공격
-		StateTreeComp->SendStateTreeEvent(FGameplayTag(MonsterTags.AttackEventTag));
+		SendStateTreeEvent(MonsterTags.AttackEventTag);
 	}
 	else
 	{
 		// 다시 체이스
-		StateTreeComp->SendStateTreeEvent(FGameplayTag(MonsterTags.TargetOnEventTag));
+		SendStateTreeEvent(MonsterTags.TargetOnEventTag);
 	}
 }
 
@@ -637,7 +637,6 @@ void ABaseMonster::SendStateTreeEvent(FGameplayTag InputTag)
 		return;
 	}
 	StateTreeComp->SendStateTreeEvent(InputTag);
-	//UE_LOG(LogTemp, Error, TEXT("ABaseMonster::SendStateTreeEvent"));
 }
 
 UStateTreeComponent* ABaseMonster::GetStateTreeComponent()
@@ -758,7 +757,7 @@ void ABaseMonster::Death()
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::OnMonterDeathHandle : Not DeathEventTag"));
 		return;
 	}
-	StateTreeComp->SendStateTreeEvent(FStateTreeEvent(MonsterTags.DeathEventTag));
+	SendStateTreeEvent(MonsterTags.DeathEventTag);
 }
 
 

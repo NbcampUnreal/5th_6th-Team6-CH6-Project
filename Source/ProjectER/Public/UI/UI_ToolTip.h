@@ -17,7 +17,7 @@ class PROJECTER_API UUI_ToolTip : public UUserWidget
 {
 	GENERATED_BODY()
 public:
-	void UpdateTooltip(UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc);
+	void UpdateTooltip(UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, FText CostDesc);
 
 protected:
 	UPROPERTY(meta = (BindWidget))
@@ -31,4 +31,7 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* txtLongDesc;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* txtCostDesc;
 };

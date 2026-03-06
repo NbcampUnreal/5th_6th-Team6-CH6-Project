@@ -28,16 +28,19 @@
 #include "Camera/TopDownCameraComp.h"
 
 #include "UI/UI_HUDFactory.h" // UI시스템 관리자
+#include "UI/UI_MainHUD.h" // Main UI
 
 #include "SkillSystem/SkillDataAsset.h"
 
 #include "Components/SceneCaptureComponent2D.h" // 미니맵용
 #include "Components/WidgetComponent.h" // HP바 위젯용
+#include "GameModeBase/State/ER_GameState.h"
 #include "UI/UI_HP_Bar.h" // HP바 위젯용
 
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "LineOfSight/MainVisionRTManager.h"
 #include "LineOfSight/Management/VisionPlayerStateComp.h"
+
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -1532,8 +1535,50 @@ void ABaseCharacter::InitUI()
 			HUD->InitHeroDataFactory(HeroData);
 			HUD->InitASCFactory(GetAbilitySystemComponent());
 			PC->setMainHud(HUD->getMainHUD());
+		
+			// 팀원 UI 오픈
+			ETeamType MyTeam = GetTeamType();
 
-			UE_LOG(LogTemp, Warning, TEXT("HUD InitOverlay Success!"));
+			// UE_LOG(LogTemp, Error, TEXT("My Team : %d"), MyTeam);
+
+			if (AGameStateBase* GS = GetWorld()->GetGameState())
+			{
+				AER_GameState* ERGS = Cast<AER_GameState>(GS);
+				if (IsValid(ERGS))
+				{
+					//for (APlayerState* PS : GS->PlayerArray)
+					//{
+					//	AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS);
+					//	if (IsValid(ERPS))
+					//	{
+					//		if (MyTeam == ERPS->TeamType)
+					//		{
+					//			countTeam++;
+					//		}
+					//	}
+					//}
+
+					int32 WidgetIndex = 0;
+
+					for (APlayerState* PS : GS->PlayerArray)
+					{
+						AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS);
+
+						if (ERPS && ERPS != this->GetPlayerState() && ERPS->TeamType == MyTeam)
+						{
+							// 팀원의 ASC 가져오기
+							if (UAbilitySystemComponent* TargetASC = ERPS->GetAbilitySystemComponent())
+							{
+								HUD->getMainHUD()->SetTeamMemberData(WidgetIndex, TargetASC);
+								HUD->getMainHUD()->SetTeamWidgetVisible(WidgetIndex, true);
+
+								WidgetIndex++;
+							}
+						}
+					}
+				}
+			}
+			HUD->getMainHUD()->InitTeamData();
 		}
 		else
 		{
@@ -1572,8 +1617,12 @@ void ABaseCharacter::UpdateOverheadUI()
 	{
 		float CurrentHP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetHealthAttribute());
 		float MaxHP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetMaxHealthAttribute());
+		float CurrentMP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetStaminaAttribute());
+		float MaxMP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetMaxStaminaAttribute());
 
 		HPBarWidgetInstance->Update_HP_bar(CurrentHP, MaxHP);
+		HPBarWidgetInstance->Update_MP_bar(CurrentMP, MaxMP);
+		HPBarWidgetInstance->Update_LV_bar(1);
 	}
 }
 

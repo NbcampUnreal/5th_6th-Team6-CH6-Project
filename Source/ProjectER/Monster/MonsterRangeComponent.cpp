@@ -34,6 +34,7 @@ void UMonsterRangeComponent::BeginPlay()
     RangeSphere->SetGenerateOverlapEvents(true);
 	RangeSphere->RegisterComponent();
 	RangeSphere->SetWorldLocation(GetOwner()->GetActorLocation());
+	RangeSphere->UpdateOverlaps();
 
     RangeSphere->OnComponentBeginOverlap.AddDynamic(
         this, &UMonsterRangeComponent::OnPlayerCountingBeginOverlap);
