@@ -23,9 +23,34 @@ void UBaseInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 	DOREPLIFETIME(UBaseInventoryComponent, InventoryContents);
 }
 
+int32 UBaseInventoryComponent::GetInventoryCount() const
+{
+	int32 Count = 0;
+	for (UBaseItemData* Item : InventoryContents)
+	{
+		if (Item != nullptr)
+		{
+			++Count;
+		}
+	}
+	return Count;
+}
+
+void UBaseInventoryComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// Initialize inventory slots with nullptrs on the server
+	if (GetOwner()->HasAuthority())
+	{
+		InventoryContents.Init(nullptr, MaxSlots);
+	}
+}
+
 bool UBaseInventoryComponent::AddItem(UBaseItemData* Item)
 {
-	if (Item == nullptr || InventoryContents.Num() >= MaxSlots)
+	/*if (Item == nullptr || InventoryContents.Num() >= MaxSlots)*/
+	if (Item == nullptr)
 	{
 		return false;
 	}
@@ -42,7 +67,26 @@ bool UBaseInventoryComponent::AddItem(UBaseItemData* Item)
 		return true;
 	}
 
-	InventoryContents.Add(Item);
+	// 빈 슬롯 찾기
+	int32 EmptySlotIndex = INDEX_NONE;
+	for (int32 i = 0; i < InventoryContents.Num(); ++i)
+	{
+		if (InventoryContents[i] == nullptr)
+		{
+			EmptySlotIndex = i;
+			break;
+		}
+	}
+
+	// 가방이 가득 찼으면 실패
+	if (EmptySlotIndex == INDEX_NONE)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] Inventory is full. Cannot add item: %s"), *Item->ItemName.ToString());
+		return false;
+	}
+
+	InventoryContents[EmptySlotIndex] = Item;
+
 	OnInventoryUpdated.Broadcast();
 	return true;
 }
@@ -119,7 +163,7 @@ void UBaseInventoryComponent::UseItem(const int32 SlotIndex)
 		return;
 	}
 
-	InventoryContents.RemoveAt(SlotIndex);
+	InventoryContents[SlotIndex] = nullptr;
 	OnRep_InventoryContents();
 }
 
