@@ -696,7 +696,7 @@ bool ABaseMonster::IsTargetable() const
 	{
 		if (ASC->HasMatchingGameplayTag(MonsterTags.DeathStateTag))
 		{
-			UE_LOG(LogTemp, Warning, TEXT("DeathStateTag Add"));
+			//UE_LOG(LogTemp, Warning, TEXT("DeathStateTag Add"));
 			return false;
 		}
 	}
