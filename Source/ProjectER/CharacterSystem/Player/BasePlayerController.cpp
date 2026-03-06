@@ -1,4 +1,4 @@
-#include "CharacterSystem/Player/BasePlayerController.h"
+﻿#include "CharacterSystem/Player/BasePlayerController.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -1252,6 +1252,30 @@ void ABasePlayerController::UI_RespawnStart(float RespawnTime)
 	if (IsValid(MainHUD))
 	{
 		MainHUD->StartRespawn(RespawnTime);
+	}
+}
+
+void ABasePlayerController::UI_KillCountUpdate_Implementation(int32 KillCount)
+{
+	if (IsValid(MainHUD))
+	{
+		MainHUD->SetKillCount(KillCount);
+	}
+}
+
+void ABasePlayerController::UI_DeathCountUpdate_Implementation(int32 DeathCount)
+{
+	if (IsValid(MainHUD))
+	{
+		MainHUD->SetDeathCount(DeathCount);
+	}
+}
+
+void ABasePlayerController::UI_AssistCountUpdate_Implementation(int32 AssistCount)
+{
+	if (IsValid(MainHUD))
+	{
+		MainHUD->SetAssistCount(AssistCount);
 	}
 }
 

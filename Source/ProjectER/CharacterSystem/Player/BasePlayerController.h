@@ -233,6 +233,14 @@ public:
 	UFUNCTION()
 	void UI_RespawnStart(float RespawnTime);
 
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void UI_KillCountUpdate(int32 KillCount);
+	
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void UI_DeathCountUpdate(int32 DeathCount);
+	
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void UI_AssistCountUpdate(int32 AssistCount);
 private:
 	UPROPERTY()
 	UUI_MainHUD* MainHUD;
