@@ -28,8 +28,12 @@ public class ProjectER : ModuleRules
             "PathFindingLibrary",
             "WorldBender",
             "TopDownVision",
-            "AssetRegistry"
+            "AssetRegistry",
+            "OnlineSubsystemSteam",
+            "OnlineSubsystem",
+            "UnrealEd",//for the editor function
         });
+        
         PrivateDependencyModuleNames.AddRange(new string[] { });
         PublicIncludePaths.AddRange(new string[]
         {

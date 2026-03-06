@@ -141,6 +141,9 @@ void ABaseMonster::BeginPlay()
 		InitHPBar();
 		AttributeSet->OnHealthChanged.AddDynamic(this, &ABaseMonster::OnHealthChangedHandle);
 	}
+
+
+	
 }
 
 void ABaseMonster::Tick(float DeltaTime)
@@ -195,12 +198,16 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 		InitAttributes(Level);
 		InitGiveAbilities();
 	}
+	
 	InitVisuals();
 	InitCollision();
 	if (HasAuthority())
 	{
 		InitStateTree();
 	}
+
+	//Trigger BP event function
+	OnMonsterDataLoadedEvent(MonsterAssetId, Level);
 }
 
 void ABaseMonster::InitGiveAbilities()
@@ -705,7 +712,7 @@ bool ABaseMonster::IsTargetable() const
 	{
 		if (ASC->HasMatchingGameplayTag(MonsterTags.DeathStateTag))
 		{
-			UE_LOG(LogTemp, Warning, TEXT("DeathStateTag Add"));
+			//UE_LOG(LogTemp, Warning, TEXT("DeathStateTag Add"));
 			return false;
 		}
 	}

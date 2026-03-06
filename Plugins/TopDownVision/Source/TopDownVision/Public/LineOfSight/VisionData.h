@@ -9,10 +9,13 @@ enum class EVisionChannel : uint8
 {
 	None= 255 UMETA(DisplayName = "None"), // special: no channel
 	
-	SharedVision = 0 UMETA(DisplayName = "SharedVision"),
-	TeamA = 1 UMETA(DisplayName = "TeamA"),
-	TeamB = 2 UMETA(DisplayName = "TeamB"),
-	TeamC = 3 UMETA(DisplayName = "TeamC"),
+	SharedVision = 3 UMETA(DisplayName = "SharedVision"),// same as netural
+	
+	TeamA = 0 UMETA(DisplayName = "TeamA"),
+	TeamB = 1 UMETA(DisplayName = "TeamB"),
+	TeamC = 2 UMETA(DisplayName = "TeamC"),
+
+	//changed 
 };
 
 UENUM()

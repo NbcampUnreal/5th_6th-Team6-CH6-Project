@@ -136,6 +136,7 @@ public:
     /**
      * Curved world aware cursor trace
      */
+    
     static bool GetHitResultUnderCursorCorrected(
         APlayerController* PlayerController,
         const UCurvedWorldSubsystem* CurvedWorld,

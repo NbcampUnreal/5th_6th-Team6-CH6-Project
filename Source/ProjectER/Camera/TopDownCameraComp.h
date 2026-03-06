@@ -16,7 +16,7 @@
 class USpringArmComponent;
 class UCameraComponent;
 // RT
-class UCameraVisionManager;
+class UMainVisionRTManager;
 class UCurvedWorldSubsystem;
 
 PROJECTER_API DECLARE_LOG_CATEGORY_EXTERN(MainCameraComp, Log, All);
@@ -53,6 +53,10 @@ public:
 	USpringArmComponent* GetCameraBoomComp() const { return SpringArm; }
 	bool IsCameraPanFreeMode() const { return bIsFreeCamMode; }
 
+
+	UFUNCTION(BlueprintPure, BlueprintCallable, Category="CameraComp")
+	UMainVisionRTManager* GetMainVisionRTManager() { return MainVisionRTManager; }
+
 private:
 	// Tick helpers
 	void TickFollowMode(float DeltaTime);
@@ -60,7 +64,7 @@ private:
 
 	// Init helpers
 	void PrepareRequirements();
-	void CacheCurveWorldSubsystem();
+	void SetCurveWorldSubsystem();
 
 	// Edge scroll
 	FVector2D GatherEdgeScrollInput() const;
@@ -85,23 +89,35 @@ protected:
 	TObjectPtr<UCameraComponent> CameraComp;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera|Components")
-	TObjectPtr<UCameraVisionManager> CameraVisionManager;
+	TObjectPtr<UMainVisionRTManager> MainVisionRTManager;
 
 	// Cached subsystem
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera|Components")
+	UPROPERTY(Transient)
 	TObjectPtr<UCurvedWorldSubsystem> CurveSubSystem = nullptr;
+	//MPC
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera|Components")
+	TObjectPtr<UMaterialParameterCollection> CurvedWorldMPC;
 
 	// Curve settings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera|Curve")
 	float CurveBendWeight = 1.5f;
 
-	// Movement settings
+	//Visuals
+	//MPC visual correction
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera|Curve")
+	float TiltAlpha=1.f;
+
+	//Camera Lag setting
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera|Settings")
+	bool UseLag=true;//deafualt as using lag, but can toggle this so that it can snap always
+	
+	//Camera boom setting
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera|Settings")
 	float ArmLength = 2000.f;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera|Settings")
 	float ArmPitch = -60.f;
-
+	
+	// Movement settings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera|Settings")
 	float PanSpeed = 900.f;
 
@@ -113,6 +129,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera|Settings")
 	float FollowLagSpeed = 1.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera|Settings")
+	float FreeCamLagSpeed = 8.f; 
 
 	// State
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera|State")

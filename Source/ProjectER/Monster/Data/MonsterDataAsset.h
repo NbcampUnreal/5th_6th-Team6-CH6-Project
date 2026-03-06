@@ -186,4 +186,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Reward")
 	TArray<UBaseItemData*> ItemList;
 
+	//2D Shape SamplePoints for overlapping //--> this will be used if have chance
+	//TArray<>
+	
+	// Mesh + Material for MID generation
+	/*UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "MonsterData|Reward")
+	TMap<>*/
 };
