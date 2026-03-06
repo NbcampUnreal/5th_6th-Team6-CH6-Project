@@ -33,6 +33,7 @@ protected:
 	AActor* GetTargetUnderCursor();
 	bool IsInRange(AActor* Actor);
 	void RotateToTarget(AActor* Actor);
+	void ApplyEffectsTarget(AActor* TargetActor, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets);
 	void CleanUpSkill();
 
 	UFUNCTION()
@@ -46,7 +47,7 @@ private:
 public:
 
 protected:
-	TSet<TObjectPtr<AActor>> AffectedActors;
+	TWeakObjectPtr<AActor> AffectedActor;
 	TWeakObjectPtr<ATargetActor> CurrentTargetActor;
 	TWeakObjectPtr<AActor> PendingExternalTargetActor;
 	FGameplayTag ExternalTargetActorEventTag;

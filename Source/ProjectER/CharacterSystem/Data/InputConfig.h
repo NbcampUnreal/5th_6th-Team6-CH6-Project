@@ -65,5 +65,32 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<UInputAction> InputCameraHold;//Hold
-	
+
+
+	// 아이템 사용
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "item")
+	TObjectPtr<UInputAction> UseItem1;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "item")
+	TObjectPtr<UInputAction> UseItem2;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "item")
+	TObjectPtr<UInputAction> UseItem3;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "item")
+	TObjectPtr<UInputAction> UseItem4;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "item")
+	TObjectPtr<UInputAction> UseItem5;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "item")
+	TObjectPtr<UInputAction> UseItem6;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "item")
+	TObjectPtr<UInputAction> UseItem7;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "item")
+	TObjectPtr<UInputAction> UseItem8;
+
 };

@@ -31,15 +31,16 @@ void UMouseTargetSkill::ExecuteSkill()
 {
 	Super::ExecuteSkill();
 
-	if (AffectedActors.Num() <= 0) return;
-	RotateToTarget(AffectedActors.begin()->Get());
+	AActor* const TargetActor = AffectedActor.Get();
+	if (!IsValid(TargetActor)) return;
+	RotateToTarget(TargetActor);
 
 	UMouseTargetSkillConfig* Config = Cast<UMouseTargetSkillConfig>(CachedConfig);
 	if (!IsValid(Config)) return;
 
 	const TArray<TObjectPtr<USkillEffectDataAsset>>& EffectDataAssets = Config->GetEffectsToApply();
 	if (EffectDataAssets.Num() <= 0) return;
-	ApplyEffectsToActors(AffectedActors, EffectDataAssets);
+	ApplyEffectsTarget(TargetActor, EffectDataAssets);
 }
 
 void UMouseTargetSkill::CompleteFinishSkill()
@@ -136,13 +137,15 @@ void UMouseTargetSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle
 		return;
 	}
 
-	for (AActor* Actor : TargetActors)
+	AffectedActor = nullptr;
+	for (AActor* const Actor : TargetActors)
 	{
-		if (IsValid(Actor))
-		{
-			AffectedActors.Add(Actor);
-		}
+		if (!IsValid(Actor)) continue;
+		AffectedActor = Actor;
+		break;
 	}
+
+	if (!AffectedActor.IsValid()) return;
 
 	PrepareToActiveSkill();
 }
@@ -247,8 +250,34 @@ void UMouseTargetSkill::RotateToTarget(AActor* Actor)
 	Avatar->SetActorRotation(NewRotation);
 }
 
+void UMouseTargetSkill::ApplyEffectsTarget(AActor* TargetActor, const TArray<TObjectPtr<USkillEffectDataAsset>>& SkillEffectDataAssets)
+{
+	UAbilitySystemComponent* const SourceASC = GetAbilitySystemComponentFromActorInfo();
+	AActor* const Avatar = GetAvatarActorFromActorInfo();
+	if (!IsValid(SourceASC) || !IsValid(Avatar) || !IsValid(TargetActor) || SkillEffectDataAssets.Num() <= 0) return;
+	if (!IsValidRelationship(TargetActor)) return;
+
+	FGameplayEffectContextHandle ContextHandle = SourceASC->MakeEffectContext();
+	ContextHandle.AddInstigator(Avatar, Avatar);
+	ContextHandle.SetAbility(this);
+
+	UAbilitySystemComponent* const TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
+	if (!IsValid(TargetASC)) return;
+
+	for (USkillEffectDataAsset* const Effect : SkillEffectDataAssets)
+	{
+		if (!IsValid(Effect)) continue;
+
+		for (FGameplayEffectSpecHandle& Spec : Effect->MakeSpecs(SourceASC, this, Avatar, ContextHandle))
+		{
+			if (!Spec.IsValid() || !Spec.Data.IsValid()) continue;
+			SourceASC->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(), TargetASC);
+		}
+	}
+}
+
 void UMouseTargetSkill::CleanUpSkill()
 {
 	CurrentTargetActor = nullptr;
-	AffectedActors.Empty();
+	AffectedActor = nullptr;
 }

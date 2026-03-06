@@ -987,6 +987,8 @@ UWidgetAnimation* UUI_MainHUD::GetWidgetAnimationByName(FName AnimName) const
     }
     return nullptr;
 }
+
+// [김현수 추가분]
 // 인벤토리 UI 업데이트 함수
 void UUI_MainHUD::UpdateInventoryUI()
 {

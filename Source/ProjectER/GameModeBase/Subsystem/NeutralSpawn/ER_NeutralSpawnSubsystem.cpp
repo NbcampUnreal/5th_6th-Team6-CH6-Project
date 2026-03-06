@@ -100,39 +100,10 @@ void UER_NeutralSpawnSubsystem::StartRespawnNeutral(const int32 SpawnPointIdx)
         FTimerDelegate::CreateWeakLambda(this, [this, SpawnPointIdx]()
             {
                 // 비동기로 실행하는 것이니 다시 Map에서 검색
-                FNeutralInfo* Info = NeutralSpawnMap.Find(SpawnPointIdx);
-                FActorSpawnParameters Params;
-                Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-
-                // 액터 클래스 소환
-                ABaseMonster* Spawned = GetWorld()->SpawnActor<ABaseMonster>(
-                    Info->NeutralActorClass,
-                    Info->SpawnPoint->GetActorTransform(),
-                    Params
-                );
-
-                // FPrimaryAssetId의 값 지정
-                FPrimaryAssetId MonsterAssetId(TEXT("Monster"), Info->DAName);
-                AER_GameState* ERGS = GetWorld()->GetAuthGameMode()->GetGameState<AER_GameState>();
-
-                // 현재 페이즈의 값을 GameState에서 받아와 페이즈 정보 전달
-                int32 Phase = ERGS->GetCurrentPhase() > 0 ? ERGS->GetCurrentPhase() : 1;
-                Spawned->InitMonsterData(MonsterAssetId, Phase);
-
-                // 몬스터에게 Map의 Key값 전달
-                Spawned->SetSpawnPoint(SpawnPointIdx);
-                
-                // 몬스터 스폰 완료 후, 범위를 확인하여 그룹을 형성
-                if (UMonsterRangeComponent* RangeComp = Spawned->GetMonsterRangeComp())
+                if (FNeutralInfo* DelayedInfo = NeutralSpawnMap.Find(SpawnPointIdx))
                 {
-                    RangeComp->InitMonsterGroup();
+                    SpawnMonsterInternal(*DelayedInfo, SpawnPointIdx);
                 }
-
-                // FNeutralInfo 값 갱신
-                Info->SpawnedActor = Spawned;
-                Info->bIsSpawned = true;
-
-                UE_LOG(LogTemp, Log, TEXT("[NSS] Complete Neutral Respawn DA_Name : %s , Phase : %d"), *Info->DAName.ToString(), Phase);
             }),
         Info->RespawnDelay,
         false
