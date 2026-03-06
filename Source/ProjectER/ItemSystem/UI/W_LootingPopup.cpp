@@ -253,6 +253,7 @@ void UW_LootingPopup::OnItemHovered()
 					FText::FromString("Item Name"),
 					FText::FromString("Short Description"),
 					FText::FromString("Detailed Description goes here."),
+					FText::FromString(""),
 					true
 				);
 			}

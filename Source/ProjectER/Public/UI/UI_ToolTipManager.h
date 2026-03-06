@@ -19,7 +19,7 @@ public:
 
     void setTooltipInstance(UUI_ToolTip* InTooltipInstance) { TooltipInstance = InTooltipInstance; }
 
-    void ShowTooltip(UWidget* AnchorWidget, class UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, bool showUpper);
+    void ShowTooltip(UWidget* AnchorWidget, class UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, FText CostDesc, bool showUpper);
 
 private:
     UPROPERTY()

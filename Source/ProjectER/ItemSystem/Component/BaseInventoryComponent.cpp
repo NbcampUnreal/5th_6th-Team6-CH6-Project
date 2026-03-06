@@ -17,6 +17,30 @@ UBaseInventoryComponent::UBaseInventoryComponent()
 	SetIsReplicatedByDefault(true);
 }
 
+int32 UBaseInventoryComponent::GetInventoryCount() const
+{
+	int32 Count = 0;
+	for (UBaseItemData* Item : InventoryContents)
+	{
+		if (Item != nullptr)
+		{
+			++Count;
+		}
+	}
+	return Count;
+}
+
+void UBaseInventoryComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// Initialize inventory slots with nullptrs on the server
+	if (GetOwner()->HasAuthority())
+	{
+		InventoryContents.Init(nullptr, MaxSlots);
+	}
+}
+
 void UBaseInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);

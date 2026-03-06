@@ -30,10 +30,16 @@ void UER_RespawnSubsystem::HandlePlayerDeath(AER_PlayerState& PS, AER_GameState&
 	{
 		KillerPS->AddKillCount();
 		KillerPS->ForceNetUpdate();
+
+		// mpyi _ 킬 카운트 체크를 위해 추가
+		ABasePlayerController* KillerPC = Cast<ABasePlayerController>(KillerPS->GetPlayerController());
+		if (IsValid(KillerPC))
+		{
+			KillerPC->UI_KillCountUpdate(KillerPS->GetKillCount());
+		}		
+
 		UE_LOG(LogTemp, Warning, TEXT("Kill.PS K : %d, D : %d, A : %d"), KillerPS->GetKillCount(), KillerPS->GetDeathCount(), KillerPS->GetAssistCount());
 	}
-
-	
 
 	for (auto& AssistPS : Assists)
 	{
@@ -42,10 +48,25 @@ void UER_RespawnSubsystem::HandlePlayerDeath(AER_PlayerState& PS, AER_GameState&
 		{
 			AssistERPS->AddAssistCount();
 			AssistERPS->ForceNetUpdate();
+
+
+			// mpyi _ 어시 카운트 체크를 위해 추가
+			ABasePlayerController* AssistPC = Cast<ABasePlayerController>(AssistERPS->GetPlayerController());
+			if (IsValid(AssistPC))
+			{
+				AssistPC->UI_AssistCountUpdate(AssistERPS->GetAssistCount());
+			}
+
 			UE_LOG(LogTemp, Warning, TEXT("Kill.PS K : %d, D : %d, A : %d"), AssistERPS->GetKillCount(), AssistERPS->GetDeathCount(), AssistERPS->GetAssistCount());
 		}
 	}
 
+	// mpyi _ 데스 카운트 체크를 위해 추가
+	ABasePlayerController* PC = Cast<ABasePlayerController>(PS.GetOwner());
+	if (IsValid(PC))
+	{
+		PC->UI_DeathCountUpdate(PS.GetDeathCount());
+	}
 	UE_LOG(LogTemp, Warning, TEXT("PS.bIsDead = %s"), PS.bIsDead ? TEXT("True") : TEXT("False"));
 }
 
