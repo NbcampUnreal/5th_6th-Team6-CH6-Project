@@ -105,6 +105,10 @@ public:
 	
 protected:
 	virtual void OnRep_PlayerState() override;
+
+	//BP Exposed Function
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnPlayerStateChosen();
 	
 #pragma endregion
 	

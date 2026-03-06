@@ -58,8 +58,7 @@ void UVision_VisualComp::BeginPlay()
     if (!ShouldRunClientLogic())//server gate
         return;
 
-    
-    Initialize();//make separate function
+    //Initialize();
 }
 
 void UVision_VisualComp::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -81,7 +80,11 @@ void UVision_VisualComp::OnRegister()
 
 void UVision_VisualComp::Initialize()
 {
+    
     AActor* DebugCheckingActor = GetOwner();
+
+    if (!ShouldRunClientLogic())//server gate
+        return;
     
     // Pass MaxVisionRange into ObstacleDrawer so it can size its RT correctly
     if (ObstacleDrawer)

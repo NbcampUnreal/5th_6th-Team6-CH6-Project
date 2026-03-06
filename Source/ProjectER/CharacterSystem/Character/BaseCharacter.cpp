@@ -295,13 +295,6 @@ void ABaseCharacter::OnRep_PlayerState()
 		{
 			TopDownCameraComp->Activate();
 			TopDownCameraComp->SetComponentTickEnabled(true);
-
-			UMainVisionRTManager* MainVisionRT=TopDownCameraComp->GetMainVisionRTManager();
-			if (MainVisionRT)
-			{
-				MainVisionRT->SetVisionChannel(ConvertTeamToVisionChannel(TeamID));
-			}
-			
 			TopDownCameraComp->InitializeCompRequirements();
 			
 		}
@@ -311,6 +304,8 @@ void ABaseCharacter::OnRep_PlayerState()
 			TopDownCameraComp->SetComponentTickEnabled(false);
 		}
 	}
+
+	OnPlayerStateChosen();
 }
 
 void ABaseCharacter::HandleLevelUp()
