@@ -2,8 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "GameplayTagContainer.h"
+#include "ItemSystem/Data/UsableItemData.h"
 #include "BaseInventoryComponent.generated.h"
 
+class UAbilitySystemComponent;
 class UBaseItemData;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryUpdatedSignature);
@@ -53,11 +56,11 @@ protected:
 	virtual void BeginPlay() override;
 
 private:
-	class UAbilitySystemComponent* ResolveOwnerAbilitySystemComponent() const;
+	UAbilitySystemComponent* ResolveOwnerAbilitySystemComponent() const;
+	FGameplayTag GetSetByCallerTagFromStatType(EItemStatType StatType) const;
 
-	// 아이템 효과 적용 헬퍼 함수
-	bool ApplyItemEffect(class UUsableItemData* ItemData);
-	bool ApplyStatIncrease(class UAbilitySystemComponent* ASC, class UUsableItemData* ItemData);
+	bool ApplyItemEffect(UUsableItemData* ItemData);
+	bool ApplyStatIncrease(UAbilitySystemComponent* ASC, UUsableItemData* ItemData);
 
 public:
 	UPROPERTY(BlueprintAssignable, Category = "Inventory")
