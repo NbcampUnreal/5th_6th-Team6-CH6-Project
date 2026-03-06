@@ -102,7 +102,8 @@ public:
     UFUNCTION(BlueprintCallable, Category="Vision")
     EVisionChannel GetVisionChannel() const {return VisionChannel;}
     UFUNCTION(BlueprintCallable, Category="Vision")
-    void SetVisionChannel(EVisionChannel InVC) {VisionChannel = InVC;}
+    void SetVisionChannel(EVisionChannel InVC);
+
 
     UFUNCTION(BlueprintCallable, Category="Vision")
     void UpdateVisionRange(float NewRange);

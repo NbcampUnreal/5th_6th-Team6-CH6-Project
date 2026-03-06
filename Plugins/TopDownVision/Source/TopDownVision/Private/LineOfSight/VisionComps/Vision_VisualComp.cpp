@@ -217,6 +217,12 @@ UMaterialInstanceDynamic* UVision_VisualComp::GetStampMID() const
 
 // -------------------------------------------------------------------------- //
 
+void UVision_VisualComp::SetVisionChannel(EVisionChannel InVC)
+{
+    FString TempDebug = TopDownVisionDebug::GetClientDebugName(GetOwner());
+    VisionChannel = InVC;
+}
+
 void UVision_VisualComp::UpdateVisionRange(float NewRange)
 {
     VisionRange= FMath::Clamp(NewRange, 0.f, MaxVisionRange);

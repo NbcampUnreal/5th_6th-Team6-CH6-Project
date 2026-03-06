@@ -125,10 +125,14 @@ void ABaseCharacter::BeginPlay()
 		InitVisuals();
 	}
 
+
+	/*EVisionChannel CurrentVisionChannel=GetVisionChannelFromPlayerStateComp();
+	TeamID;//test-> did the team id been settled?
+	
 	if (TopDownCameraComp)
 	{
 		TopDownCameraComp->InitializeComponent();
-	}
+	}*/
 	
 	PreloadMontages();
 }
@@ -193,6 +197,8 @@ void ABaseCharacter::PossessedBy(AController* NewController)
 		InitVisuals();
 	}
 
+	bool bIsServer=HasAuthority();
+	
 	if (TopDownCameraComp)//disable the tick for the server
 	{
 		TopDownCameraComp->SetComponentTickEnabled(false);
@@ -244,9 +250,7 @@ void ABaseCharacter::OnRep_TeamID()
 	}
 	
 	UE_LOG(LogTemp, Warning, TEXT("%s"), *Message);
-
-	//BP Expose
-	OnTeamIDChosen();
+	
 }
 
 void ABaseCharacter::Server_SetTeamID_Implementation(ETeamType NewTeamID)
@@ -277,6 +281,17 @@ EVisionChannel ABaseCharacter::ConvertTeamToVisionChannel(ETeamType InTeamType)
 	}
 }
 
+EVisionChannel ABaseCharacter::GetVisionChannelFromPlayerStateComp()
+{
+	if (const AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
+	{
+		return ConvertTeamToVisionChannel( ERPS->GetTeamType());
+	}
+	
+	//failed to get the vision channel -> return none
+	return EVisionChannel::None;
+}
+
 UAbilitySystemComponent* ABaseCharacter::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent.Get();
@@ -296,6 +311,9 @@ void ABaseCharacter::OnRep_PlayerState()
 	{
 		if (IsLocallyControlled())
 		{
+			//initialize the comp first
+			TopDownCameraComp->InitializeComponent();
+			
 			TopDownCameraComp->Activate();
 			TopDownCameraComp->SetComponentTickEnabled(true);
 			TopDownCameraComp->InitializeCompRequirements();
@@ -308,7 +326,17 @@ void ABaseCharacter::OnRep_PlayerState()
 		}
 	}
 
+	
+	EVisionChannel CurrentVisionChannel=GetVisionChannelFromPlayerStateComp();
+	//remade it to get the team id directly from player state
+	TeamID;//test-> did the team id been settled?
+	
 	OnPlayerStateChosen();
+}
+
+bool ABaseCharacter::IsLocalPlayerPawn()
+{
+	return IsLocallyControlled();
 }
 
 void ABaseCharacter::HandleLevelUp()

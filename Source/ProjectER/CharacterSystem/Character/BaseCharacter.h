@@ -81,16 +81,13 @@ public:
 protected:
 	UFUNCTION()
 	void OnRep_TeamID();
-
-	//BP Exposed Function
-	UFUNCTION(BlueprintImplementableEvent)
-	void OnTeamIDChosen();
 	
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Team")
-	ETeamType PassOnTeamMIDChosen() const {return TeamID;};
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Team")
 	EVisionChannel ConvertTeamToVisionChannel(ETeamType InTeamType);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Team")
+	EVisionChannel GetVisionChannelFromPlayerStateComp();
 	
 protected:
 	// 팀 변수
@@ -109,6 +106,9 @@ protected:
 	//BP Exposed Function
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnPlayerStateChosen();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Ability")
+	bool IsLocalPlayerPawn();
 	
 #pragma endregion
 	

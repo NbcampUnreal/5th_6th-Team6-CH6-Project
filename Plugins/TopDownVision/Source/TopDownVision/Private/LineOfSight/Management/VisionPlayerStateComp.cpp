@@ -34,12 +34,12 @@ void UVisionPlayerStateComp::BeginPlay()
 
 void UVisionPlayerStateComp::SetTeamChannel(EVisionChannel InTeam)
 {
-    if (!GetOwner()->HasAuthority())
+    /*if (!GetOwner()->HasAuthority())
     {
         UE_LOG(VisionPlayerStateComp, Warning,
             TEXT("[%s] SetTeamChannel >> Server only"), *GetOwner()->GetName());
         return;
-    }
+    }*/
 
     TeamChannel = InTeam;
 
