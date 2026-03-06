@@ -1,9 +1,13 @@
 ﻿#include "ItemSystem/Component/BaseInventoryComponent.h"
 #include "ItemSystem/Data/BaseItemData.h"
 #include "ItemSystem/Data/UsableItemData.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
 #include "AttributeSet.h"
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
+#include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerState.h"
 #include "Net/UnrealNetwork.h"
 
 UBaseInventoryComponent::UBaseInventoryComponent()
@@ -101,8 +105,13 @@ void UBaseInventoryComponent::UseItem(int32 SlotIndex)
 	UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] Using item: %s (Slot %d)"),
 		*UsableItem->ItemName.ToString(), SlotIndex);
 
-	// 아이템 효과 적용
-	ApplyItemEffect(UsableItem);
+	// 아이템 효과 적용 (실패 시 소비하지 않음)
+	const bool bEffectApplied = ApplyItemEffect(UsableItem);
+	if (!bEffectApplied)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] UseItem: Failed to apply effect for item %s"), *UsableItem->ItemName.ToString());
+		return;
+	}
 
 	// 소비 아이템이면 제거
 	if (UsableItem->bConsumable)
@@ -126,43 +135,79 @@ void UBaseInventoryComponent::Server_UseItem_Implementation(int32 SlotIndex)
 	UseItem(SlotIndex);
 }
 
+UAbilitySystemComponent* UBaseInventoryComponent::ResolveOwnerAbilitySystemComponent() const
+{
+	AActor* const OwnerActor = GetOwner();
+	if (OwnerActor == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[BaseInventoryComponent] ResolveOwnerAbilitySystemComponent: Owner is null"));
+		return nullptr;
+	}
+
+	if (UAbilitySystemComponent* const OwnerAsc = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OwnerActor))
+	{
+		return OwnerAsc;
+	}
+
+	const APawn* const OwnerPawn = Cast<APawn>(OwnerActor);
+	if (OwnerPawn == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[BaseInventoryComponent] ResolveOwnerAbilitySystemComponent: No ASC on owner '%s'"), *OwnerActor->GetName());
+		return nullptr;
+	}
+
+	const APlayerState* const PlayerState = OwnerPawn->GetPlayerState();
+	if (PlayerState == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[BaseInventoryComponent] ResolveOwnerAbilitySystemComponent: Pawn '%s' has no PlayerState"), *OwnerActor->GetName());
+		return nullptr;
+	}
+
+	if (const IAbilitySystemInterface* const AscInterface = Cast<IAbilitySystemInterface>(PlayerState))
+	{
+		if (UAbilitySystemComponent* const PlayerStateAsc = AscInterface->GetAbilitySystemComponent())
+		{
+			return PlayerStateAsc;
+		}
+	}
+
+	UE_LOG(LogTemp, Error, TEXT("[BaseInventoryComponent] ResolveOwnerAbilitySystemComponent: PlayerState '%s' has no ASC"), *PlayerState->GetName());
+	return nullptr;
+}
+
 // 아이템 효과 적용
-void UBaseInventoryComponent::ApplyItemEffect(UUsableItemData* ItemData)
+bool UBaseInventoryComponent::ApplyItemEffect(UUsableItemData* ItemData)
 {
 	if (!ItemData)
-		return;
-
-	// Owner의 AbilitySystemComponent 가져오기
-	AActor* Owner = GetOwner();
-	if (!Owner)
-		return;
-
-	UAbilitySystemComponent* ASC = Owner->FindComponentByClass<UAbilitySystemComponent>();
-	if (!ASC)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[BaseInventoryComponent] ApplyItemEffect: No ASC found!"));
-		return;
+		return false;
+	}
+
+	UAbilitySystemComponent* const ASC = ResolveOwnerAbilitySystemComponent();
+	if (ASC == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[BaseInventoryComponent] ApplyItemEffect: Failed to resolve ASC for owner '%s'"), *GetNameSafe(GetOwner()));
+		return false;
 	}
 
 	switch (ItemData->EffectType)
 	{
 	case EItemEffectType::IncreaseStat:
-		ApplyStatIncrease(ASC, ItemData);
-		break;
+		return ApplyStatIncrease(ASC, ItemData);
 
 	default:
 		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] Unknown effect type"));
-		break;
+		return false;
 	}
 }
 
 // 스탯 증가 적용
-void UBaseInventoryComponent::ApplyStatIncrease(UAbilitySystemComponent* ASC, UUsableItemData* ItemData)
+bool UBaseInventoryComponent::ApplyStatIncrease(UAbilitySystemComponent* ASC, UUsableItemData* ItemData)
 {
 	if (!ASC || !ItemData)
 	{
 		UE_LOG(LogTemp, Error, TEXT("[BaseInventoryComponent] ASC or ItemData is null!"));
-		return;
+		return false;
 	}
 
 	// BaseAttributeSet 가져오기
@@ -170,7 +215,7 @@ void UBaseInventoryComponent::ApplyStatIncrease(UAbilitySystemComponent* ASC, UU
 	if (!BaseAS)
 	{
 		UE_LOG(LogTemp, Error, TEXT("[BaseInventoryComponent] No BaseAttributeSet found!"));
-		return;
+		return false;
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] BaseAttributeSet found!"));
@@ -199,13 +244,13 @@ void UBaseInventoryComponent::ApplyStatIncrease(UAbilitySystemComponent* ASC, UU
 		break;
 	default:
 		UE_LOG(LogTemp, Error, TEXT("[BaseInventoryComponent] Unknown stat type"));
-		return;
+		return false;
 	}
 
 	if (!Attribute.IsValid())
 	{
 		UE_LOG(LogTemp, Error, TEXT("[BaseInventoryComponent] Invalid attribute '%s'!"), *AttributeName);
-		return;
+		return false;
 	}
 
 	// 현재 값 가져오기
@@ -219,6 +264,7 @@ void UBaseInventoryComponent::ApplyStatIncrease(UAbilitySystemComponent* ASC, UU
 	ASC->SetNumericAttributeBase(Attribute, NewValue);
 
 	// 확인
-	float VerifyValue = ASC->GetNumericAttribute(Attribute);
+	const float VerifyValue = ASC->GetNumericAttribute(Attribute);
 	UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] Stat increased successfully! Verified: %.1f"), VerifyValue);
+	return true;
 }
