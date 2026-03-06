@@ -30,7 +30,8 @@ USkillBase::USkillBase()
 	ActiveTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Active"));
 	//ActivationBlockedTags.AddTag(CastingTag);
 	ActivationBlockedTags.AddTag(ActiveTag);
-
+	ActivationBlockedTags.AddTag(FGameplayTag::RequestGameplayTag(FName("State.Life.Death")));
+	ActivationBlockedTags.AddTag(FGameplayTag::RequestGameplayTag(FName("State.Life.Down")));
 	CooldownGameplayEffectClass = UGE_SharedCooldown::StaticClass();
 }
 
