@@ -7,6 +7,10 @@ void UAnimNotify_SendStateTreeEventTag::Notify(USkeletalMeshComponent* MeshComp,
 {
 	Super::Notify(MeshComp, Animation, EventReference);
 
+	if (!GetWorld()->IsGameWorld())
+	{
+		return;
+	}
 	if (!MeshComp || !MeshComp->GetOwner())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("UAnimNotify_SendStateTreeEventTag::Notify : Not Mesh"));
