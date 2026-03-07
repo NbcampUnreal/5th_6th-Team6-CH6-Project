@@ -5,6 +5,7 @@
 #include "AbilitySystemInterface.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
 #include "GameplayEffectTypes.h"
+#include "LineOfSight/VisionData.h"
 #include "BaseCharacter.generated.h"
 
 class UCameraComponent;
@@ -28,12 +29,6 @@ class PROJECTER_API ABaseCharacter : public ACharacter,  public IAbilitySystemIn
 
 public:
 	ABaseCharacter();
-	
-	// no more camera and camera spring arm.
-	FORCEINLINE UCameraComponent* GetTopDownCameraComponent() const { return TopDownCameraComponent.Get(); }
-	
-	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom.Get(); }
-	
 
 protected:
 	virtual void BeginPlay() override;
@@ -60,7 +55,7 @@ protected:
 	TObjectPtr<USpringArmComponent> CameraBoom;
 
 	//replacement for camera comp
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess="true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Components", meta = (AllowPrivateAccess="true"))
 	TObjectPtr<UTopDownCameraComp> TopDownCameraComp=nullptr;
 	
 	UPROPERTY()
@@ -87,6 +82,13 @@ protected:
 	UFUNCTION()
 	void OnRep_TeamID();
 	
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Team")
+	EVisionChannel ConvertTeamToVisionChannel(ETeamType InTeamType);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Team")
+	EVisionChannel GetVisionChannelFromPlayerStateComp();
+	
 protected:
 	// 팀 변수
 	UPROPERTY(ReplicatedUsing = OnRep_TeamID, EditAnywhere, BlueprintReadWrite, Category = "Team")
@@ -100,6 +102,13 @@ public:
 	
 protected:
 	virtual void OnRep_PlayerState() override;
+
+	//BP Exposed Function
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnPlayerStateChosen();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Ability")
+	bool IsLocalPlayerPawn();
 	
 #pragma endregion
 	
@@ -323,4 +332,14 @@ protected:
 	UUI_HP_Bar* HPBarWidgetInstance;
 	
 #pragma endregion
+
+#pragma region Vision
+
+	UFUNCTION(BlueprintPure, BlueprintCallable, Category = "Vision")//Helper for getting the vision channel from the PlayerStateComp
+	EVisionChannel GetVisionChannelFromVisionPlayerStateComp();
+
+	
+	
+#pragma endregion
+	
 };

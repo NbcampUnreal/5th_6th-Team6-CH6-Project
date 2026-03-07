@@ -30,8 +30,10 @@ public class ProjectER : ModuleRules
             "TopDownVision",
             "AssetRegistry",
             "OnlineSubsystemSteam",
-            "OnlineSubsystem"
+            "OnlineSubsystem",
+            "UnrealEd",//for the editor function
         });
+        
         PrivateDependencyModuleNames.AddRange(new string[] { });
         PublicIncludePaths.AddRange(new string[]
         {

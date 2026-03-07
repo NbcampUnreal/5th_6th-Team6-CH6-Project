@@ -392,29 +392,32 @@ FVector FCurvedWorldUtil::VisualCurvedToWorld(
         return VisualPos;
     }
 
-    // !!! Inversion only works simply for ZHeightOnly mode
-    // For Height Tilt modes, this is approximate
     if (MathType != ECurveMathType::ZHeightOnly)
     {
-        UE_LOG(LogTemp, Warning, TEXT("VisualCurvedToWorld: Inversion only accurate for ZHeightOnly mode"));
+        UE_LOG(LogTemp, Warning, TEXT("VisualCurvedToWorld: Only exact for ZHeightOnly for now"));
     }
-    
-    // Calculate offset using visual position's X,Y components
-    FVector Offset = VisualPos - CurvedWorld->Camera_Origin;
-    
-    float Offset_Camera_X = FVector::DotProduct(FVector(Offset.X, Offset.Y, 0.0f), 
-                                                 FVector(CurvedWorld->Camera_RightVector.X, CurvedWorld->Camera_RightVector.Y, 0.0f));
-    
-    float Offset_Camera_Y = FVector::DotProduct(FVector(Offset.X, Offset.Y, 0.0f), 
-                                                 FVector(CurvedWorld->Camera_ForwardVector.X, CurvedWorld->Camera_ForwardVector.Y, 0.0f));
-    
-    // Calculate Z bend
-    float Z_Bend_X = Offset_Camera_X * Offset_Camera_X * CurvedWorld->CurveX;
-    float Z_Bend_Y = Offset_Camera_Y * Offset_Camera_Y * CurvedWorld->CurveY;
-    float Total_Z_Bend = (Z_Bend_X + Z_Bend_Y) * CurvedWorld->BendWeight;
-    
-    // Invert: WorldPos = VisualPos - CurvedOffset
-    return FVector(VisualPos.X, VisualPos.Y, VisualPos.Z - Total_Z_Bend);
+
+    // Remove Z before computing camera space
+    FVector FlatVisual = VisualPos;
+    FlatVisual.Z = CurvedWorld->Camera_Origin.Z; // important
+
+    FVector Offset = FlatVisual - CurvedWorld->Camera_Origin;
+
+    FVector Right = CurvedWorld->Camera_RightVector.GetSafeNormal();
+    FVector Forward = CurvedWorld->Camera_ForwardVector.GetSafeNormal();
+
+    float OffsetX = FVector::DotProduct(Offset, Right);
+    float OffsetY = FVector::DotProduct(Offset, Forward);
+
+    float Z_Bend_X = OffsetX * OffsetX * CurvedWorld->CurveX;
+    float Z_Bend_Y = OffsetY * OffsetY * CurvedWorld->CurveY;
+
+    float TotalZBend = (Z_Bend_X + Z_Bend_Y) * CurvedWorld->BendWeight;
+
+    FVector WorldPos = VisualPos;
+    WorldPos.Z -= TotalZBend;
+
+    return WorldPos;
 }
 
 FVector FCurvedWorldUtil::WorldToVisualCurved(
@@ -431,6 +434,7 @@ FVector FCurvedWorldUtil::WorldToVisualCurved(
     return WorldPos + CurvedOffset;
 }
 
+
 bool FCurvedWorldUtil::GetHitResultUnderCursorCorrected(
     APlayerController* PlayerController,
     const UCurvedWorldSubsystem* CurvedWorld,
@@ -438,57 +442,176 @@ bool FCurvedWorldUtil::GetHitResultUnderCursorCorrected(
     ECollisionChannel TraceChannel,
     ECurveMathType MathType)
 {
+   UE_LOG(LogTemp, Warning, TEXT("===== CURVED HIT START ====="));
+
     if (!PlayerController || !CurvedWorld)
     {
+        UE_LOG(LogTemp, Error, TEXT("Invalid PlayerController or CurvedWorld"));
         return false;
     }
 
+    if (MathType != ECurveMathType::ZHeightOnly)
+    {
+        UE_LOG(LogTemp, Error, TEXT("Wrong MathType"));
+        return false;
+    }
+
+    FVector RayOrigin;
+    FVector RayDir;
+
+    if (!PlayerController->DeprojectMousePositionToWorld(RayOrigin, RayDir))
+    {
+        UE_LOG(LogTemp, Error, TEXT("Deproject failed"));
+        return false;
+    }
+
+    RayDir.Normalize();
+
+    UE_LOG(LogTemp, Warning, TEXT("RayOrigin: %s"), *RayOrigin.ToString());
+    UE_LOG(LogTemp, Warning, TEXT("RayDir: %s"), *RayDir.ToString());
+
+    // Subsystem values
+    const FVector Origin   = CurvedWorld->Camera_Origin;
+    const FVector Right    = CurvedWorld->Camera_RightVector.GetSafeNormal();
+    const FVector Forward  = CurvedWorld->Camera_ForwardVector.GetSafeNormal();
+
+    const float CurveX     = CurvedWorld->CurveX;
+    const float CurveY     = CurvedWorld->CurveY;
+    const float BendWeight = CurvedWorld->BendWeight;
+
+    const float GroundZ = 0.f;
+
+    UE_LOG(LogTemp, Warning, TEXT("Origin: %s"), *Origin.ToString());
+    UE_LOG(LogTemp, Warning, TEXT("CurveX: %f CurveY: %f BendWeight: %f"),
+        CurveX, CurveY, BendWeight);
+
+    // Ray relative to curve origin
+    const FVector O = RayOrigin - Origin;
+    const FVector D = RayDir;
+
+    const float Or = FVector::DotProduct(FVector(O.X, O.Y, 0.f), FVector(Right.X, Right.Y, 0.f));
+    const float Of = FVector::DotProduct(FVector(O.X, O.Y, 0.f), FVector(Forward.X, Forward.Y, 0.f));
+
+    const float Dr = FVector::DotProduct(FVector(D.X, D.Y, 0.f), FVector(Right.X, Right.Y, 0.f));
+    const float Df = FVector::DotProduct(FVector(D.X, D.Y, 0.f), FVector(Forward.X, Forward.Y, 0.f));
+
+    const float dz = D.Z;
+    const float oz = RayOrigin.Z;
+
+    UE_LOG(LogTemp, Warning, TEXT("Or: %f  Of: %f"), Or, Of);
+    UE_LOG(LogTemp, Warning, TEXT("Dr: %f  Df: %f"), Dr, Df);
+    UE_LOG(LogTemp, Warning, TEXT("oz: %f  dz: %f"), oz, dz);
+
+    const float A =
+        -BendWeight * (
+            CurveX * Dr * Dr +
+            CurveY * Df * Df
+        );
+
+    const float B =
+        dz
+        - 2.f * BendWeight * (
+            CurveX * Or * Dr +
+            CurveY * Of * Df
+        );
+
+    const float C =
+        oz - GroundZ
+        - BendWeight * (
+            CurveX * Or * Or +
+            CurveY * Of * Of
+        );
+
+    UE_LOG(LogTemp, Warning, TEXT("A: %f  B: %f  C: %f"), A, B, C);
+
+    float t = -1.f;
+
+    if (FMath::IsNearlyZero(A))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("A nearly zero (linear case)"));
+
+        if (FMath::IsNearlyZero(B))
+        {
+            UE_LOG(LogTemp, Error, TEXT("Both A and B nearly zero -> no solution"));
+            return false;
+        }
+
+        t = -C / B;
+    }
+    else
+    {
+        const float Discriminant = B * B - 4.f * A * C;
+
+        UE_LOG(LogTemp, Warning, TEXT("Discriminant: %f"), Discriminant);
+
+        if (Discriminant < 0.f)
+        {
+            UE_LOG(LogTemp, Error, TEXT("Discriminant < 0 -> no intersection"));
+            return false;
+        }
+
+        const float SqrtD = FMath::Sqrt(Discriminant);
+
+        const float t1 = (-B + SqrtD) / (2.f * A);
+        const float t2 = (-B - SqrtD) / (2.f * A);
+
+        UE_LOG(LogTemp, Warning, TEXT("t1: %f  t2: %f"), t1, t2);
+
+        t = TNumericLimits<float>::Max();
+
+        if (t1 > 0.f) t = t1;
+        if (t2 > 0.f && t2 < t) t = t2;
+
+        if (t == TNumericLimits<float>::Max())
+        {
+            UE_LOG(LogTemp, Error, TEXT("No positive t found"));
+            return false;
+        }
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("Chosen t: %f"), t);
+
+    if (t <= 0.f || !FMath::IsFinite(t))
+    {
+        UE_LOG(LogTemp, Error, TEXT("Invalid t"));
+        return false;
+    }
+
+    const FVector CurvedHit = RayOrigin + RayDir * t;
+
+    UE_LOG(LogTemp, Warning, TEXT("CurvedHit: %s"), *CurvedHit.ToString());
+
+    // Verification trace
     UWorld* World = PlayerController->GetWorld();
-    if (!World)
+
+    if (World)
     {
-        return false;
+        FHitResult VerificationHit;
+
+        FCollisionQueryParams Params(SCENE_QUERY_STAT(CurvedVerify), true);
+        Params.AddIgnoredActor(PlayerController->GetPawn());
+
+        bool bHit = World->LineTraceSingleByChannel(
+            VerificationHit,
+            RayOrigin,
+            CurvedHit,
+            TraceChannel,
+            Params);
+
+        UE_LOG(LogTemp, Warning, TEXT("Verification Trace Result: %s"),
+            bHit ? TEXT("HIT") : TEXT("MISS"));
+
+        if (!bHit)
+            return false;
     }
 
-    // Get mouse position
-    float MouseX, MouseY;
-    if (!PlayerController->GetMousePosition(MouseX, MouseY))
-    {
-        return false;
-    }
+    OutHitResult = FHitResult();
+    OutHitResult.Location = CurvedHit;
+    OutHitResult.ImpactPoint = CurvedHit;
+    OutHitResult.bBlockingHit = true;
 
-    // Deproject screen position to world space
-    FVector WorldLocation, WorldDirection;
-    if (!PlayerController->DeprojectScreenPositionToWorld(MouseX, MouseY, WorldLocation, WorldDirection))
-    {
-        return false;
-    }
+    UE_LOG(LogTemp, Warning, TEXT("===== CURVED HIT SUCCESS ====="));
 
-    // Perform line trace
-    FVector TraceStart = WorldLocation;
-    FVector TraceEnd = WorldLocation + WorldDirection * 100000.0f;
-    
-    FCollisionQueryParams QueryParams;
-    QueryParams.AddIgnoredActor(PlayerController->GetPawn());
-    
-    bool bHit = World->LineTraceSingleByChannel(
-        OutHitResult,
-        TraceStart,
-        TraceEnd,
-        TraceChannel,
-        QueryParams
-    );
-    
-    if (!bHit)
-    {
-        return false;
-    }
-    
-    // Convert hit location from visual curved space to world space
-    FVector WorldHitPos = VisualCurvedToWorld(OutHitResult.Location, CurvedWorld, MathType);
-    
-    OutHitResult.Location = WorldHitPos;
-    OutHitResult.ImpactPoint = WorldHitPos;
-    
     return true;
 }
 

@@ -29,7 +29,8 @@ protected:
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
 
-
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnPlayerTeamDecided(ETeamType TeamID);
 
 public:
 

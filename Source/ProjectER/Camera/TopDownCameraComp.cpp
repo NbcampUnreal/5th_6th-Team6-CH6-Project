@@ -9,7 +9,7 @@
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
 #include "GameFramework/SpringArmComponent.h"
-#include "LineOfSight/CameraVisionManager.h"
+#include "LineOfSight/MainVisionRTManager.h"
 
 #include "LogHelper/DebugLogHelper.h"
 
@@ -35,7 +35,7 @@ UTopDownCameraComp::UTopDownCameraComp()
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->bUsePawnControlRotation = false;
 
-	CameraVisionManager = CreateDefaultSubobject<UCameraVisionManager>(TEXT("CameraVisionManager"));
+	MainVisionRTManager = CreateDefaultSubobject<UMainVisionRTManager>(TEXT("MainVisionRTComp"));
 
 	UE_LOG(MainCameraComp, Log,
 		TEXT("%s UTopDownCameraComp::Constructor >> Component created"),
@@ -67,9 +67,9 @@ void UTopDownCameraComp::TickComponent(float DeltaTime, ELevelTick TickType,
 
 	UpdateCameraTransform();
 
-	if (CameraVisionManager)
+	if (MainVisionRTManager)
 	{
-		CameraVisionManager->UpdateCameraLOS();
+		MainVisionRTManager->UpdateCameraLOS();
 	}
 }
 
@@ -93,6 +93,9 @@ void UTopDownCameraComp::OnRegister()
 			TEXT("%s UTopDownCameraComp::OnRegister >> CameraComp attached to SpringArm"),
 			*DebugLogHelper::GetClientDebugName(this));
 	}
+
+	//set the MPC
+	
 }
 
 void UTopDownCameraComp::AddKeyPanInput(FVector2D Input)
@@ -174,7 +177,7 @@ void UTopDownCameraComp::SetFreeCamMode(bool bIsKeyPressed)
 
 void UTopDownCameraComp::InitializeCompRequirements()
 {
-	const FString DebugName = DebugLogHelper::GetClientDebugName(this);
+	const FString DebugName = DebugLogHelper::GetClientDebugName(GetOwner());
 
 	UE_LOG(MainCameraComp, Log,
 		TEXT("%s UTopDownCameraComp::InitializeCompRequirements >> Called"),
@@ -265,48 +268,83 @@ void UTopDownCameraComp::TickFollowMode(float DeltaTime)
 		return;
 	}
 
-	const FVector PawnLoc     = Owner->GetActorLocation();
-	const FVector PrevSmoothed = SmoothedFollowLocation;
+	const FVector PawnLoc = Owner->GetActorLocation();
+	
+	if (UseLag)// smooth
+	{
+		const FVector PrevSmoothed = SmoothedFollowLocation;
+		SmoothedFollowLocation = FMath::VInterpTo(
+			SmoothedFollowLocation,
+			PawnLoc,
+			DeltaTime,
+			FollowLagSpeed
+		);
+		SetWorldLocation(SmoothedFollowLocation);
+		FreeCamPivotLocation = SmoothedFollowLocation;
 
-	SmoothedFollowLocation = FMath::VInterpTo(
-		SmoothedFollowLocation,
-		PawnLoc,
-		DeltaTime,
-		FollowLagSpeed);
+		UE_LOG(MainCameraComp, Verbose,
+			TEXT("%s TickFollowMode >> Lagged | PawnLoc:%s | PrevSmoothed:%s | NewSmoothed:%s"),
+			*DebugLogHelper::GetClientDebugName(this),
+			*PawnLoc.ToString(),
+			*PrevSmoothed.ToString(),
+			*SmoothedFollowLocation.ToString());
+	}
+	else //instant
+	{
+		// Snap instantly
+		SetWorldLocation(PawnLoc);
+		SmoothedFollowLocation = PawnLoc;
+		FreeCamPivotLocation   = PawnLoc;
 
-	SetWorldLocation(SmoothedFollowLocation);
-	FreeCamPivotLocation = SmoothedFollowLocation;
-
-	UE_LOG(MainCameraComp, Verbose,
-		TEXT("%s UTopDownCameraComp::TickFollowMode >> PawnLoc:%s | PrevSmoothed:%s | NewSmoothed:%s | CompLoc:%s"),
-		*DebugLogHelper::GetClientDebugName(this),
-		*PawnLoc.ToString(),
-		*PrevSmoothed.ToString(),
-		*SmoothedFollowLocation.ToString(),
-		*GetComponentLocation().ToString());
+		UE_LOG(MainCameraComp, Verbose,
+			TEXT("%s TickFollowMode >> Snapped | PawnLoc:%s"),
+			*DebugLogHelper::GetClientDebugName(this),
+			*PawnLoc.ToString());
+	}
 }
 
 void UTopDownCameraComp::TickFreeCamMode(float DeltaTime)
 {
+	// Gather edge and key input
 	const FVector2D EdgeInput    = GatherEdgeScrollInput();
 	const FVector2D CombinedInput = PendingKeyInput + EdgeInput;
 
-	UE_LOG(MainCameraComp, Verbose,
-		TEXT("%s UTopDownCameraComp::TickFreeCamMode >> KeyInput:%s | EdgeInput:%s | CombinedInput:%s"),
-		*DebugLogHelper::GetClientDebugName(this),
-		*PendingKeyInput.ToString(),
-		*EdgeInput.ToString(),
-		*CombinedInput.ToString());
+	// Update pivot instantly based on input
+	if (!CombinedInput.IsNearlyZero())
+	{
+		FreeCamPivotLocation += FVector::RightVector   * CombinedInput.X * PanSpeed * DeltaTime;
+		FreeCamPivotLocation += FVector::ForwardVector * CombinedInput.Y * PanSpeed * DeltaTime;
 
-	ApplyPanInput(CombinedInput, DeltaTime);
+		UE_LOG(MainCameraComp, Verbose,
+			TEXT("%s TickFreeCamMode >> Pivot updated | CombinedInput:%s | Pivot:%s"),
+			*DebugLogHelper::GetClientDebugName(this),
+			*CombinedInput.ToString(),
+			*FreeCamPivotLocation.ToString());
+	}
 
-	SetWorldLocation(FreeCamPivotLocation);
+	// Smoothly move camera towards pivot
+	if (UseLag)
+	{
+		FVector CurrentLocation = GetComponentLocation();
+		FVector NewLocation = FMath::VInterpTo(CurrentLocation, FreeCamPivotLocation, DeltaTime, FreeCamLagSpeed);
+		SetWorldLocation(NewLocation);
 
-	UE_LOG(MainCameraComp, Verbose,
-		TEXT("%s UTopDownCameraComp::TickFreeCamMode >> NewFreePivot:%s | CompLoc:%s"),
-		*DebugLogHelper::GetClientDebugName(this),
-		*FreeCamPivotLocation.ToString(),
-		*GetComponentLocation().ToString());
+		UE_LOG(MainCameraComp, Verbose,
+			TEXT("%s TickFreeCamMode >> Lagged movement | Prev:%s | Target:%s | New:%s"),
+			*DebugLogHelper::GetClientDebugName(this),
+			*CurrentLocation.ToString(),
+			*FreeCamPivotLocation.ToString(),
+			*NewLocation.ToString());
+	}
+	else
+	{
+		SetWorldLocation(FreeCamPivotLocation);
+
+		UE_LOG(MainCameraComp, Verbose,
+			TEXT("%s TickFreeCamMode >> Snapped | New:%s"),
+			*DebugLogHelper::GetClientDebugName(this),
+			*FreeCamPivotLocation.ToString());
+	}
 }
 
 void UTopDownCameraComp::PrepareRequirements()
@@ -315,11 +353,11 @@ void UTopDownCameraComp::PrepareRequirements()
 		TEXT("%s UTopDownCameraComp::PrepareRequirements >> Caching subsystems"),
 		*DebugLogHelper::GetClientDebugName(this));
 
-	CacheCurveWorldSubsystem();
+	SetCurveWorldSubsystem();
 
-	if (CameraVisionManager)
+	if (MainVisionRTManager)
 	{
-		CameraVisionManager->Initialize();
+		MainVisionRTManager->Initialize();
 
 		UE_LOG(MainCameraComp, Log,
 			TEXT("%s UTopDownCameraComp::PrepareRequirements >> CameraVisionManager initialized"),
@@ -333,10 +371,18 @@ void UTopDownCameraComp::PrepareRequirements()
 	}
 }
 
-void UTopDownCameraComp::CacheCurveWorldSubsystem()
+void UTopDownCameraComp::SetCurveWorldSubsystem()
 {
 	const FString DebugName = DebugLogHelper::GetClientDebugName(this);
-
+	
+	if (!CurvedWorldMPC)//check if the MPC is valid or not
+	{
+		UE_LOG(MainCameraComp, Error,
+			TEXT("%s UTopDownCameraComp::PrepareRequirements >> Invalid MPC"),
+			*DebugLogHelper::GetClientDebugName(this));
+		return;
+	}
+	
 	UCurvedWorldSubsystem* CurveSub = GetWorld()->GetSubsystem<UCurvedWorldSubsystem>();
 	if (!CurveSub)
 	{
@@ -348,8 +394,28 @@ void UTopDownCameraComp::CacheCurveWorldSubsystem()
 
 	CurveSubSystem = CurveSub;
 
+	if (!CurveSubSystem)
+	{
+		UE_LOG(MainCameraComp, Error,
+			TEXT("%s UTopDownCameraComp::PrepareRequirements >> Subsystem Caching Failed"),
+			*DebugLogHelper::GetClientDebugName(this));
+		return;
+	}
+	
+
+	//Set MPC
+	CurveSubSystem->SetCurvedWorldMPC(
+		CurvedWorldMPC,
+		TEXT("CurvingOrigin"),
+		TEXT("ForwardVector"),
+		TEXT("RightVector"),
+		TEXT("UpVector"),
+		TEXT("X_Amount"),
+		TEXT("Y_Amount"),
+		TEXT("BendWeight"));
+	
 	UE_LOG(MainCameraComp, Log,
-		TEXT("%s UTopDownCameraComp::CacheCurveWorldSubsystem >> UCurvedWorldSubsystem cached successfully"),
+		TEXT("%s UTopDownCameraComp::CacheCurveWorldSubsystem >> UCurvedWorldSubsystem Setteled successfully"),
 		*DebugName);
 }
 
@@ -438,21 +504,25 @@ void UTopDownCameraComp::UpdateCameraTransform()
 
 	const FVector WorldLocation = GetComponentLocation();
 	const FRotator CamRotation = CameraComp->GetComponentRotation();
-	const FVector  RawForward = CamRotation.Vector();
-	const FVector  UpDirection = FVector::UpVector;
+    
+	// 1. Get the Camera's True Basis Vectors
+	const FVector CamForward = CamRotation.Vector();
+	const FVector CamRight = FRotationMatrix(CamRotation).GetScaledAxis(EAxis::Y);
+	const FVector CamUp = FRotationMatrix(CamRotation).GetScaledAxis(EAxis::Z);
 
-	const FVector ForwardDirection = FVector::VectorPlaneProject(RawForward, UpDirection).GetSafeNormal();
-	const FVector RightDirection = FVector::CrossProduct(UpDirection, ForwardDirection).GetSafeNormal();
+	// 2. Calculate the "Working Up" vector based on your local TiltAlpha
+	// If TiltAlpha is 0, we use World Up (Classic flat horizon).
+	// If TiltAlpha is 1, we use Camera Up (Curvature tilts with the camera).
+	const FVector WorkingUp = FMath::Lerp(FVector::UpVector, CamUp, TiltAlpha).GetSafeNormal();
 
-	UE_LOG(MainCameraComp, Verbose,
-		TEXT("%s UTopDownCameraComp::UpdateCameraTransform >> Loc:%s | Forward:%s | Right:%s | Up:%s"),
-		*DebugLogHelper::GetClientDebugName(this),
-		*WorldLocation.ToString(),
-		*ForwardDirection.ToString(),
-		*RightDirection.ToString(),
-		*UpDirection.ToString());
+	// 3. Project the Forward/Right onto the plane defined by our WorkingUp
+	// This ensures the "Grid" of the curvature stays perpendicular to our tilt
+	const FVector ForwardDirection = FVector::VectorPlaneProject(CamForward, WorkingUp).GetSafeNormal();
+	const FVector RightDirection = FVector::CrossProduct(WorkingUp, ForwardDirection).GetSafeNormal();
 
-	CurveSubSystem->UpdateCameraParameters(WorldLocation, ForwardDirection, RightDirection, UpDirection);
+	// 4. Pass the Tilted Up Vector to the Subsystem
+	// We send WorkingUp as the 'UpVector' so the Material knows which way is 'Down'
+	CurveSubSystem->UpdateCameraParameters(WorldLocation, ForwardDirection, RightDirection, WorkingUp);
 }
 
 void UTopDownCameraComp::UpdateCameraCurveValues(float RadialCurveStrength)
@@ -470,7 +540,7 @@ void UTopDownCameraComp::UpdateCameraCurveValues(float RadialCurveStrength)
 		*DebugLogHelper::GetClientDebugName(this),
 		RadialCurveStrength);
 
-	CurveSubSystem->UpdateCurveParameters(-0.001f, -0.001f, RadialCurveStrength);
+	CurveSubSystem->UpdateCurveParameters(-0.0001f, -0.0001f, RadialCurveStrength);
 }
 
 bool UTopDownCameraComp::ShouldUseClientLogic()
