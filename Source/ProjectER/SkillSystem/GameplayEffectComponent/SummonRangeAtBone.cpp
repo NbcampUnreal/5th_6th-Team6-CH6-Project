@@ -130,7 +130,7 @@ FTransform USummonRangeAtBone::CalculateSpawnLocation(const AActor* Instigator, 
 			TargetLocation.X = FloorHit.Location.X;
 			TargetLocation.Y = FloorHit.Location.Y;
 
-			float FinalZOffset = Config->GroundOffset;
+			float FinalZOffset = Config->FloatingHeight;
 			if (Config->bUseBoxExtentOffset)
 			{
 				// 박스 절반 높이만큼 들어올려 바닥에 안착

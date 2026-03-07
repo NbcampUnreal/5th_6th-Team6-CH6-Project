@@ -54,7 +54,7 @@ public:
     bool bSnapToGround = true;
 
     UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Snap", meta = (EditCondition = "bSnapToGround"))
-    float GroundOffset = 2.0f;
+    float FloatingHeight = 2.0f;
 
     UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Snap", meta = (EditCondition = "bSnapToGround"))
     bool bUseBoxExtentOffset = true;
