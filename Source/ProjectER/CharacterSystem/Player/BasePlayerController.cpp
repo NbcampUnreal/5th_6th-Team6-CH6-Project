@@ -104,6 +104,11 @@ void ABasePlayerController::BeginPlay()
 				UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] HUDController not found yet"));
 			}
 		}, 0.5f, false);
+
+	if (IsLocalController())
+	{
+		UGameplayStatics::SetBaseSoundMix(this, SoundMix);
+	}
 }
 
 void ABasePlayerController::OnPossess(APawn* InPawn)
@@ -1415,3 +1420,21 @@ void ABasePlayerController::UseInventorySlot(int32 SlotIndex)
 	// 슬롯 인덱스 사용 (0부터 시작)
 	InventoryComp->UseItem(SlotIndex);
 }
+
+void ABasePlayerController::SetSoundMix(EAudioType AudioType, float Volume)
+{
+	if (!SoundClassMap.Contains(AudioType))
+		return;
+
+	USoundClass* SoundClass = SoundClassMap[AudioType];
+
+	UGameplayStatics::SetSoundMixClassOverride(
+		this,
+		SoundMix,
+		SoundClass,
+		Volume,
+		1.f,
+		0.f,
+		true
+	);
+};
