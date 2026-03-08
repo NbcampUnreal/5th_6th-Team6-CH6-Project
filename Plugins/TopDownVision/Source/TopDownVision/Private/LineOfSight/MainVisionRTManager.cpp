@@ -234,7 +234,7 @@ void UMainVisionRTManager::DrawLOSStamp(UCanvas* Canvas,
 			FVector2D(TileSize, TileSize)
 		);
 		Tile.BlendMode = SE_BLEND_AlphaBlend;
-		Tile.SetColor(FLinearColor(Color.R, Color.G, Color.B, Color.A * Alpha));
+		Tile.SetColor(FLinearColor(Color.R* Alpha, Color.G* Alpha, Color.B* Alpha, Color.A * Alpha));
 		Canvas->DrawItem(Tile);
 	}
 }
@@ -318,7 +318,7 @@ void UMainVisionRTManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Heigh
 	{
 		if (!Provider || !Provider->IsUpdating() || !Provider->GetStampMID())
 		{
-			UE_LOG(LOSVision, Warning,
+			UE_LOG(LOSVision, Verbose,
 				TEXT("UMainVisionRTManager::DrawLOS_CPU >> Skipping %s | IsUpdating=%d | StampMID=%d"),
 				Provider ? *Provider->GetOwner()->GetName() : TEXT("NULL"),
 				Provider ? Provider->IsUpdating() : 0,
