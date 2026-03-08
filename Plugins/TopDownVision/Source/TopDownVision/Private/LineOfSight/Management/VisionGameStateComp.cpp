@@ -123,6 +123,29 @@ bool UVisionGameStateComp::IsActorVisibleToTeam(AActor* Target, EVisionChannel T
     return false;
 }
 
+EVisionChannel UVisionGameStateComp::GetLocalPlayerTeamChannel() const
+{
+    APlayerController* LocalPC = GEngine->GetFirstLocalPlayerController(GetWorld());
+    if (!LocalPC)
+        return EVisionChannel::None;
+
+    AGameStateBase* GS = GetWorld()->GetGameState();
+    if (!GS)
+        return EVisionChannel::None;
+
+    for (APlayerState* PS : GS->PlayerArray)
+    {
+        if (!PS || PS->GetOwningController() != LocalPC)
+            continue;
+
+        UVisionPlayerStateComp* VisionPS = PS->FindComponentByClass<UVisionPlayerStateComp>();
+        if (VisionPS)
+            return VisionPS->GetTeamChannel();
+    }
+
+    return EVisionChannel::None;
+}
+
 // -------------------------------------------------------------------------- //
 //  Client callbacks — push to PlayerStateComp; queue if not ready yet
 // -------------------------------------------------------------------------- //

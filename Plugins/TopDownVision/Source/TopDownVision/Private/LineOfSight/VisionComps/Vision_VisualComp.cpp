@@ -11,7 +11,12 @@
 
 //Debug
 #include "TopDownVisionDebug.h"
+#include "Components/BoxComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/SphereComponent.h"
+#include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerState.h"
+#include "LineOfSight/Management/VisionGameStateComp.h"
 #include "LineOfSight/Management/VisionPlayerStateComp.h"
 #include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
 #include "LineOfSight/VisionComps/Vision_EvaluatorComp.h"
@@ -121,6 +126,13 @@ void UVision_VisualComp::Initialize()
     }
 }
 
+void UVision_VisualComp::SetIndicatorRange(float NewIndicatorRange)
+{
+
+    IndicatorRange =  NewIndicatorRange;
+
+}
+
 // -------------------------------------------------------------------------- //
 //  Update
 // -------------------------------------------------------------------------- //
@@ -226,6 +238,22 @@ void UVision_VisualComp::SetVisionChannel(EVisionChannel InVC)
 void UVision_VisualComp::UpdateVisionRange(float NewRange)
 {
     VisionRange= FMath::Clamp(NewRange, 0.f, MaxVisionRange);
+}
+
+bool UVision_VisualComp::IsSharedVisionChannel() const
+{
+    return VisionChannel == GetLocalPlayerVisionChannel();
+}
+
+EVisionChannel UVision_VisualComp::GetLocalPlayerVisionChannel() const
+{
+    AGameStateBase* GS = GetWorld()->GetGameState();
+    if (!GS) return EVisionChannel::None;
+
+    UVisionGameStateComp* GSComp = GS->FindComponentByClass<UVisionGameStateComp>();
+    if (!GSComp) return  EVisionChannel::None;
+
+    return GSComp->GetLocalPlayerTeamChannel();
 }
 
 bool UVision_VisualComp::ShouldRunClientLogic() const

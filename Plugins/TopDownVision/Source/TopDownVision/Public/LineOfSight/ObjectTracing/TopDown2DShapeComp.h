@@ -2,17 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
+#include "LineOfSight/ObjectTracing/TopDown2DShapeData.h"
 #include "TopDown2DShapeComp.generated.h"
-
-UENUM()
-enum E2DShapeType : uint8
-{
-    None       = 255 UMETA(DisplayName = "None"),
-    
-    Circle     = 0   UMETA(DisplayName = "Circle"),
-    Square     = 1   UMETA(DisplayName = "Square"),
-    FreePoints = 2   UMETA(DisplayName = "FreePoints"),
-};
 
 
 //FD

@@ -224,7 +224,7 @@ void UMainVisionRTManager::DrawLOSStamp(UCanvas* Canvas,
 			PixelPos, TileSize))
 			continue;
 
-		const float Alpha = 1.f; //Provider->GetVisibilityAlpha(); //temp
+		const float Alpha = /*1.f; //*/ Provider->GetVisibilityAlpha(); //temp
 		if (Alpha <= KINDA_SMALL_NUMBER)
 			continue;
 
@@ -365,12 +365,12 @@ bool UMainVisionRTManager::ConvertWorldToRT(
 
 bool UMainVisionRTManager::GetVisibleProviders(TArray<UVision_VisualComp*>& OutProviders) const
 {
-	if (VisionChannel == EVisionChannel::None)
+	/*if (VisionChannel == EVisionChannel::None)
 	{
 		UE_LOG(LOSVision, Warning,
 			TEXT("UMainVisionRTManager::GetVisibleProviders >> VisionChannel is None"));
 		return false;
-	}
+	}*/
 
 	ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
 	if (!Subsystem)
@@ -379,12 +379,19 @@ bool UMainVisionRTManager::GetVisibleProviders(TArray<UVision_VisualComp*>& OutP
 			TEXT("UMainVisionRTManager::GetVisibleProviders >> Subsystem not found"));
 		return false;
 	}
-
+	
+	/*
 	OutProviders = Subsystem->GetProvidersForTeam(VisionChannel);
-
+	
 	UE_LOG(LOSVision, Verbose,
 		TEXT("UMainVisionRTManager::GetVisibleProviders >> Channel=%d | Found=%d providers"),
-		(int32)VisionChannel, OutProviders.Num());
+		(int32)VisionChannel, OutProviders.Num());*/
+	
+	//!!!!! Change !!!!
+	// now it is getting every visible providers, even when they are from different vision channel.
+	// cause different provider can be revealed and be hidden... fuck
+
+	OutProviders = Subsystem->GeAlltProviders();
 
 	return true;
 }

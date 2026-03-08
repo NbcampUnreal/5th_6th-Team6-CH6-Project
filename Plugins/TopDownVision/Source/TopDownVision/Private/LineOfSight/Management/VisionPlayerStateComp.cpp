@@ -100,18 +100,28 @@ void UVisionPlayerStateComp::ApplyActorVisibility(AActor* Target, EVisionChannel
     if (!Target)
         return;
 
-    // bVisible=true still gets blocked by team filter (unless AllReveal)
-    const bool bShouldBeVisible = bVisible && CanSeeTeam(Team);
-
     UVision_VisualComp* VisualComp = Target->FindComponentByClass<UVision_VisualComp>();
     if (!VisualComp)
         return;
 
+    // Check the target's actual team, not the observer's team
+    const bool bTargetIsSameTeam = (VisualComp->GetVisionChannel() == TeamChannel);
+
+    const bool bShouldBeVisible = bAllReveal
+        || bTargetIsSameTeam                    // same team — always visible regardless of LOS
+        || (CanSeeTeam(Team) && bVisible);       // enemy — only visible if my team spotted them and LOS confirms
+
     VisualComp->SetVisible(bShouldBeVisible);
 
     UE_LOG(VisionPlayerStateComp, Verbose,
-        TEXT("[%s] ApplyActorVisibility >> %s | Team:%d | Visible:%d"),
-        *GetOwner()->GetName(), *Target->GetName(), (uint8)Team, bShouldBeVisible);
+        TEXT("[%s] ApplyActorVisibility >> %s | ObserverTeam:%s | TargetTeam:%s | SameTeam:%d | bVisible:%d | Result:%d"),
+        *GetOwner()->GetName(),
+        *Target->GetName(),
+        *UEnum::GetValueAsString(Team),
+        *UEnum::GetValueAsString(VisualComp->GetVisionChannel()),
+        bTargetIsSameTeam,
+        bVisible,
+        bShouldBeVisible);
 }
 
 // -------------------------------------------------------------------------- //

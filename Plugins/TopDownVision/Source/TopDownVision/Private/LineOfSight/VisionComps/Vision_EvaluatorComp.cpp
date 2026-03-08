@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #include "LineOfSight/VisionComps/Vision_EvaluatorComp.h"
 
 #include "Components/SphereComponent.h"
@@ -11,12 +9,11 @@
 #include "LineOfSight/ObjectTracing/WallVisibilityEvaluator2D.h"
 #include "LineOfSight/WorldObstacle/LOSObstacleDrawerComponent.h"
 
-
 UVision_EvaluatorComp::UVision_EvaluatorComp()
 {
     PrimaryComponentTick.bCanEverTick = false;
+    SetIsReplicatedByDefault(true);
 
-    //Overlap detector comp
     DetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionSphere"));
     DetectionSphere->SetSphereRadius(DetectionRadius);
     DetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
@@ -29,40 +26,109 @@ UVision_EvaluatorComp::UVision_EvaluatorComp()
 void UVision_EvaluatorComp::BeginPlay()
 {
     Super::BeginPlay();
-
-    if (!ShouldRunServerLogic())//server gate
-        return;
-    
-    Initialize();
-
+    // Initialization is driven externally by the owner via InitializeEvaluator()
 }
 
-void UVision_EvaluatorComp::Initialize()
+// -------------------------------------------------------------------------- //
+//  Initialization
+// -------------------------------------------------------------------------- //
+
+void UVision_EvaluatorComp::PrepareDetectionSphere()
 {
-    // Resolve sibling Vision_VisualComp
-    CachedVisualComp = GetOwner()->FindComponentByClass<UVision_VisualComp>();
-    if (!CachedVisualComp)
+    if (!DetectionSphere)
+        return;
+
+    if (USceneComponent* Root = GetOwner()->GetRootComponent())
     {
-        UE_LOG(LOSVision, Warning,
-            TEXT("[%s] UVision_EvaluatorComp::BeginPlay >> No Vision_VisualComp found on owner"),
-            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+        DetectionSphere->AttachToComponent(
+            Root, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
     }
 
-    if (DetectionSphere)
+    if (bDrawDebug)
     {
-        if (USceneComponent* Root = GetOwner()->GetRootComponent())
+        DetectionSphere->SetVisibility(true);
+        DetectionSphere->SetHiddenInGame(false);
+    }
+
+    DetectionSphere->OnComponentBeginOverlap.AddDynamic(
+        this, &UVision_EvaluatorComp::OnDetectionSphereBeginOverlap);
+    DetectionSphere->OnComponentEndOverlap.AddDynamic(
+        this, &UVision_EvaluatorComp::OnDetectionSphereEndOverlap);
+
+    SyncDetectionRadius();
+
+    // Manual check for actors already inside at init time
+    TArray<AActor*> AlreadyOverlapping;
+    DetectionSphere->GetOverlappingActors(AlreadyOverlapping);
+    for (AActor* Actor : AlreadyOverlapping)
+    {
+        if (!Actor || Actor == GetOwner())
+            continue;
+
+        TArray<UPrimitiveComponent*> PrimComps;
+        Actor->GetComponents<UPrimitiveComponent>(PrimComps);
+        for (UPrimitiveComponent* Comp : PrimComps)
         {
-            DetectionSphere->AttachToComponent(
-                Root, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+            if (Comp && Comp->ComponentHasTag(TargetTag))
+            {
+                OverlappingTargets.Add(Actor);
+                UE_LOG(LOSVision, Log,
+                    TEXT("[%s] PrepareDetectionSphere >> Pre-existing target: %s"),
+                    *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+                    *Actor->GetName());
+                break;
+            }
         }
-
-        SyncDetectionRadius();
-
-        DetectionSphere->OnComponentBeginOverlap.AddDynamic(
-            this, &UVision_EvaluatorComp::OnDetectionSphereBeginOverlap);
-        DetectionSphere->OnComponentEndOverlap.AddDynamic(
-            this, &UVision_EvaluatorComp::OnDetectionSphereEndOverlap);
     }
+
+    if (!OverlappingTargets.IsEmpty())
+        StartEvaluationTimer();
+}
+
+void UVision_EvaluatorComp::InitializeEvaluator(UVision_VisualComp* DirectParamComp)
+{
+    if (ShouldRunServerLogic() && GetWorld()->GetNetMode() != NM_Standalone)
+        return;
+
+    if (DirectParamComp)
+        DirectCacheVisualComp(DirectParamComp);
+    else
+        FindAndCacheVisualComp();
+
+    PrepareDetectionSphere();
+}
+
+void UVision_EvaluatorComp::DirectCacheVisualComp(UVision_VisualComp* DirectParamComp)
+{
+    if (!DirectParamComp)
+    {
+        UE_LOG(LOSVision, Error,
+            TEXT("[%s] DirectCacheVisualComp >> Null VisualComp passed"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+        return;
+    }
+
+    CachedVisualComp = DirectParamComp;
+    UE_LOG(LOSVision, Log,
+        TEXT("[%s] DirectCacheVisualComp >> Cached VisualComp directly"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+}
+
+void UVision_EvaluatorComp::FindAndCacheVisualComp()
+{
+    UVision_VisualComp* VisualComp = GetOwner()->FindComponentByClass<UVision_VisualComp>();
+    if (!VisualComp)
+    {
+        UE_LOG(LOSVision, Error,
+            TEXT("[%s] FindAndCacheVisualComp >> No Vision_VisualComp found on owner"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+        return;
+    }
+
+    CachedVisualComp = VisualComp;
+    UE_LOG(LOSVision, Log,
+        TEXT("[%s] FindAndCacheVisualComp >> VisualComp cached successfully"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()));
 }
 
 // -------------------------------------------------------------------------- //
@@ -82,12 +148,28 @@ void UVision_EvaluatorComp::SyncDetectionRadius()
     if (!DetectionSphere || !CachedVisualComp)
         return;
 
-    DetectionSphere->SetSphereRadius(CachedVisualComp->GetVisibleRange());
+    DetectionRadius = CachedVisualComp->GetVisibleRange();
+    DetectionSphere->SetSphereRadius(DetectionRadius);
 
     UE_LOG(LOSVision, Verbose,
-        TEXT("[%s] UVision_EvaluatorComp::SyncDetectionRadius >> Radius set to %.1f"),
+        TEXT("[%s] SyncDetectionRadius >> Radius set to %.1f"),
         *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-        CachedVisualComp->GetVisibleRange());
+        DetectionRadius);
+}
+
+void UVision_EvaluatorComp::BP_DrawDebugSphereComp(float DrawTime)
+{
+    if (bDrawDebug)
+    {
+        DrawDebugSphere(
+            GetWorld(),
+            GetOwner()->GetActorLocation(),
+            DetectionRadius,
+            32,
+            FColor::Yellow,
+            false,
+            DrawTime);
+    }
 }
 
 // -------------------------------------------------------------------------- //
@@ -111,11 +193,10 @@ void UVision_EvaluatorComp::OnDetectionSphereBeginOverlap(
     OverlappingTargets.Add(OtherActor);
 
     UE_LOG(LOSVision, Log,
-        TEXT("[%s] UVision_EvaluatorComp::OnBeginOverlap >> Target entered: %s"),
+        TEXT("[%s] OnBeginOverlap >> Target entered: %s"),
         *TopDownVisionDebug::GetClientDebugName(GetOwner()),
         *OtherActor->GetName());
 
-    // Start evaluation timer on first target
     if (OverlappingTargets.Num() == 1)
         StartEvaluationTimer();
 }
@@ -133,13 +214,17 @@ void UVision_EvaluatorComp::OnDetectionSphereEndOverlap(
         return;
 
     OverlappingTargets.Remove(OtherActor);
+    LastReportedVisibility.Remove(OtherActor);
 
     UE_LOG(LOSVision, Log,
-        TEXT("[%s] UVision_EvaluatorComp::OnEndOverlap >> Target left: %s"),
+        TEXT("[%s] OnEndOverlap >> Target left: %s"),
         *TopDownVisionDebug::GetClientDebugName(GetOwner()),
         *OtherActor->GetName());
 
-    // Stop timer when no targets remain
+    // Always report false — vote system keeps visible if another observer still sees it
+    // PlayerStateComp handles same-team always-visible on the display side
+    ReportVisibility(OtherActor, false);
+
     if (OverlappingTargets.IsEmpty())
         StopEvaluationTimer();
 }
@@ -150,7 +235,7 @@ void UVision_EvaluatorComp::OnDetectionSphereEndOverlap(
 
 void UVision_EvaluatorComp::EvaluateTick()
 {
-    if (OverlappingTargets.IsEmpty())// nothing to evaluate-> stop timer
+    if (OverlappingTargets.IsEmpty())
     {
         StopEvaluationTimer();
         return;
@@ -169,23 +254,71 @@ void UVision_EvaluatorComp::EvaluateTick()
     }
 }
 
+// -------------------------------------------------------------------------- //
+//  Visibility reporting
+// -------------------------------------------------------------------------- //
+
+void UVision_EvaluatorComp::ReportVisibilityIfChanged(AActor* Target, bool bVisible)
+{
+    // No same-team skip here — vote system handles multi-observer correctly
+    // PlayerStateComp handles same-team always-visible on the display side
+    bool* LastState = LastReportedVisibility.Find(Target);
+    if (LastState && *LastState == bVisible)
+        return;
+
+    LastReportedVisibility.FindOrAdd(Target) = bVisible;
+    ReportVisibility(Target, bVisible);
+}
+
 void UVision_EvaluatorComp::ReportVisibility(AActor* Target, bool bVisible)
+{
+    if (!CachedVisualComp || !Target)
+        return;
+
+    UE_LOG(LOSVision, Warning,
+        TEXT("[%s] ReportVisibility >> Target:%s | Channel:%s | Visible:%d"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+        *Target->GetName(),
+        *UEnum::GetValueAsString(CachedVisualComp->GetVisionChannel()),
+        bVisible);
+
+    if (GetWorld()->GetNetMode() == NM_Standalone)
+    {
+        ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
+        if (!Subsystem)
+        {
+            UE_LOG(LOSVision, Warning,
+                TEXT("[%s] ReportVisibility >> LOSVisionSubsystem not found"),
+                *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+            return;
+        }
+        Subsystem->ReportTargetVisibility(
+            GetOwner(), CachedVisualComp->GetVisionChannel(), Target, bVisible);
+    }
+    else
+    {
+        Server_ReportVisibility(Target, CachedVisualComp->GetVisionChannel(), bVisible);
+    }
+}
+
+void UVision_EvaluatorComp::Server_ReportVisibility_Implementation(
+    AActor* Target, EVisionChannel Channel, bool bVisible)
 {
     ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
     if (!Subsystem)
     {
         UE_LOG(LOSVision, Warning,
-            TEXT("[%s] UVision_EvaluatorComp::ReportVisibility >> LOSVisionSubsystem not found"),
+            TEXT("[%s] Server_ReportVisibility >> LOSVisionSubsystem not found"),
             *TopDownVisionDebug::GetClientDebugName(GetOwner()));
         return;
     }
 
-    Subsystem->ReportTargetVisibility(
-        GetOwner(),
-        CachedVisualComp->GetVisionChannel(),
-        Target,
-        bVisible);
+    Subsystem->ReportTargetVisibility(GetOwner(), Channel, Target, bVisible);
 }
+
+// -------------------------------------------------------------------------- //
+//  Evaluate
+// -------------------------------------------------------------------------- //
 
 void UVision_EvaluatorComp::EvaluateTarget(AActor* Target, UVision_VisualComp* TargetVisual)
 {
@@ -196,26 +329,24 @@ void UVision_EvaluatorComp::EvaluateTarget(AActor* Target, UVision_VisualComp* T
     if (!ShapeComp)
     {
         UE_LOG(LOSVision, Warning,
-            TEXT("[%s] UVision_EvaluatorComp::EvaluateTarget >> No ShapeComp on target: %s"),
+            TEXT("[%s] EvaluateTarget >> No ShapeComp on target: %s"),
             *TopDownVisionDebug::GetClientDebugName(GetOwner()),
             *Target->GetName());
         return;
     }
 
-    // Volume first — cheap pixel sample, fast reject
     const bool bVolumeVisible = EvaluateVolumeObstacle(Target, ShapeComp);
     if (!bVolumeVisible)
     {
         UE_LOG(LOSVision, Verbose,
-            TEXT("[%s] EvaluateTarget >> %s hidden by volume — skipping wall check"),
+            TEXT("[%s] EvaluateTarget >> %s hidden by volume"),
             *TopDownVisionDebug::GetClientDebugName(GetOwner()),
             *Target->GetName());
 
-        ReportVisibility(Target, false);
+        ReportVisibilityIfChanged(Target, false);
         return;
     }
 
-    // Volume says visible — now check wall
     const bool bWallVisible = EvaluateWallObstacle(Target, ShapeComp);
 
     UE_LOG(LOSVision, Verbose,
@@ -224,28 +355,31 @@ void UVision_EvaluatorComp::EvaluateTarget(AActor* Target, UVision_VisualComp* T
         *Target->GetName(),
         bWallVisible ? TEXT("VISIBLE") : TEXT("HIDDEN"));
 
-    ReportVisibility(Target, bWallVisible);
+    ReportVisibilityIfChanged(Target, bWallVisible);
 }
 
 bool UVision_EvaluatorComp::EvaluateWallObstacle(AActor* Target, UTopDown2DShapeComp* ShapeComp)
 {
-    return UWallVisibilityEvaluator2D::EvaluateVisibility(
+    // temp — always visible
+    return true;
+
+    /*return UWallVisibilityEvaluator2D::EvaluateVisibility(
         GetWorld(),
         GetOwner()->GetActorLocation(),
         Target->GetActorLocation(),
         ShapeComp,
-        WallTraceChannel);
+        WallTraceChannel);*/
 }
 
 bool UVision_EvaluatorComp::EvaluateVolumeObstacle(AActor* Target, UTopDown2DShapeComp* ShapeComp)
 {
     return UVolumeVisibilityEvaluator2D::EvaluateVisibility(
-         CachedVisualComp->GetObstacleDrawer()->GetObstacleRenderTarget(),
-         CachedVisualComp->GetMaxVisibleRange(),
-         GetOwner()->GetActorLocation(),
-         Target->GetActorLocation(),
-         ShapeComp,
-         OcclusionThreshold);
+        CachedVisualComp->GetObstacleDrawer()->GetObstacleRenderTarget(),
+        CachedVisualComp->GetMaxVisibleRange(),
+        GetOwner()->GetActorLocation(),
+        Target->GetActorLocation(),
+        ShapeComp,
+        OcclusionThreshold);
 }
 
 // -------------------------------------------------------------------------- //
@@ -262,7 +396,7 @@ UVision_VisualComp* UVision_EvaluatorComp::GetVisualComp(AActor* Target) const
 
 bool UVision_EvaluatorComp::ShouldRunServerLogic() const
 {
-    return GetNetMode() != NM_DedicatedServer;
+    return GetOwner() && GetOwner()->HasAuthority();
 }
 
 void UVision_EvaluatorComp::StartEvaluationTimer()
@@ -278,7 +412,7 @@ void UVision_EvaluatorComp::StartEvaluationTimer()
         true);
 
     UE_LOG(LOSVision, Verbose,
-        TEXT("[%s] UVision_EvaluatorComp::StartEvaluationTimer >> Started"),
+        TEXT("[%s] StartEvaluationTimer >> Started"),
         *TopDownVisionDebug::GetClientDebugName(GetOwner()));
 }
 
@@ -287,6 +421,6 @@ void UVision_EvaluatorComp::StopEvaluationTimer()
     GetWorld()->GetTimerManager().ClearTimer(EvaluationTimerHandle);
 
     UE_LOG(LOSVision, Verbose,
-        TEXT("[%s] UVision_EvaluatorComp::StopEvaluationTimer >> Stopped"),
+        TEXT("[%s] StopEvaluationTimer >> Stopped"),
         *TopDownVisionDebug::GetClientDebugName(GetOwner()));
 }

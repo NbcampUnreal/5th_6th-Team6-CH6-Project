@@ -122,6 +122,18 @@ TArray<UVision_VisualComp*> ULOSVisionSubsystem::GetProvidersForTeam(EVisionChan
     return Out;
 }
 
+TArray<UVision_VisualComp*> ULOSVisionSubsystem::GeAlltProviders() const
+{
+    TArray<UVision_VisualComp*> Out;
+
+    for (const TPair<EVisionChannel, FRegisteredProviders>& Pair : VisionMap)
+    {
+        Out.Append(Pair.Value.RegisteredList);
+    }
+
+    return Out;
+}
+
 // -------------------------------------------------------------------------- //
 //  Provider reveal logic — was OnProviderRegistered in GameStateComp
 // -------------------------------------------------------------------------- //

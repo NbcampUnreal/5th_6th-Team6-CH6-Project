@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "GameplayTagContainer.h"
+#include "LineOfSight/ObjectTracing/TopDown2DShapeData.h"//for 2d shape
 #include "CharacterData.generated.h"
 
 class UGameplayAbility;
@@ -19,9 +20,17 @@ class PROJECTER_API UCharacterData : public UPrimaryDataAsset
 	GENERATED_BODY()
 	
 public:
+	//==== Mesh visuals ====//
 	// 캐릭터 Mesh
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
 	TSoftObjectPtr<USkeletalMesh> Mesh;
+
+	//Detection Shape Information
+
+	/*UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	E2DShapeType TopDown2DShapeType=E2DShapeType::None;*/
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Detection")
+	TArray<FVector2D> DetectionSamplePoints;
 	
 	// 캐릭터 Animation Blueprint
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
@@ -70,4 +79,6 @@ public:
 	// 커브 테이블 행 이름   (Curve Table Row Name)
 	UPROPERTY(EditDefaultsOnly, Category = "Stats")
 	FName StatusRowName;
+
+	// 
 };

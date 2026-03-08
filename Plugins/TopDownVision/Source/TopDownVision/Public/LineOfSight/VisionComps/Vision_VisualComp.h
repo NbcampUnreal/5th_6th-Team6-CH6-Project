@@ -48,6 +48,11 @@ public:
     UFUNCTION(BlueprintCallable, Category="Vision")
     void Initialize();
 
+    UFUNCTION(BlueprintCallable, Category="Vision")
+    void SetIndicatorRange(float NewIndicatorRange);
+
+    UFUNCTION(BlueprintCallable, Category="Vision")
+    float GetIndicatorRange() const { return IndicatorRange; }
     
     // --- Called by the RT manager --- //
 
@@ -107,6 +112,13 @@ public:
 
     UFUNCTION(BlueprintCallable, Category="Vision")
     void UpdateVisionRange(float NewRange);
+
+    //Bool getter for checking if the vision comp shares the vision channel of the locally played player
+    UFUNCTION(BlueprintCallable, BlueprintPure, Category="Vision")
+    bool IsSharedVisionChannel() const;
+
+    UFUNCTION(BlueprintCallable, BlueprintPure, Category="Vision")
+    EVisionChannel GetLocalPlayerVisionChannel() const;
     
 private:
     bool ShouldRunClientLogic() const;
@@ -151,7 +163,10 @@ private:
     float TargetVisibilityAlpha = 0.0f;
     FTimerHandle FadeTimerHandle;
 
-
+private:
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
+    float IndicatorRange = 0.f;
 
 private:
 
