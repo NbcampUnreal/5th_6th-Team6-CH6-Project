@@ -7,7 +7,7 @@ void UAnimNotify_SendStateTreeEventTag::Notify(USkeletalMeshComponent* MeshComp,
 {
 	Super::Notify(MeshComp, Animation, EventReference);
 
-	if (!GetWorld()->IsGameWorld())
+	if (!MeshComp || !MeshComp->GetWorld()->IsGameWorld())
 	{
 		return;
 	}
