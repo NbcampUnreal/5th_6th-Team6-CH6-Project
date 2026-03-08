@@ -24,9 +24,9 @@ TSubclassOf<UBaseGECConfig> USummonRangeAtBone::GetRequiredConfigClass() const
 	return USummonRangeByBoneGECConfig::StaticClass();
 }
 
-void USummonRangeAtBone::OnGameplayEffectExecuted(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const
+void USummonRangeAtBone::OnGameplayEffectApplied(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const
 {
-	Super::OnGameplayEffectExecuted(ActiveGEContainer, GESpec, PredictionKey);
+	Super::OnGameplayEffectApplied(ActiveGEContainer, GESpec, PredictionKey);
 
 	const FGameplayEffectContextHandle& ContextHandle = GESpec.GetEffectContext();
 	AActor* EffectCauser = ContextHandle.GetEffectCauser();

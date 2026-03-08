@@ -23,9 +23,9 @@ TSubclassOf<UBaseGECConfig> USummonRangeGEC::GetRequiredConfigClass() const
 	return USummonRangeByWorldOriginGECConfig::StaticClass();
 }
 
-void USummonRangeGEC::OnGameplayEffectExecuted(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const
+void USummonRangeGEC::OnGameplayEffectApplied(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const
 {
-	Super::OnGameplayEffectExecuted(ActiveGEContainer, GESpec, PredictionKey);
+	Super::OnGameplayEffectApplied(ActiveGEContainer, GESpec, PredictionKey);
 
 	const FGameplayEffectContextHandle& EffectContext = GESpec.GetEffectContext();
 	const FGameplayEffectContext* EffectContextData = EffectContext.Get();
