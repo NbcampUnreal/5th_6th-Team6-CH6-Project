@@ -1,4 +1,6 @@
 ﻿#include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
+
+#include "AbilitySystemBlueprintLibrary.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Player/BasePlayerState.h"
 
@@ -210,6 +212,41 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 						TargetPS->ResetDamageContrib();
 					}
 					InGameMode->NotifyPlayerDied(TargetChar, AttackerPS, OutAssists);
+					
+					if (AttackerPS)
+					{
+						// 공격자의 ASC(Ability System Component)를 찾습니다.
+						UAbilitySystemComponent* AttackerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(AttackerPS);
+						if (!AttackerASC && AttackerPS->GetPawn())
+						{
+							AttackerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(AttackerPS->GetPawn());
+						}
+
+						// ASC를 성공적으로 찾았다면 경험치를 지급합니다.
+						if (AttackerASC)
+						{
+							// 죽은 대상의 레벨에 비례해 경험치를 지급 
+							float TargetLevel = TargetChar->GetCharacterLevel();
+							float GrantedXP = TargetLevel * 70.0f; // 획득 경험치 수치
+							
+							UGameplayEffect* XP_GE = NewObject<UGameplayEffect>(GetTransientPackage(), FName(TEXT("DynamicXP_GE")));
+							XP_GE->DurationPolicy = EGameplayEffectDurationType::Instant; // 즉발형(Instant)
+							
+							FGameplayModifierInfo ModifierInfo;
+							ModifierInfo.Attribute = UBaseAttributeSet::GetIncomingXPAttribute(); // IncomingXP 타겟
+							ModifierInfo.ModifierOp = EGameplayModOp::Additive; // 더하기 연산
+		
+							FScalableFloat ScalableFloat;
+							ScalableFloat.SetValue(GrantedXP);
+							ModifierInfo.ModifierMagnitude = FGameplayEffectModifierMagnitude(ScalableFloat); // 수치 적용
+
+							// GE에 Modifier를 추가
+							XP_GE->Modifiers.Add(ModifierInfo);
+
+							// 공격자에게 정식으로 GE를 적용
+							AttackerASC->ApplyGameplayEffectToSelf(XP_GE, 1.0f, AttackerASC->MakeEffectContext());
+						}
+					}
 				}
 				else // 살아있는 상태(Alive)였다면 -> 빈사 상태(Down) 진입
 				{

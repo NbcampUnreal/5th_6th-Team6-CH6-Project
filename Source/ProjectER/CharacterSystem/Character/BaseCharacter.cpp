@@ -153,7 +153,6 @@ ABaseCharacter::ABaseCharacter()
 	
 }
 
-
 void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -231,7 +230,28 @@ void ABaseCharacter::PossessedBy(AController* NewController)
 
 	// ASC 초기화 (서버)
 	InitAbilitySystem();
+	
+	// 최초 1회만 HP,MP 초기화
+	if (HasAuthority())
+	{
+		UBaseAttributeSet* AS = nullptr;
+		
+		if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
+		{
+			AS = ERPS->GetAttributeSet();
+		}
+		else if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+		{
+			AS = PS->GetAttributeSet();
+		}
 
+		if (AS)
+		{
+			AS->SetHealth(AS->GetMaxHealth());
+			AS->SetStamina(AS->GetMaxStamina());
+		}
+	}
+	
 	// 비주얼 초기화 (서버)
 	if (HeroData)
 	{
@@ -299,7 +319,6 @@ void ABaseCharacter::Server_SetTeamID_Implementation(ETeamType NewTeamID)
 	TeamID = NewTeamID;
 	OnRep_TeamID();
 }
-
 
 EVisionChannel ABaseCharacter::ConvertTeamToVisionChannel(ETeamType InTeamType)
 {
@@ -383,8 +402,9 @@ bool ABaseCharacter::IsLocalPlayerPawn()
 void ABaseCharacter::HandleLevelUp()
 {
 	if (!HasAuthority()) return;
-	UE_LOG(LogTemp, Warning, TEXT("Level up!! here"));
+	
 	UBaseAttributeSet* AS = nullptr;
+	
 	if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
 	{
 		AS = ERPS->GetAttributeSet();
@@ -427,8 +447,19 @@ void ABaseCharacter::HandleLevelUp()
 		AS->SetSkillPoint(AS->GetSkillPoint() + 1.0f);
 	}
 
-	// 이펙트 및 UI 처리 (Multicast)
-	// Multicast_LevelUpVFX(); 
+	// 레벨업 이펙트 GC 호출
+	if (AbilitySystemComponent.IsValid() && HasAuthority()) // 서버에서 실행
+	{
+		FGameplayCueParameters CueParams;
+		CueParams.Location = GetActorLocation(); 
+		CueParams.Instigator = this;
+		CueParams.EffectCauser = this;
+		
+		AbilitySystemComponent->ExecuteGameplayCue(
+			ProjectER::GameplayCue::Combat::LevelUp, 
+			CueParams
+		);
+	}
     
 	// UE_LOG(LogTemp, Warning, TEXT("[LevelUp] New Level: %f"), GetCharacterLevel());
 }
@@ -808,6 +839,8 @@ void ABaseCharacter::InitVisuals()
 			GetMesh()->SetAnimInstanceClass(LoadedAnimClass);
 		}
 	}
+
+	//
 }
 
 void ABaseCharacter::Server_MoveToLocation_Implementation(FVector TargetLocation)
@@ -1361,7 +1394,6 @@ void ABaseCharacter::HandleDeath()
 				return; // 중복 사망 방지
 			}
 			
-			// [추가] GE_State_Dead 적용 방식
 			if (DeathStateEffectClass)
 			{
 				FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
@@ -1377,12 +1409,24 @@ void ABaseCharacter::HandleDeath()
 			AbilitySystemComponent->CancelAllAbilities();
 		}
 
-		// 타겟 지정 해제 (나를 노리는 적들에게 "나 죽었어" 알림)
-		// (이 부분은 AI나 타겟팅 시스템에 따라 추가 구현 필요)
+		
 		SetTarget(nullptr);
-		// 사망 알림 델리게이트
+		
 		OnDeath.Broadcast();
-		// 모든 클라이언트에게 연출 실행 명령
+		
+		if (AbilitySystemComponent.IsValid() && HasAuthority()) // 서버에서 실행
+		{
+			FGameplayCueParameters CueParams;
+			CueParams.Location = GetActorLocation(); // 현재 캐릭터 위치
+			CueParams.Instigator = this;
+			CueParams.EffectCauser = this;
+			
+			AbilitySystemComponent->ExecuteGameplayCue(
+				ProjectER::GameplayCue::Combat::Death, 
+				CueParams
+			);
+		}
+		
 		Multicast_Death();
 	}
 }
@@ -1695,10 +1739,6 @@ void ABaseCharacter::InitUI()
 				}
 				else
 				{
-					//FLinearColor TeamColorA = FLinearColor::MakeRandomColor();
-					//FLinearColor TeamColorB = FLinearColor::MakeRandomColor();
-					//FLinearColor TeamColorC = FLinearColor::MakeRandomColor();
-
 					FLinearColor TeamColorA = FLinearColor::Red;
 					FLinearColor TeamColorB = FLinearColor::Blue;
 					FLinearColor TeamColorC = FLinearColor::Yellow;
@@ -1706,7 +1746,6 @@ void ABaseCharacter::InitUI()
 					AER_PlayerState* MyPS = Cast<AER_PlayerState>(GetPlayerState());
 					if (IsValid(MyPS))
 					{
-						// 2. 루프 없이 이 캐릭터의 팀 타입에 따라 바로 색상을 결정합니다.
 						switch (MyPS->TeamType)
 						{
 						case ETeamType::Team_A:
@@ -1723,33 +1762,6 @@ void ABaseCharacter::InitUI()
 							break;
 						}
 					}
-
-					//if (AGameStateBase* GS = GetWorld()->GetGameState())
-					//{
-					//	AER_GameState* ERGS = Cast<AER_GameState>(GS);
-					//	if (IsValid(ERGS))
-					//	{
-					//		for (APlayerState* PS : ERGS->PlayerArray)
-					//		{
-					//			AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS);
-
-					//			if (ERPS && ERPS != this->GetPlayerState() && ERPS->TeamType == ETeamType::Team_A)
-					//			{
-					//				teamColor = TeamColorA;
-					//			}
-					//			else if (ERPS && ERPS != this->GetPlayerState() && ERPS->TeamType == ETeamType::Team_B)
-					//			{
-					//				teamColor = TeamColorB;
-					//			}
-					//			else if (ERPS && ERPS != this->GetPlayerState() && ERPS->TeamType == ETeamType::Team_C)
-					//			{
-					//				teamColor = TeamColorC;
-					//			}
-
-
-					//		}
-					//	}
-					//}
 				}
 				UpdateMinimapVisuals(teamColor);
 			}
@@ -1795,7 +1807,7 @@ void ABaseCharacter::OnHealthChanged()
 		float CurrentHP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetHealthAttribute());
 		float MaxHP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetMaxHealthAttribute());
 
-		int32 team = 2; // 기본값은 적군(2)으로 설정
+		int32 team = 2; 
 
 		if (IsLocallyControlled())
 		{
@@ -1803,17 +1815,14 @@ void ABaseCharacter::OnHealthChanged()
 		}
 		else
 		{
-			// 1. 화면을 보고 있는 로컬 플레이어 컨트롤러 가져오기
 			APlayerController* LocalPC = GetWorld()->GetFirstPlayerController();
 			if (LocalPC)
 			{
-				// 2. 나의 PlayerState와 상대방(이 캐릭터)의 PlayerState 가져오기
 				AER_PlayerState* MyPS = LocalPC->GetPlayerState<AER_PlayerState>();
 				AER_PlayerState* TargetPS = GetPlayerState<AER_PlayerState>();
 
 				if (MyPS && TargetPS)
 				{
-					// 3. 팀 비교 (TeamType이 Enum 또는 int라고 가정)
 					if (MyPS->TeamType == TargetPS->TeamType)
 					{
 						team = 1; // 아군

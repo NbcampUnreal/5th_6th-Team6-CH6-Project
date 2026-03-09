@@ -1,14 +1,18 @@
-﻿#include "ItemSystem/Component/BaseInventoryComponent.h"
+﻿// File: 5th_6th-Team6-CH6-Project/Source/ProjectER/ItemSystem/Component/BaseInventoryComponent.cpp
+
+#include "ItemSystem/Component/BaseInventoryComponent.h"
 #include "ItemSystem/Data/BaseItemData.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerState.h"
 #include "GameplayEffect.h"
 #include "Net/UnrealNetwork.h"
+#include "TimerManager.h"
 
 UBaseInventoryComponent::UBaseInventoryComponent()
 {
@@ -26,6 +30,15 @@ void UBaseInventoryComponent::BeginPlay()
 	{
 		InventoryContents.Init(nullptr, MaxSlots);
 	}
+}
+
+void UBaseInventoryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	StopFoodHealTimer();
+	PendingFoodHealQueue.Empty();
+	bIsFoodHealEffectActive = false;
+
+	Super::EndPlay(EndPlayReason);
 }
 
 void UBaseInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -164,7 +177,7 @@ void UBaseInventoryComponent::UseItem(const int32 SlotIndex)
 	}
 
 	InventoryContents[SlotIndex] = nullptr;
-	OnRep_InventoryContents();
+	OnInventoryUpdated.Broadcast();
 }
 
 bool UBaseInventoryComponent::Server_UseItem_Validate(const int32 SlotIndex)
@@ -257,6 +270,8 @@ bool UBaseInventoryComponent::ApplyItemEffect(UUsableItemData* ItemData)
 	{
 	case EItemEffectType::IncreaseStat:
 		return ApplyStatIncrease(ASC, ItemData);
+	case EItemEffectType::HealOverTime:
+		return EnqueueFoodHeal(ItemData);
 	default:
 		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] ApplyItemEffect: Unknown effect type"));
 		return false;
@@ -318,4 +333,164 @@ bool UBaseInventoryComponent::ApplyStatIncrease(UAbilitySystemComponent* ASC, UU
 
 	UE_LOG(LogTemp, Log, TEXT("[BaseInventoryComponent] Applied item GE. StatTag: %s, Value: %.2f"), *StatTag.ToString(), ItemData->EffectValue);
 	return true;
+}
+
+bool UBaseInventoryComponent::EnqueueFoodHeal(UUsableItemData* ItemData)
+{
+	if (ItemData == nullptr)
+	{
+		return false;
+	}
+
+	if (ItemData->TotalHealAmount <= 0.0f)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[BaseInventoryComponent] EnqueueFoodHeal: Invalid TotalHealAmount %.2f"), ItemData->TotalHealAmount);
+		return false;
+	}
+
+	if (ItemData->HealDurationSeconds <= 0.0f || ItemData->HealTickInterval <= 0.0f)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[BaseInventoryComponent] EnqueueFoodHeal: Invalid duration %.2f or tick %.2f"), ItemData->HealDurationSeconds, ItemData->HealTickInterval);
+		return false;
+	}
+
+	const int32 TotalTicks = FMath::Max(1, FMath::RoundToInt(ItemData->HealDurationSeconds / ItemData->HealTickInterval));
+	const float HealPerTick = ItemData->TotalHealAmount / static_cast<float>(TotalTicks);
+
+	FPendingFoodHealEffect NewEffect;
+	NewEffect.ItemName = ItemData->ItemName.ToString();
+	NewEffect.TotalHealAmount = ItemData->TotalHealAmount;
+	NewEffect.TotalDurationSeconds = ItemData->HealDurationSeconds;
+	NewEffect.RemainingHealAmount = ItemData->TotalHealAmount;
+	NewEffect.HealPerTick = HealPerTick;
+	NewEffect.RemainingTicks = TotalTicks;
+	NewEffect.TickInterval = ItemData->HealTickInterval;
+
+	PendingFoodHealQueue.Add(NewEffect);
+	StartNextFoodHealEffect();
+
+	UE_LOG(LogTemp, Log, TEXT("[BaseInventoryComponent] EnqueueFoodHeal: Total=%.2f, Duration=%.2f, Tick=%.2f, Queue=%d"),
+		ItemData->TotalHealAmount,
+		ItemData->HealDurationSeconds,
+		ItemData->HealTickInterval,
+		PendingFoodHealQueue.Num());
+
+	return true;
+}
+
+bool UBaseInventoryComponent::ApplyHealAmount(const float HealAmount)
+{
+	if (HealAmount <= 0.0f)
+	{
+		return false;
+	}
+
+	UAbilitySystemComponent* const ASC = ResolveOwnerAbilitySystemComponent();
+	if (ASC == nullptr)
+	{
+		return false;
+	}
+
+	ASC->ApplyModToAttribute(UBaseAttributeSet::GetHealthAttribute(), EGameplayModOp::Additive, HealAmount);
+	return true;
+}
+
+void UBaseInventoryComponent::StartNextFoodHealEffect()
+{
+	if (bIsFoodHealEffectActive)
+	{
+		return;
+	}
+
+	if (PendingFoodHealQueue.IsEmpty())
+	{
+		return;
+	}
+
+	AActor* const OwnerActor = GetOwner();
+	if (OwnerActor == nullptr)
+	{
+		return;
+	}
+
+	UWorld* const World = OwnerActor->GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	CurrentFoodHealEffect = PendingFoodHealQueue[0];
+	PendingFoodHealQueue.RemoveAt(0);
+	bIsFoodHealEffectActive = true;
+
+	World->GetTimerManager().SetTimer(
+		FoodHealTickTimerHandle,
+		this,
+		&UBaseInventoryComponent::HandleFoodHealTick,
+		CurrentFoodHealEffect.TickInterval,
+		true);
+}
+
+void UBaseInventoryComponent::StopFoodHealTimer()
+{
+	AActor* const OwnerActor = GetOwner();
+	if (OwnerActor == nullptr)
+	{
+		return;
+	}
+
+	UWorld* const World = OwnerActor->GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	World->GetTimerManager().ClearTimer(FoodHealTickTimerHandle);
+}
+
+void UBaseInventoryComponent::HandleFoodHealTick()
+{
+	if (!bIsFoodHealEffectActive)
+	{
+		StopFoodHealTimer();
+		return;
+	}
+
+	if (CurrentFoodHealEffect.RemainingTicks <= 0 || CurrentFoodHealEffect.RemainingHealAmount <= 0.0f)
+	{
+		StopFoodHealTimer();
+		bIsFoodHealEffectActive = false;
+		StartNextFoodHealEffect();
+		return;
+	}
+
+	const float TickHealAmount = FMath::Min(CurrentFoodHealEffect.HealPerTick, CurrentFoodHealEffect.RemainingHealAmount);
+	const int32 RemainingTicksAfterThisTick = FMath::Max(CurrentFoodHealEffect.RemainingTicks - 1, 0);
+	const float RemainingDurationSeconds = static_cast<float>(RemainingTicksAfterThisTick) * CurrentFoodHealEffect.TickInterval;
+
+	UE_LOG(LogTemp, Log, TEXT("[FoodHealTick] Item=%s, TotalHeal=%.2f, TickHeal=%.2f, RemainingDuration=%.2f sec"),
+		*CurrentFoodHealEffect.ItemName,
+		CurrentFoodHealEffect.TotalHealAmount,
+		TickHealAmount,
+		RemainingDurationSeconds);
+
+	const bool bHealed = ApplyHealAmount(TickHealAmount);
+	if (!bHealed)
+	{
+		StopFoodHealTimer();
+		bIsFoodHealEffectActive = false;
+		return;
+	}
+
+	CurrentFoodHealEffect.RemainingHealAmount -= TickHealAmount;
+	CurrentFoodHealEffect.RemainingTicks -= 1;
+
+	if (CurrentFoodHealEffect.RemainingTicks > 0 && CurrentFoodHealEffect.RemainingHealAmount > 0.0f)
+	{
+		return;
+	}
+
+	StopFoodHealTimer();
+	bIsFoodHealEffectActive = false;
+	StartNextFoodHealEffect();
 }
