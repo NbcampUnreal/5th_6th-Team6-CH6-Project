@@ -12,6 +12,7 @@
 #include "SkillSystem/Actor/BaseRangeOverlapEffectActor.h"
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 #include "SkillSystem/GameAbility/SkillBase.h"
+#include "SkillSystem/SkillNiagaraSpawnHelper.h"
 
 USummonRangeGEC::USummonRangeGEC()
 {
@@ -53,6 +54,10 @@ void USummonRangeGEC::OnGameplayEffectApplied(FActiveGameplayEffectsContainer& A
 	}
 
 	const FTransform SpawnTransform = CalculateSpawnTransform(GESpec, SpawnConfig);
+	const FTransform SummonerTransform = EffectCauser->GetActorTransform();
+	const FVector RangeSpawnLocation = SpawnTransform.GetLocation();
+	SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(World, SpawnConfig->SummonerSpawnVfx, SummonerTransform, EffectCauser, &RangeSpawnLocation);
+	SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(World, SpawnConfig->RangeSpawnVfx, SpawnTransform, nullptr, nullptr);
 
 	APawn* SpawnInstigator = Cast<APawn>(EffectContext.GetInstigator());
 	AActor* DeferredSpawnedActor = World->SpawnActorDeferred<AActor>(SpawnConfig->RangeActorClass, SpawnTransform, EffectCauser, SpawnInstigator, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
@@ -167,7 +172,7 @@ void USummonRangeGEC::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeAc
 				InitGEHandles.Append(SkillEffectDataAsset->MakeSpecs(CauserASC, NonConstSkill, Causer, Context));
 			}
 		}
-		RangeActor->InitializeEffectData(InitGEHandles, Causer, Config->CollisionRadius, Config->bHitOncePerTarget);
+		RangeActor->InitializeEffectData(InitGEHandles, Causer, Config->CollisionRadius, Config->bHitOncePerTarget, Config->HitTargetVfx);
 		RangeActor->SetLifeSpan(Config->LifeSpan);
 	}
 }

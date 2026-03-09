@@ -6,6 +6,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
+#include "SkillSystem/SkillNiagaraSpawnHelper.h"
 
 
 // Sets default values
@@ -15,11 +16,12 @@ ABaseRangeOverlapEffectActor::ABaseRangeOverlapEffectActor()
 	bReplicates = true;
 }
 
-void ABaseRangeOverlapEffectActor::InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget)
+void ABaseRangeOverlapEffectActor::InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget, const FSkillNiagaraSpawnSettings& InHitTargetVfx)
 {
 	EffectSpecHandles = InEffectSpecHandles;
 	InstigatorActor = InInstigatorActor;
 	bHitOncePerTarget = bInHitOncePerTarget;
+	HitTargetVfx = InHitTargetVfx;
 
 	PendingCollisionSize = InCollisionSize;
 	bHasPendingCollisionSize = true;
@@ -123,6 +125,14 @@ void ABaseRangeOverlapEffectActor::OnShapeBeginOverlap(UPrimitiveComponent* Over
 	if (bHitOncePerTarget)
 	{
 		HitActors.Add(OtherActor);
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		const FTransform TargetTransform = OtherActor->GetActorTransform();
+		const FVector InstigatorLocation = IsValid(InstigatorActor) ? InstigatorActor->GetActorLocation() : FVector::ZeroVector;
+		const FVector* OptionalLookAtTarget = IsValid(InstigatorActor) ? &InstigatorLocation : nullptr;
+		SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(World, HitTargetVfx, TargetTransform, OtherActor, OptionalLookAtTarget);
 	}
 }
 

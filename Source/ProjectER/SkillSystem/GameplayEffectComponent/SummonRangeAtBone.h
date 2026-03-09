@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGEC.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGECConfig.h"
+#include "SkillSystem/SkillNiagaraSpawnSettings.h"
 #include "SummonRangeAtBone.generated.h"
 
 /**
@@ -65,6 +66,15 @@ public:
     /* --- 효과 설정 (Effect) --- */
     UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Effect")
     bool bHitOncePerTarget = true;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
+    FSkillNiagaraSpawnSettings SummonerSpawnVfx;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
+    FSkillNiagaraSpawnSettings RangeSpawnVfx;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
+    FSkillNiagaraSpawnSettings HitTargetVfx;
 
     UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Effect")
     TArray<TObjectPtr<USkillEffectDataAsset>> Applied;

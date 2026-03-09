@@ -13,6 +13,7 @@
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 #include "SkillSystem/GameAbility/SkillBase.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "SkillSystem/SkillNiagaraSpawnHelper.h"
 
 USummonRangeAtBone::USummonRangeAtBone()
 {
@@ -42,6 +43,13 @@ void USummonRangeAtBone::OnGameplayEffectApplied(FActiveGameplayEffectsContainer
 
 	// [4] 트랜스폼 계산
 	FTransform FinalTransform = CalculateSpawnLocation(SpawnInstigator, SpawnConfig);
+	if (UWorld* World = EffectCauser->GetWorld())
+	{
+		const FTransform SummonerTransform = EffectCauser->GetActorTransform();
+		const FVector RangeSpawnLocation = FinalTransform.GetLocation();
+		SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(World, SpawnConfig->SummonerSpawnVfx, SummonerTransform, EffectCauser, &RangeSpawnLocation);
+		SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(World, SpawnConfig->RangeSpawnVfx, FinalTransform, nullptr, nullptr);
+	}
 
 	// [5] 액터 지연 스폰 및 초기화
 	UWorld* World = EffectCauser->GetWorld();
@@ -163,7 +171,7 @@ void USummonRangeAtBone::InitializeRangeActor(ABaseRangeOverlapEffectActor* Rang
 				InitGEHandles.Append(SkillEffectDataAsset->MakeSpecs(CauserASC, NonConstSkill, Causer, Context));
 			}
 		}
-		RangeActor->InitializeEffectData(InitGEHandles, Causer, Config->CollisionRadius, Config->bHitOncePerTarget);
+		RangeActor->InitializeEffectData(InitGEHandles, Causer, Config->CollisionRadius, Config->bHitOncePerTarget, Config->HitTargetVfx);
 		RangeActor->SetLifeSpan(Config->LifeSpan);
 	}
 }
