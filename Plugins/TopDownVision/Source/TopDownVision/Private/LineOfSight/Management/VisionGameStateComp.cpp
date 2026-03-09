@@ -147,82 +147,50 @@ EVisionChannel UVisionGameStateComp::GetLocalPlayerTeamChannel() const
 }
 
 // -------------------------------------------------------------------------- //
-//  Client callbacks — iterate all PlayerStates, queue if none ready yet
+//  Client callbacks — push to PlayerStateComp; queue if not ready yet
 // -------------------------------------------------------------------------- //
 
 void UVisionGameStateComp::OnTargetBecameVisible(AActor* Target, EVisionChannel Team)
 {
     if (!Target) return;
 
-    AGameStateBase* GS = GetWorld()->GetGameState();
-    if (!GS)
+    UVisionPlayerStateComp* VisionPS = ULOSVisionSubsystem::GetLocalVisionPS(GetWorld());
+    if (!VisionPS)
     {
+        UE_LOG(VisionGameStateComp, Verbose,
+            TEXT("OnTargetBecameVisible >> VisionPS not ready, queuing reveal of %s"),
+            *Target->GetName());
         PendingReveals.Add({ Target, Team, true });
         return;
     }
 
-    bool bAnyReady = false;
-    for (APlayerState* PS : GS->PlayerArray)
-    {
-        if (!PS) continue;
-        UVisionPlayerStateComp* VisionPS = PS->FindComponentByClass<UVisionPlayerStateComp>();
-        if (!VisionPS) continue;
+    UE_LOG(VisionGameStateComp, Log,
+        TEXT("OnTargetBecameVisible >> Pushing visible [%s] to VisionPS"),
+        *Target->GetName());
 
-        bAnyReady = true;
-        VisionPS->ApplyActorVisibility(Target, Team, true);
-    }
-
-    if (!bAnyReady)
-    {
-        UE_LOG(VisionGameStateComp, Verbose,
-            TEXT("OnTargetBecameVisible >> No VisionPS ready, queuing reveal of %s"),
-            *Target->GetName());
-        PendingReveals.Add({ Target, Team, true });
-    }
-    else
-    {
-        UE_LOG(VisionGameStateComp, Log,
-            TEXT("OnTargetBecameVisible >> Pushed visible [%s] to all PlayerStates"),
-            *Target->GetName());
-    }
+    VisionPS->ApplyActorVisibility(Target, Team, true);
 }
 
 void UVisionGameStateComp::OnTargetBecameHidden(AActor* Target, EVisionChannel Team)
 {
     if (!Target) return;
 
-    AGameStateBase* GS = GetWorld()->GetGameState();
-    if (!GS)
+    UVisionPlayerStateComp* VisionPS = ULOSVisionSubsystem::GetLocalVisionPS(GetWorld());
+    if (!VisionPS)
     {
         PendingReveals.Add({ Target, Team, false });
         return;
     }
 
-    bool bAnyReady = false;
-    for (APlayerState* PS : GS->PlayerArray)
-    {
-        if (!PS) continue;
-        UVisionPlayerStateComp* VisionPS = PS->FindComponentByClass<UVisionPlayerStateComp>();
-        if (!VisionPS) continue;
+    UE_LOG(VisionGameStateComp, Log,
+        TEXT("OnTargetBecameHidden >> Pushing hidden [%s] to VisionPS"),
+        *Target->GetName());
 
-        bAnyReady = true;
-        VisionPS->ApplyActorVisibility(Target, Team, false);
-    }
-
-    if (!bAnyReady)
-    {
-        PendingReveals.Add({ Target, Team, false });
-    }
-    else
-    {
-        UE_LOG(VisionGameStateComp, Log,
-            TEXT("OnTargetBecameHidden >> Pushed hidden [%s] to all PlayerStates"),
-            *Target->GetName());
-    }
+    VisionPS->ApplyActorVisibility(Target, Team, false);
 }
 
 // -------------------------------------------------------------------------- //
-//  Pending queue drain
+//  Pending queue drain — called by VisionPlayerStateComp::RefreshVisibility
 // -------------------------------------------------------------------------- //
 
 void UVisionGameStateComp::FlushPendingReveals(UVisionPlayerStateComp* VisionPS)

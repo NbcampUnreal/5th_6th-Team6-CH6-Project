@@ -9,25 +9,7 @@
 DEFINE_LOG_CATEGORY(LOSVisionSubsystem);
 
 // -------------------------------------------------------------------------- //
-//  FTargetVisibilityVotes
-// -------------------------------------------------------------------------- //
-
-bool FTargetVisibilityVotes::HasAnyVisibleVoteForTeam(EVisionChannel Team) const
-{
-    for (const TPair<AActor*, bool>& Pair : VotesByObserver)
-    {
-        if (!Pair.Key || !Pair.Value)
-            continue;
-
-        UVision_VisualComp* VisualComp = Pair.Key->FindComponentByClass<UVision_VisualComp>();
-        if (VisualComp && VisualComp->GetVisionChannel() == Team)
-            return true;
-    }
-    return false;
-}
-
-// -------------------------------------------------------------------------- //
-//  Local player lookup
+//  Local player lookup — single authoritative location, used by GameStateComp too
 // -------------------------------------------------------------------------- //
 
 UVisionPlayerStateComp* ULOSVisionSubsystem::GetLocalVisionPS(UWorld* World)
@@ -39,12 +21,14 @@ UVisionPlayerStateComp* ULOSVisionSubsystem::GetLocalVisionPS(UWorld* World)
     if (!PC)
         return nullptr;
 
+    // Fast path
     if (PC->PlayerState)
     {
         if (UVisionPlayerStateComp* VPS = PC->PlayerState->FindComponentByClass<UVisionPlayerStateComp>())
             return VPS;
     }
 
+    // Fallback — PC->PlayerState may be null during early BeginPlay
     if (AGameStateBase* GS = World->GetGameState())
     {
         for (APlayerState* PS : GS->PlayerArray)
@@ -68,12 +52,14 @@ bool ULOSVisionSubsystem::RegisterProvider(UVision_VisualComp* Provider, EVision
 {
     if (!Provider)
     {
-        UE_LOG(LOSVisionSubsystem, Error, TEXT("RegisterProvider >> Null provider"));
+        UE_LOG(LOSVisionSubsystem, Error,
+            TEXT("RegisterProvider >> Null provider"));
         return false;
     }
     if (InVisionChannel == EVisionChannel::None)
     {
-        UE_LOG(LOSVisionSubsystem, Error, TEXT("RegisterProvider >> VisionChannel is None"));
+        UE_LOG(LOSVisionSubsystem, Error,
+            TEXT("RegisterProvider >> VisionChannel is None"));
         return false;
     }
 
@@ -92,7 +78,9 @@ bool ULOSVisionSubsystem::RegisterProvider(UVision_VisualComp* Provider, EVision
         TEXT("RegisterProvider >> %s registered on channel %d"),
         *Provider->GetOwner()->GetName(), (uint8)InVisionChannel);
 
+    // All reveal/refresh logic lives here — not in GameStateComp
     HandleProviderRegistered(Provider, InVisionChannel);
+
     return true;
 }
 
@@ -100,7 +88,8 @@ void ULOSVisionSubsystem::UnregisterProvider(UVision_VisualComp* Provider, EVisi
 {
     if (!Provider)
     {
-        UE_LOG(LOSVisionSubsystem, Error, TEXT("UnregisterProvider >> Null provider"));
+        UE_LOG(LOSVisionSubsystem, Error,
+            TEXT("UnregisterProvider >> Null provider"));
         return;
     }
 
@@ -133,18 +122,20 @@ TArray<UVision_VisualComp*> ULOSVisionSubsystem::GetProvidersForTeam(EVisionChan
     return Out;
 }
 
-TArray<UVision_VisualComp*> ULOSVisionSubsystem::GeAllProviders() const
+TArray<UVision_VisualComp*> ULOSVisionSubsystem::GeAlltProviders() const
 {
     TArray<UVision_VisualComp*> Out;
 
     for (const TPair<EVisionChannel, FRegisteredProviders>& Pair : VisionMap)
+    {
         Out.Append(Pair.Value.RegisteredList);
+    }
 
     return Out;
 }
 
 // -------------------------------------------------------------------------- //
-//  Provider reveal logic
+//  Provider reveal logic — was OnProviderRegistered in GameStateComp
 // -------------------------------------------------------------------------- //
 
 void ULOSVisionSubsystem::HandleProviderRegistered(UVision_VisualComp* NewProvider, EVisionChannel Channel)
@@ -153,6 +144,7 @@ void ULOSVisionSubsystem::HandleProviderRegistered(UVision_VisualComp* NewProvid
     if (!GSComp)
         return;
 
+    // Reveal every same-team actor already tracked (including the new one itself)
     for (UVision_VisualComp* Existing : GetProvidersForTeam(Channel))
     {
         if (!Existing || !Existing->GetOwner())
@@ -165,6 +157,9 @@ void ULOSVisionSubsystem::HandleProviderRegistered(UVision_VisualComp* NewProvid
             *Existing->GetOwner()->GetName(), *UEnum::GetValueAsString(Channel));
     }
 
+    // Refresh local player if available.
+    // If VisionPS is still null here, VisionPlayerStateComp::BeginPlay
+    // schedules RefreshVisibility for next tick — that path is the safety net.
     if (UVisionPlayerStateComp* VisionPS = GetLocalVisionPS(GetWorld()))
     {
         UE_LOG(LOSVisionSubsystem, Log,
@@ -181,29 +176,6 @@ void ULOSVisionSubsystem::HandleProviderRegistered(UVision_VisualComp* NewProvid
 // -------------------------------------------------------------------------- //
 //  Visibility reporting
 // -------------------------------------------------------------------------- //
-
-void ULOSVisionSubsystem::ReportTargetVisibilityFromClient(
-    AActor* Observer, EVisionChannel ObserverTeam, AActor* Target, bool bVisible)
-{
-    if (!Observer || !Target || ObserverTeam == EVisionChannel::None)
-        return;
-
-    if (GetWorld()->GetNetMode() == NM_Standalone)
-    {
-        ReportTargetVisibility(Observer, ObserverTeam, Target, bVisible);
-    }
-    else
-    {
-        UVisionPlayerStateComp* VisionPS = GetLocalVisionPS(GetWorld());
-        if (!VisionPS)
-        {
-            UE_LOG(LOSVisionSubsystem, Warning,
-                TEXT("ReportTargetVisibilityFromClient >> No local VisionPS found"));
-            return;
-        }
-        VisionPS->Server_ReportVisibility(Observer, Target, ObserverTeam, bVisible);
-    }
-}
 
 void ULOSVisionSubsystem::ReportTargetVisibility(
     AActor* Observer,
@@ -222,25 +194,22 @@ void ULOSVisionSubsystem::ReportTargetVisibility(
         return;
     }
 
+    const uint8 TeamID = (uint8)ObserverTeam;
+
     FTargetVisibilityVotes& Votes = VisibilityVotes.FindOrAdd(Target);
+    int32& VoteCount = Votes.VotesByTeam.FindOrAdd(TeamID, 0);
 
-    // Skip if this observer's vote hasn't changed
-    const bool* LastVote = Votes.VotesByObserver.Find(Observer);
-    if (LastVote && *LastVote == bVisible)
-        return;
+    const bool bWasVisible = VoteCount > 0;
 
-    const bool bWasVisible = Votes.HasAnyVisibleVoteForTeam(ObserverTeam);
+    VoteCount = bVisible
+        ? FMath::Max(VoteCount + 1, 1)
+        : FMath::Max(VoteCount - 1, 0);
 
-    Votes.VotesByObserver.FindOrAdd(Observer) = bVisible;
-
-    const bool bIsNowVisible = Votes.HasAnyVisibleVoteForTeam(ObserverTeam);
+    const bool bIsNowVisible = VoteCount > 0;
 
     UE_LOG(LOSVisionSubsystem, Verbose,
-        TEXT("ReportTargetVisibility >> %s | Observer:%s | Team:%s | Vote:%s | Was:%s | Now:%s"),
-        *Target->GetName(),
-        *Observer->GetName(),
-        *UEnum::GetValueAsString(ObserverTeam),
-        bVisible      ? TEXT("Y") : TEXT("N"),
+        TEXT("ReportTargetVisibility >> %s | Team:%d | Votes:%d | Was:%s | Now:%s"),
+        *Target->GetName(), TeamID, VoteCount,
         bWasVisible   ? TEXT("Y") : TEXT("N"),
         bIsNowVisible ? TEXT("Y") : TEXT("N"));
 
@@ -249,54 +218,6 @@ void ULOSVisionSubsystem::ReportTargetVisibility(
     else if (bWasVisible && !bIsNowVisible)
         GSComp->ClearActorVisibleToTeam(Target, ObserverTeam);
 }
-
-// -------------------------------------------------------------------------- //
-//  Debug
-// -------------------------------------------------------------------------- //
-
-void ULOSVisionSubsystem::PrintVisionStatus() const
-{
-    UE_LOG(LOSVisionSubsystem, Log, TEXT("========== Vision Status =========="));
-
-    // Collect all channels present in the vote map
-    TMap<EVisionChannel, TArray<FString>> VisiblePerTeam;
-
-    for (const TPair<AActor*, FTargetVisibilityVotes>& TargetPair : VisibilityVotes)
-    {
-        AActor* Target = TargetPair.Key;
-        if (!Target) continue;
-
-        // Check each registered channel
-        for (const TPair<EVisionChannel, FRegisteredProviders>& ChannelPair : VisionMap)
-        {
-            const EVisionChannel Channel = ChannelPair.Key;
-            if (TargetPair.Value.HasAnyVisibleVoteForTeam(Channel))
-            {
-                VisiblePerTeam.FindOrAdd(Channel).Add(Target->GetName());
-            }
-        }
-    }
-
-    if (VisiblePerTeam.IsEmpty())
-    {
-        UE_LOG(LOSVisionSubsystem, Log, TEXT("  No visibility data yet"));
-    }
-    else
-    {
-        for (const TPair<EVisionChannel, TArray<FString>>& Pair : VisiblePerTeam)
-        {
-            UE_LOG(LOSVisionSubsystem, Log,
-                TEXT("  %s seeing [%d]: %s"),
-                *UEnum::GetValueAsString(Pair.Key),
-                Pair.Value.Num(),
-                *FString::Join(Pair.Value, TEXT(", ")));
-        }
-    }
-
-    UE_LOG(LOSVisionSubsystem, Log, TEXT("==================================="));
-}
-
-// -------------------------------------------------------------------------- //
 
 UVisionGameStateComp* ULOSVisionSubsystem::GetVisionGameStateComp() const
 {
