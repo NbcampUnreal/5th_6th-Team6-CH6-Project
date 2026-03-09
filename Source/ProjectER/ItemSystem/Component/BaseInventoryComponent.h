@@ -61,6 +61,9 @@ protected:
 private:
 	struct FPendingFoodHealEffect
 	{
+		FString ItemName;
+		float TotalHealAmount = 0.0f;
+		float TotalDurationSeconds = 0.0f;
 		float RemainingHealAmount = 0.0f;
 		float HealPerTick = 0.0f;
 		int32 RemainingTicks = 0;

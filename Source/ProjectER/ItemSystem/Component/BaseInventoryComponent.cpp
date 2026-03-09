@@ -358,6 +358,9 @@ bool UBaseInventoryComponent::EnqueueFoodHeal(UUsableItemData* ItemData)
 	const float HealPerTick = ItemData->TotalHealAmount / static_cast<float>(TotalTicks);
 
 	FPendingFoodHealEffect NewEffect;
+	NewEffect.ItemName = ItemData->ItemName.ToString();
+	NewEffect.TotalHealAmount = ItemData->TotalHealAmount;
+	NewEffect.TotalDurationSeconds = ItemData->HealDurationSeconds;
 	NewEffect.RemainingHealAmount = ItemData->TotalHealAmount;
 	NewEffect.HealPerTick = HealPerTick;
 	NewEffect.RemainingTicks = TotalTicks;
@@ -462,6 +465,15 @@ void UBaseInventoryComponent::HandleFoodHealTick()
 	}
 
 	const float TickHealAmount = FMath::Min(CurrentFoodHealEffect.HealPerTick, CurrentFoodHealEffect.RemainingHealAmount);
+	const int32 RemainingTicksAfterThisTick = FMath::Max(CurrentFoodHealEffect.RemainingTicks - 1, 0);
+	const float RemainingDurationSeconds = static_cast<float>(RemainingTicksAfterThisTick) * CurrentFoodHealEffect.TickInterval;
+
+	UE_LOG(LogTemp, Log, TEXT("[FoodHealTick] Item=%s, TotalHeal=%.2f, TickHeal=%.2f, RemainingDuration=%.2f sec"),
+		*CurrentFoodHealEffect.ItemName,
+		CurrentFoodHealEffect.TotalHealAmount,
+		TickHealAmount,
+		RemainingDurationSeconds);
+
 	const bool bHealed = ApplyHealAmount(TickHealAmount);
 	if (!bHealed)
 	{
