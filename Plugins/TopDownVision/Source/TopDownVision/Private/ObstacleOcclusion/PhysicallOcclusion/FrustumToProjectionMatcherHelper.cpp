@@ -35,17 +35,29 @@ bool FFrustumProjectionMatcherHelper::ExtractFromCameraManager(
     FCameraFrustumParams&       OutParams)
 {
     if (!ensureMsgf(IsValid(CameraManager),
-        TEXT("ExtractFromCameraManager: CameraManager is null")))
+       TEXT("ExtractFromCameraManager: CameraManager is null")))
     {
         return false;
     }
 
-    OutParams.VerticalFOVDeg  = CameraManager->GetFOVAngle();
-    OutParams.AspectRatio     = 16.f / 9.f; // CameraManager does not expose aspect ratio directly
-    OutParams.CameraLocation  = CameraManager->GetCameraLocation();
-    OutParams.CameraForward   = CameraManager->GetCameraRotation().Vector();
-    OutParams.ProjectionType  = ECameraProjectionType::Perspective; // CameraManager always perspective
+    // Read directly from view target if available — avoids stale CameraCache
+    FVector  LiveLocation = CameraManager->GetCameraLocation();
+    FRotator LiveRotation = CameraManager->GetCameraRotation();
 
+    if (AActor* ViewTarget = CameraManager->GetViewTarget())
+    {
+        if (UCameraComponent* Cam = ViewTarget->FindComponentByClass<UCameraComponent>())
+        {
+            LiveLocation = Cam->GetComponentLocation();
+            LiveRotation = Cam->GetComponentRotation();
+        }
+    }
+
+    OutParams.VerticalFOVDeg      = CameraManager->GetFOVAngle();
+    OutParams.AspectRatio         = 16.f / 9.f;
+    OutParams.CameraLocation      = LiveLocation;
+    OutParams.CameraForward       = LiveRotation.Vector();
+    OutParams.ProjectionType      = ECameraProjectionType::Perspective;
     OutParams.FrustumHalfAngleRad = CalculateFrustumHalfAngleRad(OutParams);
 
     return true;

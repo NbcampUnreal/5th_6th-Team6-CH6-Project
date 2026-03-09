@@ -6,26 +6,26 @@
 
 void FOcclusionTraceLibrary::RunProbes(
     TArray<FOcclusionProbe>& Probes,
-    UWorld* World,
-    const TArray<AActor*>& IgnoredActors,
-    bool bDebugDraw)
+    UWorld*                  World,
+    const TArray<AActor*>&   IgnoredActors,
+    UObject*                 TracerIdentity,
+    bool                     bDebugDraw)
 {
     for (FOcclusionProbe& Probe : Probes)
     {
-        RunProbe(Probe, World, IgnoredActors, bDebugDraw);
+        RunProbe(Probe, World, IgnoredActors, TracerIdentity, bDebugDraw);
     }
 }
 
 void FOcclusionTraceLibrary::RunProbe(
-    FOcclusionProbe& Probe,
-    UWorld* World,
-    const TArray<AActor*>& IgnoredActors,
-    bool bDebugDraw)
+    FOcclusionProbe&        Probe,
+    UWorld*                 World,
+    const TArray<AActor*>&  IgnoredActors,
+    UObject*                TracerIdentity,
+    bool                    bDebugDraw)
 {
     if (!World) return;
 
-    // Union of every sweep in this probe — one actor appears once even if
-    // multiple sweeps hit it
     TSet<TWeakObjectPtr<AActor>> CurrentHits;
 
     FCollisionQueryParams Params;
@@ -34,7 +34,6 @@ void FOcclusionTraceLibrary::RunProbe(
         if (Ignored) Params.AddIgnoredActor(Ignored);
     }
 
-    // ── Run every sweep and accumulate hits ───────────────────────────────
     for (const FOcclusionSweepConfig& Sweep : Probe.Sweeps)
     {
         const FVector SweepOrigin = Probe.BaseOrigin + Sweep.OriginOffset;
@@ -52,8 +51,7 @@ void FOcclusionTraceLibrary::RunProbe(
         if (bDebugDraw)
         {
             const FColor LineColor = Hits.Num() > 0 ? FColor::Red : FColor::Green;
-            DrawDebugLine(World, SweepOrigin, Probe.Target,
-                          LineColor, false, -1.f, 0, 2.f);
+            DrawDebugLine(World, SweepOrigin, Probe.Target, LineColor, false, -1.f, 0, 2.f);
 
             for (const FHitResult& Hit : Hits)
             {
@@ -72,39 +70,43 @@ void FOcclusionTraceLibrary::RunProbe(
         }
     }
 
-    // ── Enter: in CurrentHits but not in PreviousHits ─────────────────────
     for (const TWeakObjectPtr<AActor>& Current : CurrentHits)
     {
         if (!Probe.PreviousHits.Contains(Current))
-        {
-            NotifyEnter(Current.Get());
-        }
+            NotifyEnter(Current.Get(), TracerIdentity);
     }
 
-    // ── Exit: in PreviousHits but not in CurrentHits ──────────────────────
     for (const TWeakObjectPtr<AActor>& Previous : Probe.PreviousHits)
     {
         if (Previous.IsValid() && !CurrentHits.Contains(Previous))
-        {
-            NotifyExit(Previous.Get());
-        }
+            NotifyExit(Previous.Get(), TracerIdentity);
     }
 
     Probe.PreviousHits = CurrentHits;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
-void FOcclusionTraceLibrary::NotifyEnter(AActor* Actor)
+void FOcclusionTraceLibrary::NotifyEnter(AActor* Actor, UObject* TracerIdentity)
 {
     if (!Actor) return;
-    IOcclusionInterface::Execute_OnOcclusionEnter(Actor, nullptr);
-    UE_LOG(Occlusion, Log, TEXT("OcclusionTraceLibrary::NotifyEnter>> %s"), *Actor->GetName());
+
+    UOcclusionObstacleComponent* Comp =
+        Actor->FindComponentByClass<UOcclusionObstacleComponent>();
+
+    if (!Comp) return;
+
+    IOcclusionInterface::Execute_OnOcclusionEnter(Comp, TracerIdentity);
+    UE_LOG(Occlusion, Log, TEXT("FOcclusionTraceLibrary::NotifyEnter>> %s"), *Actor->GetName());
 }
 
-void FOcclusionTraceLibrary::NotifyExit(AActor* Actor)
+void FOcclusionTraceLibrary::NotifyExit(AActor* Actor, UObject* TracerIdentity)
 {
     if (!Actor) return;
-    IOcclusionInterface::Execute_OnOcclusionExit(Actor, nullptr);
-    UE_LOG(Occlusion, Log, TEXT("OcclusionTraceLibrary::NotifyExit>> %s"), *Actor->GetName());
+
+    UOcclusionObstacleComponent* Comp =
+        Actor->FindComponentByClass<UOcclusionObstacleComponent>();
+
+    if (!Comp) return;
+
+    IOcclusionInterface::Execute_OnOcclusionExit(Comp, TracerIdentity);
+    UE_LOG(Occlusion, Log, TEXT("FOcclusionTraceLibrary::NotifyExit>> %s"), *Actor->GetName());
 }

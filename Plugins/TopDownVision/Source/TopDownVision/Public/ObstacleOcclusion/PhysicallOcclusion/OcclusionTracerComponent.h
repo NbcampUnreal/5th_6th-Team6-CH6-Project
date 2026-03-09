@@ -21,7 +21,8 @@ public:
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-    // ── Camera source ─────────────────────────────────────────────────────
+    UFUNCTION(BlueprintCallable, Category="Occlusion Tracer")
+    void InitializeProbeTracer();
 
     UFUNCTION(BlueprintCallable, Category="Occlusion Tracer")
     void SetCameraComponent(UCameraComponent* InCamera);
@@ -29,15 +30,11 @@ public:
     UFUNCTION(BlueprintCallable, Category="Occlusion Tracer")
     void SetCameraManager(APlayerCameraManager* InCameraManager);
 
-    // ── Visibility driven API — call these from BP or C++ ─────────────────
-
     UFUNCTION(BlueprintCallable, Category="Occlusion Tracer")
     void OnBecameVisible();
 
     UFUNCTION(BlueprintCallable, Category="Occlusion Tracer")
     void OnBecameHidden();
-
-    // ── BP events — implement in Blueprint to react ───────────────────────
 
     UFUNCTION(BlueprintNativeEvent, Category="Occlusion Tracer")
     void OnTracerActivated();
@@ -62,6 +59,24 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer")
     float TraceInterval = 0.1f;
 
+    // ── Sweep generation ──────────────────────────────────────────────────
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sweeps")
+    bool bAutoGenerateSweeps = true;
+
+    /** Hard cap on generated sweep count */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sweeps",
+              meta=(EditCondition="bAutoGenerateSweeps", ClampMin=1))
+    int32 MaxAutoSweepCount = 20;
+
+    /** Distance between each sphere = previous sphere radius * this value.
+     *  1.0 = spheres touch, 2.0 = one radius gap between each */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sweeps",
+              meta=(EditCondition="bAutoGenerateSweeps", ClampMin=0.1f))
+    float SweepGapRatio = 1.5f;
+
+    // ── Debug ─────────────────────────────────────────────────────────────
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Debug")
     bool bDebugDraw = false;
 
@@ -83,6 +98,7 @@ private:
     void RebuildProbe();
     bool RefreshFrustumParams();
     void DrawDebug() const;
+    void GenerateSweepsAlongLine(const FVector& LineDirection, float LineLength);
 
     FOcclusionProbe      Probe;
     FCameraFrustumParams FrustumParams;

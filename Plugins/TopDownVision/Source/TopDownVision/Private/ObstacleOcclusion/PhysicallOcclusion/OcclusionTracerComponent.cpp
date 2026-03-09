@@ -4,9 +4,11 @@
 #include "ObstacleOcclusion/PhysicallOcclusion/FrustumToProjectionMatcherHelper.h"
 #include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
+#include "GameFramework/PlayerController.h"
 #include "DrawDebugHelpers.h"
 #include "TopDownVisionDebug.h"
 #include "ObstacleOcclusion/PhysicallOcclusion/OcclusionInterface.h"
+#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionObstacleComponent.h"
 
 UOcclusionTracerComponent::UOcclusionTracerComponent()
 {
@@ -16,15 +18,26 @@ UOcclusionTracerComponent::UOcclusionTracerComponent()
 void UOcclusionTracerComponent::BeginPlay()
 {
     Super::BeginPlay();
-
-    Probe.Channel = OcclusionChannel;
-    Probe.Sweeps  = SweepConfigs;
 }
 
 void UOcclusionTracerComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     Super::EndPlay(EndPlayReason);
     OnBecameHidden();
+}
+
+void UOcclusionTracerComponent::InitializeProbeTracer()
+{
+    if (GetNetMode() == NM_DedicatedServer)
+    {
+        Deactivate();
+        return;
+    }
+
+    Activate();
+
+    Probe.Channel = OcclusionChannel;
+    Probe.Sweeps  = SweepConfigs;
 }
 
 // ── Camera source ─────────────────────────────────────────────────────────────
@@ -35,7 +48,9 @@ void UOcclusionTracerComponent::SetCameraComponent(UCameraComponent* InCamera)
         return;
 
     CameraComponent = InCamera;
-    CameraManager   = nullptr;
+
+    if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+        CameraManager = PC->PlayerCameraManager;
 
     IgnoredActors.Reset();
     IgnoredActors.Add(InCamera->GetOwner());
@@ -70,6 +85,8 @@ void UOcclusionTracerComponent::SetCameraManager(APlayerCameraManager* InCameraM
 
 void UOcclusionTracerComponent::OnBecameVisible()
 {
+    if (!IsActive()) return;
+
     if (!bCameraReady)
     {
         UE_LOG(Occlusion, Warning,
@@ -97,15 +114,19 @@ void UOcclusionTracerComponent::OnBecameVisible()
 
 void UOcclusionTracerComponent::OnBecameHidden()
 {
+    if (!IsActive()) return;
+
     GetWorld()->GetTimerManager().ClearTimer(TraceTimerHandle);
 
-    // Clear any active occlusion state so obstacles don't stay faded
     for (const TWeakObjectPtr<AActor>& Previous : Probe.PreviousHits)
     {
-        if (Previous.IsValid())
-        {
-            IOcclusionInterface::Execute_OnOcclusionExit(Previous.Get(), nullptr);
-        }
+        if (!Previous.IsValid()) continue;
+
+        UOcclusionObstacleComponent* Comp =
+            Previous->FindComponentByClass<UOcclusionObstacleComponent>();
+
+        if (Comp)
+            IOcclusionInterface::Execute_OnOcclusionExit(Comp, this);
     }
 
     Probe.PreviousHits.Empty();
@@ -116,8 +137,6 @@ void UOcclusionTracerComponent::OnBecameHidden()
         TEXT("UOcclusionTracerComponent::OnBecameHidden>> Tracer stopped on %s"),
         *GetOwner()->GetName());
 }
-
-// ── BP events — default no-op implementations ─────────────────────────────────
 
 void UOcclusionTracerComponent::OnTracerActivated_Implementation()  {}
 void UOcclusionTracerComponent::OnTracerDeactivated_Implementation() {}
@@ -131,7 +150,7 @@ void UOcclusionTracerComponent::RunTrace()
 
     RebuildProbe();
 
-    FOcclusionTraceLibrary::RunProbe(Probe, GetWorld(), IgnoredActors, bDebugDraw);
+    FOcclusionTraceLibrary::RunProbe(Probe, GetWorld(), IgnoredActors, this, bDebugDraw);
 
     if (bDebugDraw)
         DrawDebug();
@@ -140,7 +159,18 @@ void UOcclusionTracerComponent::RunTrace()
 bool UOcclusionTracerComponent::RefreshFrustumParams()
 {
     if (IsValid(CameraComponent))
-        return FFrustumProjectionMatcherHelper::ExtractFromCameraComponent(CameraComponent, FrustumParams);
+    {
+        if (!FFrustumProjectionMatcherHelper::ExtractFromCameraComponent(CameraComponent, FrustumParams))
+            return false;
+
+        if (IsValid(CameraManager))
+        {
+            FrustumParams.CameraLocation = CameraManager->GetCameraLocation();
+            FrustumParams.CameraForward  = CameraManager->GetCameraRotation().Vector();
+        }
+
+        return true;
+    }
 
     if (IsValid(CameraManager))
         return FFrustumProjectionMatcherHelper::ExtractFromCameraManager(CameraManager, FrustumParams);
@@ -156,21 +186,62 @@ void UOcclusionTracerComponent::RebuildProbe()
 {
     const FVector TargetLocation = GetOwner()->GetActorLocation() + TargetLocationOffset;
     const FVector CameraLocation = FrustumParams.CameraLocation;
-    const float   TargetDistance = FVector::Dist(CameraLocation, TargetLocation);
+    const FVector LineDirection  = (TargetLocation - CameraLocation).GetSafeNormal();
+    const float   LineLength     = FVector::Dist(CameraLocation, TargetLocation);
 
     Probe.BaseOrigin = CameraLocation;
     Probe.Target     = TargetLocation;
 
-    for (int32 i = 0; i < Probe.Sweeps.Num(); ++i)
+    if (bAutoGenerateSweeps)
     {
-        const FVector SweepOrigin = CameraLocation + Probe.Sweeps[i].OriginOffset;
-        const float   SweepDepth  = FVector::Dist(SweepOrigin, TargetLocation);
+        // Radii computed inside GenerateSweepsAlongLine
+        GenerateSweepsAlongLine(LineDirection, LineLength);
+    }
+    else
+    {
+        // Manual config — compute radii from depth
+        for (int32 i = 0; i < Probe.Sweeps.Num(); ++i)
+        {
+            const FVector SweepOrigin = CameraLocation + Probe.Sweeps[i].OriginOffset;
+            const float   SweepDepth  = FVector::Dist(CameraLocation, SweepOrigin);
 
-        Probe.Sweeps[i].SphereRadius = FFrustumProjectionMatcherHelper::CalculateSphereRadiusAtDepth(
+            Probe.Sweeps[i].SphereRadius = FFrustumProjectionMatcherHelper::CalculateSphereRadiusAtDepth(
+                FrustumParams,
+                LineLength,
+                TargetVisibleRadius,
+                SweepDepth);
+        }
+    }
+}
+
+void UOcclusionTracerComponent::GenerateSweepsAlongLine(
+    const FVector& LineDirection,
+    float          LineLength)
+{
+    Probe.Sweeps.Reset();
+
+    // Start one TargetVisibleRadius away from the target, walk toward camera
+    float DepthFromCamera = LineLength - TargetVisibleRadius;
+
+    for (int32 i = 0; i < MaxAutoSweepCount; ++i)
+    {
+        if (DepthFromCamera <= 0.f) break;
+
+        const float Radius = FFrustumProjectionMatcherHelper::CalculateSphereRadiusAtDepth(
             FrustumParams,
-            TargetDistance,
+            LineLength,
             TargetVisibleRadius,
-            SweepDepth);
+            DepthFromCamera);
+
+        if (Radius <= KINDA_SMALL_NUMBER) break;
+
+        FOcclusionSweepConfig Config;
+        Config.OriginOffset = LineDirection * DepthFromCamera;
+        Config.SphereRadius = Radius;
+        Probe.Sweeps.Add(Config);
+
+        // Step toward camera — gap is current radius * ratio
+        DepthFromCamera -= Radius * SweepGapRatio;
     }
 }
 
@@ -182,23 +253,14 @@ void UOcclusionTracerComponent::DrawDebug() const
     const FVector CameraLocation = FrustumParams.CameraLocation;
     const FVector TargetLocation = Probe.Target;
 
-    DrawDebugLine(World, CameraLocation, TargetLocation, DebugColorNoHit, false, -1.f, 0, 1.f);
+    DrawDebugLine(World, CameraLocation, TargetLocation, DebugColorNoHit, false, -1.f, 5, 0.5f);
     DrawDebugSphere(World, TargetLocation, TargetVisibleRadius, 12, DebugColorTarget, false, -1.f);
 
     for (const FOcclusionSweepConfig& Sweep : Probe.Sweeps)
     {
         const FVector SweepOrigin = CameraLocation + Sweep.OriginOffset;
+
         DrawDebugSphere(World, SweepOrigin, 4.f, 6, DebugColorSweepOrigin, false, -1.f);
-        DrawDebugSphere(World, TargetLocation, Sweep.SphereRadius, 8, DebugColorHit, false, -1.f);
+        DrawDebugSphere(World, SweepOrigin, Sweep.SphereRadius, 8, DebugColorHit, false, -1.f);
     }
 }
-/*```
-
----
-
-The BP usage pattern is now just:
-```
-BeginPlay         → SetCameraComponent(Camera)
-OnBecameVisible   → call OnBecameVisible()   — timer starts
-OnBecameHidden    → call OnBecameHidden()    — timer stops, state cleared
-OnTracerActivated / OnTracerDeactivated — implement in BP if you need to react*/

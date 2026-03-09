@@ -1,16 +1,12 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
 #include "OcclusionInterface.h"
 #include "OcclusionObstacleComponent.generated.h"
 
-// Forward declares
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
-class UPrimitiveComponent;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class TOPDOWNVISION_API UOcclusionObstacleComponent : public USceneComponent, public IOcclusionInterface
@@ -24,13 +20,13 @@ public:
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-    /** Call this in editor or BeginPlay to register tagged meshes and set up materials */
     UFUNCTION(BlueprintCallable, Category="Occlusion Setup")
     void SetupOcclusionMeshes();
+    
+    void InitializeCollision();
 
-    // IOcclusionInterface
-    virtual void OnOcclusionEnter_Implementation(UPrimitiveComponent* OccludingComponent) override;
-    virtual void OnOcclusionExit_Implementation(UPrimitiveComponent* OccludingComponent) override;
+    virtual void OnOcclusionEnter_Implementation(UObject* SourceTracer) override;
+    virtual void OnOcclusionExit_Implementation(UObject* SourceTracer) override;
 
 private:
 
@@ -41,29 +37,27 @@ private:
 
 protected:
 
-    // Tag used for normal (visible) meshes
     UPROPERTY(EditAnywhere, Category="Occlusion")
     FName NormalMeshTag = TEXT("OcclusionMesh");
 
-    // Tag used for occluded (faded) meshes
     UPROPERTY(EditAnywhere, Category="Occlusion")
     FName OccludedMeshTag = TEXT("OccludedVisual");
 
-    /** Fade interpolation speed */
     UPROPERTY(EditAnywhere, Category="Occlusion")
     float FadeSpeed = 6.f;
 
-    /** Material scalar parameter driven by occlusion state */
     UPROPERTY(EditAnywhere, Category="Occlusion")
     FName AlphaParameterName = TEXT("OcclusionAlpha");
-
+    
+    UPROPERTY(EditAnywhere, Category="Occlusion")
+    TEnumAsByte<ECollisionChannel> OcclusionTraceChannel = ECC_GameTraceChannel1;
+    
 private:
 
-    /** Active occluding components — tracked for multi-overlap safety */
-    TSet<TWeakObjectPtr<UPrimitiveComponent>> ActiveOverlaps;
+    TSet<TWeakObjectPtr<UObject>> ActiveOverlaps;
 
-    float CurrentAlpha = 0.f;
-    bool  bShouldBeOccluded = false;
+    float CurrentAlpha        = 0.f;
+    bool  bShouldBeOccluded   = false;
     bool  bLastOcclusionState = false;
 
     UPROPERTY(Transient)

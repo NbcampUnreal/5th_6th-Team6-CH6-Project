@@ -97,6 +97,9 @@ void UVision_EvaluatorComp::InitializeEvaluator(UVision_VisualComp* DirectParamC
         return;
     }
 
+    if (ShouldRunServerLogic())
+        return;// no server
+
     if (DirectParamComp)
         DirectCacheVisualComp(DirectParamComp);
     else
@@ -380,13 +383,16 @@ bool UVision_EvaluatorComp::EvaluateWallObstacle(AActor* Target, UTopDown2DShape
 
 bool UVision_EvaluatorComp::EvaluateVolumeObstacle(AActor* Target, UTopDown2DShapeComp* ShapeComp)
 {
-    return UVolumeVisibilityEvaluator2D::EvaluateVisibility(
+    // temp — always visible
+    return true;
+    
+    /*return UVolumeVisibilityEvaluator2D::EvaluateVisibility(
         CachedVisualComp->GetObstacleDrawer()->GetObstacleRenderTarget(),
         CachedVisualComp->GetMaxVisibleRange(),
         GetOwner()->GetActorLocation(),
         Target->GetActorLocation(),
         ShapeComp,
-        OcclusionThreshold);
+        OcclusionThreshold);*/
 }
 
 // -------------------------------------------------------------------------- //

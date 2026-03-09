@@ -16,6 +16,8 @@ void UOcclusionObstacleComponent::BeginPlay()
     Super::BeginPlay();
 
     InitializeMaterials();//set MID at runtime
+
+    InitializeCollision();//set mesh's collision setting
 }
 
 void UOcclusionObstacleComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -46,32 +48,30 @@ void UOcclusionObstacleComponent::TickComponent(float DeltaTime, ELevelTick Tick
 
 // IOcclusionInterface — called by OcclusionProbeComp hit diff
 
-void UOcclusionObstacleComponent::OnOcclusionEnter_Implementation(UPrimitiveComponent* OccludingComponent)
+void UOcclusionObstacleComponent::OnOcclusionEnter_Implementation(UObject* SourceTracer)
 {
-    if (!OccludingComponent)
-        return;
+    if (!SourceTracer) return;
 
-    ActiveOverlaps.Add(OccludingComponent);
+    ActiveOverlaps.Add(SourceTracer);
     bShouldBeOccluded = ActiveOverlaps.Num() > 0;
 
     UE_LOG(Occlusion, Log,
         TEXT("UOcclusionObstacleComponent::OnOcclusionEnter>> %s | ActiveOverlaps: %d"),
-        *OccludingComponent->GetName(),
+        *SourceTracer->GetName(),
         ActiveOverlaps.Num());
 }
 
-void UOcclusionObstacleComponent::OnOcclusionExit_Implementation(UPrimitiveComponent* OccludingComponent)
+void UOcclusionObstacleComponent::OnOcclusionExit_Implementation(UObject* SourceTracer)
 {
-    if (!OccludingComponent)
-        return;
+    if (!SourceTracer) return;
 
-    ActiveOverlaps.Remove(OccludingComponent);
+    ActiveOverlaps.Remove(SourceTracer);
     CleanupInvalidOverlaps();
     bShouldBeOccluded = ActiveOverlaps.Num() > 0;
 
     UE_LOG(Occlusion, Log,
         TEXT("UOcclusionObstacleComponent::OnOcclusionExit>> %s | ActiveOverlaps: %d"),
-        *OccludingComponent->GetName(),
+        *SourceTracer->GetName(),
         ActiveOverlaps.Num());
 }
 
@@ -84,6 +84,33 @@ void UOcclusionObstacleComponent::SetupOcclusionMeshes()
     UE_LOG(Occlusion, Log,
         TEXT("UOcclusionObstacleComponent::SetupOcclusionMeshes>> Completed setup for %s"),
         *GetOwner()->GetName());
+}
+
+void UOcclusionObstacleComponent::InitializeCollision()
+{
+    for (TSoftObjectPtr<UStaticMeshComponent> MeshPtr : NormalMeshes)
+    {
+        UStaticMeshComponent* Mesh = MeshPtr.Get();
+        if (!Mesh) continue;
+
+        // Only add the trace channel response — leave everything else untouched
+        Mesh->SetCollisionResponseToChannel(OcclusionTraceChannel, ECR_Overlap);
+
+        //make them ignore the Visibility trace, for mouse cursor trace
+        Mesh->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);//
+
+        UE_LOG(Occlusion, Log,
+            TEXT("UOcclusionObstacleComponent::InitializeCollision>> Set ECR_Block on %s"),
+            *Mesh->GetName());
+    }
+
+    for (TSoftObjectPtr<UStaticMeshComponent> MeshPtr : OccludedMeshes)
+    {
+        UStaticMeshComponent* Mesh = MeshPtr.Get();
+        if (!Mesh) continue;
+
+        Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    }
 }
 
 void UOcclusionObstacleComponent::DiscoverChildMeshes()
