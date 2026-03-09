@@ -391,7 +391,7 @@ bool UMainVisionRTManager::GetVisibleProviders(TArray<UVision_VisualComp*>& OutP
 	// now it is getting every visible providers, even when they are from different vision channel.
 	// cause different provider can be revealed and be hidden... fuck
 
-	OutProviders = Subsystem->GeAlltProviders();
+	OutProviders = Subsystem->GeAllProviders();
 
 	return true;
 }

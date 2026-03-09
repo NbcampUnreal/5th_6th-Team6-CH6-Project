@@ -3,6 +3,7 @@
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/GameStateBase.h"
 #include "LineOfSight/Management/VisionGameStateComp.h"
+#include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
 #include "LineOfSight/VisionComps/Vision_VisualComp.h"
 
 DEFINE_LOG_CATEGORY(VisionPlayerStateComp);
@@ -23,7 +24,6 @@ void UVisionPlayerStateComp::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 void UVisionPlayerStateComp::BeginPlay()
 {
     Super::BeginPlay();
-    // Deferred one tick — by then PC->PlayerState is assigned and GSComp is populated
     if (UWorld* World = GetWorld())
         World->GetTimerManager().SetTimerForNextTick(this, &UVisionPlayerStateComp::RefreshVisibility);
 }
@@ -34,17 +34,11 @@ void UVisionPlayerStateComp::BeginPlay()
 
 void UVisionPlayerStateComp::SetTeamChannel(EVisionChannel InTeam)
 {
-    /*if (!GetOwner()->HasAuthority())
-    {
-        UE_LOG(VisionPlayerStateComp, Warning,
-            TEXT("[%s] SetTeamChannel >> Server only"), *GetOwner()->GetName());
-        return;
-    }*/
-
     TeamChannel = InTeam;
 
     UE_LOG(VisionPlayerStateComp, Log,
-        TEXT("[%s] SetTeamChannel >> %d"), *GetOwner()->GetName(), (uint8)TeamChannel);
+        TEXT("[%s] SetTeamChannel >> %s"), *GetOwner()->GetName(),
+        *UEnum::GetValueAsString(TeamChannel));
 
     RefreshVisibility();
 }
@@ -52,7 +46,8 @@ void UVisionPlayerStateComp::SetTeamChannel(EVisionChannel InTeam)
 void UVisionPlayerStateComp::OnRep_TeamChannel()
 {
     UE_LOG(VisionPlayerStateComp, Log,
-        TEXT("[%s] OnRep_TeamChannel >> %d"), *GetOwner()->GetName(), (uint8)TeamChannel);
+        TEXT("[%s] OnRep_TeamChannel >> %s"), *GetOwner()->GetName(),
+        *UEnum::GetValueAsString(TeamChannel));
     RefreshVisibility();
 }
 
@@ -87,7 +82,7 @@ void UVisionPlayerStateComp::OnRep_AllReveal()
 }
 
 // -------------------------------------------------------------------------- //
-//  Visibility logic — single place for filter + apply
+//  Visibility logic
 // -------------------------------------------------------------------------- //
 
 bool UVisionPlayerStateComp::CanSeeTeam(EVisionChannel InTeam) const
@@ -104,12 +99,11 @@ void UVisionPlayerStateComp::ApplyActorVisibility(AActor* Target, EVisionChannel
     if (!VisualComp)
         return;
 
-    // Check the target's actual team, not the observer's team
     const bool bTargetIsSameTeam = (VisualComp->GetVisionChannel() == TeamChannel);
 
     const bool bShouldBeVisible = bAllReveal
-        || bTargetIsSameTeam                    // same team — always visible regardless of LOS
-        || (CanSeeTeam(Team) && bVisible);       // enemy — only visible if my team spotted them and LOS confirms
+        || bTargetIsSameTeam
+        || (CanSeeTeam(Team) && bVisible);
 
     VisualComp->SetVisible(bShouldBeVisible);
 
@@ -125,7 +119,7 @@ void UVisionPlayerStateComp::ApplyActorVisibility(AActor* Target, EVisionChannel
 }
 
 // -------------------------------------------------------------------------- //
-//  Full refresh — initial sync and on team/AllReveal change
+//  Full refresh
 // -------------------------------------------------------------------------- //
 
 void UVisionPlayerStateComp::RefreshVisibility()
@@ -139,7 +133,6 @@ void UVisionPlayerStateComp::RefreshVisibility()
     UVisionGameStateComp* GSComp = GS->FindComponentByClass<UVisionGameStateComp>();
     if (!GSComp) return;
 
-    // Not ready yet — TeamChannel must be assigned before we're considered ready
     if (TeamChannel == EVisionChannel::None)
     {
         UE_LOG(VisionPlayerStateComp, Verbose,
@@ -156,7 +149,6 @@ void UVisionPlayerStateComp::RefreshVisibility()
             ApplyActorVisibility(Entry.Target, Entry.TeamChannel, true);
     }
 
-    // Fire ready delegate once on first valid refresh
     if (!bVisionReady)
     {
         bVisionReady = true;
@@ -165,4 +157,33 @@ void UVisionPlayerStateComp::RefreshVisibility()
             TEXT("[%s] RefreshVisibility >> Vision is now ready, delegate fired"),
             *GetOwner()->GetName());
     }
+}
+
+// -------------------------------------------------------------------------- //
+//  RPC — routes through PlayerState since client always owns it
+// -------------------------------------------------------------------------- //
+
+void UVisionPlayerStateComp::Server_ReportVisibility_Implementation(
+    AActor* Observer, AActor* Target, EVisionChannel Channel, bool bVisible)
+{
+    UE_LOG(VisionPlayerStateComp, Warning,
+        TEXT("[%s] Server_ReportVisibility >> Observer:%s | Target:%s | Channel:%s | Visible:%d"),
+        *GetOwner()->GetName(),
+        Observer ? *Observer->GetName() : TEXT("NULL"),
+        Target   ? *Target->GetName()   : TEXT("NULL"),
+        *UEnum::GetValueAsString(Channel),
+        bVisible);
+
+    if (!Observer || !Target)
+    {
+        UE_LOG(VisionPlayerStateComp, Warning,
+            TEXT("[%s] Server_ReportVisibility >> Null actor in RPC — ensure both Observer and Target have bReplicates=true"),
+            *GetOwner()->GetName());
+        return;
+    }
+
+    ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
+    if (!Subsystem) return;
+
+    Subsystem->ReportTargetVisibility(Observer, Channel, Target, bVisible);
 }
