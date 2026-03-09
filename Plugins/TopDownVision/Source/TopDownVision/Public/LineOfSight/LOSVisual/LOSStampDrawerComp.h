@@ -47,6 +47,8 @@ public:
     /** Called by Vision_VisualComp::BeginPlay to create the MID. */
     void CreateResources();
 
+    void SetVisionAlpha(float InAlpha) {PassedVisionAlpha=InAlpha;}
+
     // --- Getters --- //
     UMaterialInstanceDynamic* GetLOSMaterialMID() const { return LOSMaterialMID; }
 
@@ -65,6 +67,10 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSStamp")
     FName MIDVisibleRangeParam = TEXT("NormalizedVisionRadius");
 
+    /** Scalar parameter name for Opacity */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSStamp")
+    FName MIDVisibilityAlpha = TEXT("VisibilityAlpha");
+
     // --- Debug --- //
     UPROPERTY(EditAnywhere, Category="LOSStamp|Debug")
     bool bDrawStampRange = false;
@@ -78,4 +84,6 @@ protected:
 private:
     bool  bShouldUpdateLOSStamp = false;
     float CachedVisionRange = 0.f;
+
+    float PassedVisionAlpha = 0.f;
 };

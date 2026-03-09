@@ -7,6 +7,9 @@
 
 TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(VisionPlayerStateComp, Log, All);
 
+TOPDOWNVISION_API DECLARE_MULTICAST_DELEGATE(FOnVisionReady);
+
+
 UCLASS(ClassGroup=(Vision), meta=(BlueprintSpawnableComponent))
 class TOPDOWNVISION_API UVisionPlayerStateComp : public UActorComponent
 {
@@ -49,6 +52,11 @@ public:
     UFUNCTION(BlueprintCallable, Category="Vision")
     void RefreshVisibility();
 
+    bool IsVisionReady() const { return bVisionReady; }
+
+    //Signal for reporting 
+    FOnVisionReady OnVisionReady;
+    
 private:
     UPROPERTY(ReplicatedUsing=OnRep_TeamChannel)
     EVisionChannel TeamChannel = EVisionChannel::None;
@@ -58,4 +66,9 @@ private:
 
     UFUNCTION() void OnRep_TeamChannel();
     UFUNCTION() void OnRep_AllReveal();
+
+
+
+private:
+    bool bVisionReady = false;
 };

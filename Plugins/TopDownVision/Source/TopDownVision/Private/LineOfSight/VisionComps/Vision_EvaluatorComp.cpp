@@ -4,6 +4,7 @@
 #include "LineOfSight/VisionComps/Vision_VisualComp.h"
 #include "LineOfSight/ObjectTracing/TopDown2DShapeComp.h"
 #include "TopDownVisionDebug.h"
+#include "LineOfSight/Management/VisionPlayerStateComp.h"
 #include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
 #include "LineOfSight/ObjectTracing/VolumeVisibilityEvaluator2D.h"
 #include "LineOfSight/ObjectTracing/WallVisibilityEvaluator2D.h"
@@ -26,7 +27,37 @@ UVision_EvaluatorComp::UVision_EvaluatorComp()
 void UVision_EvaluatorComp::BeginPlay()
 {
     Super::BeginPlay();
-    // Initialization is driven externally by the owner via InitializeEvaluator()
+
+    // Server skips entirely
+    if (ShouldRunServerLogic() && GetWorld()->GetNetMode() != NM_Standalone)
+        return;
+
+    UVisionPlayerStateComp* VisionPS = ULOSVisionSubsystem::GetLocalVisionPS(GetWorld());
+    if (!VisionPS)
+    {
+        UE_LOG(LOSVision, Warning,
+            TEXT("[%s] BeginPlay >> No local VisionPS found"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+        return;
+    }
+
+    if (VisionPS->IsVisionReady())
+    {
+        // Already ready — initialize immediately
+        InitializeEvaluator(nullptr);
+    }
+    else
+    {
+        // Wait for TeamChannel to be assigned and first RefreshVisibility to complete
+        VisionPS->OnVisionReady.AddLambda([this]()
+        {
+            InitializeEvaluator(nullptr);
+        });
+
+        UE_LOG(LOSVision, Log,
+            TEXT("[%s] BeginPlay >> Waiting for VisionReady delegate"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+    }
 }
 
 // -------------------------------------------------------------------------- //
@@ -373,13 +404,17 @@ bool UVision_EvaluatorComp::EvaluateWallObstacle(AActor* Target, UTopDown2DShape
 
 bool UVision_EvaluatorComp::EvaluateVolumeObstacle(AActor* Target, UTopDown2DShapeComp* ShapeComp)
 {
-    return UVolumeVisibilityEvaluator2D::EvaluateVisibility(
+    /*return UVolumeVisibilityEvaluator2D::EvaluateVisibility(
         CachedVisualComp->GetObstacleDrawer()->GetObstacleRenderTarget(),
         CachedVisualComp->GetMaxVisibleRange(),
         GetOwner()->GetActorLocation(),
         Target->GetActorLocation(),
         ShapeComp,
-        OcclusionThreshold);
+        OcclusionThreshold);*/
+
+    //temp always return true
+
+    return true;
 }
 
 // -------------------------------------------------------------------------- //

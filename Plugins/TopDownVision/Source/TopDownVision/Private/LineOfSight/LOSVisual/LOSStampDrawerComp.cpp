@@ -73,6 +73,11 @@ void ULOSStampDrawerComp::UpdateLOSStamp(UTextureRenderTarget2D* ObstacleRT)
         return;
     }
 
+    if (MIDVisibilityAlpha != NAME_None)
+    {
+        LOSMaterialMID->SetScalarParameterValue(MIDVisibilityAlpha, PassedVisionAlpha);
+    }
+    
     // Bind obstacle RT to the MID each frame.
     // MainVisionRTManager::DrawLOSStamp reads GetLOSMaterialMID() and
     // draws it directly onto the camera RT — no pre-render step here.
@@ -138,10 +143,12 @@ void ULOSStampDrawerComp::ToggleLOSStampUpdate(bool bIsOn)
 
 void ULOSStampDrawerComp::OnVisionRangeChanged(float NewRange, float MaxRange)
 {
-    if (LOSMaterialMID && MIDVisibleRangeParam != NAME_None)
+    if (LOSMaterialMID && MIDVisibleRangeParam != NAME_None && MIDVisibilityAlpha!= NAME_None)
     {
         const float Normalized = FMath::Max(0.f, NewRange) / FMath::Max(1.f, MaxRange) / 2.f;
         LOSMaterialMID->SetScalarParameterValue(MIDVisibleRangeParam, Normalized);
+
+        LOSMaterialMID->SetScalarParameterValue(MIDVisibilityAlpha, 1.0f);// need to pass the visibility alpha here
         CachedVisionRange = NewRange;
     }
 }

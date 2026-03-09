@@ -88,32 +88,36 @@ void UVision_VisualComp::Initialize()
     
     AActor* DebugCheckingActor = GetOwner();
 
-    if (!ShouldRunClientLogic())//server gate
+    if (!ShouldRunClientLogic())
         return;
-    
-    // Pass MaxVisionRange into ObstacleDrawer so it can size its RT correctly
+
+    // Must happen before ObstacleDrawer and StampDrawer initialize
+    // so RT size and UV params are built at the correct range from the start
+    if (!IsSharedVisionChannel() && IndicatorRange > 0.f)
+    {
+        VisionRange    = IndicatorRange;
+        MaxVisionRange = IndicatorRange;
+
+        UE_LOG(LOSVision, Log,
+            TEXT("[%s] Initialize >> Not shared channel, overriding ranges to IndicatorRange: %.1f"),
+            *GetOwner()->GetName(), IndicatorRange);
+    }
+
+    // Now builds RT and UV at whatever range was set above
     if (ObstacleDrawer)
         ObstacleDrawer->Initialize(MaxVisionRange);
 
-    // Pass initial range into StampDrawer for material param
     if (StampDrawer)
     {
         StampDrawer->CreateResources();
         StampDrawer->OnVisionRangeChanged(VisionRange, MaxVisionRange);
     }
-    
-    // Create MIDs from whatever meshes were registered in editor or via AddMesh
+
     if (VisibilityMesh)
         VisibilityMesh->Initialize();
-    
-    // Pre-warm evaluator cache — null is valid for visual-only actors
+
     CachedEvaluatorComp = GetOwner()->FindComponentByClass<UVision_EvaluatorComp>();
 
-
-    //get and set the Vision channel from the player state
-    
-    
-    //==== Registration ====//
     if (ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>())
     {
         Subsystem->RegisterProvider(this, VisionChannel);
@@ -121,7 +125,7 @@ void UVision_VisualComp::Initialize()
     else
     {
         UE_LOG(LOSVision, Warning,
-            TEXT("[%s] UVision_VisualComp::Initialize >> LOSVisionSubsystem not found"),
+            TEXT("[%s] Initialize >> LOSVisionSubsystem not found"),
             *GetOwner()->GetName());
     }
 }
@@ -146,8 +150,11 @@ void UVision_VisualComp::UpdateVision()
         ObstacleDrawer->UpdateObstacleTexture();
 
     if (StampDrawer)
-        StampDrawer->UpdateLOSStamp(
-            ObstacleDrawer ? ObstacleDrawer->GetObstacleRenderTarget() : nullptr);
+    {
+        StampDrawer->SetVisionAlpha(VisibilityAlpha);
+        StampDrawer->UpdateLOSStamp( ObstacleDrawer ? ObstacleDrawer->GetObstacleRenderTarget() : nullptr);
+    }
+       
 }
 
 void UVision_VisualComp::ToggleLOSStampUpdate(bool bIsOn)

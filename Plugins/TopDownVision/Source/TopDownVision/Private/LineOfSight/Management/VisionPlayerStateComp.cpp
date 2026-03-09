@@ -139,19 +139,30 @@ void UVisionPlayerStateComp::RefreshVisibility()
     UVisionGameStateComp* GSComp = GS->FindComponentByClass<UVisionGameStateComp>();
     if (!GSComp) return;
 
-    // Drain anything that arrived before we were ready
-    GSComp->FlushPendingReveals(this);
+    // Not ready yet — TeamChannel must be assigned before we're considered ready
+    if (TeamChannel == EVisionChannel::None)
+    {
+        UE_LOG(VisionPlayerStateComp, Verbose,
+            TEXT("[%s] RefreshVisibility >> TeamChannel is None, skipping"),
+            *GetOwner()->GetName());
+        return;
+    }
 
-    UE_LOG(VisionPlayerStateComp, Log,
-        TEXT("[%s] RefreshVisibility >> %d actors | Team:%d | AllReveal:%d"),
-        *GetOwner()->GetName(),
-        GSComp->GetVisibleActors().Num(),
-        (uint8)TeamChannel,
-        bAllReveal);
+    GSComp->FlushPendingReveals(this);
 
     for (const FVisibleActorEntry& Entry : GSComp->GetVisibleActors())
     {
         if (Entry.Target)
             ApplyActorVisibility(Entry.Target, Entry.TeamChannel, true);
+    }
+
+    // Fire ready delegate once on first valid refresh
+    if (!bVisionReady)
+    {
+        bVisionReady = true;
+        OnVisionReady.Broadcast();
+        UE_LOG(VisionPlayerStateComp, Log,
+            TEXT("[%s] RefreshVisibility >> Vision is now ready, delegate fired"),
+            *GetOwner()->GetName());
     }
 }
