@@ -839,6 +839,8 @@ void ABaseCharacter::InitVisuals()
 			GetMesh()->SetAnimInstanceClass(LoadedAnimClass);
 		}
 	}
+
+	//
 }
 
 void ABaseCharacter::Server_MoveToLocation_Implementation(FVector TargetLocation)
