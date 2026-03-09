@@ -112,7 +112,6 @@ ABaseCharacter::ABaseCharacter()
 	//MinimapCaptureComponent->CaptureSource = ESceneCaptureSource::SCS_BaseColor; // 포스트 프로세싱 무효화
 }
 
-
 void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -190,7 +189,28 @@ void ABaseCharacter::PossessedBy(AController* NewController)
 
 	// ASC 초기화 (서버)
 	InitAbilitySystem();
+	
+	// 최초 1회만 HP,MP 초기화
+	if (HasAuthority())
+	{
+		UBaseAttributeSet* AS = nullptr;
+		
+		if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
+		{
+			AS = ERPS->GetAttributeSet();
+		}
+		else if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+		{
+			AS = PS->GetAttributeSet();
+		}
 
+		if (AS)
+		{
+			AS->SetHealth(AS->GetMaxHealth());
+			AS->SetStamina(AS->GetMaxStamina());
+		}
+	}
+	
 	// 비주얼 초기화 (서버)
 	if (HeroData)
 	{
@@ -258,7 +278,6 @@ void ABaseCharacter::Server_SetTeamID_Implementation(ETeamType NewTeamID)
 	TeamID = NewTeamID;
 	OnRep_TeamID();
 }
-
 
 EVisionChannel ABaseCharacter::ConvertTeamToVisionChannel(ETeamType InTeamType)
 {
@@ -344,6 +363,7 @@ void ABaseCharacter::HandleLevelUp()
 	if (!HasAuthority()) return;
 	
 	UBaseAttributeSet* AS = nullptr;
+	
 	if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
 	{
 		AS = ERPS->GetAttributeSet();
@@ -1331,7 +1351,6 @@ void ABaseCharacter::HandleDeath()
 				return; // 중복 사망 방지
 			}
 			
-			// [추가] GE_State_Dead 적용 방식
 			if (DeathStateEffectClass)
 			{
 				FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
@@ -1347,12 +1366,24 @@ void ABaseCharacter::HandleDeath()
 			AbilitySystemComponent->CancelAllAbilities();
 		}
 
-		// 타겟 지정 해제 (나를 노리는 적들에게 "나 죽었어" 알림)
-		// (이 부분은 AI나 타겟팅 시스템에 따라 추가 구현 필요)
+		
 		SetTarget(nullptr);
-		// 사망 알림 델리게이트
+		
 		OnDeath.Broadcast();
-		// 모든 클라이언트에게 연출 실행 명령
+		
+		if (AbilitySystemComponent.IsValid() && HasAuthority()) // 서버에서 실행
+		{
+			FGameplayCueParameters CueParams;
+			CueParams.Location = GetActorLocation(); // 현재 캐릭터 위치
+			CueParams.Instigator = this;
+			CueParams.EffectCauser = this;
+			
+			AbilitySystemComponent->ExecuteGameplayCue(
+				ProjectER::GameplayCue::Combat::Death, 
+				CueParams
+			);
+		}
+		
 		Multicast_Death();
 	}
 }

@@ -54,6 +54,14 @@ public:
 	// 레벨업 이펙트 크기 (Scale) 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VFX|LevelUp")
 	FVector LevelUpVFXScale = FVector(1.0f);
+	
+	// 사망 시 출력 이펙트 (VFX)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VFX|Death")
+	TObjectPtr<class UNiagaraSystem> DeathVFX;
+	
+	// 사망 이펙트 크기 (Scale) 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VFX|Death")
+	FVector DeathVFXScale = FVector(1.0f);
 
 	// 일반 공격 피격 시 출력 사운드 (SFX)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SFX|AutoAttack")
@@ -66,6 +74,10 @@ public:
 	// 레벨업 시 출력 사운드 (SFX)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SFX|LevelUp")
 	TObjectPtr<class USoundBase> LevelUpSFX;
+	
+	// 사망 시 출력 사운드 (SFX)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SFX|Death")
+	TObjectPtr<class USoundBase> DeathSFX;
 	
 	// 공통 스킬 (일반 공격, 아군 살리기 등)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Common")
