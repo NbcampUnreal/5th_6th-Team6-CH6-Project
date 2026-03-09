@@ -31,7 +31,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
 	TMap<FGameplayTag, TSoftObjectPtr<UAnimMontage>> CharacterMontages;
 	
-	// 일반 공격 피격 이펙트 (나이아가라)
+	// 일반 공격 시 피격 이펙트 (VFX)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "VFX|AutoAttack")
 	TSoftObjectPtr<UNiagaraSystem> BasicHitVFX;
 	
@@ -39,13 +39,45 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "VFX|AutoAttack")
 	FVector BasicHitVFXScale = FVector(1.0f);
 	
-	// 부활 시 출력 이펙트
+	// 부활 시 출력 이펙트 (VFX)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VFX|Revive")
 	TSoftObjectPtr<class UNiagaraSystem> ReviveVFX;
     
 	// 부활 이펙트 크기 (Scale) 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VFX|Revive")
 	FVector ReviveVFXScale = FVector(1.0f);
+	
+	// 레벨업 시 출력 이펙트 (VFX)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VFX|LevelUp")
+	TObjectPtr<class UNiagaraSystem> LevelUpVFX;
+	
+	// 레벨업 이펙트 크기 (Scale) 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VFX|LevelUp")
+	FVector LevelUpVFXScale = FVector(1.0f);
+	
+	// 사망 시 출력 이펙트 (VFX)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VFX|Death")
+	TObjectPtr<class UNiagaraSystem> DeathVFX;
+	
+	// 사망 이펙트 크기 (Scale) 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VFX|Death")
+	FVector DeathVFXScale = FVector(1.0f);
+
+	// 일반 공격 피격 시 출력 사운드 (SFX)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SFX|AutoAttack")
+	TObjectPtr<class USoundBase> BasicHitSFX;
+	
+	// 부활 시 출력 사운드 (SFX)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SFX|Revive")
+	TObjectPtr<class USoundBase> ReviveSFX;
+	
+	// 레벨업 시 출력 사운드 (SFX)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SFX|LevelUp")
+	TObjectPtr<class USoundBase> LevelUpSFX;
+	
+	// 사망 시 출력 사운드 (SFX)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SFX|Death")
+	TObjectPtr<class USoundBase> DeathSFX;
 	
 	// 공통 스킬 (일반 공격, 아군 살리기 등)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Common")
