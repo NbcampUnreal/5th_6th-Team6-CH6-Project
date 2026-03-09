@@ -32,14 +32,14 @@ void UMonsterRangeComponent::BeginPlay()
     RangeSphere->InitSphereRadius(PlayerCountSphereRadius);
     RangeSphere->SetCollisionProfileName(TEXT("PlayerCounter"));
     RangeSphere->SetGenerateOverlapEvents(true);
+
+	RangeSphere->OnComponentBeginOverlap.AddDynamic(
+		this, &UMonsterRangeComponent::OnPlayerCountingBeginOverlap);
+	RangeSphere->OnComponentEndOverlap.AddDynamic(
+		this, &UMonsterRangeComponent::OnPlayerCountingEndOverlap);
+
 	RangeSphere->RegisterComponent();
 	RangeSphere->SetWorldLocation(GetOwner()->GetActorLocation());
-	RangeSphere->UpdateOverlaps();
-
-    RangeSphere->OnComponentBeginOverlap.AddDynamic(
-        this, &UMonsterRangeComponent::OnPlayerCountingBeginOverlap);
-    RangeSphere->OnComponentEndOverlap.AddDynamic(
-        this, &UMonsterRangeComponent::OnPlayerCountingEndOverlap);
 
 
 	// 서버에서만 생성하여 체크
@@ -47,11 +47,12 @@ void UMonsterRangeComponent::BeginPlay()
 	OutSphere->InitSphereRadius(PlayerOutSphereRadius);
 	OutSphere->SetCollisionProfileName(TEXT("PlayerCounter"));
 	OutSphere->SetGenerateOverlapEvents(true);
-	OutSphere->SetWorldLocation(GetOwner()->GetActorLocation());
-	OutSphere->RegisterComponent();
 
 	OutSphere->OnComponentEndOverlap.AddDynamic(
 		this, &UMonsterRangeComponent::OnPlayerOutEndOverlap);
+
+	OutSphere->RegisterComponent();
+	OutSphere->SetWorldLocation(GetOwner()->GetActorLocation());
 }
 
 void UMonsterRangeComponent::SetPlayerCount(int32 Amount)
@@ -113,20 +114,20 @@ void UMonsterRangeComponent::OnPlayerCountingBeginOverlap(UPrimitiveComponent* O
 			OnPlayerCountOne.Broadcast();	
 		}
 
-		if (Debug)
-		{
-			DrawDebugSphere(
-				GetWorld(),
-				RangeSphere->GetComponentLocation(),
-				RangeSphere->GetScaledSphereRadius(),
-				8,
-				FColor::Red,
-				false,
-				1.f,
-				0,
-				1.f
-			);
-		}
+		//if (Debug)
+		//{
+		//	DrawDebugSphere(
+		//		GetWorld(),
+		//		RangeSphere->GetComponentLocation(),
+		//		RangeSphere->GetScaledSphereRadius(),
+		//		8,
+		//		FColor::Red,
+		//		false,
+		//		1.f,
+		//		0,
+		//		1.f
+		//	);
+		//}
 	}
 }
 
@@ -141,26 +142,27 @@ void UMonsterRangeComponent::OnPlayerCountingEndOverlap(UPrimitiveComponent* Ove
 			OnPlayerCountZero.Broadcast();
 		}
 
-		if (Debug)
-		{
-			DrawDebugSphere(
-				GetWorld(),
-				RangeSphere->GetComponentLocation(),
-				RangeSphere->GetScaledSphereRadius(),
-				8,
-				FColor::Green,
-				false,
-				1.f,
-				0,
-				1.f
-			);
-		}
+		//if (Debug)
+		//{
+		//	DrawDebugSphere(
+		//		GetWorld(),
+		//		RangeSphere->GetComponentLocation(),
+		//		RangeSphere->GetScaledSphereRadius(),
+		//		8,
+		//		FColor::Green,
+		//		false,
+		//		1.f,
+		//		0,
+		//		1.f
+		//	);
+		//}
 	}
 }
 
 void UMonsterRangeComponent::OnPlayerOutEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
+	UE_LOG(LogTemp, Error, TEXT("OnPlayerOutEndOverlap"));
 	if (OtherActor && OtherActor->IsA<ABaseCharacter>())
 	{
 		AActor* Target = Cast<ABaseMonster>(GetOwner())->GetTargetPlayer();
@@ -169,19 +171,29 @@ void UMonsterRangeComponent::OnPlayerOutEndOverlap(UPrimitiveComponent* Overlapp
 			OnPlayerOut.Broadcast();
 		}
 
-		if (Debug)
+		//if (Debug)
+		//{
+		//	DrawDebugSphere(
+		//		GetWorld(),
+		//		OutSphere->GetComponentLocation(),
+		//		OutSphere->GetScaledSphereRadius(),
+		//		8,
+		//		FColor::Green,
+		//		false,
+		//		1.f,
+		//		0,
+		//		1.f
+		//	);
+		//}
+	}
+	if (OtherActor && OtherActor->IsA<ABaseMonster>())
+	{
+		//UE_LOG(LogTemp, Error, TEXT("OtherActor :: %s"), *OtherActor->GetName());
+		//UE_LOG(LogTemp, Error, TEXT("GetOwner :: %s"), *GetOwner()->GetName());
+		if (OtherActor == GetOwner())
 		{
-			DrawDebugSphere(
-				GetWorld(),
-				OutSphere->GetComponentLocation(),
-				OutSphere->GetScaledSphereRadius(),
-				8,
-				FColor::Green,
-				false,
-				1.f,
-				0,
-				1.f
-			);
+			//UE_LOG(LogTemp, Error, TEXT("OnPlayerOutEndOverlap :: Mine"));
+			OnPlayerOut.Broadcast();
 		}
 	}
 }

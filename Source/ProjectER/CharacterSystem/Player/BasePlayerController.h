@@ -11,7 +11,14 @@
 #include "GameplayTagContainer.h" 
 #include "BasePlayerController.generated.h"
 
-
+UENUM(BlueprintType)
+enum class EAudioType : uint8
+{
+	Master,
+	BGM,
+	SFX,
+	UI
+};
 
 class UNiagaraSystem;
 class UInputMappingContext;
@@ -330,4 +337,14 @@ private:
     
 
 	void UseInventorySlot(int32 SlotIndex);
+
+
+	// 사운드
+	UPROPERTY(EditDefaultsOnly)
+	USoundMix* SoundMix;
+
+	UPROPERTY(EditAnywhere)
+	TMap<EAudioType, USoundClass*> SoundClassMap;
+
+	void SetSoundMix(EAudioType AudioType, float Volume);
 };
