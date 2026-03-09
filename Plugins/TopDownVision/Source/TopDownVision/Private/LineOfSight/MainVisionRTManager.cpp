@@ -243,7 +243,7 @@ void UMainVisionRTManager::DrawLOSStamp(UCanvas* Canvas,
 
 void UMainVisionRTManager::RenderLOS_GPU(FRDGBuilder& GraphBuilder, FRDGTextureRef LOSTexture)
 {
-	TArray<UVision_VisualComp*> ActiveProviders;
+	/*TArray<UVision_VisualComp*> ActiveProviders;
 	if (!GetVisibleProviders(ActiveProviders))
 		return;
 
@@ -275,12 +275,12 @@ void UMainVisionRTManager::RenderLOS_GPU(FRDGBuilder& GraphBuilder, FRDGTextureR
 	}
 
 	AddLOSStampPass(GraphBuilder, LOSTexture, Stamps,
-		1u << static_cast<uint8>(VisionChannel), true);
+		1u << static_cast<uint8>(VisionChannel), true);*/
 }
 
 // -------------------------------------------------------------------------- //
 
-void UMainVisionRTManager::SetObservedActor(AActor* InActor)
+/*void UMainVisionRTManager::SetObservedActor(AActor* InActor)
 {
 	ObservedActor = InActor;
 	if (InActor)
@@ -293,7 +293,7 @@ void UMainVisionRTManager::SetObservedActor(AActor* InActor)
 				*InActor->GetName(), (int32)VisionChannel);
 		}
 	}
-}
+}*/
 
 void UMainVisionRTManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Height)
 {

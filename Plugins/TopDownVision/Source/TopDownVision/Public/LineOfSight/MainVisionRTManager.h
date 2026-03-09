@@ -43,11 +43,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
 	UMaterialInstanceDynamic* GetLayeredMID() const {return LayeredLOSInterfaceMID;}
 
-	UFUNCTION(BlueprintCallable, Category="LineOfSight")// owner actor setter
+	/*UFUNCTION(BlueprintCallable, Category="LineOfSight")// owner actor setter
 	void SetObservedActor(AActor* InActor);
+	*/
+	// no need to use this. main rt no longer need channel setting
 	
-	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	void SetVisionChannel(EVisionChannel InVisionChannel) {VisionChannel=InVisionChannel;}
+	/*UFUNCTION(BlueprintCallable, Category="LineOfSight")
+	void SetVisionChannel(EVisionChannel InVisionChannel) {VisionChannel=InVisionChannel;}*/
 
 	
 private:
@@ -96,8 +98,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision")
 	bool bDrawTextureRange =false;
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Vision")
+	/*UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Vision")
 	EVisionChannel VisionChannel=EVisionChannel::None;
+	*/
 	
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Vision")
