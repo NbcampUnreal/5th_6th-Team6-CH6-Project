@@ -93,6 +93,10 @@ public:
     UFUNCTION(BlueprintCallable, Category="Vision")
     bool IsActorVisibleToTeam(AActor* Target, EVisionChannel Team) const;
 
+
+    EVisionChannel GetLocalPlayerTeamChannel() const;
+    
+
     // --- FastArray callbacks (client) --- //
     void OnTargetBecameVisible(AActor* Target, EVisionChannel Team);
     void OnTargetBecameHidden (AActor* Target, EVisionChannel Team);
