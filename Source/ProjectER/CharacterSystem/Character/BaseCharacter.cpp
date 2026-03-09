@@ -1737,10 +1737,6 @@ void ABaseCharacter::InitUI()
 				}
 				else
 				{
-					//FLinearColor TeamColorA = FLinearColor::MakeRandomColor();
-					//FLinearColor TeamColorB = FLinearColor::MakeRandomColor();
-					//FLinearColor TeamColorC = FLinearColor::MakeRandomColor();
-
 					FLinearColor TeamColorA = FLinearColor::Red;
 					FLinearColor TeamColorB = FLinearColor::Blue;
 					FLinearColor TeamColorC = FLinearColor::Yellow;
@@ -1748,7 +1744,6 @@ void ABaseCharacter::InitUI()
 					AER_PlayerState* MyPS = Cast<AER_PlayerState>(GetPlayerState());
 					if (IsValid(MyPS))
 					{
-						// 2. 루프 없이 이 캐릭터의 팀 타입에 따라 바로 색상을 결정합니다.
 						switch (MyPS->TeamType)
 						{
 						case ETeamType::Team_A:
@@ -1765,33 +1760,6 @@ void ABaseCharacter::InitUI()
 							break;
 						}
 					}
-
-					//if (AGameStateBase* GS = GetWorld()->GetGameState())
-					//{
-					//	AER_GameState* ERGS = Cast<AER_GameState>(GS);
-					//	if (IsValid(ERGS))
-					//	{
-					//		for (APlayerState* PS : ERGS->PlayerArray)
-					//		{
-					//			AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS);
-
-					//			if (ERPS && ERPS != this->GetPlayerState() && ERPS->TeamType == ETeamType::Team_A)
-					//			{
-					//				teamColor = TeamColorA;
-					//			}
-					//			else if (ERPS && ERPS != this->GetPlayerState() && ERPS->TeamType == ETeamType::Team_B)
-					//			{
-					//				teamColor = TeamColorB;
-					//			}
-					//			else if (ERPS && ERPS != this->GetPlayerState() && ERPS->TeamType == ETeamType::Team_C)
-					//			{
-					//				teamColor = TeamColorC;
-					//			}
-
-
-					//		}
-					//	}
-					//}
 				}
 				UpdateMinimapVisuals(teamColor);
 			}
@@ -1837,7 +1805,7 @@ void ABaseCharacter::OnHealthChanged()
 		float CurrentHP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetHealthAttribute());
 		float MaxHP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetMaxHealthAttribute());
 
-		int32 team = 2; // 기본값은 적군(2)으로 설정
+		int32 team = 2; 
 
 		if (IsLocallyControlled())
 		{
@@ -1845,17 +1813,14 @@ void ABaseCharacter::OnHealthChanged()
 		}
 		else
 		{
-			// 1. 화면을 보고 있는 로컬 플레이어 컨트롤러 가져오기
 			APlayerController* LocalPC = GetWorld()->GetFirstPlayerController();
 			if (LocalPC)
 			{
-				// 2. 나의 PlayerState와 상대방(이 캐릭터)의 PlayerState 가져오기
 				AER_PlayerState* MyPS = LocalPC->GetPlayerState<AER_PlayerState>();
 				AER_PlayerState* TargetPS = GetPlayerState<AER_PlayerState>();
 
 				if (MyPS && TargetPS)
 				{
-					// 3. 팀 비교 (TeamType이 Enum 또는 int라고 가정)
 					if (MyPS->TeamType == TargetPS->TeamType)
 					{
 						team = 1; // 아군
