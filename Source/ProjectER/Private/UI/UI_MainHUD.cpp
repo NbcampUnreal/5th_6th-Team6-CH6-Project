@@ -79,7 +79,6 @@ void UUI_MainHUD::Update_HP(float CurrentHP, float MaxHP)
             HealthColor = FLinearColor::Red;
         }
         PB_HP->SetFillColorAndOpacity(HealthColor);
-
     }
 
     if (IsValid(current_HP))
