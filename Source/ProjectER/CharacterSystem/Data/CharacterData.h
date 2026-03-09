@@ -70,4 +70,8 @@ public:
 	// 커브 테이블 행 이름   (Curve Table Row Name)
 	UPROPERTY(EditDefaultsOnly, Category = "Stats")
 	FName StatusRowName;
+
+	// 캐릭터 얼굴 아이콘
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	TObjectPtr<UTexture2D> CharacterIcon;
 };

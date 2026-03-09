@@ -6,26 +6,49 @@
 #include "Components/ProgressBar.h"
 #include "Components/Image.h"
 
-void UUI_HP_Bar::Update_HP_bar(float CurrentHP, float MaxHP)
+void UUI_HP_Bar::Update_HP_bar(float CurrentHP, float MaxHP, int32 team)
 {
+    //
+    // team == 0 : 나
+    // team == 1 : 팀
+    // team == 2 : 적
+    //
+
     if (IsValid(PB_HP))
     {
         float HealthPercent = (MaxHP > 0.f) ? (CurrentHP / MaxHP) : 0.f;
         PB_HP->SetPercent(HealthPercent);
 
         FLinearColor HealthColor;
-
-        if (HealthPercent >= 0.6f) // 60% 이상
+        if (team == 0)
         {
+            // 본인 체력 항상 초록색
             HealthColor = FLinearColor::Green;
+
+            //if (HealthPercent >= 0.6f) // 60% 이상
+            //{
+            //    HealthColor = FLinearColor::Green;
+            //}
+            //else if (HealthPercent >= 0.3f) // 30% ~ 60% 미만
+            //{
+            //    HealthColor = FLinearColor::Yellow;
+            //}
+            //else // 30% 미만
+            //{
+            //    HealthColor = FLinearColor::Red;
+            //}
         }
-        else if (HealthPercent >= 0.3f) // 30% ~ 60% 미만
+        else if (team == 1)
         {
             HealthColor = FLinearColor::Yellow;
         }
-        else // 30% 미만
+        else if (team == 2)
         {
-            HealthColor = FLinearColor::Red;
+			HealthColor = FLinearColor::Red;
+        }
+        else
+        {
+            HealthColor = FLinearColor::Black;
         }
 
         PB_HP->SetFillColorAndOpacity(HealthColor);
