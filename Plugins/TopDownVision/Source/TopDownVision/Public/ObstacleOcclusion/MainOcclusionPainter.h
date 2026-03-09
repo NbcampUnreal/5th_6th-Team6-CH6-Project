@@ -61,4 +61,5 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="OcclusionPainter")
 	UMaterialInstanceDynamic* MaskingMateiralMID;
+	
 };

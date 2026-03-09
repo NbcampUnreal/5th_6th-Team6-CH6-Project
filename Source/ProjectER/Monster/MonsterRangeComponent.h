@@ -69,7 +69,7 @@ private:
 	float PlayerCountSphereRadius = 500.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MonsterRange", meta = (AllowprivateAccess = "true"), meta = (ClampMin = "0.0"))
-	float PlayerOutSphereRadius = 1000.f;
+	float PlayerOutSphereRadius = 600;
 
 	UPROPERTY(EditAnywhere, Category = "MonsterRange")
 	bool Debug = false;

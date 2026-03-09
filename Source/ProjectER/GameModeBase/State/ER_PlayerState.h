@@ -55,6 +55,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	int32 GetAssistCount() { return AssistCount; }
 
+	UFUNCTION(BlueprintCallable)// added for the state comp setting 2026/03/05
+	ETeamType GetTeamType() const {return TeamType;}
+
 
 	// Setter
 	UFUNCTION(BlueprintCallable)

@@ -119,6 +119,8 @@ void AER_OutGameMode::PostLogin(APlayerController* NewPlayer)
                 ERPS->TeamType = ETeamType::Team_C;
             }
 
+            OnPlayerTeamDecided(ERPS->TeamType);//Call the BP exposed Function -> use it in the editor // 2026/03/05 박세민
+
             UE_LOG(LogTemp, Log, TEXT("Team = %s"), *UEnum::GetValueAsString(ERPS->TeamType));
         }
 
@@ -199,6 +201,7 @@ void AER_OutGameMode::MoveTeam(APlayerController* Player, int32 TeamIdx)
                     if (Team1 < 3 && ERPS->TeamType != ETeamType::Team_A)
                     {
                         ERPS->TeamType = ETeamType::Team_A;
+                        OnPlayerTeamDecided(ERPS->TeamType);
                     }
                     break;
 
@@ -206,6 +209,7 @@ void AER_OutGameMode::MoveTeam(APlayerController* Player, int32 TeamIdx)
                     if (Team2 < 3 && ERPS->TeamType != ETeamType::Team_B)
                     {
                         ERPS->TeamType = ETeamType::Team_B;
+                        OnPlayerTeamDecided(ERPS->TeamType);
                     }
                     break;
 
@@ -213,6 +217,7 @@ void AER_OutGameMode::MoveTeam(APlayerController* Player, int32 TeamIdx)
                     if (Team3 < 3 && ERPS->TeamType != ETeamType::Team_C)
                     {
                         ERPS->TeamType = ETeamType::Team_C;
+                        OnPlayerTeamDecided(ERPS->TeamType);
                     }
                     break;
 

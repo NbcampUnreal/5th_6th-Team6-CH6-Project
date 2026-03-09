@@ -10,11 +10,11 @@
 UENUM(BlueprintType)
 enum class ETeamType : uint8
 {
-	None        UMETA(DisplayName = "None"),
-	Team_A      UMETA(DisplayName = "Team_A"),
-	Team_B      UMETA(DisplayName = "Team_B"),
-	Team_C      UMETA(DisplayName = "Team_C"),
-	Neutral     UMETA(DisplayName = "Neutral")
+	None = 255    UMETA(DisplayName = "None"),
+	Team_A = 0    UMETA(DisplayName = "Team_A"),
+	Team_B = 1    UMETA(DisplayName = "Team_B"),
+	Team_C = 2    UMETA(DisplayName = "Team_C"),
+	Neutral =3    UMETA(DisplayName = "Neutral")
 };
 
 UINTERFACE(MinimalAPI)

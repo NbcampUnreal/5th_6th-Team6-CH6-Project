@@ -29,13 +29,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Curved World")
 	bool SetCurvedWorldMPC(
 		UMaterialParameterCollection* InMPC,
-		FName OriginName,
-		FName ForwardName,
-		FName RightName,
-		FName UpName,
-		FName CurveXName,
-		FName CurveYName,
-		FName BendWeightName);
+		FName OriginName=TEXT("CurvingOrigin"),
+		FName ForwardName=TEXT("ForwardVector"),
+		FName RightName=TEXT("RightVector"),
+		FName UpName=TEXT("UpVector"),
+		FName CurveXName=TEXT("X_Amount"),
+		FName CurveYName=TEXT("Y_Amount"),
+		FName BendWeightName=TEXT("BendWeight"));
 	
 	UFUNCTION(BlueprintCallable, Category = "Curved World")
 	void UpdateCameraParameters(

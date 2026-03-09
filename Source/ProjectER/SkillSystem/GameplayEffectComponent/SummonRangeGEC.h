@@ -13,6 +13,7 @@
 
 class ABaseRangeOverlapEffectActor;
 class USkillEffectDataAsset;
+struct FGameplayEffectContextHandle;
 
 UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced)
 class PROJECTER_API USummonRangeByWorldOriginGECConfig : public UBaseGECConfig
@@ -23,25 +24,45 @@ public:
 	virtual FText BuildTooltipDescription(float InLevel) const override;
 
 public:
-	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
+	/* --- 기초 설정 (Base) --- */
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Base")
 	TSubclassOf<ABaseRangeOverlapEffectActor> RangeActorClass;
 
-	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Base")
 	float LifeSpan = 1.0f;
 
-	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
-	float ZOffset = 0.0f;
-
-	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
-	FRotator SpawnRotation = FRotator::ZeroRotator;
-
-	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Base")
 	FVector CollisionRadius = FVector(100.0f);
 
-	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
+	/* --- 회전 설정 (Rotation) --- */
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Rotation")
+	bool bLookAtTargetLocation = false;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Rotation")
+	bool bSpawnZeroRotation = false;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Rotation", meta = (EditCondition = "!bLookAtTargetLocation && !bSpawnZeroRotation"))
+	FRotator RotationOffset = FRotator::ZeroRotator;
+
+	/* --- 지형 안착 설정 (Snap) --- */
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Snap")
+	bool bSnapToGround = true;
+
+	/** 바닥으로부터 최종적으로 띄울 높이 */
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Snap", meta = (EditCondition = "bSnapToGround"))
+	float FloatingHeight = 2.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Snap", meta = (EditCondition = "bSnapToGround"))
+	bool bUseBoxExtentOffset = true;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Snap", meta = (EditCondition = "bSnapToGround"))
+	TEnumAsByte<ECollisionChannel> GroundTraceChannel = ECC_Visibility;
+
+	/* --- 효과 설정 (Effect) --- */
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Effect")
 	bool bHitOncePerTarget = true;
 
-	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Effect")
 	TArray<TObjectPtr<USkillEffectDataAsset>> Applied;
 };
 
@@ -57,4 +78,7 @@ public:
 
 protected:
 	virtual void OnGameplayEffectExecuted(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const override;
+	const USummonRangeByWorldOriginGECConfig* GetSpawnConfig(const FGameplayEffectSpec& GESpec) const;
+	FTransform CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const USummonRangeByWorldOriginGECConfig* Config) const;
+	void InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeByWorldOriginGECConfig* Config, AActor* Causer, const FGameplayEffectContextHandle& Context) const;
 };

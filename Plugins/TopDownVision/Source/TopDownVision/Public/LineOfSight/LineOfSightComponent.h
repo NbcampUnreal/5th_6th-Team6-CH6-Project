@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-//#include "Components/SceneComponent.h"
 #include "Components/ActorComponent.h"
 #include "LineOfSight/VisionData.h"// now as enum
 #include "LineOfSightComponent.generated.h"
@@ -16,11 +15,11 @@ class UMaterialInstanceDynamic;
 
 // Vision helpers
 class USphereComponent;
-class UShapeAwareVisibilityTracer;
+class UBoundaryAwareVisibilityTracer;
 class UPrimitiveComponent;
 
 class ULOSVisionSubsystem;
-class UVolumeVisibilityEvaluatorComp;
+class UVolumeVisibilityEvaluatorComp3D;
 class UVisionGameStateComp;
 
 
@@ -174,7 +173,7 @@ protected:
     USphereComponent* VisionSphere = nullptr;
 
     UPROPERTY(Transient)
-    UShapeAwareVisibilityTracer* VisibilityTracer = nullptr;// this will be used for doing shape aware tracing
+    UBoundaryAwareVisibilityTracer* VisibilityTracer = nullptr;// this will be used for doing shape aware tracing
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LineOfSight|Detection")
     TEnumAsByte<ECollisionChannel> ObstacleTraceChannel = ECC_Visibility;
@@ -196,6 +195,47 @@ private:
     UVisionGameStateComp* CachedVisionGameStateComp = nullptr;
     
     //----------------------------------------------------------------------------------------------------------------//
+#pragma endregion
+
+
+
+
+#pragma region Occlusion
+
+public:
+    UFUNCTION(BlueprintCallable, Category="Occlusion")
+    float GetOcclusionRadius() const { return OcclusionRadius; }
+
+
+
+protected:
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Occlusion")
+    float OcclusionRadius;// this will be calculated based on the shape comp
+
+#pragma endregion
+
+
+
+
+#pragma region DynamicUpdate
+
+public:
+    // Called by the Painter to know how "strong" the hole should be
+    float GetCurrentVisibilityAlpha() const { return VisibilityAlpha; }
+
+protected:
+    /** Target Alpha to reach (0 or 1) */
+    float TargetVisibilityAlpha = 0.0f;
+
+    /** How fast the hole opens/closes (1.0 / seconds) */
+    UPROPERTY(EditAnywhere, Category="Occlusion")
+    float FadeSpeed = 5.0f; 
+
+    /** Timer handle to manage the alpha interpolation without enabling Tick */
+    FTimerHandle AlphaFadeTimerHandle;
+
+    void UpdateAlphaFade();
+
 #pragma endregion
     
 private:

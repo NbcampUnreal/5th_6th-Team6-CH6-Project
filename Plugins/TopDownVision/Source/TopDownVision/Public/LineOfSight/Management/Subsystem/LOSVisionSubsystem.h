@@ -1,30 +1,30 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
+#include "LineOfSight/VisionData.h"
 #include "LOSVisionSubsystem.generated.h"
 
-/**
- *  This is for the LOS vision provider comp.
- */
-
-
-enum class EVisionChannel : uint8;
-//forward declare
-class ULineOfSightComponent;// the source of the texture
+class UVision_VisualComp;
+class UVisionGameStateComp;
+class UVisionPlayerStateComp;
 
 USTRUCT()
 struct FRegisteredProviders
 {
 	GENERATED_BODY()
-	
+
 	UPROPERTY()
-	TArray<ULineOfSightComponent*> RegisteredList;
+	TArray<UVision_VisualComp*> RegisteredList;
 };
 
-//Log
+USTRUCT()
+struct FTargetVisibilityVotes
+{
+	GENERATED_BODY()
+
+	TMap<uint8, int32> VotesByTeam;
+};
 
 TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(LOSVisionSubsystem, Log, All);
 
@@ -33,19 +33,38 @@ class TOPDOWNVISION_API ULOSVisionSubsystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
 
-
-public:	
-
-	//Registration
+public:
+	// --- Provider registration --- //
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	bool RegisterProvider(ULineOfSightComponent* Provider, EVisionChannel InVisionChannel);
+	bool RegisterProvider(UVision_VisualComp* Provider, EVisionChannel InVisionChannel);
+
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
-	void UnregisterProvider(ULineOfSightComponent* Provider, EVisionChannel InVisionChannel);
+	void UnregisterProvider(UVision_VisualComp* Provider, EVisionChannel InVisionChannel);
 
-	// getter of same team+shared vision
-	TArray<ULineOfSightComponent*> GetProvidersForTeam(EVisionChannel TeamChannel) const;
+	// --- Provider access --- //
+	TArray<UVision_VisualComp*> GetProvidersForTeam(EVisionChannel TeamChannel) const;
 
-	// Registered actor-local LOS providers
+	// --- Visibility reporting --- //
+	void ReportTargetVisibility(
+		AActor* Observer,
+		EVisionChannel ObserverTeam,
+		AActor* Target,
+		bool bVisible);
+
+	// --- Local player lookup (used by GameStateComp) --- //
+	static UVisionPlayerStateComp* GetLocalVisionPS(UWorld* World);
+
+private:
+	// Handles reveal logic when a new provider joins — owns what was OnProviderRegistered
+	void HandleProviderRegistered(UVision_VisualComp* NewProvider, EVisionChannel Channel);
+
+	UVisionGameStateComp* GetVisionGameStateComp() const;
+
+public:
 	UPROPERTY()
 	TMap<EVisionChannel, FRegisteredProviders> VisionMap;
+
+private:
+	UPROPERTY()
+	TMap<AActor*, FTargetVisibilityVotes> VisibilityVotes;
 };

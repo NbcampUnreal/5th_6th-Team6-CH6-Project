@@ -13,7 +13,7 @@
 #include "Components/SphereComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/BoxComponent.h"
-#include "LineOfSight/ObjectTracing/ShapeAwareVisibilityTracer.h"
+#include "LineOfSight/ObjectTracing/UBoundaryAwareVisibilityTracer.h"
 
 #include "DrawDebugHelpers.h"//debug for visualizing the activation
 #include "Engine/TextureRenderTarget2D.h"
@@ -82,7 +82,7 @@ void ULineOfSightComponent::BeginPlay()
     }
 
     // ===== Create tracer =====
-    VisibilityTracer = NewObject<UShapeAwareVisibilityTracer>(this);
+    VisibilityTracer = NewObject<UBoundaryAwareVisibilityTracer>(this);
 
     //set attachment of vision sphere
     VisionSphere->SetupAttachment(GetOwner()->GetRootComponent());
@@ -227,7 +227,6 @@ void ULineOfSightComponent::UpdateLocalLOS()
     {
         return;// not for server
     }
-
     
     if (!ShouldUpdateLOSStamp)
     {
@@ -355,7 +354,7 @@ void ULineOfSightComponent::UpdateTargetDetection()
             continue;
         }
 
-        bool bCurrentlyVisible = VisibilityTracer->IsTargetVisible(
+        /*bool bCurrentlyVisible = VisibilityTracer->IsTargetVisible(
             GetWorld(),
             ObserverLocation,
             TargetShape,
@@ -385,7 +384,7 @@ void ULineOfSightComponent::UpdateTargetDetection()
                 *TopDownVisionDebug::GetClientDebugName(GetOwner()),
                 *TargetActor->GetName(),
                 bCurrentlyVisible);
-        }
+        }*/
     }
 }
 
@@ -458,7 +457,7 @@ UPrimitiveComponent* ULineOfSightComponent::ResolveVisibilityShape(AActor* Targe
 
 void ULineOfSightComponent::HandleTargetVisibilityChanged(AActor* DetectedTarget, bool bIsVisible)
 {
-    if (!DetectedTarget)
+    /*if (!DetectedTarget)
         return;
 
     // Get GameState // using lazy load method
@@ -493,6 +492,21 @@ void ULineOfSightComponent::HandleTargetVisibilityChanged(AActor* DetectedTarget
             *TopDownVisionDebug::GetClientDebugName(GetOwner()),
             *DetectedTarget->GetName());
     }
+
+    //Visibility dynamic update
+
+    TargetVisibilityAlpha = bIsVisible ? 1.0f : 0.0f;
+
+    // Start the fade timer if it's not already running
+    if (!GetWorld()->GetTimerManager().IsTimerActive(AlphaFadeTimerHandle))
+    {
+        GetWorld()->GetTimerManager().SetTimer(
+            AlphaFadeTimerHandle, 
+            this, 
+            &ULineOfSightComponent::UpdateAlphaFade, 
+            0.016f, // ~60fps update
+            true);
+    }*/
 }
 
 UVisionGameStateComp* ULineOfSightComponent::GetVisionGameStateComp()
@@ -527,6 +541,26 @@ ULOSVisionSubsystem* ULineOfSightComponent::GetLOSVisionSubsystem()
     }
 
     return GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
+}
+
+void ULineOfSightComponent::UpdateAlphaFade()
+{
+    // Linearly or Smoothly interpolate
+    // Using a fixed DeltaTime (0.016) because the timer interval is fixed
+    const float DeltaTime = 0.016f; 
+    VisibilityAlpha = FMath::FInterpTo(VisibilityAlpha, TargetVisibilityAlpha, DeltaTime, FadeSpeed);
+
+    // Check for completion
+    if (FMath::IsNearlyEqual(VisibilityAlpha, TargetVisibilityAlpha, 0.005f))
+    {
+        VisibilityAlpha = TargetVisibilityAlpha;
+        
+        // Go back to sleep!!!!! fuck
+        GetWorld()->GetTimerManager().ClearTimer(AlphaFadeTimerHandle);
+        
+        UE_LOG(LOSVision, Verbose, TEXT("[%s] Alpha Fade Complete: %f"), 
+            *GetOwner()->GetName(), VisibilityAlpha);
+    }
 }
 
 #pragma endregion
