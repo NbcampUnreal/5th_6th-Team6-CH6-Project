@@ -30,6 +30,9 @@ class UVision_EvaluatorComp;
  * Updated externally by the vision RT manager.
  * Gates all client-only work behind ShouldRunClientLogic.
  */
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOcclusionTracerEvent);
+
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class TOPDOWNVISION_API UVision_VisualComp : public UActorComponent
 {
@@ -124,10 +127,20 @@ private:
     bool ShouldRunClientLogic() const;
     void UpdateVisibilityFade();
 
-private:
+
+
+
+public:
+    UPROPERTY(BlueprintAssignable, Category="Occlusion Tracer")
+    FOcclusionTracerEvent OnTargetRevealed;
+
+    UPROPERTY(BlueprintAssignable, Category="Occlusion Tracer")
+    FOcclusionTracerEvent OnTargetHidden;
 
 #pragma region Components
-
+    
+private:
+    
     //obstacle RT drawer
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision", meta=(AllowPrivateAccess="true"))
     ULOSObstacleDrawerComponent* ObstacleDrawer = nullptr;

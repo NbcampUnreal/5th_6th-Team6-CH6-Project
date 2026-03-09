@@ -176,13 +176,20 @@ void UVision_VisualComp::SetVisible(bool bVisible, bool bInstant)
 {
     TargetVisibilityAlpha = bVisible ? 1.0f : 0.0f;
 
-    if (bInstant)//update instantly
+    // ── Broadcast occlusion tracer events ────────────────────────────────
+    if (bVisible)
+        OnTargetRevealed.Broadcast();
+    else
+        OnTargetHidden.Broadcast();
+    
+    //immediate update
+    if (bInstant)
     {
         if (VisibilityMesh)
             VisibilityMesh->UpdateVisibility(bVisible);
         return;
     }
-    
+
     if (!GetWorld()->GetTimerManager().IsTimerActive(FadeTimerHandle))
     {
         GetWorld()->GetTimerManager().SetTimer(
