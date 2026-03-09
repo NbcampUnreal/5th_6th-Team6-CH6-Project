@@ -122,7 +122,7 @@ TArray<UVision_VisualComp*> ULOSVisionSubsystem::GetProvidersForTeam(EVisionChan
     return Out;
 }
 
-TArray<UVision_VisualComp*> ULOSVisionSubsystem::GeAlltProviders() const
+TArray<UVision_VisualComp*> ULOSVisionSubsystem::GeAllProviders() const
 {
     TArray<UVision_VisualComp*> Out;
 

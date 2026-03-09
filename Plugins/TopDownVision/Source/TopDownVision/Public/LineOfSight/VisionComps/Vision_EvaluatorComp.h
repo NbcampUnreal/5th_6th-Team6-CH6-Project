@@ -67,6 +67,11 @@ private:
     void ReportVisibility(AActor* Target, bool bVisible);
     void ReportVisibilityIfChanged(AActor* Target, bool bVisible);
 
+    // RPC — crosses network boundary, subsystem handles logic on server side
+    UFUNCTION(Server, Reliable)
+    void Server_ReportVisibility(AActor* Target, EVisionChannel Channel, bool bVisible);
+    void Server_ReportVisibility_Implementation(AActor* Target, EVisionChannel Channel, bool bVisible);
+
     // --- Helpers --- //
     UVision_VisualComp* GetVisualComp(AActor* Target) const;
     bool ShouldRunServerLogic() const;

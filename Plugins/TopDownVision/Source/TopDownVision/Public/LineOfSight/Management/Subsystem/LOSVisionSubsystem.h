@@ -44,7 +44,7 @@ public:
 	// --- Provider access --- //
 	TArray<UVision_VisualComp*> GetProvidersForTeam(EVisionChannel TeamChannel) const;
 
-	TArray<UVision_VisualComp*> GeAlltProviders() const;
+	TArray<UVision_VisualComp*> GeAllProviders() const;
 
 	// --- Visibility reporting --- //
 	void ReportTargetVisibility(

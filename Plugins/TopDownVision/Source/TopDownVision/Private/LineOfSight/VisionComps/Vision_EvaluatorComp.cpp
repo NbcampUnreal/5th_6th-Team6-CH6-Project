@@ -26,7 +26,7 @@ UVision_EvaluatorComp::UVision_EvaluatorComp()
 void UVision_EvaluatorComp::BeginPlay()
 {
     Super::BeginPlay();
-    // Initialization is driven externally by BP via InitializeEvaluator()
+    // Initialization is driven externally by the owner via InitializeEvaluator()
 }
 
 // -------------------------------------------------------------------------- //
@@ -87,27 +87,12 @@ void UVision_EvaluatorComp::PrepareDetectionSphere()
 
 void UVision_EvaluatorComp::InitializeEvaluator(UVision_VisualComp* DirectParamComp)
 {
-    APawn* OwnerPawn = Cast<APawn>(GetOwner());//only for the locally controlled pawn
+    // Only run for the locally controlled pawn
+    APawn* OwnerPawn = Cast<APawn>(GetOwner());
     if (!OwnerPawn || !OwnerPawn->IsLocallyControlled())
     {
         UE_LOG(LOSVision, Log,
             TEXT("[%s] InitializeEvaluator >> Skipped — not locally controlled"),
-            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
-        return;
-    }
-    
-    UE_LOG(LOSVision, Warning,
-        TEXT("[%s] InitializeEvaluator >> HasAuthority:%d | NetMode:%d"),
-        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-        GetOwner()->HasAuthority(),
-        (int32)GetWorld()->GetNetMode());
-
-    // Skip only on dedicated server — listen server host still needs the evaluator
-    // because it has a local player who needs LOS evaluation
-    if (GetWorld()->GetNetMode() == NM_DedicatedServer)
-    {
-        UE_LOG(LOSVision, Warning,
-            TEXT("[%s] InitializeEvaluator >> Skipped — dedicated server has no local player"),
             *TopDownVisionDebug::GetClientDebugName(GetOwner()));
         return;
     }
@@ -282,14 +267,8 @@ void UVision_EvaluatorComp::EvaluateTick()
 
 void UVision_EvaluatorComp::ReportVisibilityIfChanged(AActor* Target, bool bVisible)
 {
-    if (!Target)
-    {
-        UE_LOG(LOSVision, Warning,
-            TEXT("[%s] ReportVisibilityIfChanged >> Target is null, skipping"),
-            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
-        return;
-    }
-
+    // No same-team skip here — vote system handles multi-observer correctly
+    // PlayerStateComp handles same-team always-visible on the display side
     bool* LastState = LastReportedVisibility.Find(Target);
     if (LastState && *LastState == bVisible)
         return;
@@ -310,18 +289,38 @@ void UVision_EvaluatorComp::ReportVisibility(AActor* Target, bool bVisible)
         *UEnum::GetValueAsString(CachedVisualComp->GetVisionChannel()),
         bVisible);
 
+    if (GetWorld()->GetNetMode() == NM_Standalone)
+    {
+        ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
+        if (!Subsystem)
+        {
+            UE_LOG(LOSVision, Warning,
+                TEXT("[%s] ReportVisibility >> LOSVisionSubsystem not found"),
+                *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+            return;
+        }
+        Subsystem->ReportTargetVisibility(
+            GetOwner(), CachedVisualComp->GetVisionChannel(), Target, bVisible);
+    }
+    else
+    {
+        Server_ReportVisibility(Target, CachedVisualComp->GetVisionChannel(), bVisible);
+    }
+}
+
+void UVision_EvaluatorComp::Server_ReportVisibility_Implementation(
+    AActor* Target, EVisionChannel Channel, bool bVisible)
+{
     ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
     if (!Subsystem)
     {
         UE_LOG(LOSVision, Warning,
-            TEXT("[%s] ReportVisibility >> LOSVisionSubsystem not found"),
+            TEXT("[%s] Server_ReportVisibility >> LOSVisionSubsystem not found"),
             *TopDownVisionDebug::GetClientDebugName(GetOwner()));
         return;
     }
 
-    // Subsystem handles routing — standalone goes direct, multiplayer routes through PlayerState RPC
-    Subsystem->ReportTargetVisibilityFromClient(
-        GetOwner(), CachedVisualComp->GetVisionChannel(), Target, bVisible);
+    Subsystem->ReportTargetVisibility(GetOwner(), Channel, Target, bVisible);
 }
 
 // -------------------------------------------------------------------------- //
@@ -370,12 +369,24 @@ bool UVision_EvaluatorComp::EvaluateWallObstacle(AActor* Target, UTopDown2DShape
 {
     // temp — always visible
     return true;
+
+    /*return UWallVisibilityEvaluator2D::EvaluateVisibility(
+        GetWorld(),
+        GetOwner()->GetActorLocation(),
+        Target->GetActorLocation(),
+        ShapeComp,
+        WallTraceChannel);*/
 }
 
 bool UVision_EvaluatorComp::EvaluateVolumeObstacle(AActor* Target, UTopDown2DShapeComp* ShapeComp)
 {
-    // temp — always visible
-    return true;
+    return UVolumeVisibilityEvaluator2D::EvaluateVisibility(
+        CachedVisualComp->GetObstacleDrawer()->GetObstacleRenderTarget(),
+        CachedVisualComp->GetMaxVisibleRange(),
+        GetOwner()->GetActorLocation(),
+        Target->GetActorLocation(),
+        ShapeComp,
+        OcclusionThreshold);
 }
 
 // -------------------------------------------------------------------------- //
@@ -392,8 +403,7 @@ UVision_VisualComp* UVision_EvaluatorComp::GetVisualComp(AActor* Target) const
 
 bool UVision_EvaluatorComp::ShouldRunServerLogic() const
 {
-    APawn* OwnerPawn = Cast<APawn>(GetOwner());// if it is not player's pawn, it should not run the logic
-    return !OwnerPawn || !OwnerPawn->IsLocallyControlled();
+    return GetOwner() && GetOwner()->HasAuthority();
 }
 
 void UVision_EvaluatorComp::StartEvaluationTimer()
