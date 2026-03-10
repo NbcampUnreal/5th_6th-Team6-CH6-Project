@@ -1,6 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-#include "ER_SessionSubsystem.h"
+﻿#include "ER_SessionSubsystem.h"
 #include "OnlineSubsystem.h"
 #include "OnlineSessionSettings.h"
 #include "Online/OnlineSessionNames.h"
@@ -32,14 +30,12 @@ void UER_SessionSubsystem::CreateSession(int32 NumPublicConnections, bool bIsLAN
 {
 	if (!SessionInterface.IsValid())
 	{
-		UE_LOG(LogTemp, Log, TEXT("!SessionInterface.IsValid()"));
 		return;
 	}
 
 	auto ExistingSession = SessionInterface->GetNamedSession(NAME_GameSession);
 	if (ExistingSession != nullptr)
 	{
-		UE_LOG(LogTemp, Log, TEXT("ExistingSession != nullptr"));
 		SessionInterface->DestroySession(NAME_GameSession);
 	}
 
@@ -62,7 +58,6 @@ void UER_SessionSubsystem::CreateSession(int32 NumPublicConnections, bool bIsLAN
 	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
 	if (LocalPlayer != nullptr)
 	{
-		UE_LOG(LogTemp, Log, TEXT("LocalPlayer != nullptr"));
 		SessionInterface->CreateSession(*LocalPlayer->GetPreferredUniqueNetId(), NAME_GameSession, *SessionSettings);
 	}
 }
