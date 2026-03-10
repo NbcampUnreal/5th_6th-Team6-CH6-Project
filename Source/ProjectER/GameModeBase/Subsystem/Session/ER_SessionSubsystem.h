@@ -21,6 +21,7 @@ struct PROJECTER_API FSessionResultWrapper
 {
 	GENERATED_BODY()
 
+public:
 	UPROPERTY(BlueprintReadOnly, Category = "ER|Session")
 	int32 SessionIndex = -1;
 
