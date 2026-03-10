@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "ER_SessionSubsystem.h"
 #include "OnlineSubsystem.h"
@@ -79,6 +79,7 @@ void UER_SessionSubsystem::FindSessions(int32 MaxSearchResults, bool bIsLANMatch
 	LastSessionSearch = MakeShareable(new FOnlineSessionSearch());
 	LastSessionSearch->MaxSearchResults = MaxSearchResults;
 	LastSessionSearch->bIsLanQuery = bIsLANMatch;
+	LastSessionSearch->QuerySettings.Set(FName("PRESENCESEARCH"), true, EOnlineComparisonOp::Equals);
 	LastSessionSearch->QuerySettings.Set(FName("CUSTOM_GAME_ID"), FString("ProjectER_Sparta"), EOnlineComparisonOp::Equals);
 
 	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
