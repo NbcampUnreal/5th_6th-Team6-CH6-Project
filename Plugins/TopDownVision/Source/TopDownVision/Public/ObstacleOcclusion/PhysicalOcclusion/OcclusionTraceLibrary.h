@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionTraceTypes.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionTraceTypes.h"
 
 class UWorld;
 class AActor;

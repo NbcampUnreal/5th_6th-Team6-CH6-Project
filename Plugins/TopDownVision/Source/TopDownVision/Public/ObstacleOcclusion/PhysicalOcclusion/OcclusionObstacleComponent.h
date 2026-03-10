@@ -22,18 +22,24 @@ public:
 
     UFUNCTION(BlueprintCallable, Category="Occlusion Setup")
     void SetupOcclusionMeshes();
+
     
-    void InitializeCollision();
+    
+    UFUNCTION(BlueprintCallable, Category="Occlusion Setup")
+    void InitializeCollisionAndShadow();
 
     virtual void OnOcclusionEnter_Implementation(UObject* SourceTracer) override;
     virtual void OnOcclusionExit_Implementation(UObject* SourceTracer) override;
 
 private:
-
-    void InitializeMaterials();
-    void UpdateMaterialAlpha();
+    void GenerateShadowProxyMeshes();// this will be made, only for casting shadow.
+    
+    void InitializeMaterials();// mid creation
+    void UpdateMaterialAlpha();// send visibility alpha to mid
+    
     void CleanupInvalidOverlaps();
-    void DiscoverChildMeshes();
+    
+    void DiscoverChildMeshes();// for finidng the mesh from the owner actor's editor setting
 
 protected:
 
@@ -73,4 +79,7 @@ private:
 
     UPROPERTY(VisibleAnywhere)
     TArray<TSoftObjectPtr<UStaticMeshComponent>> OccludedMeshes;
+
+    UPROPERTY(VisibleAnywhere)
+    TArray<TObjectPtr<UStaticMeshComponent>> ShadowProxyMeshes;
 };

@@ -1,6 +1,6 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionObstacleComponent.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionObstacleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "TopDownVisionDebug.h"
@@ -16,8 +16,6 @@ void UOcclusionObstacleComponent::BeginPlay()
     Super::BeginPlay();
 
     InitializeMaterials();//set MID at runtime
-
-    InitializeCollision();//set mesh's collision setting
 }
 
 void UOcclusionObstacleComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -75,18 +73,75 @@ void UOcclusionObstacleComponent::OnOcclusionExit_Implementation(UObject* Source
         ActiveOverlaps.Num());
 }
 
+void UOcclusionObstacleComponent::GenerateShadowProxyMeshes()
+{
+    for (TObjectPtr<UStaticMeshComponent> Proxy : ShadowProxyMeshes)
+    {
+        if (Proxy)
+        {
+            Proxy->DestroyComponent();
+        }
+    }
+    ShadowProxyMeshes.Empty();
+
+    for (TSoftObjectPtr<UStaticMeshComponent> MeshPtr : NormalMeshes)// only make shadow for normal mesh
+    {
+        UStaticMeshComponent* SourceMesh = MeshPtr.Get();
+        if (!SourceMesh) continue;
+
+        UStaticMeshComponent* Proxy = NewObject<UStaticMeshComponent>(
+            GetOwner(),
+            UStaticMeshComponent::StaticClass(),
+            NAME_None,
+            RF_NoFlags);
+
+        if (!Proxy) continue;
+
+        Proxy->SetStaticMesh(SourceMesh->GetStaticMesh());
+        Proxy->AttachToComponent(
+            SourceMesh,
+            FAttachmentTransformRules::SnapToTargetIncludingScale);
+
+        Proxy->SetVisibility(false);
+        Proxy->SetHiddenInGame(true);
+        Proxy->SetCastShadow(true);
+        Proxy->bCastHiddenShadow  = true;
+        Proxy->bCastDynamicShadow = true;
+        Proxy->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+        Proxy->RegisterComponent();
+
+        //  tells the editor to serialize this component with the actor
+        GetOwner()->AddInstanceComponent(Proxy);
+
+        ShadowProxyMeshes.Add(Proxy);
+
+        UE_LOG(Occlusion, Log,
+            TEXT("UOcclusionObstacleComponent::GenerateShadowProxyMeshes>> Created proxy for %s"),
+            *SourceMesh->GetName());
+    }
+
+    Modify();
+    bool DebugBool=MarkPackageDirty();
+
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComponent::GenerateShadowProxyMeshes>> Total proxies: %d"),
+        ShadowProxyMeshes.Num());
+}
+
 // Setup
 
 void UOcclusionObstacleComponent::SetupOcclusionMeshes()
 {
     DiscoverChildMeshes();
-
+    GenerateShadowProxyMeshes();
+    
     UE_LOG(Occlusion, Log,
         TEXT("UOcclusionObstacleComponent::SetupOcclusionMeshes>> Completed setup for %s"),
         *GetOwner()->GetName());
 }
 
-void UOcclusionObstacleComponent::InitializeCollision()
+void UOcclusionObstacleComponent::InitializeCollisionAndShadow()
 {
     for (TSoftObjectPtr<UStaticMeshComponent> MeshPtr : NormalMeshes)
     {
@@ -97,7 +152,9 @@ void UOcclusionObstacleComponent::InitializeCollision()
         Mesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
         Mesh->SetCollisionResponseToChannel(OcclusionTraceChannel, ECR_Block);
         Mesh->SetCollisionResponseToChannel(MouseTraceChannel, ECR_Ignore);//let ignore the visibility for mouse trace
-
+        
+        Mesh->SetCastShadow(false);// now the shadow proxy mesh will cast the shadow. so no for original mesh
+        
         UE_LOG(Occlusion, Log,
             TEXT("UOcclusionObstacleComponent::InitializeCollision>> Set ECR_Block on %s"),
             *Mesh->GetName());
@@ -110,8 +167,7 @@ void UOcclusionObstacleComponent::InitializeCollision()
 
         Mesh->SetCollisionResponseToChannel(MouseTraceChannel, ECR_Ignore);// no collision for the
 
-        Mesh->SetCastShadow(true);
-        Mesh->bCastHiddenShadow = true;
+        Mesh->SetCastShadow(false);
     }
 }
 

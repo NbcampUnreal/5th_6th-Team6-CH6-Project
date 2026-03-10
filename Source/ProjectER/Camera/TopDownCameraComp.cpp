@@ -10,6 +10,7 @@
 #include "Engine/World.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "LineOfSight/MainVisionRTManager.h"
+#include "ObstacleOcclusion/MaterialOcclusion/MainOcclusionPainter.h"
 
 #include "LogHelper/DebugLogHelper.h"
 
@@ -35,7 +36,10 @@ UTopDownCameraComp::UTopDownCameraComp()
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->bUsePawnControlRotation = false;
 
+	// Main Vision RT
 	MainVisionRTManager = CreateDefaultSubobject<UMainVisionRTManager>(TEXT("MainVisionRTComp"));
+	// Occlusion Painter RT
+	OcclusionPainter = CreateDefaultSubobject<UMainOcclusionPainter>(TEXT("OcclusionPainter"));
 
 	UE_LOG(MainCameraComp, Log,
 		TEXT("%s UTopDownCameraComp::Constructor >> Component created"),
@@ -67,9 +71,14 @@ void UTopDownCameraComp::TickComponent(float DeltaTime, ELevelTick TickType,
 
 	UpdateCameraTransform();
 
-	if (MainVisionRTManager)
+	if (MainVisionRTManager)//draw vision
 	{
 		MainVisionRTManager->UpdateCameraLOS();
+	}
+
+	if (OcclusionPainter)// draw occlusion
+	{
+		OcclusionPainter->UpdateOcclusionRT();
 	}
 }
 
@@ -222,7 +231,7 @@ void UTopDownCameraComp::InitializeCompRequirements()
 		*SmoothedFollowLocation.ToString(),
 		*FreeCamPivotLocation.ToString());
 
-	PrepareRequirements();
+	PrepareSubComponents();
 
 	UpdateCameraCurveValues(CurveBendWeight);
 	UpdateCameraTransform();
@@ -347,26 +356,46 @@ void UTopDownCameraComp::TickFreeCamMode(float DeltaTime)
 	}
 }
 
-void UTopDownCameraComp::PrepareRequirements()
+void UTopDownCameraComp::PrepareSubComponents()
 {
 	UE_LOG(MainCameraComp, Log,
-		TEXT("%s UTopDownCameraComp::PrepareRequirements >> Caching subsystems"),
+		TEXT("%s UTopDownCameraComp::PrepareSubComponents >> Caching subsystems"),
 		*DebugLogHelper::GetClientDebugName(this));
 
 	SetCurveWorldSubsystem();
 
+	// MainVisionRT
 	if (MainVisionRTManager)
 	{
 		MainVisionRTManager->Initialize();
 
 		UE_LOG(MainCameraComp, Log,
-			TEXT("%s UTopDownCameraComp::PrepareRequirements >> CameraVisionManager initialized"),
+			TEXT("%s UTopDownCameraComp::PrepareSubComponents >> CameraVisionManager initialized"),
 			*DebugLogHelper::GetClientDebugName(this));
 	}
 	else
 	{
 		UE_LOG(MainCameraComp, Error,
-			TEXT("%s UTopDownCameraComp::PrepareRequirements >> CameraVisionManager is NULL"),
+			TEXT("%s UTopDownCameraComp::PrepareSubComponents >> CameraVisionManager is NULL"),
+			*DebugLogHelper::GetClientDebugName(this));
+	}
+
+
+	//OcclusionRT painter
+	if (OcclusionPainter)
+	{
+		OcclusionPainter->SetPlayerController(GetOwnerPlayerController());
+
+		UE_LOG(MainCameraComp, Log,
+			TEXT("%s UTopDownCameraComp::PrepareSubComponents >> OcclusionPainter initialized"),
+			*DebugLogHelper::GetClientDebugName(this));
+
+		OcclusionPainter->Activate();//activate the occlusion painter
+	}
+	else
+	{
+		UE_LOG(MainCameraComp, Error,
+			TEXT("%s UTopDownCameraComp::PrepareSubComponents >> OcclusionPainter is NULL"),
 			*DebugLogHelper::GetClientDebugName(this));
 	}
 }

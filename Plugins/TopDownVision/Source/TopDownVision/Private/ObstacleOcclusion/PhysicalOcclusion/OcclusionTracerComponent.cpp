@@ -1,14 +1,14 @@
-﻿#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionTracerComponent.h"
+﻿#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionTracerComponent.h"
 
-#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionTraceLibrary.h"
-#include "ObstacleOcclusion/PhysicallOcclusion/FrustumToProjectionMatcherHelper.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionTraceLibrary.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/FrustumToProjectionMatcherHelper.h"
 #include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include "GameFramework/PlayerController.h"
 #include "DrawDebugHelpers.h"
 #include "TopDownVisionDebug.h"
-#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionInterface.h"
-#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionObstacleComponent.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionInterface.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionObstacleComponent.h"
 
 UOcclusionTracerComponent::UOcclusionTracerComponent()
 {

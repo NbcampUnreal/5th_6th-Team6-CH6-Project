@@ -1,6 +1,6 @@
-﻿#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionTraceLibrary.h"
-#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionObstacleComponent.h"
-#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionInterface.h"
+﻿#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionTraceLibrary.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionObstacleComponent.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionInterface.h"
 #include "TopDownVisionDebug.h"
 #include "DrawDebugHelpers.h"
 

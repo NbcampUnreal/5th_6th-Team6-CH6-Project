@@ -11,6 +11,7 @@
  */
 
 
+
 //Forward
 //Camera View
 class USpringArmComponent;
@@ -18,6 +19,8 @@ class UCameraComponent;
 // RT
 class UMainVisionRTManager;
 class UCurvedWorldSubsystem;
+// Occlusion RT
+class UMainOcclusionPainter;
 
 PROJECTER_API DECLARE_LOG_CATEGORY_EXTERN(MainCameraComp, Log, All);
 
@@ -63,7 +66,7 @@ private:
 	void TickFreeCamMode(float DeltaTime);
 
 	// Init helpers
-	void PrepareRequirements();
+	void PrepareSubComponents();
 	void SetCurveWorldSubsystem();
 
 	// Edge scroll
@@ -91,6 +94,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera|Components")
 	TObjectPtr<UMainVisionRTManager> MainVisionRTManager;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera|Components")
+	TObjectPtr<UMainOcclusionPainter> OcclusionPainter;
+	
 	// Cached subsystem
 	UPROPERTY(Transient)
 	TObjectPtr<UCurvedWorldSubsystem> CurveSubSystem = nullptr;
