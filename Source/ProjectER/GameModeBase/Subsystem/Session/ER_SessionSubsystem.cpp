@@ -55,7 +55,7 @@ void UER_SessionSubsystem::CreateSession(int32 NumPublicConnections, bool bIsLAN
 	SessionSettings->bShouldAdvertise = true;
 	SessionSettings->bUsesPresence = true;
 	SessionSettings->bUseLobbiesIfAvailable = true;
-	SessionSettings->Set(FName("MatchType"), FString("FreeForAll"), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	SessionSettings->Set(FName("CUSTOM_GAME_ID"), FString("ProjectER_Sparta"), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 	// Get Local Player
 
@@ -79,7 +79,7 @@ void UER_SessionSubsystem::FindSessions(int32 MaxSearchResults, bool bIsLANMatch
 	LastSessionSearch = MakeShareable(new FOnlineSessionSearch());
 	LastSessionSearch->MaxSearchResults = MaxSearchResults;
 	LastSessionSearch->bIsLanQuery = bIsLANMatch;
-	LastSessionSearch->QuerySettings.Set(FName("PRESENCESEARCH"), true, EOnlineComparisonOp::Equals);
+	LastSessionSearch->QuerySettings.Set(FName("CUSTOM_GAME_ID"), FString("ProjectER_Sparta"), EOnlineComparisonOp::Equals);
 
 	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
 	if (LocalPlayer != nullptr)
