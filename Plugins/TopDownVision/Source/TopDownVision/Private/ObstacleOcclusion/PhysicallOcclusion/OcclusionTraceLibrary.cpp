@@ -51,12 +51,26 @@ void FOcclusionTraceLibrary::RunProbe(
         if (bDebugDraw)
         {
             const FColor LineColor = Hits.Num() > 0 ? FColor::Red : FColor::Green;
-            DrawDebugLine(World, SweepOrigin, Probe.Target, LineColor, false, -1.f, 0, 2.f);
+            DrawDebugLine(
+                World,
+                SweepOrigin,
+                Probe.Target,
+                LineColor,
+                false,
+                -1.f,
+                0,
+                2.f);
 
             for (const FHitResult& Hit : Hits)
             {
-                DrawDebugSphere(World, Hit.ImpactPoint,
-                                Sweep.SphereRadius, 8, FColor::Orange, false, -1.f);
+                DrawDebugSphere(
+                    World,
+                    Hit.ImpactPoint,
+                    Sweep.SphereRadius,
+                    8,
+                    FColor::Orange,
+                    false,
+                    -1.f);
             }
         }
 
@@ -64,7 +78,10 @@ void FOcclusionTraceLibrary::RunProbe(
         {
             AActor* HitActor = Hit.GetActor();
             if (!HitActor) continue;
-            if (!HitActor->FindComponentByClass<UOcclusionObstacleComponent>()) continue;
+
+            TArray<UOcclusionObstacleComponent*> Comps;
+            HitActor->GetComponents<UOcclusionObstacleComponent>(Comps);
+            if (Comps.Num() == 0) continue;
 
             CurrentHits.Add(HitActor);
         }
@@ -89,24 +106,30 @@ void FOcclusionTraceLibrary::NotifyEnter(AActor* Actor, UObject* TracerIdentity)
 {
     if (!Actor) return;
 
-    UOcclusionObstacleComponent* Comp =
-        Actor->FindComponentByClass<UOcclusionObstacleComponent>();
+    TArray<UOcclusionObstacleComponent*> Comps;
+    Actor->GetComponents<UOcclusionObstacleComponent>(Comps);
 
-    if (!Comp) return;
+    for (UOcclusionObstacleComponent* Comp : Comps)
+    {
+        IOcclusionInterface::Execute_OnOcclusionEnter(Comp, TracerIdentity);
+    }
 
-    IOcclusionInterface::Execute_OnOcclusionEnter(Comp, TracerIdentity);
-    UE_LOG(Occlusion, Log, TEXT("FOcclusionTraceLibrary::NotifyEnter>> %s"), *Actor->GetName());
+    UE_LOG(Occlusion, Log, TEXT("FOcclusionTraceLibrary::NotifyEnter>> %s (%d comps)"),
+        *Actor->GetName(), Comps.Num());
 }
 
 void FOcclusionTraceLibrary::NotifyExit(AActor* Actor, UObject* TracerIdentity)
 {
     if (!Actor) return;
 
-    UOcclusionObstacleComponent* Comp =
-        Actor->FindComponentByClass<UOcclusionObstacleComponent>();
+    TArray<UOcclusionObstacleComponent*> Comps;
+    Actor->GetComponents<UOcclusionObstacleComponent>(Comps);
 
-    if (!Comp) return;
+    for (UOcclusionObstacleComponent* Comp : Comps)
+    {
+        IOcclusionInterface::Execute_OnOcclusionExit(Comp, TracerIdentity);
+    }
 
-    IOcclusionInterface::Execute_OnOcclusionExit(Comp, TracerIdentity);
-    UE_LOG(Occlusion, Log, TEXT("FOcclusionTraceLibrary::NotifyExit>> %s"), *Actor->GetName());
+    UE_LOG(Occlusion, Log, TEXT("FOcclusionTraceLibrary::NotifyExit>> %s (%d comps)"),
+        *Actor->GetName(), Comps.Num())
 }

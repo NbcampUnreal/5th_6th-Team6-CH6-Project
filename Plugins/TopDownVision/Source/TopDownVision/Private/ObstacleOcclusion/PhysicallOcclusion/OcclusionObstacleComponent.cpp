@@ -93,11 +93,10 @@ void UOcclusionObstacleComponent::InitializeCollision()
         UStaticMeshComponent* Mesh = MeshPtr.Get();
         if (!Mesh) continue;
 
-        // Only add the trace channel response — leave everything else untouched
-        Mesh->SetCollisionResponseToChannel(OcclusionTraceChannel, ECR_Overlap);
-
-        //make them ignore the Visibility trace, for mouse cursor trace
-        Mesh->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);//
+        // Must be explicitly enabled — asset default may have it off
+        Mesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+        Mesh->SetCollisionResponseToChannel(OcclusionTraceChannel, ECR_Block);
+        Mesh->SetCollisionResponseToChannel(MouseTraceChannel, ECR_Ignore);//let ignore the visibility for mouse trace
 
         UE_LOG(Occlusion, Log,
             TEXT("UOcclusionObstacleComponent::InitializeCollision>> Set ECR_Block on %s"),
@@ -109,7 +108,10 @@ void UOcclusionObstacleComponent::InitializeCollision()
         UStaticMeshComponent* Mesh = MeshPtr.Get();
         if (!Mesh) continue;
 
-        Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Mesh->SetCollisionResponseToChannel(MouseTraceChannel, ECR_Ignore);// no collision for the
+
+        Mesh->SetCastShadow(true);
+        Mesh->bCastHiddenShadow = true;
     }
 }
 
@@ -160,7 +162,7 @@ void UOcclusionObstacleComponent::DiscoverChildMeshes()
             *GetOwner()->GetName());
     }
 
-    Modify();
+    Modify(); // set dirty
 }
 
 void UOcclusionObstacleComponent::CleanupInvalidOverlaps()

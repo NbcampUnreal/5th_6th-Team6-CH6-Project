@@ -51,7 +51,9 @@ protected:
     
     UPROPERTY(EditAnywhere, Category="Occlusion")
     TEnumAsByte<ECollisionChannel> OcclusionTraceChannel = ECC_GameTraceChannel1;
-    
+
+    UPROPERTY(EditAnywhere, Category="Occlusion")
+    TEnumAsByte<ECollisionChannel> MouseTraceChannel = ECC_Visibility;
 private:
 
     TSet<TWeakObjectPtr<UObject>> ActiveOverlaps;

@@ -122,11 +122,13 @@ void UOcclusionTracerComponent::OnBecameHidden()
     {
         if (!Previous.IsValid()) continue;
 
-        UOcclusionObstacleComponent* Comp =
-            Previous->FindComponentByClass<UOcclusionObstacleComponent>();
+        TArray<UOcclusionObstacleComponent*> Comps;
+        Previous->GetComponents<UOcclusionObstacleComponent>(Comps);
 
-        if (Comp)
+        for (UOcclusionObstacleComponent* Comp : Comps)
+        {
             IOcclusionInterface::Execute_OnOcclusionExit(Comp, this);
+        }
     }
 
     Probe.PreviousHits.Empty();
