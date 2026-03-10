@@ -1,4 +1,4 @@
-﻿#include "ER_SessionSubsystem.h"
+#include "ER_SessionSubsystem.h"
 #include "OnlineSubsystem.h"
 #include "OnlineSessionSettings.h"
 #include "Online/OnlineSessionNames.h"
@@ -44,7 +44,12 @@ void UER_SessionSubsystem::CreateSession(int32 NumPublicConnections, bool bIsLAN
 
 	// Setup settings
 	TSharedPtr<FOnlineSessionSettings> SessionSettings = MakeShareable(new FOnlineSessionSettings());
-	SessionSettings->bIsLANMatch = bIsLANMatch;
+	
+	// Force LAN match off for Steam Testing (Bypasses SO_BROADCAST crash)
+	UE_LOG(LogTemp, Warning, TEXT("[ER_SessionSubsystem] CreateSession called with bIsLANMatch = %s. Forcing to FALSE for Steam."), bIsLANMatch ? TEXT("TRUE") : TEXT("FALSE"));
+	bool bActualLANMatch = false;
+
+	SessionSettings->bIsLANMatch = bActualLANMatch;
 	SessionSettings->NumPublicConnections = NumPublicConnections;
 	SessionSettings->bAllowJoinInProgress = true;
 	SessionSettings->bAllowJoinViaPresence = true;
@@ -71,9 +76,13 @@ void UER_SessionSubsystem::FindSessions(int32 MaxSearchResults, bool bIsLANMatch
 
 	SessionInterface->AddOnFindSessionsCompleteDelegate_Handle(FOnFindSessionsCompleteDelegate::CreateUObject(this, &ThisClass::OnFindSessionsComplete));
 
+	// Force LAN match off for Steam Testing (Bypasses SO_BROADCAST crash if Blueprint passes true)
+	UE_LOG(LogTemp, Warning, TEXT("[ER_SessionSubsystem] FindSessions called with bIsLANMatch = %s. Forcing to FALSE for Steam."), bIsLANMatch ? TEXT("TRUE") : TEXT("FALSE"));
+	bool bActualLANMatch = false;
+
 	LastSessionSearch = MakeShareable(new FOnlineSessionSearch());
 	LastSessionSearch->MaxSearchResults = MaxSearchResults;
-	LastSessionSearch->bIsLanQuery = bIsLANMatch;
+	LastSessionSearch->bIsLanQuery = bActualLANMatch;
 	LastSessionSearch->QuerySettings.Set(FName("PRESENCESEARCH"), true, EOnlineComparisonOp::Equals);
 	LastSessionSearch->QuerySettings.Set(FName("LOBBYSEARCH"), true, EOnlineComparisonOp::Equals);
 	LastSessionSearch->QuerySettings.Set(FName("CUSTOM_GAME_ID"), FString("ProjectER_Sparta"), EOnlineComparisonOp::Equals);
