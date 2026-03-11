@@ -298,7 +298,7 @@ void ABasePlayerController::CheckHoveredActor()
 {
 	FHitResult Hit;
 	// 마우스 아래 충돌체 확인 
-	if (GetCurvedHitResultUnderCursor(ECC_Visibility, false, Hit)) 
+	if (GetCurvedHitResultUnderCursor(MouseTraceChannel, false, Hit)) 
 	{
 		AActor* HitActor = Hit.GetActor();
 		
@@ -448,7 +448,7 @@ void ABasePlayerController::MoveToMouseCursor()
 	}
 
 	FHitResult Hit;
-	if (GetCurvedHitResultUnderCursor(ECC_Visibility, false, Hit)) //<- Replaced with a curve world accurate-hit result 추후에 완성되면 이걸로 변경
+	if (GetCurvedHitResultUnderCursor(MouseTraceChannel, false, Hit)) //<- Replaced with a curve world accurate-hit result 추후에 완성되면 이걸로 변경
 	//if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))//
 	{
 		if (Hit.bBlockingHit)
@@ -720,7 +720,7 @@ void ABasePlayerController::OnConfirm()
 	}
 
 	FHitResult Hit;
-	if (GetCurvedHitResultUnderCursor(ECC_Visibility, false, Hit))
+	if (GetCurvedHitResultUnderCursor(MouseTraceChannel, false, Hit))
 	{
 		if (Hit.bBlockingHit)
 		{
