@@ -91,7 +91,7 @@ FTransform USummonRangeAtBone::CalculateSpawnLocation(const AActor* Instigator, 
 		if (Mesh->DoesSocketExist(Config->BoneName))
 		{
 			// 실시간 애니메이션 포즈 반영
-			Mesh->TickAnimation(0.f, false);
+			//Mesh->TickAnimation(0.f, false);
 			Mesh->RefreshBoneTransforms();
 			BaseLocation = Mesh->GetSocketLocation(Config->BoneName);
 			BaseRotation = Mesh->GetSocketRotation(Config->BoneName);
@@ -171,7 +171,7 @@ void USummonRangeAtBone::InitializeRangeActor(ABaseRangeOverlapEffectActor* Rang
 				InitGEHandles.Append(SkillEffectDataAsset->MakeSpecs(CauserASC, NonConstSkill, Causer, Context));
 			}
 		}
-		RangeActor->InitializeEffectData(InitGEHandles, Causer, Config->CollisionRadius, Config->bHitOncePerTarget, Config->HitTargetVfx);
+		RangeActor->InitializeEffectData(InitGEHandles, Causer, Config->CollisionRadius, Config->bHitOncePerTarget, Config);
 		RangeActor->SetLifeSpan(Config->LifeSpan);
 	}
 }
