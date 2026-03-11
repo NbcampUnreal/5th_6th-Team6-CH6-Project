@@ -1,16 +1,13 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "ObstacleOcclusion/Manager/OcclusionSubsystem.h"
-
+﻿#include "ObstacleOcclusion/Manager/OcclusionSubsystem.h"
 #include "Components/PrimitiveComponent.h"
 
 DEFINE_LOG_CATEGORY(OcclusionSubsystem);
 
-void UOcclusionSubsystem::RegisterTarget(UPrimitiveComponent* PrimComp, float RadiusPadding)
+void UOcclusionSubsystem::RegisterTarget(UPrimitiveComponent* PrimComp, UMaterialInterface* BrushMat, float RadiusPadding)
 {
 	if (!IsValid(PrimComp)) return;
 
+	// Prevent duplicate registration
 	for (const FOcclusionBrushTarget& T : Targets)
 	{
 		if (T.PrimitiveComp == PrimComp) return;
@@ -19,11 +16,15 @@ void UOcclusionSubsystem::RegisterTarget(UPrimitiveComponent* PrimComp, float Ra
 	FOcclusionBrushTarget Target;
 	Target.PrimitiveComp = PrimComp;
 	Target.RadiusPadding = RadiusPadding;
+	Target.BrushMaterial = BrushMat; // nullptr is valid — painter default used as fallback
+
 	Targets.Add(Target);
 
 	UE_LOG(OcclusionSubsystem, Log,
-		TEXT("UOcclusionSubsystem::RegisterTarget>> %s | Total: %d"),
-		*PrimComp->GetOwner()->GetName(), Targets.Num());
+		TEXT("UOcclusionSubsystem::RegisterTarget>> %s | Material: %s | Total: %d"),
+		*PrimComp->GetOwner()->GetName(),
+		BrushMat ? *BrushMat->GetName() : TEXT("None (painter default)"),
+		Targets.Num());
 }
 
 void UOcclusionSubsystem::UnregisterTarget(UPrimitiveComponent* PrimComp)

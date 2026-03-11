@@ -7,8 +7,8 @@
 #include "GameFramework/PlayerController.h"
 #include "DrawDebugHelpers.h"
 #include "TopDownVisionDebug.h"
-#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionInterface.h"
-#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionObstacleComponent.h"
+#include "TopDownVision/Public/ObstacleOcclusion/OcclusionInterface.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionObstacleComp_Physical.h"
 
 UOcclusionTracerComponent::UOcclusionTracerComponent()
 {
@@ -122,10 +122,10 @@ void UOcclusionTracerComponent::OnBecameHidden()
     {
         if (!Previous.IsValid()) continue;
 
-        TArray<UOcclusionObstacleComponent*> Comps;
-        Previous->GetComponents<UOcclusionObstacleComponent>(Comps);
+        TArray<UOcclusionObstacleComp_Physical*> Comps;
+        Previous->GetComponents<UOcclusionObstacleComp_Physical>(Comps);
 
-        for (UOcclusionObstacleComponent* Comp : Comps)
+        for (UOcclusionObstacleComp_Physical* Comp : Comps)
         {
             IOcclusionInterface::Execute_OnOcclusionExit(Comp, this);
         }

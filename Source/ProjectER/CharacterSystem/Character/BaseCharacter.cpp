@@ -316,7 +316,7 @@ void ABaseCharacter::OnRep_PlayerState()
 			
 			TopDownCameraComp->Activate();
 			TopDownCameraComp->SetComponentTickEnabled(true);
-			TopDownCameraComp->InitializeCompRequirements();
+			//TopDownCameraComp->InitializeCompRequirements();
 			
 		}
 		else

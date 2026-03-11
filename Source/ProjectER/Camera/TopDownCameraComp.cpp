@@ -223,7 +223,7 @@ void UTopDownCameraComp::InitializeCompRequirements()
 
 	SetComponentTickEnabled(true);
 	SmoothedFollowLocation = OwnerPawn->GetActorLocation();
-	FreeCamPivotLocation   = SmoothedFollowLocation;
+	FreeCamPivotLocation = SmoothedFollowLocation;
 
 	UE_LOG(MainCameraComp, Log,
 		TEXT("%s UTopDownCameraComp::InitializeCompRequirements >> Initial locations set | SmoothedFollow:%s | FreePivot:%s"),
@@ -384,13 +384,14 @@ void UTopDownCameraComp::PrepareSubComponents()
 	//OcclusionRT painter
 	if (OcclusionPainter)
 	{
-		OcclusionPainter->SetPlayerController(GetOwnerPlayerController());
-
+		APlayerController* DebuggingPC=GetOwnerPlayerController();
+		
+		OcclusionPainter->InitializeOcclusionComponent(GetOwnerPlayerController());// ini
+		
 		UE_LOG(MainCameraComp, Log,
 			TEXT("%s UTopDownCameraComp::PrepareSubComponents >> OcclusionPainter initialized"),
 			*DebugLogHelper::GetClientDebugName(this));
-
-		OcclusionPainter->Activate();//activate the occlusion painter
+		
 	}
 	else
 	{

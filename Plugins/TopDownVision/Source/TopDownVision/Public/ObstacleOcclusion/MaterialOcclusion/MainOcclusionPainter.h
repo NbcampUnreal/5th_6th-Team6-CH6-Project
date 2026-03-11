@@ -25,8 +25,8 @@ public:
     // ── Update — called externally by TopDownCameraComp tick ─────────────
 
     UFUNCTION(BlueprintCallable, Category="OcclusionPainter")
-    void InitializeOcclusionComponent();
-    
+    void InitializeOcclusionComponent(APlayerController* InPC);
+
     UFUNCTION(BlueprintCallable, Category="OcclusionPainter")
     void UpdateOcclusionRT();
 
@@ -40,9 +40,15 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="OcclusionPainter")
     TObjectPtr<UTextureRenderTarget2D> OcclusionRT;
 
+    // Default brush material — used when target has no per-target material set
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="OcclusionPainter")
-    TObjectPtr<UMaterialInterface> BrushMaterial;
+    TObjectPtr<UMaterialInterface> DefaultBrushMaterial;
 
+    // Brush texture parameter name in material
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="OcclusionPainter")
+    FName BrushTextureParam = TEXT("BrushTexture");
+
+    // Scalar — scales brush intensity per target (0-1)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="OcclusionPainter")
     FName RevealAlphaParam = TEXT("RevealAlpha");
 
@@ -50,9 +56,6 @@ private:
 
     void DrawProviderArea();
     bool RefreshFrustumParams();
-
-    UPROPERTY(Transient)
-    TObjectPtr<UMaterialInstanceDynamic> BrushMID;
 
     UPROPERTY(Transient)
     TObjectPtr<APlayerController> PlayerController;

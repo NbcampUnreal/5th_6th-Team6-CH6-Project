@@ -1,6 +1,6 @@
 ﻿#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionTraceLibrary.h"
-#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionObstacleComponent.h"
-#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionInterface.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionObstacleComp_Physical.h"
+#include "TopDownVision/Public/ObstacleOcclusion/OcclusionInterface.h"
 #include "TopDownVisionDebug.h"
 #include "DrawDebugHelpers.h"
 
@@ -79,8 +79,8 @@ void FOcclusionTraceLibrary::RunProbe(
             AActor* HitActor = Hit.GetActor();
             if (!HitActor) continue;
 
-            TArray<UOcclusionObstacleComponent*> Comps;
-            HitActor->GetComponents<UOcclusionObstacleComponent>(Comps);
+            TArray<UOcclusionObstacleComp_Physical*> Comps;
+            HitActor->GetComponents<UOcclusionObstacleComp_Physical>(Comps);
             if (Comps.Num() == 0) continue;
 
             CurrentHits.Add(HitActor);
@@ -106,10 +106,10 @@ void FOcclusionTraceLibrary::NotifyEnter(AActor* Actor, UObject* TracerIdentity)
 {
     if (!Actor) return;
 
-    TArray<UOcclusionObstacleComponent*> Comps;
-    Actor->GetComponents<UOcclusionObstacleComponent>(Comps);
+    TArray<UOcclusionObstacleComp_Physical*> Comps;
+    Actor->GetComponents<UOcclusionObstacleComp_Physical>(Comps);
 
-    for (UOcclusionObstacleComponent* Comp : Comps)
+    for (UOcclusionObstacleComp_Physical* Comp : Comps)
     {
         IOcclusionInterface::Execute_OnOcclusionEnter(Comp, TracerIdentity);
     }
@@ -122,10 +122,10 @@ void FOcclusionTraceLibrary::NotifyExit(AActor* Actor, UObject* TracerIdentity)
 {
     if (!Actor) return;
 
-    TArray<UOcclusionObstacleComponent*> Comps;
-    Actor->GetComponents<UOcclusionObstacleComponent>(Comps);
+    TArray<UOcclusionObstacleComp_Physical*> Comps;
+    Actor->GetComponents<UOcclusionObstacleComp_Physical>(Comps);
 
-    for (UOcclusionObstacleComponent* Comp : Comps)
+    for (UOcclusionObstacleComp_Physical* Comp : Comps)
     {
         IOcclusionInterface::Execute_OnOcclusionExit(Comp, TracerIdentity);
     }

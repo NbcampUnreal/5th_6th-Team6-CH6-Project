@@ -2,19 +2,19 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
-#include "OcclusionInterface.h"
-#include "OcclusionObstacleComponent.generated.h"
+#include "ObstacleOcclusion/OcclusionInterface.h"
+#include "OcclusionObstacleComp_Physical.generated.h"
 
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOPDOWNVISION_API UOcclusionObstacleComponent : public USceneComponent, public IOcclusionInterface
+class TOPDOWNVISION_API UOcclusionObstacleComp_Physical : public USceneComponent, public IOcclusionInterface
 {
     GENERATED_BODY()
 
 public:
-    UOcclusionObstacleComponent();
+    UOcclusionObstacleComp_Physical();
 
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
