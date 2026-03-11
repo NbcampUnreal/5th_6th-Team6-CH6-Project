@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "GameplayEffectTypes.h"
+#include "SkillSystem/SkillNiagaraSpawnSettings.h"
 #include "BaseRangeOverlapEffectActor.generated.h"
 
 class UShapeComponent;
@@ -21,8 +22,7 @@ public:
 	// Sets default values for this actor's properties
 	ABaseRangeOverlapEffectActor();
 
-	void InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget);
-
+	void InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget, const UObject* InHitTargetCueSourceObject);
 protected:
 	virtual void BeginPlay() override;
 	virtual void ApplyCollisionSize(const FVector& InCollisionSize);
@@ -53,4 +53,7 @@ protected:
 
 	UPROPERTY()
 	TSet<TObjectPtr<AActor>> HitActors;
+
+	UPROPERTY()
+	TObjectPtr<UObject> HitTargetCueSourceObject;
 };
