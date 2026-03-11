@@ -125,6 +125,18 @@ void ABaseMonster::PossessedBy(AController* newController)
 		MonsterRangeComp->OnPlayerCountZero.AddDynamic(this, &ABaseMonster::OnPlayerCountZeroHandle);
 		MonsterRangeComp->OnPlayerOut.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
 		
+		ASC->RegisterGameplayTagEvent(
+			FGameplayTag::RequestGameplayTag("State.Debuff.Hard.Stun"),
+			EGameplayTagEventType::AnyCountChange
+			).AddUObject(this, &ABaseMonster::OnCCChanged);
+		ASC->RegisterGameplayTagEvent(
+			FGameplayTag::RequestGameplayTag("State.Debuff.Hard.Airborne"),
+			EGameplayTagEventType::NewOrRemoved
+			).AddUObject(this, &ABaseMonster::OnCCChanged);
+		ASC->RegisterGameplayTagEvent(
+			FGameplayTag::RequestGameplayTag("State.Debuff.Soft.Root"),
+			EGameplayTagEventType::NewOrRemoved
+			).AddUObject(this, &ABaseMonster::OnCCChanged);
 	}
 }
 
@@ -826,15 +838,20 @@ void ABaseMonster::Death()
 	SendStateTreeEvent(MonsterTags.DeathEventTag);
 }
 
-
-
-void ABaseMonster::ASCTagCheck()
+void ABaseMonster::OnCCChanged(FGameplayTag Tag, int32 NewCount)
 {
-	FGameplayTagContainer OwnedTags;
-	ASC->GetOwnedGameplayTags(OwnedTags);
-
-	for (const FGameplayTag& Tag : OwnedTags)
+	if (NewCount > 0)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Tag: %s"), *Tag.ToString());
+		UE_LOG(LogTemp, Error, TEXT("CC On"));
+		//ASC->CancelAllAbilities();
+		SendStateTreeEvent(FGameplayTag::RequestGameplayTag("Event.State.Debuff.Hard"));
+		// Hard CC 적용됨
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("CC Off"));
+		bIsCombat = false;
+		SendStateTreeEvent(MonsterTags.HitEventTag);
+		// Hard CC 해제됨
 	}
 }

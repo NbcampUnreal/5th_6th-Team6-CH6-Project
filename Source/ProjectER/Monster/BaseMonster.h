@@ -278,7 +278,7 @@ public:
 
 	// Test용
 	UFUNCTION(BlueprintCallable)
-	void ASCTagCheck();
+	void OnCCChanged(FGameplayTag Tag, int32 NewCount);
 
 };
 

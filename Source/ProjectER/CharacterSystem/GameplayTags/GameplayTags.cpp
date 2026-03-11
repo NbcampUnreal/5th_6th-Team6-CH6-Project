@@ -106,6 +106,27 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Phase2, "Event.Action.Phase2", "Event for Phase2");
 		}
 
+		namespace State
+		{
+			namespace Debuff
+			{
+				namespace Soft // 행동 제약
+				{
+					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slow, "Event.State.Debuff.Soft.Slow", "Event for Slow");    // 둔화
+					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Root, "Event.State.Debuff.Soft.Root", "Event for Root");    // 속박
+					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Silence, "Event.State.Debuff.Soft.Silence", "Event for Silence"); // 침묵
+				}
+				namespace Hard // 행동 불가
+				{
+					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Stun, "Event.State.Debuff.Hard.Stun", "Event for Stun");     // 기절
+					UE_DEFINE_GAMEPLAY_TAG_COMMENT(Airborne, "Event.State.Debuff.Hard.Airborne", "Event for Airborne"); // 에어본
+				}
+
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(BlockRegen, "Event.State.Debuff.BlockRegen", "Event for BlockRegen");    // 회복 불가
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(ReduceHealing, "Event.State.Debuff.ReduceHealing", "Event for ReduceHealing"); // 치유 감소 (치감)
+			}
+		}
+
 		namespace Montage
 		{
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(AttackHit, "Event.Montage.AttackHit", "Montage Event for Attack Hit");
