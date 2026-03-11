@@ -5,6 +5,8 @@
 #include "GameplayEffectExtension.h"
 #include "Components/StateTreeComponent.h"
 
+#include "CharacterSystem/Character/BaseCharacter.h"
+
 UBaseMonsterAttributeSet::UBaseMonsterAttributeSet()
 {
 
@@ -38,11 +40,8 @@ void UBaseMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 	if (Attribute == GetIncomingDamageAttribute())
 	{
 		// 공격 대상 설정
-		const FGameplayEffectContextHandle& Context =
-			Data.EffectSpec.GetEffectContext();
-		
-		//AActor* Target = Context.GetInstigator(); // 인스티게이터로
-		AActor* Target = Context.GetEffectCauser(); 
+		const FGameplayEffectContextHandle& Context = Data.EffectSpec.GetEffectContext();
+		AActor* Target = Cast<ABaseCharacter>(Context.GetEffectCauser()) ? Context.GetEffectCauser() : Context.GetInstigator();
 		ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActor());
 		if (IsValid(Target) == false)
 		{
