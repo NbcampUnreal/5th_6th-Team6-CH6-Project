@@ -92,5 +92,5 @@ protected:
 	const USummonRangeByWorldOriginGECConfig* GetSpawnConfig(const FGameplayEffectSpec& GESpec) const;
 	FTransform CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const USummonRangeByWorldOriginGECConfig* Config) const;
 	FGameplayCueParameters BuildNiagaraCueParameters(const FGameplayEffectSpec& GESpec, const FGameplayTag& OriginalTag, const FGameplayEffectContextHandle& EffectContext, AActor* EffectCauser, const FVector& CueLocation, const UObject* SourceObject) const;
-	void InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeByWorldOriginGECConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context) const;
+	void InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeByWorldOriginGECConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetCueParameters) const;
 };
