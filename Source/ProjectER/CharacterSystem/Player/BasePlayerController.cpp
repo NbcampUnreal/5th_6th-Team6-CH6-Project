@@ -250,7 +250,10 @@ void ABasePlayerController::PlayerTick(float DeltaTime)
 
 	// [김현수 추가분] 거리 체크 로직 호출
 	CheckInteractionDistance();
-
+	
+	// 매 프레임 마우스 아래 액터 아웃라인 갱신
+	CheckHoveredActor();
+	
 	// 마우스를 꾹 누르고 있으면 계속 이동 위치 갱신 
 	if (bIsMousePressed)
 	{
@@ -289,6 +292,115 @@ void ABasePlayerController::OnRep_Pawn()
 		}
 	}
 
+}
+
+void ABasePlayerController::CheckHoveredActor()
+{
+	FHitResult Hit;
+	// 마우스 아래 충돌체 확인 
+	if (GetCurvedHitResultUnderCursor(ECC_Visibility, false, Hit)) 
+	{
+		AActor* HitActor = Hit.GetActor();
+		
+		// [디버그] 현재 마우스가 가리키고 있는 액터의 이름 출력
+		if (GEngine && HitActor)
+		{
+			// Key값을 1로 고정하여 화면에 로그가 도배되지 않고 제자리에서 실시간 갱신되게 합니다.
+			FString NameMsg = FString::Printf(TEXT("Hovered Actor: %s"), *HitActor->GetName());
+			GEngine->AddOnScreenDebugMessage(1, 0.1f, FColor::Cyan, NameMsg);
+		}
+		
+		// 이전 프레임과 똑같은 액터를 가리키고 있으면 무시
+		if (HitActor == CurrentHoveredActor) return;
+
+		// 기존에 하이라이트된 액터가 있다면 끄기
+		if (CurrentHoveredActor)
+		{
+			if (ITargetableInterface* TargetObj = Cast<ITargetableInterface>(CurrentHoveredActor))
+			{
+				TargetObj->HighlightActor(false);
+			}
+			else if (UMeshComponent* MeshComp = CurrentHoveredActor->FindComponentByClass<UMeshComponent>())
+			{
+				// 인터페이스가 없는 일반 아이템 등
+				MeshComp->SetRenderCustomDepth(false);
+			}
+		}
+
+		// 새롭게 마우스가 올라간 액터 하이라이트 켜기
+		if (IsValid(HitActor))
+		{
+			// 타겟팅 가능한 대상(캐릭터 등)일 경우
+			if (ITargetableInterface* TargetObj = Cast<ITargetableInterface>(HitActor))
+			{
+				int32 StencilValue = 252; // 기본: 흰색 (중립)
+				
+				if (ControlledBaseChar && TargetObj->IsTargetable())
+				{
+					ETeamType MyTeam = ControlledBaseChar->GetTeamType();
+					ETeamType TargetTeam = TargetObj->GetTeamType();
+
+					if (MyTeam != ETeamType::None && TargetTeam != ETeamType::None)
+					{
+						if (MyTeam == TargetTeam) 
+							StencilValue = 251; // 아군: 초록색
+						else 
+							StencilValue = 250; // 적군: 빨간색
+					}
+				}
+			
+				// [디버그] 계산된 스텐실 값(색상 암호) 출력
+				if (GEngine)
+				{
+					FColor TextColor = (StencilValue == 250) ? FColor::Red : (StencilValue == 251) ? FColor::Green : FColor::White;
+					FString StencilMsg = FString::Printf(TEXT("Applied Stencil Value: %d"), StencilValue);
+					GEngine->AddOnScreenDebugMessage(2, 2.0f, TextColor, StencilMsg);
+				}
+				
+				TargetObj->HighlightActor(true, StencilValue);
+			}
+			// 아이템, 상자 등 상호작용 가능한 물체일 경우 (흰색)
+			else if (HitActor->FindComponentByClass<ULootableComponent>() || 
+			         HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
+			{
+				if (UMeshComponent* MeshComp = HitActor->FindComponentByClass<UMeshComponent>())
+				{
+					MeshComp->SetRenderCustomDepth(true);
+					MeshComp->SetCustomDepthStencilValue(252); // 흰색
+					
+					// [디버그] 아이템/상자 스텐실 출력
+					if (GEngine)
+					{
+						GEngine->AddOnScreenDebugMessage(2, 2.0f, FColor::White, TEXT("Applied Stencil Value: 252 (Item/Box)"));
+					}
+				}
+			}
+		}
+		
+		CurrentHoveredActor = HitActor; // 캐싱 갱신
+	}
+	else
+	{
+		// [디버그] 허공에 마우스를 올렸을 때
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(1, 0.1f, FColor::Silver, TEXT("Hovered Actor: None (허공)"));
+		}
+		
+		// 허공에 마우스를 올렸을 때 기존 하이라이트 지우기
+		if (CurrentHoveredActor)
+		{
+			if (ITargetableInterface* TargetObj = Cast<ITargetableInterface>(CurrentHoveredActor))
+			{
+				TargetObj->HighlightActor(false);
+			}
+			else if (UMeshComponent* MeshComp = CurrentHoveredActor->FindComponentByClass<UMeshComponent>())
+			{
+				MeshComp->SetRenderCustomDepth(false);
+			}
+			CurrentHoveredActor = nullptr;
+		}
+	}
 }
 
 void ABasePlayerController::OnMoveStarted()

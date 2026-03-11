@@ -35,5 +35,6 @@ public:
 	virtual bool IsTargetable() const { return true; }
 
 	// (추가 예정) 타겟팅 되었을 때 시각적 효과(아웃라인)를 켜고 끄기 위한 함수
-	// virtual void HighlightActor(bool bIsHighlight) {}
+	// StencilValue: 250(적군/빨강), 251(아군/초록), 252(중립 및 아이템/흰색)
+	virtual void HighlightActor(bool bIsHighlight, int32 StencilValue = 0) {}
 };

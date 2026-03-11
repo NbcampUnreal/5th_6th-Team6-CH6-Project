@@ -73,7 +73,7 @@ public:
 	virtual bool IsTargetable() const override;
     
 	// [인터페이스 구현] 하이라이트 (나중에 포스트 프로세스로 구현)
-	// virtual void HighlightActor(bool bIsHighlight) override;
+	virtual void HighlightActor(bool bIsHighlight, int32 StencilValue = 0) override;
 	
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_SetTeamID(ETeamType NewTeamID);
@@ -324,13 +324,31 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI|Minimap")
 	class USceneCaptureComponent2D* MinimapCaptureComponent;
 	
+	// 미니맵용 얼굴 아이콘
+	UPROPERTY(VisibleAnywhere)
+	class UStaticMeshComponent* MinimapIconMesh;
+
+	UPROPERTY(VisibleAnywhere)
+	class UStaticMeshComponent* MinimapLineMesh;
+
+	// 미니맵용 얼굴 마테리얼
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> MinimapIconMaterial;
+
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> MinimapLineMaterial;
+
 	// HP Bar를 담을 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI|Bar")
 	UWidgetComponent* HP_MP_BarWidget;
 
 	UPROPERTY()
 	UUI_HP_Bar* HPBarWidgetInstance;
-	
+
+public:
+	// 팀 구분해서 아이콘 색상 업데이트
+	void UpdateMinimapVisuals(FLinearColor n_teamColor);
+
 #pragma endregion
 
 #pragma region Vision

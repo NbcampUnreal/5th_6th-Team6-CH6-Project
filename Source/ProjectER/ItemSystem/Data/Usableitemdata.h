@@ -10,7 +10,8 @@ UENUM(BlueprintType)
 enum class EItemEffectType : uint8
 {
 	None            UMETA(DisplayName = "None"),
-	IncreaseStat    UMETA(DisplayName = "Increase Stat")
+	IncreaseStat    UMETA(DisplayName = "Increase Stat"),
+	HealOverTime    UMETA(DisplayName = "Heal Over Time")
 };
 
 UENUM(BlueprintType)
@@ -38,6 +39,15 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item|Effect", meta = (EditCondition = "EffectType == EItemEffectType::IncreaseStat", EditConditionHides))
 	float EffectValue;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item|Effect", meta = (EditCondition = "EffectType == EItemEffectType::HealOverTime", EditConditionHides, ClampMin = "0.0"))
+	float TotalHealAmount;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item|Effect", meta = (EditCondition = "EffectType == EItemEffectType::HealOverTime", EditConditionHides, ClampMin = "0.1"))
+	float HealDurationSeconds;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item|Effect", meta = (EditCondition = "EffectType == EItemEffectType::HealOverTime", EditConditionHides, ClampMin = "0.1"))
+	float HealTickInterval;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Effect", meta = (EditCondition = "EffectType == EItemEffectType::IncreaseStat", EditConditionHides))
 	TSoftClassPtr<UGameplayEffect> ItemStatEffectClass;
