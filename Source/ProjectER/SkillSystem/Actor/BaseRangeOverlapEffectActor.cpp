@@ -20,8 +20,9 @@ void ABaseRangeOverlapEffectActor::InitializeEffectData(const TArray<FGameplayEf
 {
 	EffectSpecHandles = InEffectSpecHandles;
 	InstigatorActor = InInstigatorActor;
+	SetInstigator(Cast<APawn>(InInstigatorActor));
 	bHitOncePerTarget = bInHitOncePerTarget;
-	HitTargetCueSourceObject = const_cast<UObject*>(InHitTargetCueSourceObject);
+	HitTargetCueSourceObject = InHitTargetCueSourceObject;
 
 	PendingCollisionSize = InCollisionSize;
 	bHasPendingCollisionSize = true;

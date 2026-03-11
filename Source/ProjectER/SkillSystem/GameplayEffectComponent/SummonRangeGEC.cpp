@@ -55,9 +55,9 @@ void USummonRangeGEC::OnGameplayEffectApplied(FActiveGameplayEffectsContainer& A
 	if (!IsValid(DeferredSpawnedActor)) return;
 	InitializeRangeActor(DeferredSpawnedActor, SpawnConfig, EffectInstigator, EffectContextHandle);
 	DeferredSpawnedActor->FinishSpawning(SpawnTransform);
-
-	const FGameplayCueParameters SummonerCueParams = BuildNiagaraCueParameters(GESpec, EffectContextHandle, DeferredSpawnedActor, SummonerTransform.GetLocation(), SpawnConfig);
-	const FGameplayCueParameters RangeCueParams = BuildNiagaraCueParameters(GESpec, EffectContextHandle, DeferredSpawnedActor, RangeSpawnLocation, SpawnConfig);
+	
+	const FGameplayCueParameters SummonerCueParams = BuildNiagaraCueParameters(GESpec, SpawnConfig->SummonerSpawnVfx.CueTag, EffectContextHandle, DeferredSpawnedActor, SummonerTransform.GetLocation(), SpawnConfig);
+	const FGameplayCueParameters RangeCueParams = BuildNiagaraCueParameters(GESpec, SpawnConfig->RangeSpawnVfx.CueTag, EffectContextHandle, DeferredSpawnedActor, RangeSpawnLocation, SpawnConfig);
 
 	UAbilitySystemComponent* const InstigatorASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(EffectInstigator);
 	if (!IsValid(InstigatorASC)) return;
@@ -154,9 +154,10 @@ FTransform USummonRangeGEC::CalculateSpawnTransform(const FGameplayEffectSpec& G
 	return FTransform(CombinedRotation, TargetLocation);
 }
 
-FGameplayCueParameters USummonRangeGEC::BuildNiagaraCueParameters(const FGameplayEffectSpec& GESpec, const FGameplayEffectContextHandle& EffectContext, AActor* EffectCauser, const FVector& CueLocation, const UObject* SourceObject) const
+FGameplayCueParameters USummonRangeGEC::BuildNiagaraCueParameters(const FGameplayEffectSpec& GESpec, const FGameplayTag& OriginalTag, const FGameplayEffectContextHandle& EffectContext, AActor* EffectCauser, const FVector& CueLocation, const UObject* SourceObject) const
 {
 	FGameplayCueParameters CueParams(GESpec);
+	CueParams.OriginalTag = OriginalTag;
 	CueParams.Instigator = EffectContext.GetInstigator();
 	CueParams.EffectCauser = EffectCauser;
 	CueParams.Location = CueLocation;
@@ -170,6 +171,23 @@ FGameplayCueParameters USummonRangeGEC::BuildNiagaraCueParameters(const FGamepla
 
 	return CueParams;
 }
+
+//FGameplayCueParameters USummonRangeGEC::BuildNiagaraCueParameters(const FGameplayEffectSpec& GESpec, const FGameplayEffectContextHandle& EffectContext, AActor* EffectCauser, const FVector& CueLocation, const UObject* SourceObject) const
+//{
+//	FGameplayCueParameters CueParams(GESpec);
+//	CueParams.Instigator = EffectContext.GetInstigator();
+//	CueParams.EffectCauser = EffectCauser;
+//	CueParams.Location = CueLocation;
+//	CueParams.Normal = FVector::UpVector;
+//	CueParams.GameplayEffectLevel = GESpec.GetLevel();
+//
+//	if (SourceObject != nullptr)
+//	{
+//		CueParams.SourceObject = SourceObject;
+//	}
+//
+//	return CueParams;
+//}
 
 void USummonRangeGEC::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeByWorldOriginGECConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context) const
 {

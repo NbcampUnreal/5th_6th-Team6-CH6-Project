@@ -55,5 +55,5 @@ protected:
 	TSet<TObjectPtr<AActor>> HitActors;
 
 	UPROPERTY()
-	TObjectPtr<UObject> HitTargetCueSourceObject;
+	TObjectPtr<const UObject> HitTargetCueSourceObject;
 };
