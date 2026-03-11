@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "SkillNiagaraSpawnSettings.generated.h"
 /**
  * 
@@ -48,4 +49,7 @@ struct FSkillNiagaraSpawnSettings
 
 	UPROPERTY(EditDefaultsOnly, Category = "Niagara|Transform")
 	FVector Scale = FVector::OneVector;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Niagara|GameplayCue", meta = (Categories = "GameplayCue"))
+	FGameplayTag CueTag;
 };
