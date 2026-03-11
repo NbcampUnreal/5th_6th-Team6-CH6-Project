@@ -22,8 +22,7 @@ public:
 	// Sets default values for this actor's properties
 	ABaseRangeOverlapEffectActor();
 
-	void InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget, const FSkillNiagaraSpawnSettings& InHitTargetVfx);
-
+	void InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget, const UObject* InHitTargetCueSourceObject);
 protected:
 	virtual void BeginPlay() override;
 	virtual void ApplyCollisionSize(const FVector& InCollisionSize);
@@ -56,5 +55,5 @@ protected:
 	TSet<TObjectPtr<AActor>> HitActors;
 
 	UPROPERTY()
-	FSkillNiagaraSpawnSettings HitTargetVfx;
+	TObjectPtr<UObject> HitTargetCueSourceObject;
 };
