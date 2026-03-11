@@ -73,3 +73,11 @@ void UUI_HP_Bar::Update_LV_bar(float CurrentLV)
         TXT_LV->SetText(FText::AsNumber(FMath::RoundToInt(CurrentLV)));
     }
 }
+
+void UUI_HP_Bar::Update_HeadIcon(UTexture2D* NewIcon)
+{
+    if (IsValid(IMG_Head))
+    {
+		IMG_Head->SetBrushFromTexture(NewIcon);
+    }
+}

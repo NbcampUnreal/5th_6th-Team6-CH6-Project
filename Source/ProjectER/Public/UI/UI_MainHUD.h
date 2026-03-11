@@ -206,6 +206,9 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UImage* TEX_Minimap;
 
+	UPROPERTY(meta = (BindWidget))
+	UImage* IMG_Head;
+
 	UPROPERTY()
 	UTexture2D* TEX_TempIcon;
 
@@ -320,10 +323,14 @@ public:
 	void SetTeamWidgetVisible(int32 TeamIndex, bool bIsVisible);
 
 	UFUNCTION(BlueprintCallable, Category = "UI")
-	void SetTeamMemberData(int32 TeamIndex, UAbilitySystemComponent* _ASC);
+	void SetTeamMemberData(int32 TeamIndex, UAbilitySystemComponent* _ASC, UTexture2D* HeadIcon);
 
 	UFUNCTION()
 	void InitTeamData();
+
+	UFUNCTION()
+	void SetMyFaceIcon(UTexture2D* HeadIcon);
+
 protected:
 	UPROPERTY()
 	TMap<int32, UAbilitySystemComponent*> TeamASCMap;
@@ -347,6 +354,7 @@ private:
 public:
 	void UpdateTeamHP(int32 TeamIndex, float CurrentHP, float MaxHP);
 	void UpdateTeamLV(int32 TeamIndex, int32 CurrentLV);
+	void UpdateTeamHead(int32 TeamIndex, UTexture2D* NewHeadTexture);
 
 	// 체력 빨강 반짝 애니메이션 용
 protected:
