@@ -13,6 +13,7 @@
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 #include "SkillSystem/GameAbility/SkillBase.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "SkillSystem/SkillNiagaraSpawnHelper.h"
 
 USummonRangeAtBone::USummonRangeAtBone()
 {
@@ -24,9 +25,9 @@ TSubclassOf<UBaseGECConfig> USummonRangeAtBone::GetRequiredConfigClass() const
 	return USummonRangeByBoneGECConfig::StaticClass();
 }
 
-void USummonRangeAtBone::OnGameplayEffectExecuted(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const
+void USummonRangeAtBone::OnGameplayEffectApplied(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const
 {
-	Super::OnGameplayEffectExecuted(ActiveGEContainer, GESpec, PredictionKey);
+	Super::OnGameplayEffectApplied(ActiveGEContainer, GESpec, PredictionKey);
 
 	const FGameplayEffectContextHandle& ContextHandle = GESpec.GetEffectContext();
 	AActor* EffectCauser = ContextHandle.GetEffectCauser();
@@ -42,6 +43,13 @@ void USummonRangeAtBone::OnGameplayEffectExecuted(FActiveGameplayEffectsContaine
 
 	// [4] 트랜스폼 계산
 	FTransform FinalTransform = CalculateSpawnLocation(SpawnInstigator, SpawnConfig);
+	if (UWorld* World = EffectCauser->GetWorld())
+	{
+		const FTransform SummonerTransform = EffectCauser->GetActorTransform();
+		const FVector RangeSpawnLocation = FinalTransform.GetLocation();
+		SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(World, SpawnConfig->SummonerSpawnVfx, SummonerTransform, EffectCauser, &RangeSpawnLocation);
+		SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(World, SpawnConfig->RangeSpawnVfx, FinalTransform, nullptr, nullptr);
+	}
 
 	// [5] 액터 지연 스폰 및 초기화
 	UWorld* World = EffectCauser->GetWorld();
@@ -82,9 +90,16 @@ FTransform USummonRangeAtBone::CalculateSpawnLocation(const AActor* Instigator, 
 	{
 		if (Mesh->DoesSocketExist(Config->BoneName))
 		{
-			// 실시간 애니메이션 포즈 반영
-			Mesh->TickAnimation(0.f, false);
-			Mesh->RefreshBoneTransforms();
+			//1. 지금 애니메이션 루프 중인지 확인 (재귀 크래시 방지)
+			if (!Mesh->IsRunningParallelEvaluation())
+			{
+				// 2. 현재 몽타주의 본 업데이트가 되지 않고 있다면
+				if (Mesh->ShouldOnlyTickMontages(0.0f))
+				{
+					Mesh->RefreshBoneTransforms();
+				}
+			}
+
 			BaseLocation = Mesh->GetSocketLocation(Config->BoneName);
 			BaseRotation = Mesh->GetSocketRotation(Config->BoneName);
 		}
@@ -163,7 +178,7 @@ void USummonRangeAtBone::InitializeRangeActor(ABaseRangeOverlapEffectActor* Rang
 				InitGEHandles.Append(SkillEffectDataAsset->MakeSpecs(CauserASC, NonConstSkill, Causer, Context));
 			}
 		}
-		RangeActor->InitializeEffectData(InitGEHandles, Causer, Config->CollisionRadius, Config->bHitOncePerTarget);
+		RangeActor->InitializeEffectData(InitGEHandles, Causer, Config->CollisionRadius, Config->bHitOncePerTarget, Config);
 		RangeActor->SetLifeSpan(Config->LifeSpan);
 	}
 }

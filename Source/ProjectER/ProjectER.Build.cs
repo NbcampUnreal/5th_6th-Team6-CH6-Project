@@ -31,7 +31,9 @@ public class ProjectER : ModuleRules
             "AssetRegistry",
             "OnlineSubsystemSteam",
             "OnlineSubsystem",
+            "OnlineSubsystemUtils",
             "UnrealEd",//for the editor function
+
         });
         
         PrivateDependencyModuleNames.AddRange(new string[] { });

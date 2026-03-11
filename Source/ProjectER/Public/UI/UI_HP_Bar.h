@@ -30,6 +30,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
 	void Update_LV_bar(float CurrentLV);
 
+	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
+	void Update_HeadIcon(UTexture2D* NewIcon);
+
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* PB_HP;
@@ -40,7 +43,7 @@ protected:
 	///  stat_nn = 임시명칭
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* TXT_LV;
-	
-	UPROPERTY()
-	UTexture2D* TEX_HeadIcon;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* IMG_Head;
 };

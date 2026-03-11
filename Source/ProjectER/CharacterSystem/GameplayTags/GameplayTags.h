@@ -187,6 +187,13 @@ namespace ProjectER
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(LevelUp);
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Death);
 		}
+
+		namespace Skill
+		{
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Summoner);
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Range);
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(HitTarget);
+		}
 	}
 
 	namespace State // 현재 상태

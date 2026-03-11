@@ -980,10 +980,11 @@ void UUI_MainHUD::SetTeamWidgetVisible(int32 TeamIndex, bool bIsVisible)
     }
 }
 
-void UUI_MainHUD::SetTeamMemberData(int32 TeamIndex, UAbilitySystemComponent* _ASC)
+void UUI_MainHUD::SetTeamMemberData(int32 TeamIndex, UAbilitySystemComponent* _ASC, UTexture2D* HeadIcon)
 {
     if (_ASC == nullptr) return;
     TeamASCMap.Add(TeamIndex, _ASC);
+    UpdateTeamHead(TeamIndex, HeadIcon);
 }
 
 void UUI_MainHUD::InitTeamData()
@@ -1012,6 +1013,14 @@ void UUI_MainHUD::InitTeamData()
 				UpdateTeamLV(TeamIndex, BaseAS->GetLevel());
             }
         }
+    }
+}
+
+void UUI_MainHUD::SetMyFaceIcon(UTexture2D* HeadIcon)
+{
+    if (IsValid(IMG_Head))
+    {
+        IMG_Head->SetBrushFromTexture(HeadIcon);
     }
 }
 
@@ -1107,6 +1116,25 @@ void UUI_MainHUD::UpdateTeamLV(int32 TeamIndex, int32 CurrentLV)
             TeamLevel_02->SetText(FText::AsNumber(CurrentLV));
         }
     }
+}
+
+void UUI_MainHUD::UpdateTeamHead(int32 TeamIndex, UTexture2D* NewHeadTexture)
+{
+    if (TeamIndex > MAX_TEAMMATE) return;
+    if(TeamIndex == 0)
+    {
+        if(IsValid(TeamHead_01) && NewHeadTexture)
+        {
+            TeamHead_01->SetBrushFromTexture(NewHeadTexture);
+        }
+    }
+    else if (TeamIndex == 1)
+    {
+        if (IsValid(TeamHead_02) && NewHeadTexture)
+        {
+            TeamHead_02->SetBrushFromTexture(NewHeadTexture);
+        }
+	}
 }
 
 UWidgetAnimation* UUI_MainHUD::GetWidgetAnimationByName(FName AnimName) const
