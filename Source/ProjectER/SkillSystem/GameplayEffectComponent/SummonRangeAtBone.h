@@ -14,6 +14,7 @@
 class ABaseRangeOverlapEffectActor;
 class USkillEffectDataAsset;
 struct FGameplayEffectContextHandle;
+struct FGameplayCueParameters;
 
 UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced)
 class PROJECTER_API USummonRangeByBoneGECConfig : public UBaseGECConfig
@@ -94,5 +95,5 @@ protected:
 	virtual void OnGameplayEffectApplied(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const override;
 	const USummonRangeByBoneGECConfig* GetSpawnConfig(const FGameplayEffectSpec& GESpec) const;
 	FTransform CalculateSpawnLocation(const AActor* Instigator, const USummonRangeByBoneGECConfig* Config) const;
-	void InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeByBoneGECConfig* Config, AActor* Causer, const FGameplayEffectContextHandle& Context) const;
+    void InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeByBoneGECConfig* Config, AActor* Causer, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetCueParameters) const;
 };
