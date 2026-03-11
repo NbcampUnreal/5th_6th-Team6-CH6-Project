@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGEC.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGECConfig.h"
+#include "SkillSystem/SkillNiagaraSpawnSettings.h"
 #include "SummonRangeAtBone.generated.h"
 
 /**
@@ -66,6 +67,15 @@ public:
     UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Effect")
     bool bHitOncePerTarget = true;
 
+    UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
+    FSkillNiagaraSpawnSettings SummonerSpawnVfx;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
+    FSkillNiagaraSpawnSettings RangeSpawnVfx;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
+    FSkillNiagaraSpawnSettings HitTargetVfx;
+
     UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Effect")
     TArray<TObjectPtr<USkillEffectDataAsset>> Applied;
 };
@@ -81,7 +91,7 @@ public:
 	virtual TSubclassOf<UBaseGECConfig> GetRequiredConfigClass() const override;
 
 protected:
-	virtual void OnGameplayEffectExecuted(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const override;
+	virtual void OnGameplayEffectApplied(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const override;
 	const USummonRangeByBoneGECConfig* GetSpawnConfig(const FGameplayEffectSpec& GESpec) const;
 	FTransform CalculateSpawnLocation(const AActor* Instigator, const USummonRangeByBoneGECConfig* Config) const;
 	void InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeByBoneGECConfig* Config, AActor* Causer, const FGameplayEffectContextHandle& Context) const;

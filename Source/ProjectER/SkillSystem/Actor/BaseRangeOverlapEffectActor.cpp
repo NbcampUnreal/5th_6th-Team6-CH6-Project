@@ -6,6 +6,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
+#include "SkillSystem/SkillNiagaraSpawnHelper.h"
 
 
 // Sets default values
@@ -15,29 +16,17 @@ ABaseRangeOverlapEffectActor::ABaseRangeOverlapEffectActor()
 	bReplicates = true;
 }
 
-void ABaseRangeOverlapEffectActor::InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget)
+void ABaseRangeOverlapEffectActor::InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget, const UObject* InHitTargetCueSourceObject)
 {
 	EffectSpecHandles = InEffectSpecHandles;
 	InstigatorActor = InInstigatorActor;
 	bHitOncePerTarget = bInHitOncePerTarget;
+	HitTargetCueSourceObject = const_cast<UObject*>(InHitTargetCueSourceObject);
 
 	PendingCollisionSize = InCollisionSize;
 	bHasPendingCollisionSize = true;
 	ApplyCollisionSize(PendingCollisionSize);
 }
-
-//void ABaseRangeOverlapEffectActor::InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, bool bInHitOncePerTarget)
-//{
-//	EffectSpecHandles = InEffectSpecHandles;
-//	InstigatorActor = InInstigatorActor;
-//	bHitOncePerTarget = bInHitOncePerTarget;
-//	bHasPendingCollisionSize = true;
-//}
-
-//void ABaseRangeOverlapEffectActor::SetCollisionSize(const FVector& InCollisionSize)
-//{
-//	ApplyCollisionSize(InCollisionSize);
-//}
 
 // Called when the game starts or when spawned
 void ABaseRangeOverlapEffectActor::BeginPlay()

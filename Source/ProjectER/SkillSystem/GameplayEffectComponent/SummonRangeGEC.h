@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGEC.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGECConfig.h"
+#include "SkillSystem/SkillNiagaraSpawnSettings.h"
 #include "SummonRangeGEC.generated.h"
 
 /**
@@ -14,6 +15,7 @@
 class ABaseRangeOverlapEffectActor;
 class USkillEffectDataAsset;
 struct FGameplayEffectContextHandle;
+struct FGameplayCueParameters;
 
 UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced)
 class PROJECTER_API USummonRangeByWorldOriginGECConfig : public UBaseGECConfig
@@ -62,6 +64,15 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Effect")
 	bool bHitOncePerTarget = true;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
+	FSkillNiagaraSpawnSettings SummonerSpawnVfx;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
+	FSkillNiagaraSpawnSettings RangeSpawnVfx;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
+	FSkillNiagaraSpawnSettings HitTargetVfx;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Effect")
 	TArray<TObjectPtr<USkillEffectDataAsset>> Applied;
 };
@@ -77,8 +88,9 @@ public:
 	virtual TSubclassOf<UBaseGECConfig> GetRequiredConfigClass() const override;
 
 protected:
-	virtual void OnGameplayEffectExecuted(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const override;
+	virtual void OnGameplayEffectApplied(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const override;
 	const USummonRangeByWorldOriginGECConfig* GetSpawnConfig(const FGameplayEffectSpec& GESpec) const;
 	FTransform CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const USummonRangeByWorldOriginGECConfig* Config) const;
+	FGameplayCueParameters BuildNiagaraCueParameters(const FGameplayEffectSpec& GESpec, const FGameplayEffectContextHandle& EffectContext, AActor* EffectCauser, const FVector& CueLocation, const UObject* SourceObject) const;
 	void InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeByWorldOriginGECConfig* Config, AActor* Causer, const FGameplayEffectContextHandle& Context) const;
 };
