@@ -131,17 +131,6 @@ void USkillBase::ApplyCost(const FGameplayAbilitySpecHandle Handle, const FGamep
 
 		if (SpecHandle.IsValid())
 		{
-			// --- 로그 출력 부분 시작 ---
-			// 모디파이어가 여러 개일 수 있으므로 루프를 돌며 출력합니다.
-			for (int32 i = 0; i < SpecHandle.Data->Modifiers.Num(); ++i)
-			{
-				// GetModifierMagnitude를 호출하면 커브 테이블 연산이 끝난 최종 수치를 반환합니다.
-				float CurrentLevel = GetAbilityLevel(Handle, ActorInfo);
-				float FinalMagnitude = SpecHandle.Data->GetModifierMagnitude(i, true);
-				UE_LOG(LogTemp, Warning, TEXT("[SkillCost], Final Magnitude: %f (Level: %f)"), FinalMagnitude, CurrentLevel);
-			}
-			// --- 로그 출력 부분 끝 ---
-
 			FGameplayAbilitySpec* AbilitySpec = ActorInfo->AbilitySystemComponent->FindAbilitySpecFromHandle(Handle);
 			ApplyAbilityTagsToGameplayEffectSpec(*SpecHandle.Data.Get(), AbilitySpec);
 			ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, SpecHandle);
