@@ -185,6 +185,13 @@ namespace ProjectER
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Revive);
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(TryRevive);
 		}
+
+		namespace Skill
+		{
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Summoner);
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Range);
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(HitTarget);
+		}
 	}
 
 	namespace State // 현재 상태

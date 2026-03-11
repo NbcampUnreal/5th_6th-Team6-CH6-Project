@@ -184,6 +184,13 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Revive, "GameplayCue.Combat.Revive", "Cue for Revive");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(TryRevive, "GameplayCue.Combat.TryRevive", "Cue for Try Revive Ally");
 		}
+
+		namespace Skill
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Summoner, "GameplayCue.Skill.Summoner", "Cue for Skill SummonVFX");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Range, "GameplayCue.Skill.Range", "Cue for RangeVFX");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(HitTarget, "GameplayCue.Skill.HitTarget", "Cue for HitTargetVFX");
+		}
 	}
 	
 	namespace State
