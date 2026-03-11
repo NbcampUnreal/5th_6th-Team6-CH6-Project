@@ -33,6 +33,10 @@
 #include "SkillSystem/SkillDataAsset.h"
 
 #include "Components/SceneCaptureComponent2D.h" // 미니맵용
+#include "Components/StaticMeshComponent.h" // 미니맵용
+#include "Materials/MaterialInstanceDynamic.h" // 미니맵용
+#include "Engine/StaticMesh.h" // 미니맵용
+
 #include "Components/WidgetComponent.h" // HP바 위젯용
 #include "GameModeBase/State/ER_GameState.h"
 #include "UI/UI_HP_Bar.h" // HP바 위젯용
@@ -90,14 +94,50 @@ ABaseCharacter::ABaseCharacter()
 	MinimapCaptureComponent->SetRelativeRotation(FRotator(-90.0f, 0.0f, 0.0f));
 	MinimapCaptureComponent->ProjectionType = ECameraProjectionMode::Orthographic;
 	MinimapCaptureComponent->OrthoWidth = 2048.0f; // 이거로 미니맵 확대/축소 조절
+	MinimapCaptureComponent->CaptureSource = ESceneCaptureSource::SCS_FinalColorLDR;	// 투명도 반영
+
+	// 미니맵용 아이콘 만들기
+	MinimapIconMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MinimapIcon"));
+	MinimapIconMesh->SetupAttachment(RootComponent);
+	MinimapLineMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MinimapIconLine"));
+	MinimapLineMesh->SetupAttachment(RootComponent);
+
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> PlaneMesh(TEXT("/Engine/BasicShapes/Plane"));
+	if (PlaneMesh.Succeeded())
+	{
+		MinimapIconMesh->SetStaticMesh(PlaneMesh.Object);
+	}
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> PlaneMesh2(TEXT("/Engine/BasicShapes/Plane"));
+	if (PlaneMesh2.Succeeded())
+	{
+		MinimapLineMesh->SetStaticMesh(PlaneMesh2.Object);
+	}
+
+	// 아이콘이 항상 하늘을 향하게 배치 (캐릭터 머리 위)
+	MinimapIconMesh->SetRelativeLocation(FVector(0.f, 0.f, 500.0f));	// 미니맵 카메라가 1000이니까 그보다 아래로
+	MinimapIconMesh->SetRelativeRotation(FRotator(0.f, 90.f, 0.f));
+	MinimapIconMesh->SetRelativeScale3D(FVector(2.0f, 2.0f, 2.0f));	// 얼굴 아이콘 크기 조절
+	MinimapIconMesh->SetAbsolute(false, true, false); // 회전값 고정 (중요함....)
+	MinimapIconMesh->SetCastShadow(false);	// 그림자 없애기
+
+	MinimapLineMesh->SetRelativeLocation(FVector(0, 0, 450.0f));	// 미니맵 아이콘이 500이니까 그보다 아래로
+	MinimapLineMesh->SetRelativeScale3D(FVector(3.0f, 3.0f, 3.0f));	// 얼굴 아이콘 크기 조절
+	MinimapLineMesh->SetAbsolute(false, true, false); // 회전값 고정 (중요함....)
+	MinimapLineMesh->SetCastShadow(false);	// 그림자 없애기
+
+	// 캐릭터 메쉬는 미니맵에 안보이게
+	GetMesh()->SetHiddenInSceneCapture(true);
+	// 미니맵 아이콘은 미니맵에 보이게
+	MinimapIconMesh->SetVisibleInSceneCaptureOnly(true);
+	MinimapLineMesh->SetVisibleInSceneCaptureOnly(true);
 
 	// HP Bar 생성
 	HP_MP_BarWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("HPBarWidget"));
 	HP_MP_BarWidget->SetupAttachment(GetMesh());
-// 	HP_MP_BarWidget->SetDrawSize(FVector2D(250.0f, 130.0f));
+	// 	HP_MP_BarWidget->SetDrawSize(FVector2D(250.0f, 130.0f));
 	HP_MP_BarWidget->SetRelativeLocation(FVector(0.0f, 0.0f, 300.0f));
 	HP_MP_BarWidget->SetWidgetSpace(EWidgetSpace::Screen);
-	
+
 	/// 콜리전 없애기
 	HP_MP_BarWidget->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HP_MP_BarWidget->SetCollisionResponseToAllChannels(ECR_Ignore);
@@ -110,8 +150,8 @@ ABaseCharacter::ABaseCharacter()
 	//MinimapCaptureComponent->ShowFlags.SetGlobalIllumination(false); // 루멘
 	//MinimapCaptureComponent->ShowFlags.SetMotionBlur(false); // 잔상 제거용
 	//MinimapCaptureComponent->CaptureSource = ESceneCaptureSource::SCS_BaseColor; // 포스트 프로세싱 무효화
+	
 }
-
 
 void ABaseCharacter::BeginPlay()
 {
@@ -190,7 +230,28 @@ void ABaseCharacter::PossessedBy(AController* NewController)
 
 	// ASC 초기화 (서버)
 	InitAbilitySystem();
+	
+	// 최초 1회만 HP,MP 초기화
+	if (HasAuthority())
+	{
+		UBaseAttributeSet* AS = nullptr;
+		
+		if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
+		{
+			AS = ERPS->GetAttributeSet();
+		}
+		else if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+		{
+			AS = PS->GetAttributeSet();
+		}
 
+		if (AS)
+		{
+			AS->SetHealth(AS->GetMaxHealth());
+			AS->SetStamina(AS->GetMaxStamina());
+		}
+	}
+	
 	// 비주얼 초기화 (서버)
 	if (HeroData)
 	{
@@ -236,6 +297,21 @@ bool ABaseCharacter::IsTargetable() const
 	return !IsHidden(); // 숨어있지 않고 살아있으면 true
 }
 
+void ABaseCharacter::HighlightActor(bool bIsHighlight, int32 StencilValue)
+{
+	if (USkeletalMeshComponent* MyMesh = GetMesh())
+	{
+		// 커스텀 뎁스 렌더링 켜기/끄기
+		MyMesh->SetRenderCustomDepth(bIsHighlight);
+		
+		if (bIsHighlight)
+		{
+			// 스텐실 값 부여 (어떤 색으로 아웃라인을 그릴지 포스트 프로세스에 전달)
+			MyMesh->SetCustomDepthStencilValue(StencilValue);
+		}
+	}
+}
+
 void ABaseCharacter::OnRep_TeamID()
 {
 	FString Team = (TeamID == ETeamType::Team_A) ? TEXT("Team_A") : 
@@ -258,7 +334,6 @@ void ABaseCharacter::Server_SetTeamID_Implementation(ETeamType NewTeamID)
 	TeamID = NewTeamID;
 	OnRep_TeamID();
 }
-
 
 EVisionChannel ABaseCharacter::ConvertTeamToVisionChannel(ETeamType InTeamType)
 {
@@ -342,8 +417,9 @@ bool ABaseCharacter::IsLocalPlayerPawn()
 void ABaseCharacter::HandleLevelUp()
 {
 	if (!HasAuthority()) return;
-	UE_LOG(LogTemp, Warning, TEXT("Level up!! here"));
+	
 	UBaseAttributeSet* AS = nullptr;
+	
 	if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
 	{
 		AS = ERPS->GetAttributeSet();
@@ -386,8 +462,19 @@ void ABaseCharacter::HandleLevelUp()
 		AS->SetSkillPoint(AS->GetSkillPoint() + 1.0f);
 	}
 
-	// 이펙트 및 UI 처리 (Multicast)
-	// Multicast_LevelUpVFX(); 
+	// 레벨업 이펙트 GC 호출
+	if (AbilitySystemComponent.IsValid() && HasAuthority()) // 서버에서 실행
+	{
+		FGameplayCueParameters CueParams;
+		CueParams.Location = GetActorLocation(); 
+		CueParams.Instigator = this;
+		CueParams.EffectCauser = this;
+		
+		AbilitySystemComponent->ExecuteGameplayCue(
+			ProjectER::GameplayCue::Combat::LevelUp, 
+			CueParams
+		);
+	}
     
 	// UE_LOG(LogTemp, Warning, TEXT("[LevelUp] New Level: %f"), GetCharacterLevel());
 }
@@ -767,6 +854,8 @@ void ABaseCharacter::InitVisuals()
 			GetMesh()->SetAnimInstanceClass(LoadedAnimClass);
 		}
 	}
+
+	//
 }
 
 void ABaseCharacter::Server_MoveToLocation_Implementation(FVector TargetLocation)
@@ -1320,7 +1409,6 @@ void ABaseCharacter::HandleDeath()
 				return; // 중복 사망 방지
 			}
 			
-			// [추가] GE_State_Dead 적용 방식
 			if (DeathStateEffectClass)
 			{
 				FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
@@ -1336,12 +1424,24 @@ void ABaseCharacter::HandleDeath()
 			AbilitySystemComponent->CancelAllAbilities();
 		}
 
-		// 타겟 지정 해제 (나를 노리는 적들에게 "나 죽었어" 알림)
-		// (이 부분은 AI나 타겟팅 시스템에 따라 추가 구현 필요)
+		
 		SetTarget(nullptr);
-		// 사망 알림 델리게이트
+		
 		OnDeath.Broadcast();
-		// 모든 클라이언트에게 연출 실행 명령
+		
+		if (AbilitySystemComponent.IsValid() && HasAuthority()) // 서버에서 실행
+		{
+			FGameplayCueParameters CueParams;
+			CueParams.Location = GetActorLocation(); // 현재 캐릭터 위치
+			CueParams.Instigator = this;
+			CueParams.EffectCauser = this;
+			
+			AbilitySystemComponent->ExecuteGameplayCue(
+				ProjectER::GameplayCue::Combat::Death, 
+				CueParams
+			);
+		}
+		
 		Multicast_Death();
 	}
 }
@@ -1588,7 +1688,7 @@ void ABaseCharacter::InitUI()
 
 					int32 WidgetIndex = 0;
 
-					for (APlayerState* PS : GS->PlayerArray)
+					for (APlayerState* PS : ERGS->PlayerArray)
 					{
 						AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS);
 
@@ -1631,7 +1731,58 @@ void ABaseCharacter::InitUI()
 	if (!HasAuthority())
 	{
 		UpdateOverheadUI();
+
+		// mpyi _ 미니맵용 얼굴 아이콘 마테리얼 인스턴스 초기화
+
+		if (MinimapIconMesh && HeroData && HeroData->CharacterIcon)
+		{
+			UMaterialInterface* IconMasterMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/MPYI/Material/M_MinimapIcon.M_MinimapIcon"));
+			UMaterialInterface* LineMasterMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/MPYI/Material/M_MinimapLine.M_MinimapLine"));
+			if (IconMasterMat)
+			{
+				MinimapIconMaterial = MinimapIconMesh->CreateDynamicMaterialInstance(0, IconMasterMat);
+				MinimapIconMaterial->SetTextureParameterValue(FName("CharacterTexture"), HeroData->CharacterIcon);
+			}
+			if (LineMasterMat)
+			{
+				MinimapLineMaterial = MinimapLineMesh->CreateDynamicMaterialInstance(0, LineMasterMat);
+
+				FLinearColor teamColor;
+				if (IsLocallyControlled())
+				{
+					teamColor = FLinearColor::Green;
+				}
+				else
+				{
+					FLinearColor TeamColorA = FLinearColor::Red;
+					FLinearColor TeamColorB = FLinearColor::Blue;
+					FLinearColor TeamColorC = FLinearColor::Yellow;
+
+					AER_PlayerState* MyPS = Cast<AER_PlayerState>(GetPlayerState());
+					if (IsValid(MyPS))
+					{
+						switch (MyPS->TeamType)
+						{
+						case ETeamType::Team_A:
+							teamColor = TeamColorA;
+							break;
+						case ETeamType::Team_B:
+							teamColor = TeamColorB;
+							break;
+						case ETeamType::Team_C:
+							teamColor = TeamColorC;
+							break;
+						default:
+							teamColor = FLinearColor::Gray; // 예외 처리용
+							break;
+						}
+					}
+				}
+				UpdateMinimapVisuals(teamColor);
+			}
+		}
 	}
+	
 }
 
 void ABaseCharacter::UpdateOverheadUI()
@@ -1648,9 +1799,12 @@ void ABaseCharacter::UpdateOverheadUI()
 		float CurrentMP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetStaminaAttribute());
 		float MaxMP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetMaxStaminaAttribute());
 
-		HPBarWidgetInstance->Update_HP_bar(CurrentHP, MaxHP);
-		HPBarWidgetInstance->Update_MP_bar(CurrentMP, MaxMP);
-		HPBarWidgetInstance->Update_LV_bar(1);
+		// HPBarWidgetInstance->Update_HP_bar(CurrentHP, MaxHP, team);
+		// HPBarWidgetInstance->Update_MP_bar(CurrentMP, MaxMP);
+		// HPBarWidgetInstance->Update_LV_bar(1);
+		OnHealthChanged();
+		OnStaminaChanged();
+		OnLevelChanged();
 	}
 }
 
@@ -1668,7 +1822,36 @@ void ABaseCharacter::OnHealthChanged()
 		float CurrentHP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetHealthAttribute());
 		float MaxHP = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetMaxHealthAttribute());
 
-		HPBarWidgetInstance->Update_HP_bar(CurrentHP, MaxHP);
+		int32 team = 2; 
+
+		if (IsLocallyControlled())
+		{
+			team = 0; // 나 자신
+		}
+		else
+		{
+			APlayerController* LocalPC = GetWorld()->GetFirstPlayerController();
+			if (LocalPC)
+			{
+				AER_PlayerState* MyPS = LocalPC->GetPlayerState<AER_PlayerState>();
+				AER_PlayerState* TargetPS = GetPlayerState<AER_PlayerState>();
+
+				if (MyPS && TargetPS)
+				{
+					if (MyPS->TeamType == TargetPS->TeamType)
+					{
+						team = 1; // 아군
+					}
+					else
+					{
+						team = 2; // 적군
+					}
+				}
+			}
+		}
+
+
+		HPBarWidgetInstance->Update_HP_bar(CurrentHP, MaxHP, team);
 	}
 }
 
@@ -1704,6 +1887,14 @@ void ABaseCharacter::OnLevelChanged()
 		float CurrentLV = GetAbilitySystemComponent()->GetNumericAttribute(UBaseAttributeSet::GetLevelAttribute());
 
 		HPBarWidgetInstance->Update_LV_bar(CurrentLV);
+	}
+}
+
+void ABaseCharacter::UpdateMinimapVisuals(FLinearColor n_teamColor)
+{
+	if (MinimapLineMaterial)
+	{
+		MinimapLineMaterial->SetVectorParameterValue(FName("TeamColor"), n_teamColor);
 	}
 }
 

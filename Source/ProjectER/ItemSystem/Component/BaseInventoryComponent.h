@@ -1,4 +1,6 @@
-﻿#pragma once
+﻿// File: 5th_6th-Team6-CH6-Project/Source/ProjectER/ItemSystem/Component/BaseInventoryComponent.h
+
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -54,13 +56,35 @@ protected:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
+	struct FPendingFoodHealEffect
+	{
+		FString ItemName;
+		float TotalHealAmount = 0.0f;
+		float TotalDurationSeconds = 0.0f;
+		float RemainingHealAmount = 0.0f;
+		float HealPerTick = 0.0f;
+		int32 RemainingTicks = 0;
+		float TickInterval = 1.0f;
+	};
+
 	UAbilitySystemComponent* ResolveOwnerAbilitySystemComponent() const;
 	FGameplayTag GetSetByCallerTagFromStatType(EItemStatType StatType) const;
 
 	bool ApplyItemEffect(UUsableItemData* ItemData);
 	bool ApplyStatIncrease(UAbilitySystemComponent* ASC, UUsableItemData* ItemData);
+	bool EnqueueFoodHeal(UUsableItemData* ItemData);
+	bool ApplyHealAmount(float HealAmount);
+	void StartNextFoodHealEffect();
+	void StopFoodHealTimer();
+	void HandleFoodHealTick();
+
+	FTimerHandle FoodHealTickTimerHandle;
+	TArray<FPendingFoodHealEffect> PendingFoodHealQueue;
+	FPendingFoodHealEffect CurrentFoodHealEffect;
+	bool bIsFoodHealEffectActive = false;
 
 public:
 	UPROPERTY(BlueprintAssignable, Category = "Inventory")

@@ -224,7 +224,7 @@ void UMainVisionRTManager::DrawLOSStamp(UCanvas* Canvas,
 			PixelPos, TileSize))
 			continue;
 
-		const float Alpha = 1.f; //Provider->GetVisibilityAlpha(); //temp
+		const float Alpha = /*1.f; //*/ Provider->GetVisibilityAlpha(); //temp
 		if (Alpha <= KINDA_SMALL_NUMBER)
 			continue;
 
@@ -234,7 +234,7 @@ void UMainVisionRTManager::DrawLOSStamp(UCanvas* Canvas,
 			FVector2D(TileSize, TileSize)
 		);
 		Tile.BlendMode = SE_BLEND_AlphaBlend;
-		Tile.SetColor(FLinearColor(Color.R, Color.G, Color.B, Color.A * Alpha));
+		Tile.SetColor(FLinearColor(Color.R* Alpha, Color.G* Alpha, Color.B* Alpha, Color.A * Alpha));
 		Canvas->DrawItem(Tile);
 	}
 }
@@ -243,7 +243,7 @@ void UMainVisionRTManager::DrawLOSStamp(UCanvas* Canvas,
 
 void UMainVisionRTManager::RenderLOS_GPU(FRDGBuilder& GraphBuilder, FRDGTextureRef LOSTexture)
 {
-	TArray<UVision_VisualComp*> ActiveProviders;
+	/*TArray<UVision_VisualComp*> ActiveProviders;
 	if (!GetVisibleProviders(ActiveProviders))
 		return;
 
@@ -275,12 +275,12 @@ void UMainVisionRTManager::RenderLOS_GPU(FRDGBuilder& GraphBuilder, FRDGTextureR
 	}
 
 	AddLOSStampPass(GraphBuilder, LOSTexture, Stamps,
-		1u << static_cast<uint8>(VisionChannel), true);
+		1u << static_cast<uint8>(VisionChannel), true);*/
 }
 
 // -------------------------------------------------------------------------- //
 
-void UMainVisionRTManager::SetObservedActor(AActor* InActor)
+/*void UMainVisionRTManager::SetObservedActor(AActor* InActor)
 {
 	ObservedActor = InActor;
 	if (InActor)
@@ -293,7 +293,7 @@ void UMainVisionRTManager::SetObservedActor(AActor* InActor)
 				*InActor->GetName(), (int32)VisionChannel);
 		}
 	}
-}
+}*/
 
 void UMainVisionRTManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Height)
 {
@@ -318,7 +318,7 @@ void UMainVisionRTManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Heigh
 	{
 		if (!Provider || !Provider->IsUpdating() || !Provider->GetStampMID())
 		{
-			UE_LOG(LOSVision, Warning,
+			UE_LOG(LOSVision, Verbose,
 				TEXT("UMainVisionRTManager::DrawLOS_CPU >> Skipping %s | IsUpdating=%d | StampMID=%d"),
 				Provider ? *Provider->GetOwner()->GetName() : TEXT("NULL"),
 				Provider ? Provider->IsUpdating() : 0,
@@ -365,12 +365,12 @@ bool UMainVisionRTManager::ConvertWorldToRT(
 
 bool UMainVisionRTManager::GetVisibleProviders(TArray<UVision_VisualComp*>& OutProviders) const
 {
-	if (VisionChannel == EVisionChannel::None)
+	/*if (VisionChannel == EVisionChannel::None)
 	{
 		UE_LOG(LOSVision, Warning,
 			TEXT("UMainVisionRTManager::GetVisibleProviders >> VisionChannel is None"));
 		return false;
-	}
+	}*/
 
 	ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
 	if (!Subsystem)
@@ -379,12 +379,19 @@ bool UMainVisionRTManager::GetVisibleProviders(TArray<UVision_VisualComp*>& OutP
 			TEXT("UMainVisionRTManager::GetVisibleProviders >> Subsystem not found"));
 		return false;
 	}
-
+	
+	/*
 	OutProviders = Subsystem->GetProvidersForTeam(VisionChannel);
-
+	
 	UE_LOG(LOSVision, Verbose,
 		TEXT("UMainVisionRTManager::GetVisibleProviders >> Channel=%d | Found=%d providers"),
-		(int32)VisionChannel, OutProviders.Num());
+		(int32)VisionChannel, OutProviders.Num());*/
+	
+	//!!!!! Change !!!!
+	// now it is getting every visible providers, even when they are from different vision channel.
+	// cause different provider can be revealed and be hidden... fuck
+
+	OutProviders = Subsystem->GeAllProviders();
 
 	return true;
 }

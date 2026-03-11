@@ -58,7 +58,8 @@ protected:
 	
 	virtual void OnRep_Pawn() override;
 	
-	
+	// 매 프레임 마우스 호버 상태를 체크하는 함수
+	void CheckHoveredActor();
 	
 	// 우클릭 이동 / 공격
 	void OnMoveStarted();
@@ -109,6 +110,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	TObjectPtr<UNiagaraSystem> FXCursor;
 
+	// 현재 마우스가 올라가 있는 액터 캐싱 (최적화 및 이전 하이라이트 끄기 용도)
+	UPROPERTY()
+	TObjectPtr<AActor> CurrentHoveredActor;
+	
 	//Main Camera Added here
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<UTopDownCameraComp> TopDownCameraComp;

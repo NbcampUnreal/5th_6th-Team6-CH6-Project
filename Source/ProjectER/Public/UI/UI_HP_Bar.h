@@ -22,7 +22,7 @@ class PROJECTER_API UUI_HP_Bar : public UUserWidget
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
-	void Update_HP_bar(float CurrentHP, float MaxHP);
+	void Update_HP_bar(float CurrentHP, float MaxHP, int32 team);
 
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
 	void Update_MP_bar(float CurrentMP, float MaxMP);

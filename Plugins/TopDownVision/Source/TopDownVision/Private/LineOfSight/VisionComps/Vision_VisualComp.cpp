@@ -11,7 +11,12 @@
 
 //Debug
 #include "TopDownVisionDebug.h"
+#include "Components/BoxComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/SphereComponent.h"
+#include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerState.h"
+#include "LineOfSight/Management/VisionGameStateComp.h"
 #include "LineOfSight/Management/VisionPlayerStateComp.h"
 #include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
 #include "LineOfSight/VisionComps/Vision_EvaluatorComp.h"
@@ -83,32 +88,36 @@ void UVision_VisualComp::Initialize()
     
     AActor* DebugCheckingActor = GetOwner();
 
-    if (!ShouldRunClientLogic())//server gate
+    if (!ShouldRunClientLogic())
         return;
-    
-    // Pass MaxVisionRange into ObstacleDrawer so it can size its RT correctly
+
+    // Must happen before ObstacleDrawer and StampDrawer initialize
+    // so RT size and UV params are built at the correct range from the start
+    if (!IsSharedVisionChannel() && IndicatorRange > 0.f)
+    {
+        VisionRange    = IndicatorRange;
+        MaxVisionRange = IndicatorRange;
+
+        UE_LOG(LOSVision, Log,
+            TEXT("[%s] Initialize >> Not shared channel, overriding ranges to IndicatorRange: %.1f"),
+            *GetOwner()->GetName(), IndicatorRange);
+    }
+
+    // Now builds RT and UV at whatever range was set above
     if (ObstacleDrawer)
         ObstacleDrawer->Initialize(MaxVisionRange);
 
-    // Pass initial range into StampDrawer for material param
     if (StampDrawer)
     {
         StampDrawer->CreateResources();
         StampDrawer->OnVisionRangeChanged(VisionRange, MaxVisionRange);
     }
-    
-    // Create MIDs from whatever meshes were registered in editor or via AddMesh
+
     if (VisibilityMesh)
         VisibilityMesh->Initialize();
-    
-    // Pre-warm evaluator cache — null is valid for visual-only actors
+
     CachedEvaluatorComp = GetOwner()->FindComponentByClass<UVision_EvaluatorComp>();
 
-
-    //get and set the Vision channel from the player state
-    
-    
-    //==== Registration ====//
     if (ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>())
     {
         Subsystem->RegisterProvider(this, VisionChannel);
@@ -116,9 +125,16 @@ void UVision_VisualComp::Initialize()
     else
     {
         UE_LOG(LOSVision, Warning,
-            TEXT("[%s] UVision_VisualComp::Initialize >> LOSVisionSubsystem not found"),
+            TEXT("[%s] Initialize >> LOSVisionSubsystem not found"),
             *GetOwner()->GetName());
     }
+}
+
+void UVision_VisualComp::SetIndicatorRange(float NewIndicatorRange)
+{
+
+    IndicatorRange =  NewIndicatorRange;
+
 }
 
 // -------------------------------------------------------------------------- //
@@ -134,8 +150,11 @@ void UVision_VisualComp::UpdateVision()
         ObstacleDrawer->UpdateObstacleTexture();
 
     if (StampDrawer)
-        StampDrawer->UpdateLOSStamp(
-            ObstacleDrawer ? ObstacleDrawer->GetObstacleRenderTarget() : nullptr);
+    {
+        StampDrawer->SetVisionAlpha(VisibilityAlpha);
+        StampDrawer->UpdateLOSStamp( ObstacleDrawer ? ObstacleDrawer->GetObstacleRenderTarget() : nullptr);
+    }
+       
 }
 
 void UVision_VisualComp::ToggleLOSStampUpdate(bool bIsOn)
@@ -157,13 +176,20 @@ void UVision_VisualComp::SetVisible(bool bVisible, bool bInstant)
 {
     TargetVisibilityAlpha = bVisible ? 1.0f : 0.0f;
 
-    if (bInstant)//update instantly
+    // ── Broadcast occlusion tracer events ────────────────────────────────
+    if (bVisible)
+        OnTargetRevealed.Broadcast();
+    else
+        OnTargetHidden.Broadcast();
+    
+    //immediate update
+    if (bInstant)
     {
         if (VisibilityMesh)
             VisibilityMesh->UpdateVisibility(bVisible);
         return;
     }
-    
+
     if (!GetWorld()->GetTimerManager().IsTimerActive(FadeTimerHandle))
     {
         GetWorld()->GetTimerManager().SetTimer(
@@ -226,6 +252,22 @@ void UVision_VisualComp::SetVisionChannel(EVisionChannel InVC)
 void UVision_VisualComp::UpdateVisionRange(float NewRange)
 {
     VisionRange= FMath::Clamp(NewRange, 0.f, MaxVisionRange);
+}
+
+bool UVision_VisualComp::IsSharedVisionChannel() const
+{
+    return VisionChannel == GetLocalPlayerVisionChannel();
+}
+
+EVisionChannel UVision_VisualComp::GetLocalPlayerVisionChannel() const
+{
+    AGameStateBase* GS = GetWorld()->GetGameState();
+    if (!GS) return EVisionChannel::None;
+
+    UVisionGameStateComp* GSComp = GS->FindComponentByClass<UVisionGameStateComp>();
+    if (!GSComp) return  EVisionChannel::None;
+
+    return GSComp->GetLocalPlayerTeamChannel();
 }
 
 bool UVision_VisualComp::ShouldRunClientLogic() const

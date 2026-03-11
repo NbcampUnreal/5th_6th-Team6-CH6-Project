@@ -162,7 +162,6 @@ void UMonsterRangeComponent::OnPlayerCountingEndOverlap(UPrimitiveComponent* Ove
 void UMonsterRangeComponent::OnPlayerOutEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	UE_LOG(LogTemp, Error, TEXT("OnPlayerOutEndOverlap"));
 	if (OtherActor && OtherActor->IsA<ABaseCharacter>())
 	{
 		AActor* Target = Cast<ABaseMonster>(GetOwner())->GetTargetPlayer();
@@ -170,30 +169,26 @@ void UMonsterRangeComponent::OnPlayerOutEndOverlap(UPrimitiveComponent* Overlapp
 		{
 			OnPlayerOut.Broadcast();
 		}
-
-		//if (Debug)
-		//{
-		//	DrawDebugSphere(
-		//		GetWorld(),
-		//		OutSphere->GetComponentLocation(),
-		//		OutSphere->GetScaledSphereRadius(),
-		//		8,
-		//		FColor::Green,
-		//		false,
-		//		1.f,
-		//		0,
-		//		1.f
-		//	);
-		//}
 	}
 	if (OtherActor && OtherActor->IsA<ABaseMonster>())
 	{
-		//UE_LOG(LogTemp, Error, TEXT("OtherActor :: %s"), *OtherActor->GetName());
-		//UE_LOG(LogTemp, Error, TEXT("GetOwner :: %s"), *GetOwner()->GetName());
 		if (OtherActor == GetOwner())
 		{
-			//UE_LOG(LogTemp, Error, TEXT("OnPlayerOutEndOverlap :: Mine"));
 			OnPlayerOut.Broadcast();
 		}
 	}
+	//if (Debug)
+	//{
+	//	DrawDebugSphere(
+	//		GetWorld(),
+	//		OutSphere->GetComponentLocation(),
+	//		OutSphere->GetScaledSphereRadius(),
+	//		8,
+	//		FColor::Green,
+	//		false,
+	//		100,
+	//		0,
+	//		1.f
+	//	);
+	//}
 }
