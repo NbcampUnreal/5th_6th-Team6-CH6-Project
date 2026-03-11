@@ -44,10 +44,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="OcclusionPainter")
     TObjectPtr<UMaterialInterface> DefaultBrushMaterial;
 
-    // Brush texture parameter name in material
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="OcclusionPainter")
-    FName BrushTextureParam = TEXT("BrushTexture");
-
     // Scalar — scales brush intensity per target (0-1)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="OcclusionPainter")
     FName RevealAlphaParam = TEXT("RevealAlpha");
@@ -56,6 +52,8 @@ private:
 
     void DrawProviderArea();
     bool RefreshFrustumParams();
+
+    bool ShouldRunClientLogic();
 
     UPROPERTY(Transient)
     TObjectPtr<APlayerController> PlayerController;

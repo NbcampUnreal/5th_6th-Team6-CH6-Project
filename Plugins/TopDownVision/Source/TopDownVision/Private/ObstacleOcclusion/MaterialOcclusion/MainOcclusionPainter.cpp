@@ -77,7 +77,11 @@ void UMainOcclusionPainter::SetPlayerController(APlayerController* InPC)
 
 void UMainOcclusionPainter::UpdateOcclusionRT()
 {
+    if (!ShouldRunClientLogic()) return;
+    
     if (!bReady) return;
+
+    
     if (!IsActive()) return;
     if (!IsValid(OcclusionRT)) return;
     if (!RefreshFrustumParams()) return;
@@ -178,6 +182,9 @@ void UMainOcclusionPainter::DrawProviderArea()
         // Only param needed — shape driven by texture, coord/size handled by tile item
         Target.BrushMID->SetScalarParameterValue(RevealAlphaParam, Target.RevealAlpha);
 
+        const FMaterialRenderProxy* RenderProxy = Target.BrushMID->GetRenderProxy();
+        if (!RenderProxy) continue;
+        
         FCanvasTileItem TileItem(
             BrushPos,
             GWhiteTexture,
@@ -203,4 +210,12 @@ bool UMainOcclusionPainter::RefreshFrustumParams()
     return FFrustumProjectionMatcherHelper::ExtractFromCameraManager(
         PlayerController->PlayerCameraManager,
         FrustumParams);
+}
+
+bool UMainOcclusionPainter::ShouldRunClientLogic()
+{
+    if (GetNetMode() == NM_DedicatedServer)
+        return false;
+
+    return true;
 }

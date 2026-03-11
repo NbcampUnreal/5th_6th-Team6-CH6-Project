@@ -34,6 +34,6 @@ public:
 	TArray<FOcclusionBrushTarget>& GetTargetsMutable() { return Targets; }
 
 private:
-
+	UPROPERTY(Transient)
 	TArray<FOcclusionBrushTarget> Targets;
 };

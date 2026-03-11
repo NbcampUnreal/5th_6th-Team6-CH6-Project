@@ -280,8 +280,15 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 
 ETeamType ABaseCharacter::GetTeamType() const
 {
-	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
-	return PS->TeamType;
+	/*AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
+	return PS->TeamType;*/
+
+	if (const AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
+	{
+		return ERPS->GetTeamType();
+	}
+
+	else return TeamID;
 }
 
 bool ABaseCharacter::IsTargetable() const
