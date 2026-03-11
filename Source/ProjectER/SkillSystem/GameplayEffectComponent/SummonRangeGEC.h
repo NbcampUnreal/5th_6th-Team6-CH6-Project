@@ -15,6 +15,7 @@
 class ABaseRangeOverlapEffectActor;
 class USkillEffectDataAsset;
 struct FGameplayEffectContextHandle;
+struct FGameplayCueParameters;
 
 UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced)
 class PROJECTER_API USummonRangeByWorldOriginGECConfig : public UBaseGECConfig
@@ -90,5 +91,6 @@ protected:
 	virtual void OnGameplayEffectApplied(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const override;
 	const USummonRangeByWorldOriginGECConfig* GetSpawnConfig(const FGameplayEffectSpec& GESpec) const;
 	FTransform CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const USummonRangeByWorldOriginGECConfig* Config) const;
+	FGameplayCueParameters BuildNiagaraCueParameters(const FGameplayEffectSpec& GESpec, const FGameplayEffectContextHandle& EffectContext, AActor* EffectCauser, const FVector& CueLocation, const UObject* SourceObject) const;
 	void InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeByWorldOriginGECConfig* Config, AActor* Causer, const FGameplayEffectContextHandle& Context) const;
 };
