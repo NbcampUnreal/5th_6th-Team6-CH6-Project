@@ -1,4 +1,4 @@
-#include "CharacterSystem/Character/BaseCharacter.h"
+﻿#include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Player/BasePlayerState.h"
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -275,8 +275,12 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 
 ETeamType ABaseCharacter::GetTeamType() const
 {
-	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
-	return PS->TeamType;
+	if (AER_PlayerState* PS = GetPlayerState<AER_PlayerState>())
+	{
+		return PS->TeamType;
+	}
+	
+	return TeamID;
 }
 
 
@@ -1637,6 +1641,9 @@ void ABaseCharacter::InitUI()
 			HUD->InitHeroDataFactory(HeroData);
 			HUD->InitASCFactory(GetAbilitySystemComponent());
 			PC->setMainHud(HUD->getMainHUD());
+			
+			// 얼굴 아이콘 설정
+			HUD->getMainHUD()->SetMyFaceIcon(HeroData->CharacterIcon);
 		
 			// 팀원 UI 오픈
 			ETeamType MyTeam = GetTeamType();
@@ -1668,13 +1675,19 @@ void ABaseCharacter::InitUI()
 
 						if (ERPS && ERPS != this->GetPlayerState() && ERPS->TeamType == MyTeam)
 						{
-							// 팀원의 ASC 가져오기
-							if (UAbilitySystemComponent* TargetASC = ERPS->GetAbilitySystemComponent())
+							if (APawn* TeamPawn = ERPS->GetPawn())
 							{
-								HUD->getMainHUD()->SetTeamMemberData(WidgetIndex, TargetASC);
-								HUD->getMainHUD()->SetTeamWidgetVisible(WidgetIndex, true);
+								ABaseCharacter* TeamChar = Cast<ABaseCharacter>(TeamPawn);
+								if (TeamChar)
+								{
+									if (UAbilitySystemComponent* TargetASC = ERPS->GetAbilitySystemComponent())
+									{
+										HUD->getMainHUD()->SetTeamMemberData(WidgetIndex, TargetASC, TeamChar->HeroData->CharacterIcon);
+										HUD->getMainHUD()->SetTeamWidgetVisible(WidgetIndex, true);
 
-								WidgetIndex++;
+										WidgetIndex++;
+									}
+								}
 							}
 						}
 					}
@@ -1784,6 +1797,14 @@ void ABaseCharacter::UpdateOverheadUI()
 		OnHealthChanged();
 		OnStaminaChanged();
 		OnLevelChanged();
+
+		UE_LOG(LogTemp, Error, TEXT("1"));
+		if (HeroData)
+		{
+			UE_LOG(LogTemp, Error, TEXT("2"));
+			HPBarWidgetInstance->Update_HeadIcon(HeroData->CharacterIcon);
+		}
+		
 	}
 }
 

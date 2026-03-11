@@ -51,13 +51,16 @@ void USummonRangeAtBone::OnGameplayEffectApplied(FActiveGameplayEffectsContainer
 		SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(World, SpawnConfig->RangeSpawnVfx, FinalTransform, nullptr, nullptr);
 	}
 
+	const FGameplayCueParameters HitTargetCueParameters = FGameplayCueParameters(GESpec);
+
 	// [5] 액터 지연 스폰 및 초기화
 	UWorld* World = EffectCauser->GetWorld();
 	ABaseRangeOverlapEffectActor* RangeActor = World->SpawnActorDeferred<ABaseRangeOverlapEffectActor>(SpawnConfig->RangeActorClass, FinalTransform, EffectCauser, SpawnInstigator, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 
 	if (IsValid(RangeActor))
 	{
-		InitializeRangeActor(RangeActor, SpawnConfig, EffectCauser, ContextHandle);
+		//InitializeRangeActor(RangeActor, SpawnConfig, EffectCauser, ContextHandle);
+		InitializeRangeActor(RangeActor, SpawnConfig, EffectCauser, ContextHandle, HitTargetCueParameters);
 		RangeActor->FinishSpawning(FinalTransform);
 	}
 }
@@ -90,9 +93,16 @@ FTransform USummonRangeAtBone::CalculateSpawnLocation(const AActor* Instigator, 
 	{
 		if (Mesh->DoesSocketExist(Config->BoneName))
 		{
-			// 실시간 애니메이션 포즈 반영
-			//Mesh->TickAnimation(0.f, false);
-			Mesh->RefreshBoneTransforms();
+			//1. 지금 애니메이션 루프 중인지 확인 (재귀 크래시 방지)
+			if (!Mesh->IsRunningParallelEvaluation())
+			{
+				// 2. 현재 몽타주의 본 업데이트가 되지 않고 있다면
+				if (Mesh->ShouldOnlyTickMontages(0.0f))
+				{
+					Mesh->RefreshBoneTransforms();
+				}
+			}
+
 			BaseLocation = Mesh->GetSocketLocation(Config->BoneName);
 			BaseRotation = Mesh->GetSocketRotation(Config->BoneName);
 		}
@@ -116,7 +126,6 @@ FTransform USummonRangeAtBone::CalculateSpawnLocation(const AActor* Instigator, 
 		// [순위 3] 본의 현재 회전 + 에디터에서 설정한 오프셋
 		CombinedRotation = BaseRotation + Config->RotationOffset;
 	}
-
 	// 4. 결정된 회전 방향을 기반으로 위치 오프셋 계산
 	FVector TargetLocation = BaseLocation + CombinedRotation.RotateVector(Config->LocationOffset);
 
@@ -156,7 +165,7 @@ FTransform USummonRangeAtBone::CalculateSpawnLocation(const AActor* Instigator, 
 	return FTransform(CombinedRotation, TargetLocation);
 }
 
-void USummonRangeAtBone::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeByBoneGECConfig* Config, AActor* Causer, const FGameplayEffectContextHandle& Context) const
+void USummonRangeAtBone::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeByBoneGECConfig* Config, AActor* Causer, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetCueParameters) const
 {
 	UAbilitySystemComponent* CauserASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Causer);
 	USkillBase* NonConstSkill = const_cast<USkillBase*>(Cast<USkillBase>(Context.GetAbility()));
@@ -171,7 +180,7 @@ void USummonRangeAtBone::InitializeRangeActor(ABaseRangeOverlapEffectActor* Rang
 				InitGEHandles.Append(SkillEffectDataAsset->MakeSpecs(CauserASC, NonConstSkill, Causer, Context));
 			}
 		}
-		RangeActor->InitializeEffectData(InitGEHandles, Causer, Config->CollisionRadius, Config->bHitOncePerTarget, Config);
+		RangeActor->InitializeEffectData(InitGEHandles, Causer, Config->CollisionRadius, Config->bHitOncePerTarget, Config, HitTargetCueParameters);
 		RangeActor->SetLifeSpan(Config->LifeSpan);
 	}
 }
