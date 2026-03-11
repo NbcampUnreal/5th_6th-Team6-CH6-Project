@@ -347,6 +347,10 @@ void ABasePlayerController::CheckHoveredActor()
 						else 
 							StencilValue = 250; // 적군: 빨간색
 					}
+					else // 타겟이 팀 정보가 없는 경우 (몬스터 등)
+					{
+						StencilValue = 250; // 적군: 빨간색
+					}
 				}
 			
 				// [디버그] 계산된 스텐실 값(색상 암호) 출력
