@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -145,6 +145,7 @@ protected:
 	void InitAbilitySystem(); // ASC 초기화
 	void InitAttributes(); // AttributeSet 초기화
 	void InitVisuals(); // 메시, 애니메이션 로드
+	void InitPlayer(); // 플레이어(카메라 등) 로컬 초기화 통합 함수
 	
 public:
 	UPROPERTY(ReplicatedUsing=OnRep_HeroData, EditAnywhere, BlueprintReadWrite, Category = "Data", meta = (ExposeOnSpawn = true))

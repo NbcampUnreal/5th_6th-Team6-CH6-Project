@@ -1,4 +1,4 @@
-﻿#include "CharacterSystem/Character/BaseCharacter.h"
+#include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Player/BasePlayerState.h"
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -260,13 +260,8 @@ void ABaseCharacter::PossessedBy(AController* NewController)
 
 	bool bIsServer=HasAuthority();
 	
-	if (TopDownCameraComp)//disable the tick for the server
-	{
-		TopDownCameraComp->SetComponentTickEnabled(false);
-	}
-
-	// UI 초기화
-	InitUI();
+	// 서버 (리슨 서버 호스트 포함)에서 빙의된 직후 바로 초기화 진행
+	InitPlayer();
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -283,6 +278,7 @@ ETeamType ABaseCharacter::GetTeamType() const
 	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
 	return PS->TeamType;
 }
+
 
 bool ABaseCharacter::IsTargetable() const
 {
@@ -378,35 +374,14 @@ void ABaseCharacter::OnRep_PlayerState()
 
 	// ASC 초기화 (클라이언트)
 	InitAbilitySystem();
-	// UI 초기화
-	InitUI();
 
-	//Camera Setting for local player pawn
-	if (TopDownCameraComp)
-	{
-		if (IsLocallyControlled())
-		{
-			//initialize the comp first
-			TopDownCameraComp->InitializeComponent();
-			
-			TopDownCameraComp->Activate();
-			TopDownCameraComp->SetComponentTickEnabled(true);
-			TopDownCameraComp->InitializeCompRequirements();
-			
-		}
-		else
-		{
-			TopDownCameraComp->Deactivate();
-			TopDownCameraComp->SetComponentTickEnabled(false);
-		}
-	}
+	// [길 2] 클라이언트는 서버가 PlayerState를 복제해준 순간 초기화
+	InitPlayer();
 
 	
 	EVisionChannel CurrentVisionChannel=GetVisionChannelFromPlayerStateComp();
 	//remade it to get the team id directly from player state
 	TeamID;//test-> did the team id been settled?
-	
-	OnPlayerStateChosen();
 }
 
 bool ABaseCharacter::IsLocalPlayerPawn()
@@ -1648,7 +1623,6 @@ void ABaseCharacter::InitUI()
 			return;
 		}
 
-		// [전민성] - MVP 병합 시 else문 삭제 필요
 		if (AUI_HUDFactory* HUD = Cast<AUI_HUDFactory>(GenericHUD))
 		{
 			if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
@@ -1713,8 +1687,12 @@ void ABaseCharacter::InitUI()
 			UE_LOG(LogTemp, Error, TEXT("!!! HUD Casting Fail! address : %s !!!"), *GenericHUD->GetName());
 		}
 
-		if (HP_MP_BarWidget && !HasAuthority())
+		if (HP_MP_BarWidget)
 		{
+			if (!HP_MP_BarWidget->GetUserWidgetObject())
+			{
+				HP_MP_BarWidget->InitWidget();
+			}
 			HPBarWidgetInstance = Cast<UUI_HP_Bar>(HP_MP_BarWidget->GetUserWidgetObject());
 		}
 
@@ -1727,59 +1705,56 @@ void ABaseCharacter::InitUI()
 		MinimapCaptureComponent->Deactivate();
 	}
 
-	// 서버가 아니면 HP Bar 초기화
-	if (!HasAuthority())
+	// 방장(Listen Server)과 클라이언트 모두 HP Bar 및 미니맵 아이콘 초기화 필요
+	UpdateOverheadUI();
+
+	// mpyi _ 미니맵용 얼굴 아이콘 마테리얼 인스턴스 초기화
+
+	if (MinimapIconMesh && HeroData && HeroData->CharacterIcon)
 	{
-		UpdateOverheadUI();
-
-		// mpyi _ 미니맵용 얼굴 아이콘 마테리얼 인스턴스 초기화
-
-		if (MinimapIconMesh && HeroData && HeroData->CharacterIcon)
+		UMaterialInterface* IconMasterMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/MPYI/Material/M_MinimapIcon.M_MinimapIcon"));
+		UMaterialInterface* LineMasterMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/MPYI/Material/M_MinimapLine.M_MinimapLine"));
+		if (IconMasterMat)
 		{
-			UMaterialInterface* IconMasterMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/MPYI/Material/M_MinimapIcon.M_MinimapIcon"));
-			UMaterialInterface* LineMasterMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/MPYI/Material/M_MinimapLine.M_MinimapLine"));
-			if (IconMasterMat)
+			MinimapIconMaterial = MinimapIconMesh->CreateDynamicMaterialInstance(0, IconMasterMat);
+			MinimapIconMaterial->SetTextureParameterValue(FName("CharacterTexture"), HeroData->CharacterIcon);
+		}
+		if (LineMasterMat)
+		{
+			MinimapLineMaterial = MinimapLineMesh->CreateDynamicMaterialInstance(0, LineMasterMat);
+
+			FLinearColor teamColor;
+			if (IsLocallyControlled())
 			{
-				MinimapIconMaterial = MinimapIconMesh->CreateDynamicMaterialInstance(0, IconMasterMat);
-				MinimapIconMaterial->SetTextureParameterValue(FName("CharacterTexture"), HeroData->CharacterIcon);
+				teamColor = FLinearColor::Green;
 			}
-			if (LineMasterMat)
+			else
 			{
-				MinimapLineMaterial = MinimapLineMesh->CreateDynamicMaterialInstance(0, LineMasterMat);
+				FLinearColor TeamColorA = FLinearColor::Red;
+				FLinearColor TeamColorB = FLinearColor::Blue;
+				FLinearColor TeamColorC = FLinearColor::Yellow;
 
-				FLinearColor teamColor;
-				if (IsLocallyControlled())
+				AER_PlayerState* MyPS = Cast<AER_PlayerState>(GetPlayerState());
+				if (IsValid(MyPS))
 				{
-					teamColor = FLinearColor::Green;
-				}
-				else
-				{
-					FLinearColor TeamColorA = FLinearColor::Red;
-					FLinearColor TeamColorB = FLinearColor::Blue;
-					FLinearColor TeamColorC = FLinearColor::Yellow;
-
-					AER_PlayerState* MyPS = Cast<AER_PlayerState>(GetPlayerState());
-					if (IsValid(MyPS))
+					switch (MyPS->TeamType)
 					{
-						switch (MyPS->TeamType)
-						{
-						case ETeamType::Team_A:
-							teamColor = TeamColorA;
-							break;
-						case ETeamType::Team_B:
-							teamColor = TeamColorB;
-							break;
-						case ETeamType::Team_C:
-							teamColor = TeamColorC;
-							break;
-						default:
-							teamColor = FLinearColor::Gray; // 예외 처리용
-							break;
-						}
+					case ETeamType::Team_A:
+						teamColor = TeamColorA;
+						break;
+					case ETeamType::Team_B:
+						teamColor = TeamColorB;
+						break;
+					case ETeamType::Team_C:
+						teamColor = TeamColorC;
+						break;
+					default:
+						teamColor = FLinearColor::Gray; // 예외 처리용
+						break;
 					}
 				}
-				UpdateMinimapVisuals(teamColor);
 			}
+			UpdateMinimapVisuals(teamColor);
 		}
 	}
 	
@@ -1787,8 +1762,12 @@ void ABaseCharacter::InitUI()
 
 void ABaseCharacter::UpdateOverheadUI()
 {
-	if (!HPBarWidgetInstance)
+	if (!HPBarWidgetInstance && HP_MP_BarWidget)
 	{
+		if (!HP_MP_BarWidget->GetUserWidgetObject())
+		{
+			HP_MP_BarWidget->InitWidget();
+		}
 		HPBarWidgetInstance = Cast<UUI_HP_Bar>(HP_MP_BarWidget->GetUserWidgetObject());
 	}
 
@@ -1810,10 +1789,12 @@ void ABaseCharacter::UpdateOverheadUI()
 
 void ABaseCharacter::OnHealthChanged()
 {
-	if (HasAuthority()) return;
-
-	if (!HPBarWidgetInstance)
+	if (!HPBarWidgetInstance && HP_MP_BarWidget)
 	{
+		if (!HP_MP_BarWidget->GetUserWidgetObject())
+		{
+			HP_MP_BarWidget->InitWidget();
+		}
 		HPBarWidgetInstance = Cast<UUI_HP_Bar>(HP_MP_BarWidget->GetUserWidgetObject());
 	}
 
@@ -1857,10 +1838,12 @@ void ABaseCharacter::OnHealthChanged()
 
 void ABaseCharacter::OnStaminaChanged()
 {
-	if (HasAuthority()) return;
-
-	if (!HPBarWidgetInstance)
+	if (!HPBarWidgetInstance && HP_MP_BarWidget)
 	{
+		if (!HP_MP_BarWidget->GetUserWidgetObject())
+		{
+			HP_MP_BarWidget->InitWidget();
+		}
 		HPBarWidgetInstance = Cast<UUI_HP_Bar>(HP_MP_BarWidget->GetUserWidgetObject());
 	}
 
@@ -1875,10 +1858,12 @@ void ABaseCharacter::OnStaminaChanged()
 
 void ABaseCharacter::OnLevelChanged()
 {
-	if (HasAuthority()) return;
-
-	if (!HPBarWidgetInstance)
+	if (!HPBarWidgetInstance && HP_MP_BarWidget)
 	{
+		if (!HP_MP_BarWidget->GetUserWidgetObject())
+		{
+			HP_MP_BarWidget->InitWidget();
+		}
 		HPBarWidgetInstance = Cast<UUI_HP_Bar>(HP_MP_BarWidget->GetUserWidgetObject());
 	}
 
@@ -1910,4 +1895,46 @@ EVisionChannel ABaseCharacter::GetVisionChannelFromVisionPlayerStateComp()
 
 	//failed to get the vision channel
 	return EVisionChannel::None;
+}
+
+void ABaseCharacter::InitPlayer()
+{
+	// UI 초기화 (로컬 플레이어 전용 로직이 내부에 있음)
+	InitUI();
+
+	// Camera Setting for local player pawn
+	if (TopDownCameraComp)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[BaseChar] InitPlayer: Setting up TopDownCameraComp"));
+		
+		// IsLocallyControlled() 대신 컨트롤러를 직접 가져와서 로컬 플레이어인지 체크합니다.
+		if (APlayerController* PC = Cast<APlayerController>(GetController()))
+		{
+			if (PC->IsLocalController())
+			{
+				// [이 코드는 리슨 서버의 방장(Host)과 게임에 접속한 클라이언트(Client) 모두, 자신의 화면에 보이는 자기 캐릭터에서만 실행됩니다]
+				UE_LOG(LogTemp, Log, TEXT("[BaseChar] InitPlayer: PC->IsLocalController() == TRUE. Activating Camera."));
+				TopDownCameraComp->InitializeComponent();
+				TopDownCameraComp->Activate();
+				TopDownCameraComp->SetComponentTickEnabled(true);
+				TopDownCameraComp->InitializeCompRequirements();
+			}
+			else
+			{
+				// [이 코드는 남의 캐릭터 즉, 내 화면에 보이는 다른 유저의 캐릭터일 때 실행됩니다]
+				UE_LOG(LogTemp, Log, TEXT("[BaseChar] InitPlayer: PC->IsLocalController() == FALSE. Deactivating Camera."));
+				TopDownCameraComp->Deactivate();
+				TopDownCameraComp->SetComponentTickEnabled(false);
+			}
+		}
+		else
+		{
+			// 이 캐릭터에 컨트롤러가 아직 안 붙었다면 (AI거나 스폰 직후인 경우)
+			UE_LOG(LogTemp, Log, TEXT("[BaseChar] InitPlayer: No PlayerController Attached Yet. Deactivating Camera."));
+			TopDownCameraComp->Deactivate();
+			TopDownCameraComp->SetComponentTickEnabled(false);
+		}
+	}
+	
+	OnPlayerStateChosen();
 }
