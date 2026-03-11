@@ -22,7 +22,7 @@ public:
 	// Sets default values for this actor's properties
 	ABaseRangeOverlapEffectActor();
 
-	void InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget, const UObject* InHitTargetCueSourceObject);
+	void InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget, const UObject* InHitTargetCueSourceObject, const FGameplayCueParameters& InHitTargetCueParameters);
 protected:
 	virtual void BeginPlay() override;
 	virtual void ApplyCollisionSize(const FVector& InCollisionSize);
@@ -56,4 +56,7 @@ protected:
 
 	UPROPERTY()
 	TObjectPtr<const UObject> HitTargetCueSourceObject;
+
+	UPROPERTY()
+	FGameplayCueParameters HitTargetCueParameters;
 };
