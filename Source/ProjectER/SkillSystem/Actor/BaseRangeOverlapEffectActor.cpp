@@ -14,19 +14,6 @@ ABaseRangeOverlapEffectActor::ABaseRangeOverlapEffectActor()
 	bReplicates = true;
 }
 
-//void ABaseRangeOverlapEffectActor::InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget, const UObject* InHitTargetCueSourceObject)
-//{
-//	EffectSpecHandles = InEffectSpecHandles;
-//	InstigatorActor = InInstigatorActor;
-//	SetInstigator(Cast<APawn>(InInstigatorActor));
-//	bHitOncePerTarget = bInHitOncePerTarget;
-//	HitTargetCueSourceObject = InHitTargetCueSourceObject;
-//
-//	PendingCollisionSize = InCollisionSize;
-//	bHasPendingCollisionSize = true;
-//	ApplyCollisionSize(PendingCollisionSize);
-//}
-
 void ABaseRangeOverlapEffectActor::InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget, const UObject* InHitTargetCueSourceObject, const FGameplayCueParameters& InHitTargetCueParameters)
 {
 	EffectSpecHandles = InEffectSpecHandles;
