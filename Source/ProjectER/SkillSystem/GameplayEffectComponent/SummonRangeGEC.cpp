@@ -30,72 +30,48 @@ void USummonRangeGEC::OnGameplayEffectApplied(FActiveGameplayEffectsContainer& A
 {
 	Super::OnGameplayEffectApplied(ActiveGEContainer, GESpec, PredictionKey);
 
-	const FGameplayEffectContextHandle& EffectContext = GESpec.GetEffectContext();
-	const FGameplayEffectContext* EffectContextData = EffectContext.Get();
-	if (EffectContextData == nullptr || !EffectContextData->HasOrigin())
-	{
-		return;
-	}
+	const FGameplayEffectContextHandle& EffectContextHandle = GESpec.GetEffectContext();
+	const FGameplayEffectContext* EffectContext = EffectContextHandle.Get();
+	if (EffectContext == nullptr) return;
+	if (!EffectContext->HasOrigin()) return;
 
-	AActor* EffectCauser = EffectContext.GetEffectCauser();
-	if (!IsValid(EffectCauser))
-	{
-		return;
-	}
+	AActor* EffectInstigator = IsValid(EffectContextHandle.GetInstigator())
+		? EffectContextHandle.GetInstigator()
+		: EffectContextHandle.GetEffectCauser();
+	if (!IsValid(EffectInstigator)) return;
 
-	UWorld* World = EffectCauser->GetWorld();
-	if (!IsValid(World))
-	{
-		return;
-	}
+	UWorld* World = EffectInstigator->GetWorld();
+	if (!IsValid(World)) return;
 
 	const USummonRangeByWorldOriginGECConfig* SpawnConfig = GetSpawnConfig(GESpec);
-	if (!IsValid(SpawnConfig))
-	{
-		return;
-	}
-
-	UAbilitySystemComponent* const CauserASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(EffectCauser);
-	if (!IsValid(CauserASC))
-	{
-		return;
-	}
+	if (!IsValid(SpawnConfig)) return;
 
 	const FTransform SpawnTransform = CalculateSpawnTransform(GESpec, SpawnConfig);
-	const FTransform SummonerTransform = EffectCauser->GetActorTransform();
+	const FTransform SummonerTransform = EffectInstigator->GetActorTransform();
 	const FVector RangeSpawnLocation = SpawnTransform.GetLocation();
 
-	const FGameplayCueParameters SummonerCueParams = BuildNiagaraCueParameters(GESpec, EffectContext, EffectCauser, SummonerTransform.GetLocation(), SpawnConfig);
-	const FGameplayCueParameters RangeCueParams = BuildNiagaraCueParameters(GESpec, EffectContext, EffectCauser, RangeSpawnLocation, SpawnConfig);
-	
+	APawn* SpawnInstigator = Cast<APawn>(EffectContextHandle.GetInstigator());
+	ABaseRangeOverlapEffectActor* DeferredSpawnedActor = World->SpawnActorDeferred<ABaseRangeOverlapEffectActor>(SpawnConfig->RangeActorClass, SpawnTransform, EffectInstigator, SpawnInstigator, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (!IsValid(DeferredSpawnedActor)) return;
+	InitializeRangeActor(DeferredSpawnedActor, SpawnConfig, EffectInstigator, EffectContextHandle);
+	DeferredSpawnedActor->FinishSpawning(SpawnTransform);
+
+	const FGameplayCueParameters SummonerCueParams = BuildNiagaraCueParameters(GESpec, EffectContextHandle, DeferredSpawnedActor, SummonerTransform.GetLocation(), SpawnConfig);
+	const FGameplayCueParameters RangeCueParams = BuildNiagaraCueParameters(GESpec, EffectContextHandle, DeferredSpawnedActor, RangeSpawnLocation, SpawnConfig);
+
+	UAbilitySystemComponent* const InstigatorASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(EffectInstigator);
+	if (!IsValid(InstigatorASC)) return;
 	{
-		FScopedPredictionWindow ForcedWindow(CauserASC, FPredictionKey(), false);
+		FScopedPredictionWindow ForcedWindow(InstigatorASC, FPredictionKey(), false);
 		if (SpawnConfig->SummonerSpawnVfx.CueTag.IsValid())
 		{
-			CauserASC->ExecuteGameplayCue(SpawnConfig->SummonerSpawnVfx.CueTag, SummonerCueParams);
+			InstigatorASC->ExecuteGameplayCue(SpawnConfig->SummonerSpawnVfx.CueTag, SummonerCueParams);
 		}
 		if (SpawnConfig->RangeSpawnVfx.CueTag.IsValid())
 		{
-			CauserASC->ExecuteGameplayCue(SpawnConfig->RangeSpawnVfx.CueTag, RangeCueParams);
+			InstigatorASC->ExecuteGameplayCue(SpawnConfig->RangeSpawnVfx.CueTag, RangeCueParams);
 		}
 	}
-
-	APawn* SpawnInstigator = Cast<APawn>(EffectContext.GetInstigator());
-	AActor* DeferredSpawnedActor = World->SpawnActorDeferred<AActor>(SpawnConfig->RangeActorClass, SpawnTransform, EffectCauser, SpawnInstigator, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
-	if (!IsValid(DeferredSpawnedActor))
-	{
-		return;
-	}
-
-	ABaseRangeOverlapEffectActor* RangeActor = Cast<ABaseRangeOverlapEffectActor>(DeferredSpawnedActor);
-	if (!IsValid(RangeActor))
-	{
-		return;
-	}
-
-	InitializeRangeActor(RangeActor, SpawnConfig, EffectCauser, EffectContext);
-
-	DeferredSpawnedActor->FinishSpawning(SpawnTransform);
 }
 
 const USummonRangeByWorldOriginGECConfig* USummonRangeGEC::GetSpawnConfig(const FGameplayEffectSpec& GESpec) const
@@ -195,9 +171,9 @@ FGameplayCueParameters USummonRangeGEC::BuildNiagaraCueParameters(const FGamepla
 	return CueParams;
 }
 
-void USummonRangeGEC::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeByWorldOriginGECConfig* Config, AActor* Causer, const FGameplayEffectContextHandle& Context) const
+void USummonRangeGEC::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeByWorldOriginGECConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context) const
 {
-	UAbilitySystemComponent* CauserASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Causer);
+	UAbilitySystemComponent* CauserASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Instigator);
 	USkillBase* NonConstSkill = const_cast<USkillBase*>(Cast<USkillBase>(Context.GetAbility()));
 
 	if (CauserASC && NonConstSkill)
@@ -207,10 +183,10 @@ void USummonRangeGEC::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeAc
 		{
 			if (IsValid(SkillEffectDataAsset))
 			{
-				InitGEHandles.Append(SkillEffectDataAsset->MakeSpecs(CauserASC, NonConstSkill, Causer, Context));
+				InitGEHandles.Append(SkillEffectDataAsset->MakeSpecs(CauserASC, NonConstSkill, RangeActor, Context));
 			}
 		}
-		RangeActor->InitializeEffectData(InitGEHandles, Causer, Config->CollisionRadius, Config->bHitOncePerTarget, Config);
+		RangeActor->InitializeEffectData(InitGEHandles, Instigator, Config->CollisionRadius, Config->bHitOncePerTarget, Config);
 		RangeActor->SetLifeSpan(Config->LifeSpan);
 	}
 }

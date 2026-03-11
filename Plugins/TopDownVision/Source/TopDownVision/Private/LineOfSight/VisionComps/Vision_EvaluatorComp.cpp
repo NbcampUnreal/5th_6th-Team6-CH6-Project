@@ -1,4 +1,4 @@
-#include "LineOfSight/VisionComps/Vision_EvaluatorComp.h"
+﻿#include "LineOfSight/VisionComps/Vision_EvaluatorComp.h"
 
 #include "Components/SphereComponent.h"
 #include "LineOfSight/VisionComps/Vision_VisualComp.h"
@@ -97,8 +97,8 @@ void UVision_EvaluatorComp::InitializeEvaluator(UVision_VisualComp* DirectParamC
         return;
     }
 
-    if (ShouldRunServerLogic())
-        return;// no server
+    //if (ShouldRunServerLogic())
+    //    return;// no server
 
     if (DirectParamComp)
         DirectCacheVisualComp(DirectParamComp);
