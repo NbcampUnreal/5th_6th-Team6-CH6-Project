@@ -275,8 +275,12 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 
 ETeamType ABaseCharacter::GetTeamType() const
 {
-	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
-	return PS->TeamType;
+	if (AER_PlayerState* PS = GetPlayerState<AER_PlayerState>())
+	{
+		return PS->TeamType;
+	}
+	
+	return TeamID;
 }
 
 
