@@ -297,6 +297,21 @@ bool ABaseCharacter::IsTargetable() const
 	return !IsHidden(); // 숨어있지 않고 살아있으면 true
 }
 
+void ABaseCharacter::HighlightActor(bool bIsHighlight, int32 StencilValue)
+{
+	if (USkeletalMeshComponent* MyMesh = GetMesh())
+	{
+		// 커스텀 뎁스 렌더링 켜기/끄기
+		MyMesh->SetRenderCustomDepth(bIsHighlight);
+		
+		if (bIsHighlight)
+		{
+			// 스텐실 값 부여 (어떤 색으로 아웃라인을 그릴지 포스트 프로세스에 전달)
+			MyMesh->SetCustomDepthStencilValue(StencilValue);
+		}
+	}
+}
+
 void ABaseCharacter::OnRep_TeamID()
 {
 	FString Team = (TeamID == ETeamType::Team_A) ? TEXT("Team_A") : 

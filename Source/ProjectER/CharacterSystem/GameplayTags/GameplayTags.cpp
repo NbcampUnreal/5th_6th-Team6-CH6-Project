@@ -186,6 +186,13 @@ namespace ProjectER
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(LevelUp, "GameplayCue.Combat.LevelUp", "Cue for Level Up");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Death, "GameplayCue.Combat.Death", "Cue for Death");
 		}
+
+		namespace Skill
+		{
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Summoner, "GameplayCue.Skill.Summoner", "Cue for Skill SummonVFX");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Range, "GameplayCue.Skill.Range", "Cue for RangeVFX");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(HitTarget, "GameplayCue.Skill.HitTarget", "Cue for HitTargetVFX");
+		}
 	}
 	
 	namespace State

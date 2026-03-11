@@ -4,6 +4,8 @@
 #include "Monster/Data/MonsterDataAsset.h"
 #include "Monster/Data/BaseMonsterTableRow.h"
 #include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "GameModeBase/State/ER_GameState.h"
+#include "GameModeBase/State/ER_PlayerState.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "ItemSystem/Data/BaseItemData.h"
 #include "SkillSystem/SkillDataAsset.h"
@@ -496,21 +498,61 @@ void ABaseMonster::GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGamepl
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::GiveRewardsToPlayer : Not MonsterData"));
 		return;
 	}
-		
-	//타겟에게 GE를 이용해 경험치 전달
-	FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
-	ContextHandle.AddSourceObject(this);
-	ContextHandle.AddInstigator(this, nullptr);
-	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(GE, 1, ContextHandle);
-	UAbilitySystemComponent* TargetASC =
-		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player);
+	
+	ABaseCharacter* BC = Cast<ABaseCharacter>(Player);
+	int TeamIndex = (int)BC->GetTeamType();
 
-	SpecHandle.Data->SetSetByCallerMagnitude(
-		Tag,
-		Amount
-	);
+	AER_GameState* EPS = GetWorld()->GetGameState<AER_GameState>();
+	TArray<TWeakObjectPtr<AER_PlayerState>> TeamPSArray = EPS->GetTeamArray(TeamIndex);
 
-	TargetASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
+	FVector MonsterLocation = GetActorLocation();
+	for (auto TeamPS : TeamPSArray)
+	{
+		if (!TeamPS.IsValid()) continue;
+
+		APlayerController* PC = TeamPS->GetPlayerController();
+		if (!PC) continue;
+
+		APawn* Pawn = PC->GetPawn();
+		if (!Pawn) continue;
+
+		FVector TeamLocation = Pawn->GetActorLocation();
+		float DistSq = FVector::DistSquared(TeamLocation, MonsterLocation);
+		if (DistSq > 1000000.f) // 1000보다 멀면 못받음
+		{
+			TeamPSArray.Remove(TeamPS);
+		}
+	}
+
+	float OffsetAmount;
+	int NearCount = TeamPSArray.Num();
+	switch (NearCount)
+	{
+	case 1: OffsetAmount = Amount * 1;
+		break;
+	case 2: OffsetAmount = Amount * 0.8f;
+		break;
+	case 3: OffsetAmount = Amount * 0.7f;
+		break;
+	default: OffsetAmount = Amount * 0.7f; 
+		break;
+	}
+
+	for(auto TeamPS : TeamPSArray)
+	{
+		if (!TeamPS.IsValid()) continue;
+		FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();;
+		ContextHandle.AddInstigator(this, nullptr);
+		FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(GE, 1, ContextHandle);
+		SpecHandle.Data->SetSetByCallerMagnitude(
+			Tag,
+			OffsetAmount
+		); 
+
+		UAbilitySystemComponent* TargetASC = TeamPS->GetAbilitySystemComponent();
+		if (!TargetASC) continue;
+		TargetASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
+	}
 }
 
 void ABaseMonster::TryActivateByDynamicTag(FGameplayTag InputTag)

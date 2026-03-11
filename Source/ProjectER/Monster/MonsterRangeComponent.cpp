@@ -162,7 +162,6 @@ void UMonsterRangeComponent::OnPlayerCountingEndOverlap(UPrimitiveComponent* Ove
 void UMonsterRangeComponent::OnPlayerOutEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	UE_LOG(LogTemp, Error, TEXT("OnPlayerOutEndOverlap"));
 	if (OtherActor && OtherActor->IsA<ABaseCharacter>())
 	{
 		AActor* Target = Cast<ABaseMonster>(GetOwner())->GetTargetPlayer();
