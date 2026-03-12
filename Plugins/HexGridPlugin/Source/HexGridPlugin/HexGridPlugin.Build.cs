@@ -20,8 +20,8 @@ public class HexGridPlugin : ModuleRules
 		PrivateIncludePaths.AddRange( new string[] 
 		{
 			//PathFinding Paths
-			/*"PathfindingLibrary/Private",
-			"PathfindingLibrary/Private/CPU",*/
+			/*"PathFindingLibrary/Private",
+			"PathFindingLibrary/Private/CPU",*/
 		});
 			
 		
@@ -37,7 +37,7 @@ public class HexGridPlugin : ModuleRules
 			"RHI",
 			
 			//path finding
-			"PathfindingLibrary",//--> this place is only for the unreal's official, commercial plugin. not for custom
+			"PathFindingLibrary",//--> this place is only for the unreal's official, commercial plugin. not for custom
 		});
 			
 		
