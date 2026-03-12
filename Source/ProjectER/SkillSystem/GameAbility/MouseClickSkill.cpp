@@ -114,7 +114,6 @@ void UMouseClickSkill::ExecuteSkill()
 			}
 		}
 
-		RotateToLocation(TargetLocationEffectContext.GetOrigin());
 		ABaseCharacter* Character = Cast<ABaseCharacter>(Avatar);
 		if (Character) Character->StopMove();
 	}
@@ -212,6 +211,7 @@ void UMouseClickSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle&
 	ContextHandle.AddSourceObject(this);
 	TargetLocationEffectContext = ContextHandle;
 
+	RotateToLocation(Location);
 	PrepareToActiveSkill();
 }
 
@@ -242,7 +242,6 @@ void UMouseClickSkill::SubmitExternalTargetLocation(const FVector& InLocation)
 
 	if (CurrentMouseLocationTargetActor.IsValid())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentMouseLocationTargetActor.IsValid()"));
 		CurrentMouseLocationTargetActor->SubmitExternalLocation(InLocation);
 		return;
 	}

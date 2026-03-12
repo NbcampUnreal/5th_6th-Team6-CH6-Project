@@ -94,14 +94,22 @@ FTransform USummonRangeAtBone::CalculateSpawnLocation(const AActor* Instigator, 
 		if (Mesh->DoesSocketExist(Config->BoneName))
 		{
 			//1. 지금 애니메이션 루프 중인지 확인 (재귀 크래시 방지)
-			if (!Mesh->IsRunningParallelEvaluation())
-			{
-				// 2. 현재 몽타주의 본 업데이트가 되지 않고 있다면
-				if (Mesh->ShouldOnlyTickMontages(0.0f))
-				{
-					Mesh->RefreshBoneTransforms();
-				}
-			}
+			//if (!Mesh->IsRunningParallelEvaluation())
+			//{
+			//	Mesh->RefreshBoneTransforms();
+			//	// 2. 현재 몽타주의 본 업데이트가 되지 않고 있다면
+			//	/*float CurrentDeltaTime = World->GetDeltaSeconds();
+			//	if (Mesh->ShouldOnlyTickMontages(CurrentDeltaTime) || Mesh->ShouldOnlyTickMontagesAndRefreshBones(CurrentDeltaTime))
+			//	{
+			//		Mesh->RefreshBoneTransforms();
+			//	}
+			//	else {
+			//		UE_LOG(LogTemp, Warning, TEXT("Mesh->ShouldOnlyTickMontages(0.0f) is false"));
+			//	}*/
+			//}
+			//else {
+			//	UE_LOG(LogTemp, Warning, TEXT("!Mesh->IsRunningParallelEvaluation() is false"));
+			//}
 
 			BaseLocation = Mesh->GetSocketLocation(Config->BoneName);
 			BaseRotation = Mesh->GetSocketRotation(Config->BoneName);

@@ -33,7 +33,6 @@ void UMouseTargetSkill::ExecuteSkill()
 
 	AActor* const TargetActor = AffectedActor.Get();
 	if (!IsValid(TargetActor)) return;
-	RotateToTarget(TargetActor);
 
 	UMouseTargetSkillConfig* Config = Cast<UMouseTargetSkillConfig>(CachedConfig);
 	if (!IsValid(Config)) return;
@@ -142,6 +141,7 @@ void UMouseTargetSkill::OnTargetDataReady(const FGameplayAbilityTargetDataHandle
 	{
 		if (!IsValid(Actor)) continue;
 		AffectedActor = Actor;
+		RotateToTarget(Actor);
 		break;
 	}
 
