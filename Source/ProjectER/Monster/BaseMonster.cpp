@@ -27,9 +27,10 @@
 #include "Engine/StreamableManager.h"
 
 ABaseMonster::ABaseMonster()
-	:TargetPlayer(nullptr),
+	:
 	StartLocation(FVector::ZeroVector),
 	StartRotator(FRotator::ZeroRotator),
+	TargetPlayer(nullptr),
 	bIsCombat(false),
 	bIsDead(false)
 {
