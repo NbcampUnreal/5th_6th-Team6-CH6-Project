@@ -90,8 +90,10 @@ public:
     FORCEINLINE FSkillEffectContainer GetData() const { return Data; }
     FORCEINLINE FGameplayAttribute GetTargetAttribute() const { return Data.TargetAttribute; }
 protected:
+#if WITH_EDITOR
     virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
     void RefreshConfigsFromGE();
+#endif
 private:
 
 public:

@@ -591,7 +591,7 @@ void ABaseCharacter::Server_UpgradeSkill_Implementation(FGameplayTag SkillTag)
 	{
 		// 스킬 식별용 태그(Dynamic Tags 혹은 AbilityTags)와 일치 여부 검사
 		if (Spec.GetDynamicSpecSourceTags().HasTagExact(SkillTag) || 
-			Spec.Ability->AbilityTags.HasTagExact(SkillTag))
+			Spec.Ability->GetAssetTags().HasTagExact(SkillTag))
 		{
 			TargetSpec = &Spec;
 			break;

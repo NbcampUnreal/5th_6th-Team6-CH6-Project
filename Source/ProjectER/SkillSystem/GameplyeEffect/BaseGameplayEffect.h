@@ -16,8 +16,9 @@ class PROJECTER_API UBaseGameplayEffect : public UGameplayEffect
 
 public:
 	UBaseGameplayEffect();
-
+#if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 protected:
 
 private:

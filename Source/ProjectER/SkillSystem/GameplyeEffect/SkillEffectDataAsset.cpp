@@ -85,11 +85,9 @@ void USkillEffectDataAsset::PostEditChangeProperty(FPropertyChangedEvent& Proper
         RefreshConfigsFromGE();
     }
 }
-#endif
 
 void USkillEffectDataAsset::RefreshConfigsFromGE()
 {
-#if WITH_EDITOR
     for (auto& Def : Data.SkillEffectDefinition)
     {
         if (!Def.SkillEffectClass) continue;
@@ -141,8 +139,8 @@ void USkillEffectDataAsset::RefreshConfigsFromGE()
 
     MarkPackageDirty();
     UE_LOG(LogTemp, Log, TEXT("SkillEffectDataAsset: Configs Refreshed from GE Components."));
-#endif
 }
+#endif
 
 FText USkillEffectDataAsset::BuildEffectDescription(float InLevel) const
 {
