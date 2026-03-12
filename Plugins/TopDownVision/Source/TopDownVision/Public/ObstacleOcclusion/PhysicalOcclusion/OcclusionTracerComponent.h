@@ -41,7 +41,7 @@ public:
 
     UFUNCTION(BlueprintNativeEvent, Category="Occlusion Tracer")
     void OnTracerDeactivated();
-
+	
     // ── Config ────────────────────────────────────────────────────────────
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer")

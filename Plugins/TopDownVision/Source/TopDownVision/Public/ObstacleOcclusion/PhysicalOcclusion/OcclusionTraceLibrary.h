@@ -29,5 +29,10 @@ private:
     static void NotifyEnter(AActor* Actor, UObject* TracerIdentity);
     static void NotifyExit(AActor* Actor, UObject* TracerIdentity);
 
+    static bool IsOccluderBetweenCameraAndTarget( // to filter the case when overlapped comp is behind the visible target
+        const AActor*  HitActor,
+        const FVector& CameraPos,
+        const FVector& TargetPos);
+
     FOcclusionTraceLibrary() = delete;
 };

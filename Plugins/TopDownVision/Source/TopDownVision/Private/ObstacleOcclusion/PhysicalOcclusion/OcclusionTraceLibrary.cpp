@@ -24,7 +24,7 @@ void FOcclusionTraceLibrary::RunProbe(
     UObject*                TracerIdentity,
     bool                    bDebugDraw)
 {
-    if (!World) return;
+      if (!World) return;
 
     TSet<TWeakObjectPtr<AActor>> CurrentHits;
 
@@ -87,6 +87,22 @@ void FOcclusionTraceLibrary::RunProbe(
         }
     }
 
+    // Filter hits not geometrically between camera and target —
+    // prevents actors behind the camera or beyond the target from triggering occlusion
+    for (auto It = CurrentHits.CreateIterator(); It; ++It)
+    {
+        if (!It->IsValid() || !IsOccluderBetweenCameraAndTarget(
+            It->Get(), Probe.BaseOrigin, Probe.Target))
+        {
+            UE_LOG(Occlusion, Verbose,
+                TEXT("FOcclusionTraceLibrary::RunProbe>> Filtered out-of-range hit: %s"),
+                It->IsValid() ? *It->Get()->GetName() : TEXT("null"));
+
+            It.RemoveCurrent();
+        }
+    }
+
+    // Hit diff — notify enter for new hits, exit for dropped hits
     for (const TWeakObjectPtr<AActor>& Current : CurrentHits)
     {
         if (!Probe.PreviousHits.Contains(Current))
@@ -114,7 +130,8 @@ void FOcclusionTraceLibrary::NotifyEnter(AActor* Actor, UObject* TracerIdentity)
         IOcclusionInterface::Execute_OnOcclusionEnter(Comp, TracerIdentity);
     }
 
-    UE_LOG(Occlusion, Log, TEXT("FOcclusionTraceLibrary::NotifyEnter>> %s (%d comps)"),
+    UE_LOG(Occlusion, Log,
+        TEXT("FOcclusionTraceLibrary::NotifyEnter>> %s (%d comps)"),
         *Actor->GetName(), Comps.Num());
 }
 
@@ -130,6 +147,26 @@ void FOcclusionTraceLibrary::NotifyExit(AActor* Actor, UObject* TracerIdentity)
         IOcclusionInterface::Execute_OnOcclusionExit(Comp, TracerIdentity);
     }
 
-    UE_LOG(Occlusion, Log, TEXT("FOcclusionTraceLibrary::NotifyExit>> %s (%d comps)"),
-        *Actor->GetName(), Comps.Num())
+    UE_LOG(Occlusion, Log,
+        TEXT("FOcclusionTraceLibrary::NotifyExit>> %s (%d comps)"),
+        *Actor->GetName(), Comps.Num());
+}
+
+bool FOcclusionTraceLibrary::IsOccluderBetweenCameraAndTarget(const AActor* HitActor, const FVector& CameraPos,
+    const FVector& TargetPos)
+{
+    if (!IsValid(HitActor)) return false;
+
+    const FVector CamToTarget = TargetPos  - CameraPos;
+    const FVector CamToHit    = HitActor->GetActorLocation() - CameraPos;
+
+    // Must be in the same general direction as the target from camera
+    const float Dot = FVector::DotProduct(
+        CamToTarget.GetSafeNormal(),
+        CamToHit.GetSafeNormal());
+
+    if (Dot <= 0.f) return false; // behind camera
+
+    // Must be closer to camera than the target
+    return CamToHit.SizeSquared() < CamToTarget.SizeSquared();
 }
