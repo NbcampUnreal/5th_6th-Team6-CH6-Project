@@ -272,7 +272,7 @@ void AER_InGameMode::EndGame_Internal()
 
 	UE_LOG(LogTemp, Warning, TEXT("[GM] Player is Zero -> ServerTravel to Lobby"));
 
-	GetWorld()->ServerTravel(TEXT("/Game/Level/Level_Lobby"), true);
+	GetWorld()->ServerTravel(TEXT("/Game/Level/Level_MainMenu"), true);
 }
 
 void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter, APlayerState* KillerPS, const TArray<APlayerState*>& Assists)
