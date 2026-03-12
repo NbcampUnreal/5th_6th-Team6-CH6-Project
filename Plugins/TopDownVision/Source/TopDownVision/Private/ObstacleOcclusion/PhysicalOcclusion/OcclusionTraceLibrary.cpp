@@ -3,6 +3,7 @@
 #include "TopDownVision/Public/ObstacleOcclusion/OcclusionInterface.h"
 #include "TopDownVisionDebug.h"
 #include "DrawDebugHelpers.h"
+#include "Engine/OverlapResult.h"
 
 void FOcclusionTraceLibrary::RunProbes(
     TArray<FOcclusionProbe>& Probes,
@@ -27,11 +28,10 @@ void FOcclusionTraceLibrary::RunProbe(
     if (!World) return;
 
     TSet<TWeakObjectPtr<AActor>> CurrentHits;
-
-    // Clear last frame's hit sweep indices
     Probe.HitSweepIndices.Reset();
 
     FCollisionQueryParams Params;
+    Params.bTraceComplex = false;
     for (AActor* Ignored : IgnoredActors)
     {
         if (Ignored) Params.AddIgnoredActor(Ignored);
@@ -39,14 +39,15 @@ void FOcclusionTraceLibrary::RunProbe(
 
     for (int32 SweepIdx = 0; SweepIdx < Probe.Sweeps.Num(); ++SweepIdx)
     {
-        const FOcclusionSweepConfig& Sweep = Probe.Sweeps[SweepIdx];
-        const FVector SweepOrigin = Probe.BaseOrigin + Sweep.OriginOffset;
+        const FOcclusionSweepConfig& Sweep      = Probe.Sweeps[SweepIdx];
+        const FVector                SweepOrigin = Probe.BaseOrigin + Sweep.OriginOffset;
 
-        TArray<FHitResult> Hits;
-        World->SweepMultiByChannel(
-            Hits,
+        // Static overlap at position only — does NOT travel along a path
+        // Prevents every sphere from hitting obstacles near the target
+        TArray<FOverlapResult> Overlaps;
+        World->OverlapMultiByChannel(
+            Overlaps,
             SweepOrigin,
-            Probe.Target,
             FQuat::Identity,
             Probe.Channel,
             FCollisionShape::MakeSphere(Sweep.SphereRadius),
@@ -54,7 +55,7 @@ void FOcclusionTraceLibrary::RunProbe(
 
         if (bDebugDraw)
         {
-            const FColor LineColor = Hits.Num() > 0 ? FColor::Red : FColor::Green;
+            const FColor LineColor = Overlaps.Num() > 0 ? FColor::Red : FColor::Green;
             DrawDebugLine(
                 World,
                 SweepOrigin,
@@ -66,9 +67,9 @@ void FOcclusionTraceLibrary::RunProbe(
                 2.f);
         }
 
-      /*  for (const FHitResult& Hit : Hits)
+        for (int32 i = 0; i < Overlaps.Num(); ++i)
         {
-            AActor* HitActor = Hit.GetActor();
+            AActor* HitActor = Overlaps[i].GetActor();
             if (!HitActor) continue;
 
             TArray<UOcclusionObstacleComp_Physical*> Comps;
@@ -76,53 +77,20 @@ void FOcclusionTraceLibrary::RunProbe(
 
             if (bDebugDraw)
             {
-                // Draw hit actor name at impact point — shows exactly what is being swept
                 const FColor HitColor = Comps.Num() > 0 ? FColor::Orange : FColor::White;
                 DrawDebugString(
                     World,
-                    Hit.ImpactPoint,
-                    FString::Printf(TEXT("%s [%s]"),
-                        *HitActor->GetName(),
-                        Comps.Num() > 0 ? TEXT("OCCLUSION") : TEXT("other")),
-                    nullptr,
-                    HitColor,
-                    0.f,
-                    true);
-            }
-
-            if (Comps.Num() == 0) continue;
-
-            CurrentHits.Add(HitActor);
-            Probe.HitSweepIndices.Add(SweepIdx);
-        }*/
-
-        for (int32 i=0; i < Hits.Num(); ++i)
-        {
-            FHitResult& Hit = Hits[i];
-            
-            AActor* HitActor = Hit.GetActor();
-            if (!HitActor) continue;
-
-            TArray<UOcclusionObstacleComp_Physical*> Comps;
-            HitActor->GetComponents<UOcclusionObstacleComp_Physical>(Comps);
-            
-            if (bDebugDraw)
-            {
-                // Draw hit actor name at impact point — shows exactly what is being swept
-                const FColor HitColor = Comps.Num() > 0 ? FColor::Orange : FColor::White;
-                DrawDebugString(
-                    World,
-                    Hit.ImpactPoint,
+                    HitActor->GetActorLocation(),
                     FString::Printf(TEXT("%s [%s] Sphere[%d]"),
                         *HitActor->GetName(),
                         Comps.Num() > 0 ? TEXT("OCCLUSION") : TEXT("other"),
-                        i),
+                        SweepIdx),
                     nullptr,
                     HitColor,
                     0.f,
                     true);
             }
-            
+
             if (Comps.Num() == 0) continue;
 
             CurrentHits.Add(HitActor);
