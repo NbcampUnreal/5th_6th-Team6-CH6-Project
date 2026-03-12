@@ -131,6 +131,9 @@ ABaseCharacter::ABaseCharacter()
 	MinimapIconMesh->SetVisibleInSceneCaptureOnly(true);
 	MinimapLineMesh->SetVisibleInSceneCaptureOnly(true);
 
+	MinimapIconMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	MinimapLineMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 	// HP Bar 생성
 	HP_MP_BarWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("HPBarWidget"));
 	HP_MP_BarWidget->SetupAttachment(GetMesh());
