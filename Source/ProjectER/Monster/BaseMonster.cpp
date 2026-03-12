@@ -150,15 +150,12 @@ void ABaseMonster::BeginPlay()
 		StartLocation = GetActorLocation();
 		StartRotator = GetActorRotation();
 	}
-	else
+	if (GetNetMode() != NM_DedicatedServer)
 	{
 		// UI 로직
 		InitHPBar();
 		AttributeSet->OnHealthChanged.AddDynamic(this, &ABaseMonster::OnHealthChangedHandle);
 	}
-
-
-	
 }
 
 void ABaseMonster::Tick(float DeltaTime)
@@ -710,23 +707,6 @@ UStateTreeComponent* ABaseMonster::GetStateTreeComponent()
 
 void ABaseMonster::SetTargetPlayer(AActor* Target)
 {
-	//if (TargetPlayer == nullptr)
-	//{
-	//	TargetPlayer = Target;
-	//}
-	//else
-	//{
-	//	const float OldTargetDistance = FVector::DistSquared(
-	//		TargetPlayer->GetActorLocation(), GetActorLocation());
-
-	//	const float NewTargetDistance = FVector::DistSquared(
-	//		Target->GetActorLocation(), GetActorLocation());
-
-	//	if (OldTargetDistance > NewTargetDistance)
-	//	{
-	//		TargetPlayer = Target;
-	//	}
-	//}
 	TargetPlayer = Target;
 }
 
@@ -737,7 +717,16 @@ AActor* ABaseMonster::GetTargetPlayer()
 
 void ABaseMonster::SetbIsCombat(bool value)
 {
-	bIsCombat = value;
+	if (bIsCombat != value)
+	{
+		bIsCombat = value;
+		
+		// 리슨 서버 호스트의 경우 OnRep 함수가 자동 호출되지 않으므로 수동으로 호출해 줍니다.
+		if (GetNetMode() != NM_DedicatedServer)
+		{
+			OnRep_IsCombat();
+		}
+	}
 }
 
 bool ABaseMonster::GetbIsCombat()
@@ -747,7 +736,15 @@ bool ABaseMonster::GetbIsCombat()
 
 void ABaseMonster::SetbIsDead(bool value)
 {
-	bIsDead = value;
+	if (bIsDead != value)
+	{
+		bIsDead = value;
+		
+		if (GetNetMode() != NM_DedicatedServer)
+		{
+			OnRep_IsDead();
+		}
+	}
 }
 
 bool ABaseMonster::GetbIsDead()
@@ -849,7 +846,7 @@ void ABaseMonster::OnCCChanged(FGameplayTag Tag, int32 NewCount)
 	}
 	else
 	{
-		bIsCombat = false;
+		//SetbIsCombat(false);
 		SendStateTreeEvent(MonsterTags.HitEventTag);
 		// Hard CC 해제됨
 	}

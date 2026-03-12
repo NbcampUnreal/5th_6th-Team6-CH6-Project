@@ -48,7 +48,10 @@ void UBaseMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 			UE_LOG(LogTemp, Warning, TEXT("UBaseMonsterAttributeSet::PostGameplayEffectExecute : Not Target"));
 			return;
 		}
-
+		if (Monster->GetNetMode() != NM_DedicatedServer)
+		{
+			OnHealthChanged.Broadcast(GetHealth(), GetMaxHealth());
+		}
 		if (GetHealth() <= 0.f)
 		{
 			OnMonsterDeath.Broadcast(Target);
