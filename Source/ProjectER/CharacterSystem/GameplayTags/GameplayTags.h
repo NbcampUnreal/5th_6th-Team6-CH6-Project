@@ -107,6 +107,27 @@ namespace ProjectER
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Phase2);
 		}
 
+		namespace State
+		{
+			namespace Debuff
+			{
+				namespace Soft // 행동 제약
+				{
+					UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slow);    // 둔화
+					UE_DECLARE_GAMEPLAY_TAG_EXTERN(Root);    // 속박
+					UE_DECLARE_GAMEPLAY_TAG_EXTERN(Silence); // 침묵
+				}
+				namespace Hard // 행동 불가
+				{
+					UE_DECLARE_GAMEPLAY_TAG_EXTERN(Stun);     // 기절
+					UE_DECLARE_GAMEPLAY_TAG_EXTERN(Airborne); // 에어본
+				}
+
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(BlockRegen);    // 회복 불가
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(ReduceHealing); // 치유 감소 (치감)
+			}
+		}
+
 		namespace Montage
 		{
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(AttackHit);//

@@ -6,8 +6,6 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
-#include "SkillSystem/SkillNiagaraSpawnHelper.h"
-
 
 // Sets default values
 ABaseRangeOverlapEffectActor::ABaseRangeOverlapEffectActor()
@@ -16,12 +14,14 @@ ABaseRangeOverlapEffectActor::ABaseRangeOverlapEffectActor()
 	bReplicates = true;
 }
 
-void ABaseRangeOverlapEffectActor::InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget, const UObject* InHitTargetCueSourceObject)
+void ABaseRangeOverlapEffectActor::InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget, const UObject* InHitTargetCueSourceObject, const FGameplayCueParameters& InHitTargetCueParameters)
 {
 	EffectSpecHandles = InEffectSpecHandles;
 	InstigatorActor = InInstigatorActor;
+	SetInstigator(Cast<APawn>(InInstigatorActor));
 	bHitOncePerTarget = bInHitOncePerTarget;
-	HitTargetCueSourceObject = const_cast<UObject*>(InHitTargetCueSourceObject);
+	HitTargetCueSourceObject = InHitTargetCueSourceObject;
+	HitTargetCueParameters = InHitTargetCueParameters;
 
 	PendingCollisionSize = InCollisionSize;
 	bHasPendingCollisionSize = true;
@@ -106,6 +106,19 @@ void ABaseRangeOverlapEffectActor::OnShapeBeginOverlap(UPrimitiveComponent* Over
 		if (EffectSpecHandle.IsValid())
 		{
 			TargetASC->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
+		}
+	}
+
+	UAbilitySystemComponent* const InstigatorASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(InstigatorActor);
+	if (IsValid(InstigatorASC) && HitTargetCueParameters.OriginalTag.IsValid())
+	{
+		FGameplayCueParameters CueParameters = HitTargetCueParameters;
+		CueParameters.Location = OtherActor->GetActorLocation();
+		CueParameters.EffectCauser = this;
+		CueParameters.SourceObject = HitTargetCueSourceObject;
+		{
+			FScopedPredictionWindow ForcedWindow(InstigatorASC, FPredictionKey(), false);
+			InstigatorASC->ExecuteGameplayCue(CueParameters.OriginalTag, CueParameters);
 		}
 	}
 

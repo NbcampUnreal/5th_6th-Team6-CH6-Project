@@ -339,7 +339,8 @@ void ABaseCharacter::OnRep_TeamID()
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, Message);
 	}
 	
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *Message);
+	// 
+	// UE_LOG(LogTemp, Warning, TEXT("%s"), *Message);
 	
 }
 
@@ -523,7 +524,7 @@ UAnimMontage* ABaseCharacter::GetCharacterMontageByTag(FGameplayTag MontageTag)
 		return CachedMontages[MontageTag];
 	}
     
-	UE_LOG(LogTemp, Warning, TEXT("태그(%s)에 해당하는 몽타주가 캐싱되어 있지 않습니다!"), *MontageTag.ToString());
+	// UE_LOG(LogTemp, Warning, TEXT("태그(%s)에 해당하는 몽타주가 캐싱되어 있지 않습니다!"), *MontageTag.ToString());
 	return nullptr;
 }
 
@@ -549,11 +550,11 @@ void ABaseCharacter::PreloadMontages()
 void ABaseCharacter::Server_UpgradeSkill_Implementation(FGameplayTag SkillTag)
 {
 	// 함수 진입 확인 로그 (무슨 태그가 넘어왔는지 확인)
-	UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 함수 진입! 전달받은 태그: %s"), *SkillTag.ToString());
+	// UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 함수 진입! 전달받은 태그: %s"), *SkillTag.ToString());
 
 	if (!AbilitySystemComponent.IsValid())
 	{
-		UE_LOG(LogTemp, Error, TEXT("[UpgradeSkill] 실패: ASC가 유효하지 않음!"));
+		// UE_LOG(LogTemp, Error, TEXT("[UpgradeSkill] 실패: ASC가 유효하지 않음!"));
 		return;
 	}
 
@@ -570,13 +571,13 @@ void ABaseCharacter::Server_UpgradeSkill_Implementation(FGameplayTag SkillTag)
 
 	if (!AS)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[UpgradeSkill] 실패: AttributeSet을 찾을 수 없음!"));
+		// UE_LOG(LogTemp, Error, TEXT("[UpgradeSkill] 실패: AttributeSet을 찾을 수 없음!"));
 		return;
 	}
 
 	if (AS->GetSkillPoint() <= 0.0f)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 실패: 스킬 포인트 부족! 현재 SP: %f"), AS->GetSkillPoint());
+		// UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 실패: 스킬 포인트 부족! 현재 SP: %f"), AS->GetSkillPoint());
 		return; 
 	}
 
@@ -599,7 +600,7 @@ void ABaseCharacter::Server_UpgradeSkill_Implementation(FGameplayTag SkillTag)
 	{
 		if (TargetSpec->Level >= 5) 
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 이미 마스터한 스킬! (현재 레벨: %d)"), TargetSpec->Level);
+			// UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 이미 마스터한 스킬! (현재 레벨: %d)"), TargetSpec->Level);
 			return;
 		}
 
@@ -607,11 +608,11 @@ void ABaseCharacter::Server_UpgradeSkill_Implementation(FGameplayTag SkillTag)
 		AbilitySystemComponent->MarkAbilitySpecDirty(*TargetSpec);
 		AS->SetSkillPoint(AS->GetSkillPoint() - 1.0f);
 		
-		UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 대성공! [%s] 스킬 레벨업 완료! 현재 레벨: %d"), *SkillTag.ToString(), TargetSpec->Level);
+		// UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 대성공! [%s] 스킬 레벨업 완료! 현재 레벨: %d"), *SkillTag.ToString(), TargetSpec->Level);
 	}
 	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("[UpgradeSkill] 실패: [%s] 태그를 가진 어빌리티를 찾을 수 없습니다!"), *SkillTag.ToString());
+		// UE_LOG(LogTemp, Error, TEXT("[UpgradeSkill] 실패: [%s] 태그를 가진 어빌리티를 찾을 수 없습니다!"), *SkillTag.ToString());
 	}
 }
 
@@ -1027,7 +1028,7 @@ void ABaseCharacter::UpdatePathFollowing()
 	UE_LOG(LogTemp, Warning, TEXT("Rotation Check -> Pitch: %f | Yaw: %f"), MyRot.Pitch, MyRot.Yaw);*/
 
 	// [디버깅] 경로 및 이동 방향 시각화
-	if (bShowDebug)
+	/*if (bShowDebug)
 	{
 		// 전체 경로 그리기 (초록색 선)
 		for (int32 i = 0; i < PathPoints.Num() - 1; ++i)
@@ -1076,7 +1077,7 @@ void ABaseCharacter::UpdatePathFollowing()
 				false, -1.0f, 0, 5.0f // 두께
 			);
 		}
-	}
+	}*/
 #endif
 }
 
