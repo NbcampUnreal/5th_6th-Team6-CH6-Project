@@ -1,4 +1,4 @@
-#include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
+﻿#include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
@@ -335,7 +335,7 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 			else
 			{
 				// [로그 추가] 캐싱된 커브가 없음
-				UE_LOG(LogTemp, Error, TEXT("[AttributeSet] CachedMaxXPCurve is NULL! Level Up Logic Skipped."));
+				// UE_LOG(LogTemp, Error, TEXT("[AttributeSet] CachedMaxXPCurve is NULL! Level Up Logic Skipped."));
 			}
 
 			// 남은 XP 적용 및 레벨 업
@@ -352,7 +352,6 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 						{
 							TargetChar->HandleLevelUp(); 
 							TargetChar->OnLevelChanged();
-							//ㅁㄴㅇㄹㄴㅁㅇㄹ
 						}
 					}
 				}
@@ -405,11 +404,9 @@ void UBaseAttributeSet::OnRep_MaxXP(const FGameplayAttributeData& OldMaxXP)
 void UBaseAttributeSet::OnRep_Health(const FGameplayAttributeData& OldHealth)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, Health, OldHealth);
-	UE_LOG(LogTemp, Log, TEXT("HHHHHHHHHHHHHHHHHHHHHHHHHHPPPPPPPPPPPPPPPPPPPPPP"));
 	/// mpyi _ 머리 위 HUD 모든 플레이어 동기화를 위함
 	if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(GetOwningAbilitySystemComponent()->GetAvatarActor()))
 	{
-		UE_LOG(LogTemp, Log, TEXT("HPPPPPPPPPPPPPPPPPPPPPP"));
 		TargetChar->OnHealthChanged();
 	}
 }
