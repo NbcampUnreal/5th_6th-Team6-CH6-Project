@@ -17,7 +17,7 @@ FGameplayAbilitySpec USkillDataAsset::MakeSpec()
 
 	Spec.SourceObject = this;
 
-	Spec.DynamicAbilityTags.AddTag(SkillConfig->Data.InputKeyTag);
+	Spec.GetDynamicSpecSourceTags().AddTag(SkillConfig->Data.InputKeyTag);
 
     return Spec;
 }

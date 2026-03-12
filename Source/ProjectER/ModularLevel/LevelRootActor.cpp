@@ -20,12 +20,15 @@ ALevelRootActor::ALevelRootActor()
 
 bool ALevelRootActor::IsValidToRun(UWorld*& OutWorld)
 {
+
+#if WITH_EDITOR
 	if (!GEditor)
 	{
 		UE_LOG(LevelExtraction, Error,
 			TEXT("Invalid GEditor."));
 		return false;
 	}
+#endif
 
 	if (!TargetAsset)
 	{
