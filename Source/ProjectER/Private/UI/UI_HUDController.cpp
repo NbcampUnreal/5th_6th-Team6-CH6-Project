@@ -143,7 +143,7 @@ void UUI_HUDController::BroadcastLVChanges(float CurrentLV)
     }
     else
     {
-        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+        UE_LOG(LogTemp, Warning, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
     }
 }
 
@@ -157,7 +157,7 @@ void UUI_HUDController::BroadcastHPChanges(float CurrentHP, float MaxHP)
     }
     else
     {
-        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+        UE_LOG(LogTemp, Warning, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
     }
 }
 
@@ -169,7 +169,7 @@ void UUI_HUDController::BroadcastStaminaChanges(float CurrentST, float MaxST)
     }
     else
     {
-        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+        UE_LOG(LogTemp, Warning, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
     }
 }
 
@@ -181,7 +181,7 @@ void UUI_HUDController::BroadcastXPChanges(float CurrentXP, float MaxXP)
     }
     else
     {
-        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+        UE_LOG(LogTemp, Warning, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
     }
 }
 
@@ -193,7 +193,7 @@ void UUI_HUDController::BroadcastATKChanges(float CurrentATK)
     }
     else
     {
-        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+        UE_LOG(LogTemp, Warning, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
     }
 }
 
@@ -205,7 +205,7 @@ void UUI_HUDController::BroadcastSPChanges(float CurrentSP)
     }
     else
     {
-        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+        UE_LOG(LogTemp, Warning, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
     }
 }
 
@@ -217,7 +217,7 @@ void UUI_HUDController::BroadcastASChanges(float CurrentAS)
     }
     else
     {
-        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+        UE_LOG(LogTemp, Warning, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
     }
 }
 
@@ -229,7 +229,7 @@ void UUI_HUDController::BroadcastARChanges(float CurrentAR)
     }
     else
     {
-        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+        UE_LOG(LogTemp, Warning, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
     }
 }
 
@@ -241,7 +241,7 @@ void UUI_HUDController::BroadcastCCChanges(float CurrentCC)
     }
     else
     {
-        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+        UE_LOG(LogTemp, Warning, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
     }
 }
 
@@ -253,7 +253,7 @@ void UUI_HUDController::BroadcastDEFChanges(float CurrentDEF)
     }
     else
     {
-        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+        UE_LOG(LogTemp, Warning, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
     }
 }
 
@@ -265,7 +265,7 @@ void UUI_HUDController::BroadcastSpeedChanges(float CurrentSpeed)
     }
     else
     {
-        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+        UE_LOG(LogTemp, Warning, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
     }
 }
 void UUI_HUDController::BroadcastCooldownReduction(float Cooldown)
@@ -276,6 +276,6 @@ void UUI_HUDController::BroadcastCooldownReduction(float Cooldown)
     }
     else
     {
-        UE_LOG(LogTemp, Error, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+        UE_LOG(LogTemp, Warning, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
     }
 }
