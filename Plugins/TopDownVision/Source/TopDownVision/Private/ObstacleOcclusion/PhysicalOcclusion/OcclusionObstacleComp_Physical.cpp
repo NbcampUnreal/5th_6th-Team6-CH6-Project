@@ -1,0 +1,258 @@
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionObstacleComp_Physical.h"
+
+#include "Components/StaticMeshComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "ObstacleOcclusion/Helper/OcclusionMeshUtil.h"// for shared static helper function
+#include "TopDownVisionDebug.h"
+
+
+UOcclusionObstacleComp_Physical::UOcclusionObstacleComp_Physical()
+{
+    PrimaryComponentTick.bCanEverTick = true;
+}
+
+void UOcclusionObstacleComp_Physical::BeginPlay()
+{
+    Super::BeginPlay();
+
+    InitializeMaterials();//set MID at runtime
+}
+
+void UOcclusionObstacleComp_Physical::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    Super::EndPlay(EndPlayReason);
+}
+
+void UOcclusionObstacleComp_Physical::TickComponent(float DeltaTime, ELevelTick TickType,
+                                                FActorComponentTickFunction* ThisTickFunction)
+{
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+    const float TargetAlpha = bShouldBeOccluded ? 1.f : 0.f;
+
+    if (bShouldBeOccluded != bLastOcclusionState)
+    {
+        UE_LOG(Occlusion, Verbose,
+            TEXT("UOcclusionObstacleComponent::TickComponent>> Occlusion State Changed -> %s"),
+            bShouldBeOccluded ? TEXT("OCCLUDED") : TEXT("VISIBLE"));
+
+        bLastOcclusionState = bShouldBeOccluded;
+    }
+
+    CurrentAlpha = FMath::FInterpTo(CurrentAlpha, TargetAlpha, DeltaTime, FadeSpeed);
+
+    UpdateMaterialAlpha();
+}
+
+// IOcclusionInterface — called by OcclusionProbeComp hit diff
+
+void UOcclusionObstacleComp_Physical::OnOcclusionEnter_Implementation(UObject* SourceTracer)
+{
+    if (!SourceTracer) return;
+
+    ActiveOverlaps.Add(SourceTracer);
+    bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComponent::OnOcclusionEnter>> %s | ActiveOverlaps: %d"),
+        *SourceTracer->GetName(),
+        ActiveOverlaps.Num());
+}
+
+void UOcclusionObstacleComp_Physical::OnOcclusionExit_Implementation(UObject* SourceTracer)
+{
+    if (!SourceTracer) return;
+
+    ActiveOverlaps.Remove(SourceTracer);
+    CleanupInvalidOverlaps();
+    bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComponent::OnOcclusionExit>> %s | ActiveOverlaps: %d"),
+        *SourceTracer->GetName(),
+        ActiveOverlaps.Num());
+}
+
+void UOcclusionObstacleComp_Physical::GenerateShadowProxyMeshes()
+{
+    for (TObjectPtr<UStaticMeshComponent> Proxy : ShadowProxyMeshes)
+    {
+        if (Proxy)
+        {
+            Proxy->DestroyComponent();
+        }
+    }
+    ShadowProxyMeshes.Empty();
+
+    for (TSoftObjectPtr<UStaticMeshComponent> MeshPtr : NormalMeshes)// only make shadow for normal mesh
+    {
+        UStaticMeshComponent* SourceMesh = MeshPtr.Get();
+        if (!SourceMesh) continue;
+
+        UStaticMeshComponent* Proxy = NewObject<UStaticMeshComponent>(
+            GetOwner(),
+            UStaticMeshComponent::StaticClass(),
+            NAME_None,
+            RF_NoFlags);
+
+        if (!Proxy) continue;
+
+        Proxy->SetStaticMesh(SourceMesh->GetStaticMesh());
+        Proxy->AttachToComponent(
+            SourceMesh,
+            FAttachmentTransformRules::SnapToTargetIncludingScale);
+
+        Proxy->SetVisibility(false);
+        Proxy->SetHiddenInGame(true);
+        Proxy->SetCastShadow(true);
+        Proxy->bCastHiddenShadow  = true;
+        Proxy->bCastDynamicShadow = true;
+        Proxy->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+        Proxy->RegisterComponent();
+
+        //  tells the editor to serialize this component with the actor
+        GetOwner()->AddInstanceComponent(Proxy);
+
+        ShadowProxyMeshes.Add(Proxy);
+
+        UE_LOG(Occlusion, Log,
+            TEXT("UOcclusionObstacleComponent::GenerateShadowProxyMeshes>> Created proxy for %s"),
+            *SourceMesh->GetName());
+    }
+
+    Modify();
+    bool DebugBool=MarkPackageDirty();
+
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComponent::GenerateShadowProxyMeshes>> Total proxies: %d"),
+        ShadowProxyMeshes.Num());
+}
+
+// Setup
+
+void UOcclusionObstacleComp_Physical::SetupOcclusionMeshes()
+{
+    DiscoverChildMeshes();
+    GenerateShadowProxyMeshes();
+    
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComponent::SetupOcclusionMeshes>> Completed setup for %s"),
+        *GetOwner()->GetName());
+}
+
+void UOcclusionObstacleComp_Physical::InitializeCollisionAndShadow()
+{
+    for (TSoftObjectPtr<UStaticMeshComponent> MeshPtr : NormalMeshes)
+    {
+        UStaticMeshComponent* Mesh = MeshPtr.Get();
+        if (!Mesh) continue;
+
+        // Must be explicitly enabled — asset default may have it off
+        Mesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+        Mesh->SetCollisionResponseToChannel(OcclusionTraceChannel, ECR_Block);
+        Mesh->SetCollisionResponseToChannel(MouseTraceChannel, ECR_Ignore);//let ignore the visibility for mouse trace
+        
+        Mesh->SetCastShadow(false);// now the shadow proxy mesh will cast the shadow. so no for original mesh
+        
+        UE_LOG(Occlusion, Log,
+            TEXT("UOcclusionObstacleComponent::InitializeCollision>> Set ECR_Block on %s"),
+            *Mesh->GetName());
+    }
+
+    for (TSoftObjectPtr<UStaticMeshComponent> MeshPtr : OccludedMeshes)
+    {
+        UStaticMeshComponent* Mesh = MeshPtr.Get();
+        if (!Mesh) continue;
+
+        Mesh->SetCollisionResponseToChannel(MouseTraceChannel, ECR_Ignore);// no collision for the
+
+        Mesh->SetCastShadow(false);
+    }
+}
+
+void UOcclusionObstacleComp_Physical::DiscoverChildMeshes()
+{
+    NormalMeshes.Empty();
+    OccludedMeshes.Empty();
+    NormalDynamicMaterials.Empty();
+    OccludedDynamicMaterials.Empty();
+    ActiveOverlaps.Empty();
+
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> Discovering child meshes for %s"),
+        *GetOwner()->GetName());
+
+    UOcclusionMeshUtil::DiscoverChildMeshes(
+        this,
+        NormalMeshTag,
+        OccludedMeshTag,
+        NormalMeshes,
+        OccludedMeshes);
+
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComponent::DiscoverChildMeshes>> NormalMeshes: %d | OccludedMeshes: %d"),
+        NormalMeshes.Num(),
+        OccludedMeshes.Num());
+    
+    Modify(); // set dirty
+}
+
+void UOcclusionObstacleComp_Physical::CleanupInvalidOverlaps()
+{
+    int32 RemovedCount = 0;
+
+    for (auto It = ActiveOverlaps.CreateIterator(); It; ++It)
+    {
+        if (!It->IsValid())
+        {
+            It.RemoveCurrent();
+            RemovedCount++;
+        }
+    }
+
+    if (RemovedCount > 0)
+    {
+        UE_LOG(Occlusion, Log,
+            TEXT("UOcclusionObstacleComponent::CleanupInvalidOverlaps>> Removed %d stale entries"),
+            RemovedCount);
+    }
+}
+
+void UOcclusionObstacleComp_Physical::InitializeMaterials()
+{
+    UE_LOG(Occlusion, Log,
+    TEXT("UOcclusionObstacleComponent::InitializeMaterials>> Creating dynamic materials for %s"),
+    *GetOwner()->GetName());
+
+    UOcclusionMeshUtil::CreateDynamicMaterials(
+        NormalMeshes,
+        NormalDynamicMaterials);
+
+    UOcclusionMeshUtil::CreateDynamicMaterials(
+        OccludedMeshes,
+        OccludedDynamicMaterials);
+
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComponent::InitializeMaterials>> NormalDyn: %d | OccludedDyn: %d"),
+        NormalDynamicMaterials.Num(),
+        OccludedDynamicMaterials.Num());
+}
+
+void UOcclusionObstacleComp_Physical::UpdateMaterialAlpha()
+{
+    const float NormalAlpha   = 1.f - CurrentAlpha;
+    const float OccludedAlpha = CurrentAlpha;
+
+    for (UMaterialInstanceDynamic* Dyn : NormalDynamicMaterials)
+    {
+        if (Dyn) Dyn->SetScalarParameterValue(AlphaParameterName, NormalAlpha);
+    }
+
+    for (UMaterialInstanceDynamic* Dyn : OccludedDynamicMaterials)
+    {
+        if (Dyn) Dyn->SetScalarParameterValue(AlphaParameterName, OccludedAlpha);
+    }
+}

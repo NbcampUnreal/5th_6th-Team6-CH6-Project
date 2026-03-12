@@ -2,8 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
-#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionTraceTypes.h"
-#include "ObstacleOcclusion/PhysicallOcclusion/FrustumToProjectionMatcherHelper.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionTraceTypes.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/FrustumToProjectionMatcherHelper.h"
 #include "OcclusionTracerComponent.generated.h"
 
 class UCameraComponent;

@@ -113,6 +113,9 @@ protected:
 	// 현재 마우스가 올라가 있는 액터 캐싱 (최적화 및 이전 하이라이트 끄기 용도)
 	UPROPERTY()
 	TObjectPtr<AActor> CurrentHoveredActor;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Input")
+	TEnumAsByte<ECollisionChannel> MouseTraceChannel=ECollisionChannel::ECC_Visibility;//Default as visibility
 	
 	//Main Camera Added here
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")

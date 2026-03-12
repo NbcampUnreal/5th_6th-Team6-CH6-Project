@@ -1,6 +1,6 @@
-﻿#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionTraceLibrary.h"
-#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionObstacleComponent.h"
-#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionInterface.h"
+﻿#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionTraceLibrary.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionObstacleComp_Physical.h"
+#include "TopDownVision/Public/ObstacleOcclusion/OcclusionInterface.h"
 #include "TopDownVisionDebug.h"
 #include "DrawDebugHelpers.h"
 
@@ -51,12 +51,26 @@ void FOcclusionTraceLibrary::RunProbe(
         if (bDebugDraw)
         {
             const FColor LineColor = Hits.Num() > 0 ? FColor::Red : FColor::Green;
-            DrawDebugLine(World, SweepOrigin, Probe.Target, LineColor, false, -1.f, 0, 2.f);
+            DrawDebugLine(
+                World,
+                SweepOrigin,
+                Probe.Target,
+                LineColor,
+                false,
+                -1.f,
+                0,
+                2.f);
 
             for (const FHitResult& Hit : Hits)
             {
-                DrawDebugSphere(World, Hit.ImpactPoint,
-                                Sweep.SphereRadius, 8, FColor::Orange, false, -1.f);
+                DrawDebugSphere(
+                    World,
+                    Hit.ImpactPoint,
+                    Sweep.SphereRadius,
+                    8,
+                    FColor::Orange,
+                    false,
+                    -1.f);
             }
         }
 
@@ -64,7 +78,10 @@ void FOcclusionTraceLibrary::RunProbe(
         {
             AActor* HitActor = Hit.GetActor();
             if (!HitActor) continue;
-            if (!HitActor->FindComponentByClass<UOcclusionObstacleComponent>()) continue;
+
+            TArray<UOcclusionObstacleComp_Physical*> Comps;
+            HitActor->GetComponents<UOcclusionObstacleComp_Physical>(Comps);
+            if (Comps.Num() == 0) continue;
 
             CurrentHits.Add(HitActor);
         }
@@ -89,24 +106,30 @@ void FOcclusionTraceLibrary::NotifyEnter(AActor* Actor, UObject* TracerIdentity)
 {
     if (!Actor) return;
 
-    UOcclusionObstacleComponent* Comp =
-        Actor->FindComponentByClass<UOcclusionObstacleComponent>();
+    TArray<UOcclusionObstacleComp_Physical*> Comps;
+    Actor->GetComponents<UOcclusionObstacleComp_Physical>(Comps);
 
-    if (!Comp) return;
+    for (UOcclusionObstacleComp_Physical* Comp : Comps)
+    {
+        IOcclusionInterface::Execute_OnOcclusionEnter(Comp, TracerIdentity);
+    }
 
-    IOcclusionInterface::Execute_OnOcclusionEnter(Comp, TracerIdentity);
-    UE_LOG(Occlusion, Log, TEXT("FOcclusionTraceLibrary::NotifyEnter>> %s"), *Actor->GetName());
+    UE_LOG(Occlusion, Log, TEXT("FOcclusionTraceLibrary::NotifyEnter>> %s (%d comps)"),
+        *Actor->GetName(), Comps.Num());
 }
 
 void FOcclusionTraceLibrary::NotifyExit(AActor* Actor, UObject* TracerIdentity)
 {
     if (!Actor) return;
 
-    UOcclusionObstacleComponent* Comp =
-        Actor->FindComponentByClass<UOcclusionObstacleComponent>();
+    TArray<UOcclusionObstacleComp_Physical*> Comps;
+    Actor->GetComponents<UOcclusionObstacleComp_Physical>(Comps);
 
-    if (!Comp) return;
+    for (UOcclusionObstacleComp_Physical* Comp : Comps)
+    {
+        IOcclusionInterface::Execute_OnOcclusionExit(Comp, TracerIdentity);
+    }
 
-    IOcclusionInterface::Execute_OnOcclusionExit(Comp, TracerIdentity);
-    UE_LOG(Occlusion, Log, TEXT("FOcclusionTraceLibrary::NotifyExit>> %s"), *Actor->GetName());
+    UE_LOG(Occlusion, Log, TEXT("FOcclusionTraceLibrary::NotifyExit>> %s (%d comps)"),
+        *Actor->GetName(), Comps.Num())
 }

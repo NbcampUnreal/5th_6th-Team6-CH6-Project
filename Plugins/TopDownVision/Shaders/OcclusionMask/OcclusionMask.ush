@@ -20,7 +20,7 @@
 // Returns  : 0 or 1 (for masked opacity)
 // ==========================================================
 
-float Bayer4x4Threshold(float2 PixelPos)
+/*float Bayer4x4Threshold(float2 PixelPos)
 {
 	int2 p = int2(floor(PixelPos)) & 3; // faster than fmod(x,4)
 
@@ -42,4 +42,46 @@ float DitherMask4x4(float2 PixelPos, float Fade)
 {
 	float threshold = Bayer4x4Threshold(PixelPos);
 	return Fade > threshold ? 1.0 : 0.0;
+}*/
+
+float Bayer4x4Threshold(float2 PixelPos)
+{
+	int2 p = int2(floor(PixelPos)) & 3;
+	int index = p.x + p.y * 4;
+
+	const float bayer[16] =
+	{
+		0.0,  8.0,  2.0, 10.0,
+		12.0, 4.0, 14.0, 6.0,
+		3.0, 11.0,  1.0, 9.0,
+		15.0, 7.0, 13.0, 5.0
+	 };
+
+	// Use (x + 1) / 17 instead of x / 16. --> prevent noise keep staying on screen
+	// This ensures that even at Fade = 0, Fade > Threshold is false.
+	// And at Fade = 1, Fade > Threshold is always true.
+	return (bayer[index] + 1.0f) / 17.0f;
+}
+
+float DitherMask4x4(float2 PixelPos, float Fade)
+{
+	// Clamp Fade to be safe, though usually handled by the material
+	float SafeFade = saturate(Fade);
+	float threshold = Bayer4x4Threshold(PixelPos);
+    
+	return SafeFade > threshold ? 1.0 : 0.0;
+}
+
+
+//======== Custom Texture Dithering ===========//
+
+float CustomTextureDither(float2 ScreenUV, float Fade, Texture2D DitherTex, SamplerState TexSampler, float Scale)
+{
+	float2 ScaledUV = ScreenUV * Scale;
+
+	// FIX: Use SampleLevel with 0 as the last parameter (Mip 0)
+	// This avoids the 'Opcode Sample' error in Ray Tracing / Any Hit shaders
+	float Threshold = DitherTex.SampleLevel(TexSampler, ScaledUV, 0).r;
+
+	return step(Threshold, Fade);
 }

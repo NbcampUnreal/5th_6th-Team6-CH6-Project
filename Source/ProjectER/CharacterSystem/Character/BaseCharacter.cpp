@@ -275,12 +275,26 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 
 ETeamType ABaseCharacter::GetTeamType() const
 {
+	
+/*<<<<<<< HEAD
+	/*AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
+	return PS->TeamType;#1#
+
+	if (const AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
+	{
+		return ERPS->GetTeamType();
+	}
+
+	else return TeamID;
+=======*/
+	
 	if (AER_PlayerState* PS = GetPlayerState<AER_PlayerState>())
 	{
 		return PS->TeamType;
 	}
 	
 	return TeamID;
+
 }
 
 
@@ -380,13 +394,9 @@ void ABaseCharacter::OnRep_PlayerState()
 	// ASC 초기화 (클라이언트)
 	InitAbilitySystem();
 
+
 	// [길 2] 클라이언트는 서버가 PlayerState를 복제해준 순간 초기화
 	InitPlayer();
-
-	
-	EVisionChannel CurrentVisionChannel=GetVisionChannelFromPlayerStateComp();
-	//remade it to get the team id directly from player state
-	TeamID;//test-> did the team id been settled?
 }
 
 bool ABaseCharacter::IsLocalPlayerPawn()
@@ -1939,7 +1949,6 @@ void ABaseCharacter::InitPlayer()
 				TopDownCameraComp->InitializeComponent();
 				TopDownCameraComp->Activate();
 				TopDownCameraComp->SetComponentTickEnabled(true);
-				TopDownCameraComp->InitializeCompRequirements();
 			}
 			else
 			{

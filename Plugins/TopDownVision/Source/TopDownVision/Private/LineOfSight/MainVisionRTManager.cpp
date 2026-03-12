@@ -17,6 +17,8 @@
 
 UMainVisionRTManager::UMainVisionRTManager()
 {
+	PrimaryComponentTick.bCanEverTick = false;
+	
 	UE_LOG(LOSVision, Log,
 		TEXT("UMainVisionRTManager::Constructor >> Component constructed"));
 }
@@ -27,7 +29,7 @@ void UMainVisionRTManager::BeginPlay()
 	UE_LOG(LOSVision, Log, TEXT("UMainVisionRTManager::BeginPlay >> BeginPlay called"));
 }
 
-void UMainVisionRTManager::Initialize()
+void UMainVisionRTManager::InitializeMainVisionRTComp()
 {
 	if (!ShouldRunClientLogic())
 		return;
@@ -35,7 +37,7 @@ void UMainVisionRTManager::Initialize()
 	if (!CameraLocalRT)
 	{
 		UE_LOG(LOSVision, Warning,
-			TEXT("UMainVisionRTManager::Initialize >> CameraLocalRT is null. Assign it in the Content Browser."));
+			TEXT("UMainVisionRTManager::InitializeMainVisionRTComp >> CameraLocalRT is null. Assign it in the Content Browser."));
 		return;
 	}
 
@@ -45,7 +47,8 @@ void UMainVisionRTManager::Initialize()
 		CameraLocalRT->OnCanvasRenderTargetUpdate.AddDynamic(this, &UMainVisionRTManager::DrawLOS_CPU);
 		CameraLocalRT->UpdateResource();
 
-		UE_LOG(LOSVision, Log, TEXT("UMainVisionRTManager::Initialize >> Bound DrawLOS_CPU to CameraLocalRT: %s"),
+		UE_LOG(LOSVision, Log,
+			TEXT("UMainVisionRTManager::InitializeMainVisionRTComp >> Bound DrawLOS_CPU to CameraLocalRT: %s"),
 			*CameraLocalRT->GetName());
 	}
 
@@ -79,13 +82,17 @@ void UMainVisionRTManager::Initialize()
 		}
 		else
 		{
-			UE_LOG(LOSVision, Error, TEXT("UMainVisionRTManager::Initialize >> Failed to create FeatherMID"));
+			UE_LOG(LOSVision, Error,
+				TEXT("UMainVisionRTManager::InitializeMainVisionRTComp >> Failed to create FeatherMID"));
 		}
 	}
 	else if (!FeatherOutMaterial)
 	{
-		UE_LOG(LOSVision, Warning, TEXT("UMainVisionRTManager::Initialize >> FeatherOutMaterial is not assigned"));
+		UE_LOG(LOSVision, Warning,
+			TEXT("UMainVisionRTManager::InitializeMainVisionRTComp >> FeatherOutMaterial is not assigned"));
 	}
+
+	Activate();
 	
 }
 

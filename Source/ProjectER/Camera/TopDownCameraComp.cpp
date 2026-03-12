@@ -10,6 +10,7 @@
 #include "Engine/World.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "LineOfSight/MainVisionRTManager.h"
+#include "ObstacleOcclusion/MaterialOcclusion/MainOcclusionPainter.h"
 
 #include "LogHelper/DebugLogHelper.h"
 
@@ -35,7 +36,10 @@ UTopDownCameraComp::UTopDownCameraComp()
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->bUsePawnControlRotation = false;
 
+	// Main Vision RT
 	MainVisionRTManager = CreateDefaultSubobject<UMainVisionRTManager>(TEXT("MainVisionRTComp"));
+	// Occlusion Painter RT
+	OcclusionPainter = CreateDefaultSubobject<UMainOcclusionPainter>(TEXT("OcclusionPainter"));
 
 	UE_LOG(MainCameraComp, Log,
 		TEXT("%s UTopDownCameraComp::Constructor >> Component created"),
@@ -67,9 +71,14 @@ void UTopDownCameraComp::TickComponent(float DeltaTime, ELevelTick TickType,
 
 	UpdateCameraTransform();
 
-	if (MainVisionRTManager)
+	if (MainVisionRTManager)//draw vision
 	{
 		MainVisionRTManager->UpdateCameraLOS();
+	}
+
+	if (OcclusionPainter)// draw occlusion
+	{
+		OcclusionPainter->UpdateOcclusionRT();
 	}
 }
 
@@ -214,7 +223,7 @@ void UTopDownCameraComp::InitializeCompRequirements()
 
 	SetComponentTickEnabled(true);
 	SmoothedFollowLocation = OwnerPawn->GetActorLocation();
-	FreeCamPivotLocation   = SmoothedFollowLocation;
+	FreeCamPivotLocation = SmoothedFollowLocation;
 
 	UE_LOG(MainCameraComp, Log,
 		TEXT("%s UTopDownCameraComp::InitializeCompRequirements >> Initial locations set | SmoothedFollow:%s | FreePivot:%s"),
@@ -222,7 +231,7 @@ void UTopDownCameraComp::InitializeCompRequirements()
 		*SmoothedFollowLocation.ToString(),
 		*FreeCamPivotLocation.ToString());
 
-	PrepareRequirements();
+	PrepareSubComponents();
 
 	UpdateCameraCurveValues(CurveBendWeight);
 	UpdateCameraTransform();
@@ -306,67 +315,134 @@ void UTopDownCameraComp::TickFollowMode(float DeltaTime)
 void UTopDownCameraComp::TickFreeCamMode(float DeltaTime)
 {
 	// Gather edge and key input
-	const FVector2D EdgeInput    = GatherEdgeScrollInput();
+	const FVector2D EdgeInput = GatherEdgeScrollInput();
 	const FVector2D CombinedInput = PendingKeyInput + EdgeInput;
 
-	// Update pivot instantly based on input
+	UE_LOG(MainCameraComp, Verbose,
+		TEXT("%s TickFreeCamMode >> InputGathered | KeyInput:%s | EdgeInput:%s | Combined:%s"),
+		*DebugLogHelper::GetClientDebugName(this),
+		*PendingKeyInput.ToString(),
+		*EdgeInput.ToString(),
+		*CombinedInput.ToString());
+
 	if (!CombinedInput.IsNearlyZero())
 	{
-		FreeCamPivotLocation += FVector::RightVector   * CombinedInput.X * PanSpeed * DeltaTime;
-		FreeCamPivotLocation += FVector::ForwardVector * CombinedInput.Y * PanSpeed * DeltaTime;
+		// Use camera yaw only (ignore pitch)
+		const float CamYaw = CameraComp->GetComponentRotation().Yaw;
+		const FRotator YawRotation(0.f, CamYaw, 0.f);
+
+		// Extract world directions aligned with camera yaw
+		const FVector Forward = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+		const FVector Right   = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
 		UE_LOG(MainCameraComp, Verbose,
-			TEXT("%s TickFreeCamMode >> Pivot updated | CombinedInput:%s | Pivot:%s"),
+			TEXT("%s TickFreeCamMode >> CameraBasis | Yaw:%f | Forward:%s | Right:%s"),
 			*DebugLogHelper::GetClientDebugName(this),
-			*CombinedInput.ToString(),
+			CamYaw,
+			*Forward.ToString(),
+			*Right.ToString());
+
+		// Convert 2D input into world-space movement
+		const FVector MoveVector =
+			(Forward * CombinedInput.Y +
+			 Right   * CombinedInput.X) * PanSpeed * DeltaTime;
+
+		const FVector PrevPivot = FreeCamPivotLocation;
+
+		FreeCamPivotLocation += MoveVector;
+
+		UE_LOG(MainCameraComp, Verbose,
+			TEXT("%s TickFreeCamMode >> PivotMoved | PrevPivot:%s | MoveVector:%s | NewPivot:%s"),
+			*DebugLogHelper::GetClientDebugName(this),
+			*PrevPivot.ToString(),
+			*MoveVector.ToString(),
 			*FreeCamPivotLocation.ToString());
 	}
 
-	// Smoothly move camera towards pivot
+	const FVector CurrentLocation = GetComponentLocation();
+	const FVector TargetLocation  = FreeCamPivotLocation;
+
+	UE_LOG(MainCameraComp, Verbose,
+		TEXT("%s TickFreeCamMode >> CameraMovementStart | Current:%s | Target:%s | Lag:%d"),
+		*DebugLogHelper::GetClientDebugName(this),
+		*CurrentLocation.ToString(),
+		*TargetLocation.ToString(),
+		UseLag);
+
+	FVector NewLocation = TargetLocation;
+
+	// Smooth camera motion if lag is enabled
 	if (UseLag)
 	{
-		FVector CurrentLocation = GetComponentLocation();
-		FVector NewLocation = FMath::VInterpTo(CurrentLocation, FreeCamPivotLocation, DeltaTime, FreeCamLagSpeed);
+		NewLocation = FMath::VInterpTo(
+			CurrentLocation,
+			TargetLocation,
+			DeltaTime,
+			FreeCamLagSpeed
+		);
+
 		SetWorldLocation(NewLocation);
 
 		UE_LOG(MainCameraComp, Verbose,
-			TEXT("%s TickFreeCamMode >> Lagged movement | Prev:%s | Target:%s | New:%s"),
+			TEXT("%s TickFreeCamMode >> LagApplied | Prev:%s | Target:%s | Result:%s | LagSpeed:%f"),
 			*DebugLogHelper::GetClientDebugName(this),
 			*CurrentLocation.ToString(),
-			*FreeCamPivotLocation.ToString(),
-			*NewLocation.ToString());
+			*TargetLocation.ToString(),
+			*NewLocation.ToString(),
+			FreeCamLagSpeed);
 	}
 	else
 	{
-		SetWorldLocation(FreeCamPivotLocation);
+		SetWorldLocation(TargetLocation);
 
 		UE_LOG(MainCameraComp, Verbose,
-			TEXT("%s TickFreeCamMode >> Snapped | New:%s"),
+			TEXT("%s TickFreeCamMode >> SnapMove | NewLocation:%s"),
 			*DebugLogHelper::GetClientDebugName(this),
-			*FreeCamPivotLocation.ToString());
+			*TargetLocation.ToString());
 	}
 }
 
-void UTopDownCameraComp::PrepareRequirements()
+void UTopDownCameraComp::PrepareSubComponents()
 {
 	UE_LOG(MainCameraComp, Log,
-		TEXT("%s UTopDownCameraComp::PrepareRequirements >> Caching subsystems"),
+		TEXT("%s UTopDownCameraComp::PrepareSubComponents >> Caching subsystems"),
 		*DebugLogHelper::GetClientDebugName(this));
 
 	SetCurveWorldSubsystem();
 
+	// MainVisionRT
 	if (MainVisionRTManager)
 	{
-		MainVisionRTManager->Initialize();
+		MainVisionRTManager->InitializeMainVisionRTComp();
 
 		UE_LOG(MainCameraComp, Log,
-			TEXT("%s UTopDownCameraComp::PrepareRequirements >> CameraVisionManager initialized"),
+			TEXT("%s UTopDownCameraComp::PrepareSubComponents >> CameraVisionManager initialized"),
 			*DebugLogHelper::GetClientDebugName(this));
 	}
 	else
 	{
 		UE_LOG(MainCameraComp, Error,
-			TEXT("%s UTopDownCameraComp::PrepareRequirements >> CameraVisionManager is NULL"),
+			TEXT("%s UTopDownCameraComp::PrepareSubComponents >> CameraVisionManager is NULL"),
+			*DebugLogHelper::GetClientDebugName(this));
+	}
+
+
+	//OcclusionRT painter
+	if (OcclusionPainter)
+	{
+		APlayerController* DebuggingPC=GetOwnerPlayerController();
+		
+		OcclusionPainter->InitializeOcclusionComponent(GetOwnerPlayerController());// ini
+		
+		UE_LOG(MainCameraComp, Log,
+			TEXT("%s UTopDownCameraComp::PrepareSubComponents >> OcclusionPainter initialized"),
+			*DebugLogHelper::GetClientDebugName(this));
+		
+	}
+	else
+	{
+		UE_LOG(MainCameraComp, Error,
+			TEXT("%s UTopDownCameraComp::PrepareSubComponents >> OcclusionPainter is NULL"),
 			*DebugLogHelper::GetClientDebugName(this));
 	}
 }

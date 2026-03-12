@@ -31,7 +31,7 @@ protected:
 public:
 	
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")// Initialize with the owning camera/player
-	void Initialize();
+	void InitializeMainVisionRTComp();
 	
 	//Update Main CRT (called every frame or when dirty)
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")

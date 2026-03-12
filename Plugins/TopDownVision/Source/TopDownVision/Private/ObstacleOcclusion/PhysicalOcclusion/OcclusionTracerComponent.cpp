@@ -1,14 +1,14 @@
-﻿#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionTracerComponent.h"
+﻿#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionTracerComponent.h"
 
-#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionTraceLibrary.h"
-#include "ObstacleOcclusion/PhysicallOcclusion/FrustumToProjectionMatcherHelper.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionTraceLibrary.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/FrustumToProjectionMatcherHelper.h"
 #include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include "GameFramework/PlayerController.h"
 #include "DrawDebugHelpers.h"
 #include "TopDownVisionDebug.h"
-#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionInterface.h"
-#include "ObstacleOcclusion/PhysicallOcclusion/OcclusionObstacleComponent.h"
+#include "TopDownVision/Public/ObstacleOcclusion/OcclusionInterface.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionObstacleComp_Physical.h"
 
 UOcclusionTracerComponent::UOcclusionTracerComponent()
 {
@@ -122,11 +122,13 @@ void UOcclusionTracerComponent::OnBecameHidden()
     {
         if (!Previous.IsValid()) continue;
 
-        UOcclusionObstacleComponent* Comp =
-            Previous->FindComponentByClass<UOcclusionObstacleComponent>();
+        TArray<UOcclusionObstacleComp_Physical*> Comps;
+        Previous->GetComponents<UOcclusionObstacleComp_Physical>(Comps);
 
-        if (Comp)
+        for (UOcclusionObstacleComp_Physical* Comp : Comps)
+        {
             IOcclusionInterface::Execute_OnOcclusionExit(Comp, this);
+        }
     }
 
     Probe.PreviousHits.Empty();

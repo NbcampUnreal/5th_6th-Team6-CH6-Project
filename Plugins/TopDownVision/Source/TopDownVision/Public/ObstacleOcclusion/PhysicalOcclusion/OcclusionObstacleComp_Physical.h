@@ -2,19 +2,19 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
-#include "OcclusionInterface.h"
-#include "OcclusionObstacleComponent.generated.h"
+#include "ObstacleOcclusion/OcclusionInterface.h"
+#include "OcclusionObstacleComp_Physical.generated.h"
 
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOPDOWNVISION_API UOcclusionObstacleComponent : public USceneComponent, public IOcclusionInterface
+class TOPDOWNVISION_API UOcclusionObstacleComp_Physical : public USceneComponent, public IOcclusionInterface
 {
     GENERATED_BODY()
 
 public:
-    UOcclusionObstacleComponent();
+    UOcclusionObstacleComp_Physical();
 
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -22,18 +22,24 @@ public:
 
     UFUNCTION(BlueprintCallable, Category="Occlusion Setup")
     void SetupOcclusionMeshes();
+
     
-    void InitializeCollision();
+    
+    UFUNCTION(BlueprintCallable, Category="Occlusion Setup")
+    void InitializeCollisionAndShadow();
 
     virtual void OnOcclusionEnter_Implementation(UObject* SourceTracer) override;
     virtual void OnOcclusionExit_Implementation(UObject* SourceTracer) override;
 
 private:
-
-    void InitializeMaterials();
-    void UpdateMaterialAlpha();
+    void GenerateShadowProxyMeshes();// this will be made, only for casting shadow.
+    
+    void InitializeMaterials();// mid creation
+    void UpdateMaterialAlpha();// send visibility alpha to mid
+    
     void CleanupInvalidOverlaps();
-    void DiscoverChildMeshes();
+    
+    void DiscoverChildMeshes();// for finidng the mesh from the owner actor's editor setting
 
 protected:
 
@@ -51,7 +57,9 @@ protected:
     
     UPROPERTY(EditAnywhere, Category="Occlusion")
     TEnumAsByte<ECollisionChannel> OcclusionTraceChannel = ECC_GameTraceChannel1;
-    
+
+    UPROPERTY(EditAnywhere, Category="Occlusion")
+    TEnumAsByte<ECollisionChannel> MouseTraceChannel = ECC_Visibility;
 private:
 
     TSet<TWeakObjectPtr<UObject>> ActiveOverlaps;
@@ -71,4 +79,7 @@ private:
 
     UPROPERTY(VisibleAnywhere)
     TArray<TSoftObjectPtr<UStaticMeshComponent>> OccludedMeshes;
+
+    UPROPERTY(VisibleAnywhere)
+    TArray<TObjectPtr<UStaticMeshComponent>> ShadowProxyMeshes;
 };
