@@ -129,9 +129,6 @@ void AER_OutGameMode::PostLogin(APlayerController* NewPlayer)
 
 void AER_OutGameMode::StartGame()
 {
-	if (!HasAuthority())
-		return;
-
     UE_LOG(LogTemp, Log, TEXT("[GM] : StartGame"));
 
     AER_GameState* GS = GetGameState<AER_GameState>();
