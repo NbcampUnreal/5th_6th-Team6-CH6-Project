@@ -51,14 +51,25 @@ public class TopDownVision : ModuleRules
 				"RenderCore",
 				"RHI",//render hardware interface
 				
-				// for editor function to bake World Obstacle maps
+				/*// for editor function to bake World Obstacle maps
 				"UnrealEd", 
-				"EditorScriptingUtilities", 
+				"EditorScriptingUtilities", */
+				
 				"AssetTools",
 				"KismetCompiler",
 				
 				"NetCore",// for FastArraySerializer
 			});
+		
+		if (Target.bBuildEditor)
+		{
+			PrivateDependencyModuleNames.AddRange(new string[]
+			{
+				// for editor function to bake World Obstacle maps
+				"UnrealEd", 
+				"EditorScriptingUtilities", 
+			});
+		}
 		
 		
 		DynamicallyLoadedModuleNames.AddRange(
