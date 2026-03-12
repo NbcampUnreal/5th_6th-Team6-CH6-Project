@@ -953,7 +953,7 @@ void ABasePlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
 
 	for (FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
 	{
-		if (Spec.DynamicAbilityTags.HasTagExact(InputTag))
+		if (Spec.GetDynamicSpecSourceTags().HasTagExact(InputTag))
 		{
 			if (Spec.IsActive())
 			{
