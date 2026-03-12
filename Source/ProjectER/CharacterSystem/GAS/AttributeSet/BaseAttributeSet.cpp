@@ -1,4 +1,4 @@
-#include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
+﻿#include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
@@ -352,7 +352,6 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 						{
 							TargetChar->HandleLevelUp(); 
 							TargetChar->OnLevelChanged();
-							//ㅁㄴㅇㄹㄴㅁㅇㄹ
 						}
 					}
 				}
@@ -405,11 +404,9 @@ void UBaseAttributeSet::OnRep_MaxXP(const FGameplayAttributeData& OldMaxXP)
 void UBaseAttributeSet::OnRep_Health(const FGameplayAttributeData& OldHealth)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBaseAttributeSet, Health, OldHealth);
-	UE_LOG(LogTemp, Log, TEXT("HHHHHHHHHHHHHHHHHHHHHHHHHHPPPPPPPPPPPPPPPPPPPPPP"));
 	/// mpyi _ 머리 위 HUD 모든 플레이어 동기화를 위함
 	if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(GetOwningAbilitySystemComponent()->GetAvatarActor()))
 	{
-		UE_LOG(LogTemp, Log, TEXT("HPPPPPPPPPPPPPPPPPPPPPP"));
 		TargetChar->OnHealthChanged();
 	}
 }
