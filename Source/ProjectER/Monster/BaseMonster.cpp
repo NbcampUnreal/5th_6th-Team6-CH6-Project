@@ -202,7 +202,7 @@ void ABaseMonster::OnMonsterDataLoaded(FPrimaryAssetId MonsterAssetId, float Lev
 	);
 	if (IsValid(MonsterData) == false)
 	{
-		UE_LOG(LogTemp, Error, TEXT("ABaseMonster::InitMonsterData - MonsterData is Not Valid!"));
+		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::InitMonsterData - MonsterData is Not Valid!"));
 	}
 
 
@@ -370,7 +370,6 @@ void ABaseMonster::OnRep_MonsterData()
 
 void ABaseMonster::OnHealthChangedHandle(float CurrentHP, float MaxHP)
 {
-	// UpdateHP
 	UUserWidget* Widget = HPBarWidgetComp->GetUserWidgetObject();
 	UProgressBar* HPBar = Cast<UProgressBar>(Widget->GetWidgetFromName(TEXT("HealthBar")));
 	HPBar->SetPercent(CurrentHP / MaxHP);
@@ -575,7 +574,7 @@ void ABaseMonster::TryActivateByDynamicTag(FGameplayTag InputTag)
 		{
 			if (!ASC->TryActivateAbility(Spec.Handle))
 			{
-				UE_LOG(LogTemp, Error, TEXT("ABaseMonster::TryActivateByDynamicTag : Skill Fail"));
+				UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::TryActivateByDynamicTag : Skill Fail"));
 			}
 			break;
 		}
@@ -843,14 +842,12 @@ void ABaseMonster::OnCCChanged(FGameplayTag Tag, int32 NewCount)
 {
 	if (NewCount > 0)
 	{
-		//UE_LOG(LogTemp, Error, TEXT("CC On"));
 		//ASC->CancelAllAbilities();
 		SendStateTreeEvent(FGameplayTag::RequestGameplayTag("Event.State.Debuff.Hard"));
 		// Hard CC 적용됨
 	}
 	else
 	{
-		//UE_LOG(LogTemp, Error, TEXT("CC Off"));
 		bIsCombat = false;
 		SendStateTreeEvent(MonsterTags.HitEventTag);
 		// Hard CC 해제됨
