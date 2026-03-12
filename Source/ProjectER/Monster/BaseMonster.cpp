@@ -127,16 +127,12 @@ void ABaseMonster::PossessedBy(AController* newController)
 		MonsterRangeComp->OnPlayerOut.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
 		
 		ASC->RegisterGameplayTagEvent(
-			FGameplayTag::RequestGameplayTag("State.Debuff.Hard.Stun"),
-			EGameplayTagEventType::AnyCountChange
-			).AddUObject(this, &ABaseMonster::OnCCChanged);
-		ASC->RegisterGameplayTagEvent(
 			FGameplayTag::RequestGameplayTag("State.Debuff.Hard.Airborne"),
 			EGameplayTagEventType::NewOrRemoved
 			).AddUObject(this, &ABaseMonster::OnCCChanged);
 		ASC->RegisterGameplayTagEvent(
-			FGameplayTag::RequestGameplayTag("State.Debuff.Soft.Root"),
-			EGameplayTagEventType::NewOrRemoved
+			FGameplayTag::RequestGameplayTag("State.Debuff.Hard.Stun"),
+			EGameplayTagEventType::AnyCountChange
 			).AddUObject(this, &ABaseMonster::OnCCChanged);
 	}
 }
@@ -840,14 +836,12 @@ void ABaseMonster::OnCCChanged(FGameplayTag Tag, int32 NewCount)
 {
 	if (NewCount > 0)
 	{
-		//ASC->CancelAllAbilities();
-		SendStateTreeEvent(FGameplayTag::RequestGameplayTag("Event.State.Debuff.Hard"));
-		// Hard CC 적용됨
+		SetbIsCombat(true);
+		SendStateTreeEvent(FGameplayTag::RequestGameplayTag("Event.State.Debuff"));
 	}
 	else
 	{
-		//SetbIsCombat(false);
+		SetbIsCombat(false);
 		SendStateTreeEvent(MonsterTags.HitEventTag);
-		// Hard CC 해제됨
 	}
 }
