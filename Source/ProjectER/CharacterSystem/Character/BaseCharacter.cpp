@@ -1948,7 +1948,6 @@ void ABaseCharacter::InitPlayer()
 				TopDownCameraComp->InitializeComponent();
 				TopDownCameraComp->Activate();
 				TopDownCameraComp->SetComponentTickEnabled(true);
-				TopDownCameraComp->InitializeCompRequirements();
 			}
 			else
 			{

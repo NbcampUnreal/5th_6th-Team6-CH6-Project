@@ -115,7 +115,7 @@ protected:
 	TObjectPtr<AActor> CurrentHoveredActor;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Input")
-	TEnumAsByte<ECollisionChannel> MouseTraceChannel=ECollisionChannel::ECC_Visibility;//Default as visibitliy
+	TEnumAsByte<ECollisionChannel> MouseTraceChannel=ECollisionChannel::ECC_Visibility;//Default as visibility
 	
 	//Main Camera Added here
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")

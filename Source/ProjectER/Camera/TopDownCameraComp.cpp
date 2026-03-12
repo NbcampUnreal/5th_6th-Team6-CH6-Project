@@ -413,7 +413,7 @@ void UTopDownCameraComp::PrepareSubComponents()
 	// MainVisionRT
 	if (MainVisionRTManager)
 	{
-		MainVisionRTManager->Initialize();
+		MainVisionRTManager->InitializeMainVisionRTComp();
 
 		UE_LOG(MainCameraComp, Log,
 			TEXT("%s UTopDownCameraComp::PrepareSubComponents >> CameraVisionManager initialized"),

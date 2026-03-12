@@ -12,3 +12,7 @@ namespace DebugLogHelper
 	PROJECTER_API FString GetClientDebugName(const UObject* WorldContextObject);
 	PROJECTER_API FString GetNetModeString(const UWorld* World);
 }
+
+
+
+PROJECTER_API DECLARE_LOG_CATEGORY_EXTERN(LevelAreaGraphManagement, Log, All);

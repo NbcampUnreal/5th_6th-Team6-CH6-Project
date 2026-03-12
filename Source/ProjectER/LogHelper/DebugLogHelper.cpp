@@ -7,6 +7,11 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
 
+
+// Log Defines
+
+DEFINE_LOG_CATEGORY(LevelAreaGraphManagement);
+
 namespace DebugLogHelper
 {
 	FString GetNetModeString(const UWorld* World)
