@@ -660,7 +660,7 @@ void ABaseMonster::SendAttackRangeEvent(float AttackRange)
 {
 	if (IsValid(TargetPlayer) == false)
 	{
-		SendStateTreeEvent(MonsterTags.TargetOnEventTag);
+		//SendStateTreeEvent(MonsterTags.TargetOnEventTag);
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::SendAttackRangeEvent : Not Player"));
 		return;
 	}
