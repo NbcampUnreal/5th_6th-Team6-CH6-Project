@@ -157,7 +157,6 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 			const float NewHealth = OldHealth - LocalDamage;
 			
 			SetHealth(FMath::Clamp(NewHealth, 0.0f, GetMaxHealth()));
-			// UE_LOG(LogTemp, Warning, TEXT("Hp %f / %f "),  GetHealth(), GetMaxHealth());
 			
 			// Host Update
 			if (AActor* AvatarActor = GetOwningAbilitySystemComponent()->GetAvatarActor())
