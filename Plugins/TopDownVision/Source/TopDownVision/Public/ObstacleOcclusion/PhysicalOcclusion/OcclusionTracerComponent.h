@@ -41,7 +41,7 @@ public:
 
     UFUNCTION(BlueprintNativeEvent, Category="Occlusion Tracer")
     void OnTracerDeactivated();
-	
+
     // ── Config ────────────────────────────────────────────────────────────
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer")
@@ -75,6 +75,20 @@ public:
               meta=(EditCondition="bAutoGenerateSweeps", ClampMin=0.1f))
     float SweepGapRatio = 1.5f;
 
+    // ── Rocket head ───────────────────────────────────────────────────────
+
+    // World units from target where rocket head taper takes effect
+    // Beyond this distance — normal frustum matching is used
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sweeps|RocketHead",
+              meta=(ClampMin=0.f))
+    float RocketHeadDistance = 150.f;
+
+    // Controls taper shape within rocket head zone
+    // 1.0 = linear, < 1.0 = gradual (convex), > 1.0 = steep (concave)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sweeps|RocketHead",
+              meta=(ClampMin=0.1f))
+    float RocketHeadExponent = 2.f;
+
     // ── Debug ─────────────────────────────────────────────────────────────
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Debug")
@@ -98,9 +112,11 @@ private:
     void RebuildProbe();
     bool RefreshFrustumParams();
     void DrawDebug() const;
-    void GenerateSweepsAlongLine(const FVector& LineDirection, float LineLength);
 
-    FOcclusionProbe      Probe;
+    // Can be overridden — e.g. curved world shader needs curved placement
+    virtual void GenerateSweepsAlongLine(const FVector& LineDirection, float LineLength);
+
+    FOcclusionProbe Probe;
     FCameraFrustumParams FrustumParams;
 
     UPROPERTY()

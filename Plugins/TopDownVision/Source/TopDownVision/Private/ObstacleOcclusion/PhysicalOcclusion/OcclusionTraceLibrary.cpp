@@ -24,9 +24,12 @@ void FOcclusionTraceLibrary::RunProbe(
     UObject*                TracerIdentity,
     bool                    bDebugDraw)
 {
-      if (!World) return;
+    if (!World) return;
 
     TSet<TWeakObjectPtr<AActor>> CurrentHits;
+
+    // Clear last frame's hit sweep indices
+    Probe.HitSweepIndices.Reset();
 
     FCollisionQueryParams Params;
     for (AActor* Ignored : IgnoredActors)
@@ -34,8 +37,9 @@ void FOcclusionTraceLibrary::RunProbe(
         if (Ignored) Params.AddIgnoredActor(Ignored);
     }
 
-    for (const FOcclusionSweepConfig& Sweep : Probe.Sweeps)
+    for (int32 SweepIdx = 0; SweepIdx < Probe.Sweeps.Num(); ++SweepIdx)
     {
+        const FOcclusionSweepConfig& Sweep = Probe.Sweeps[SweepIdx];
         const FVector SweepOrigin = Probe.BaseOrigin + Sweep.OriginOffset;
 
         TArray<FHitResult> Hits;
@@ -60,45 +64,69 @@ void FOcclusionTraceLibrary::RunProbe(
                 -1.f,
                 0,
                 2.f);
-
-            for (const FHitResult& Hit : Hits)
-            {
-                DrawDebugSphere(
-                    World,
-                    Hit.ImpactPoint,
-                    Sweep.SphereRadius,
-                    8,
-                    FColor::Orange,
-                    false,
-                    -1.f);
-            }
         }
 
-        for (const FHitResult& Hit : Hits)
+      /*  for (const FHitResult& Hit : Hits)
         {
             AActor* HitActor = Hit.GetActor();
             if (!HitActor) continue;
 
             TArray<UOcclusionObstacleComp_Physical*> Comps;
             HitActor->GetComponents<UOcclusionObstacleComp_Physical>(Comps);
+
+            if (bDebugDraw)
+            {
+                // Draw hit actor name at impact point — shows exactly what is being swept
+                const FColor HitColor = Comps.Num() > 0 ? FColor::Orange : FColor::White;
+                DrawDebugString(
+                    World,
+                    Hit.ImpactPoint,
+                    FString::Printf(TEXT("%s [%s]"),
+                        *HitActor->GetName(),
+                        Comps.Num() > 0 ? TEXT("OCCLUSION") : TEXT("other")),
+                    nullptr,
+                    HitColor,
+                    0.f,
+                    true);
+            }
+
             if (Comps.Num() == 0) continue;
 
             CurrentHits.Add(HitActor);
-        }
-    }
+            Probe.HitSweepIndices.Add(SweepIdx);
+        }*/
 
-    // Filter hits not geometrically between camera and target —
-    // prevents actors behind the camera or beyond the target from triggering occlusion
-    for (auto It = CurrentHits.CreateIterator(); It; ++It)
-    {
-        if (!It->IsValid() || !IsOccluderBetweenCameraAndTarget(
-            It->Get(), Probe.BaseOrigin, Probe.Target))
+        for (int32 i=0; i < Hits.Num(); ++i)
         {
-            UE_LOG(Occlusion, Verbose,
-                TEXT("FOcclusionTraceLibrary::RunProbe>> Filtered out-of-range hit: %s"),
-                It->IsValid() ? *It->Get()->GetName() : TEXT("null"));
+            FHitResult& Hit = Hits[i];
+            
+            AActor* HitActor = Hit.GetActor();
+            if (!HitActor) continue;
 
-            It.RemoveCurrent();
+            TArray<UOcclusionObstacleComp_Physical*> Comps;
+            HitActor->GetComponents<UOcclusionObstacleComp_Physical>(Comps);
+            
+            if (bDebugDraw)
+            {
+                // Draw hit actor name at impact point — shows exactly what is being swept
+                const FColor HitColor = Comps.Num() > 0 ? FColor::Orange : FColor::White;
+                DrawDebugString(
+                    World,
+                    Hit.ImpactPoint,
+                    FString::Printf(TEXT("%s [%s] Sphere[%d]"),
+                        *HitActor->GetName(),
+                        Comps.Num() > 0 ? TEXT("OCCLUSION") : TEXT("other"),
+                        i),
+                    nullptr,
+                    HitColor,
+                    0.f,
+                    true);
+            }
+            
+            if (Comps.Num() == 0) continue;
+
+            CurrentHits.Add(HitActor);
+            Probe.HitSweepIndices.Add(SweepIdx);
         }
     }
 
@@ -150,23 +178,4 @@ void FOcclusionTraceLibrary::NotifyExit(AActor* Actor, UObject* TracerIdentity)
     UE_LOG(Occlusion, Log,
         TEXT("FOcclusionTraceLibrary::NotifyExit>> %s (%d comps)"),
         *Actor->GetName(), Comps.Num());
-}
-
-bool FOcclusionTraceLibrary::IsOccluderBetweenCameraAndTarget(const AActor* HitActor, const FVector& CameraPos,
-    const FVector& TargetPos)
-{
-    if (!IsValid(HitActor)) return false;
-
-    const FVector CamToTarget = TargetPos  - CameraPos;
-    const FVector CamToHit    = HitActor->GetActorLocation() - CameraPos;
-
-    // Must be in the same general direction as the target from camera
-    const float Dot = FVector::DotProduct(
-        CamToTarget.GetSafeNormal(),
-        CamToHit.GetSafeNormal());
-
-    if (Dot <= 0.f) return false; // behind camera
-
-    // Must be closer to camera than the target
-    return CamToHit.SizeSquared() < CamToTarget.SizeSquared();
 }
