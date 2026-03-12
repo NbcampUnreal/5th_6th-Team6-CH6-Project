@@ -663,6 +663,7 @@ void ABaseMonster::SendAttackRangeEvent(float AttackRange)
 {
 	if (IsValid(TargetPlayer) == false)
 	{
+		SendStateTreeEvent(MonsterTags.TargetOnEventTag);
 		UE_LOG(LogTemp, Warning, TEXT("ABaseMonster::SendAttackRangeEvent : Not Player"));
 		return;
 	}
@@ -842,14 +843,14 @@ void ABaseMonster::OnCCChanged(FGameplayTag Tag, int32 NewCount)
 {
 	if (NewCount > 0)
 	{
-		UE_LOG(LogTemp, Error, TEXT("CC On"));
+		//UE_LOG(LogTemp, Error, TEXT("CC On"));
 		//ASC->CancelAllAbilities();
 		SendStateTreeEvent(FGameplayTag::RequestGameplayTag("Event.State.Debuff.Hard"));
 		// Hard CC 적용됨
 	}
 	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("CC Off"));
+		//UE_LOG(LogTemp, Error, TEXT("CC Off"));
 		bIsCombat = false;
 		SendStateTreeEvent(MonsterTags.HitEventTag);
 		// Hard CC 해제됨
