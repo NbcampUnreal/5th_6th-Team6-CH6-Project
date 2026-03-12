@@ -55,8 +55,8 @@ public class TopDownVision : ModuleRules
 				"UnrealEd", 
 				"EditorScriptingUtilities", */
 				
-				"AssetTools",
-				"KismetCompiler",
+				/*"AssetTools",
+				"KismetCompiler",*/ // also the editor module
 				
 				"NetCore",// for FastArraySerializer
 			});
@@ -68,6 +68,8 @@ public class TopDownVision : ModuleRules
 				// for editor function to bake World Obstacle maps
 				"UnrealEd", 
 				"EditorScriptingUtilities", 
+				"AssetTools",
+				"KismetCompiler", // also the editor module
 			});
 		}
 		
