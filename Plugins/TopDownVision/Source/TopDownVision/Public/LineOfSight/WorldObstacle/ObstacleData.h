@@ -12,6 +12,15 @@ USTRUCT(BlueprintType)
 struct FObstacleMaskTile
 {
 	GENERATED_BODY()
+
+	FObstacleMaskTile()// added ini struct for preventing package crash
+	: Mask(nullptr)
+	, WorldBounds(FBox2D(EForceInit::ForceInit))
+	, WorldSize(FVector2D::ZeroVector)
+	, WorldToUV(FMatrix::Identity)
+	, WorldRotationYaw(0.f)
+	, WorldCenter(FVector2D::ZeroVector)
+	{}
 	
 	UPROPERTY(VisibleAnywhere, Category="WorldObject")
 	UTexture2D* Mask;
@@ -28,7 +37,7 @@ struct FObstacleMaskTile
 	//Rotation problem
 	//Store the tile's world rotation (Z-axis rotation for top-down)
 	UPROPERTY(VisibleAnywhere, Category="WorldObject")
-	float WorldRotationYaw = 0.f;  // Actor's yaw rotation in world
+	float WorldRotationYaw;  // Actor's yaw rotation in world
     
 	// Store the actual center position (not just bounds)
 	UPROPERTY(VisibleAnywhere, Category="WorldObject")

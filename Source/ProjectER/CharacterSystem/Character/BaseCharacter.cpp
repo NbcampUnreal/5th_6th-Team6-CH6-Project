@@ -1637,7 +1637,7 @@ void ABaseCharacter::InitUI()
 		AHUD* GenericHUD = PC->GetHUD();
 		if (GenericHUD == nullptr)
 		{
-			UE_LOG(LogTemp, Error, TEXT("!!! HUD NONE CREATED!!!"));
+			// UE_LOG(LogTemp, Error, TEXT("!!! HUD NONE CREATED!!!"));
 			return;
 		}
 
@@ -1711,7 +1711,7 @@ void ABaseCharacter::InitUI()
 		}
 		else
 		{
-			UE_LOG(LogTemp, Error, TEXT("!!! HUD Casting Fail! address : %s !!!"), *GenericHUD->GetName());
+			// UE_LOG(LogTemp, Error, TEXT("!!! HUD Casting Fail! address : %s !!!"), *GenericHUD->GetName());
 		}
 
 		if (HP_MP_BarWidget)
@@ -1812,10 +1812,8 @@ void ABaseCharacter::UpdateOverheadUI()
 		OnStaminaChanged();
 		OnLevelChanged();
 
-		UE_LOG(LogTemp, Error, TEXT("1"));
 		if (HeroData)
 		{
-			UE_LOG(LogTemp, Error, TEXT("2"));
 			HPBarWidgetInstance->Update_HeadIcon(HeroData->CharacterIcon);
 		}
 		

@@ -223,7 +223,7 @@ void UUI_MainHUD::InitASCHud(UAbilitySystemComponent* _ASC)
 
 void UUI_MainHUD::StartRespawn(float _RespawnTime)
 {
-	UE_LOG(LogTemp, Error, TEXT("StartRespawn called with time: %f"), _RespawnTime);
+	UE_LOG(LogTemp, Warning, TEXT("StartRespawn called with time: %f"), _RespawnTime);
 }
 
 void UUI_MainHUD::NativeConstruct()
@@ -242,7 +242,7 @@ void UUI_MainHUD::NativeConstruct()
         }
         else
         {
-            UE_LOG(LogTemp, Error, TEXT("[UI_MainHUD] Grid_item not found even manually!"));
+            UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Grid_item not found even manually!"));
         }
     }
     else
@@ -621,15 +621,15 @@ void UUI_MainHUD::SkillFirePressed(ESkillKey _Index)
     if (!ASC) return;
 
     int32 Index = static_cast<int32>(_Index);
-	UE_LOG(LogTemp, Error, TEXT("SkillFirePressed called with index: %d"), Index);
+	// UE_LOG(LogTemp, Warning, TEXT("SkillFirePressed called with index: %d"), Index);
 
     if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
     {
         USkillDataAsset* SkillAsset = HeroData->SkillDataAsset[Index].LoadSynchronous();
-		UE_LOG(LogTemp, Error, TEXT("Loaded SkillDataAsset for index %d: %s"), Index, *GetNameSafe(SkillAsset));
+		// UE_LOG(LogTemp, Warning, TEXT("Loaded SkillDataAsset for index %d: %s"), Index, *GetNameSafe(SkillAsset));
         if (SkillAsset && SkillAsset->SkillConfig)
         {
-			UE_LOG(LogTemp, Error, TEXT("SkillConfig found for index %d: %s"), Index, *GetNameSafe(SkillAsset->SkillConfig));
+			// UE_LOG(LogTemp, Warning, TEXT("SkillConfig found for index %d: %s"), Index, *GetNameSafe(SkillAsset->SkillConfig));
             FGameplayTag InputTag = SkillAsset->SkillConfig->Data.InputKeyTag;
             ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
 
@@ -637,7 +637,7 @@ void UUI_MainHUD::SkillFirePressed(ESkillKey _Index)
             {
 				PC->AbilityInputTagPressed(InputTag);
 				float CoolTime = SkillAsset->SkillConfig->Data.BaseCoolTime.GetValueAtLevel(1);
-				UE_LOG(LogTemp, Error, TEXT("%d_Skill, TAG : %s, CoolTime : %f"), 0, *InputTag.ToString(), CoolTime);
+				// UE_LOG(LogTemp, Warning, TEXT("%d_Skill, TAG : %s, CoolTime : %f"), 0, *InputTag.ToString(), CoolTime);
 
             }
 
@@ -1104,7 +1104,7 @@ void UUI_MainHUD::UpdateTeamLV(int32 TeamIndex, int32 CurrentLV)
     {
         if(IsValid(TeamLevel_01))
         {
-			UE_LOG(LogTemp, Error, TEXT("Updating Team 1 Level: %d"), CurrentLV);
+			// UE_LOG(LogTemp, Error, TEXT("Updating Team 1 Level: %d"), CurrentLV);
             TeamLevel_01->SetText(FText::AsNumber(CurrentLV));
         }
     }
@@ -1112,7 +1112,7 @@ void UUI_MainHUD::UpdateTeamLV(int32 TeamIndex, int32 CurrentLV)
     {
         if (IsValid(TeamLevel_02))
         {
-            UE_LOG(LogTemp, Error, TEXT("Updating Team 1 Level: %d"), CurrentLV);
+            // UE_LOG(LogTemp, Error, TEXT("Updating Team 1 Level: %d"), CurrentLV);
             TeamLevel_02->SetText(FText::AsNumber(CurrentLV));
         }
     }
@@ -1147,7 +1147,7 @@ UWidgetAnimation* UUI_MainHUD::GetWidgetAnimationByName(FName AnimName) const
         if (Anim && Anim->GetMovieScene())
         {
             FName InternalName = Anim->GetMovieScene()->GetFName();
-			UE_LOG(LogTemp, Error, TEXT("Checking Animation: %s"), *InternalName.ToString());
+			// UE_LOG(LogTemp, Error, TEXT("Checking Animation: %s"), *InternalName.ToString());
             if (InternalName == AnimName)
             {
                 return Anim;
@@ -1164,7 +1164,7 @@ void UUI_MainHUD::UpdateInventoryUI()
     UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] UpdateInventoryUI called!"));
     if (!Grid_item)
     {
-        UE_LOG(LogTemp, Error, TEXT("[UI_MainHUD] Grid_item is null!"));
+        // UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Grid_item is null!"));
         return;
     }
 
@@ -1174,21 +1174,21 @@ void UUI_MainHUD::UpdateInventoryUI()
     APlayerController* PC = GetOwningPlayer();
     if (!PC)
     {
-        UE_LOG(LogTemp, Error, TEXT("[UI_MainHUD] PlayerController is null!"));
+        // UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] PlayerController is null!"));
         return;
     }
 
     APawn* Pawn = PC->GetPawn();
     if (!Pawn)
     {
-        UE_LOG(LogTemp, Error, TEXT("[UI_MainHUD] Pawn is null!"));
+        // UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Pawn is null!"));
         return;
     }
 
     UBaseInventoryComponent* InventoryComp = Pawn->FindComponentByClass<UBaseInventoryComponent>();
     if (!InventoryComp)
     {
-        UE_LOG(LogTemp, Error, TEXT("[UI_MainHUD] InventoryComponent not found!"));
+        // UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] InventoryComponent not found!"));
         return;
     }
 
@@ -1204,7 +1204,7 @@ void UUI_MainHUD::UpdateInventoryUI()
 
     if (!InventoryProperty)
     {
-        UE_LOG(LogTemp, Error, TEXT("[UI_MainHUD] Cannot find InventoryContents property!"));
+        UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Cannot find InventoryContents property!"));
         return;
     }
 
@@ -1213,7 +1213,7 @@ void UUI_MainHUD::UpdateInventoryUI()
     FArrayProperty* ArrayProp = CastField<FArrayProperty>(InventoryProperty);
     if (!ArrayProp)
     {
-        UE_LOG(LogTemp, Error, TEXT("[UI_MainHUD] ArrayProp is null!"));
+        UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] ArrayProp is null!"));
         return;
     }
 
@@ -1279,7 +1279,7 @@ void UUI_MainHUD::UpdateInventoryUI()
                     }
                     else
                     {
-                        UE_LOG(LogTemp, Error, TEXT("[UI_MainHUD] Failed to load icon for slot %d"), i);
+                        UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Failed to load icon for slot %d"), i);
                     }
                 }
                 else

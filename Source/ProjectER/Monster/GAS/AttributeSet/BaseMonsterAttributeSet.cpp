@@ -68,10 +68,12 @@ void UBaseMonsterAttributeSet::PostAttributeChange(const FGameplayAttribute& Att
 
 void UBaseMonsterAttributeSet::OnRep_Health(const FGameplayAttributeData& OldHealth)
 {
+	Super::OnRep_Health(OldHealth);
 	OnHealthChanged.Broadcast(GetHealth(), GetMaxHealth());
 }
 
 void UBaseMonsterAttributeSet::OnRep_MoveSpeed(const FGameplayAttributeData& OldHealth)
 {
+	Super::OnRep_MoveSpeed(OldHealth);
 	OnMoveSpeedChanged.Broadcast(OldHealth.GetBaseValue(), GetMoveSpeed());
 }
