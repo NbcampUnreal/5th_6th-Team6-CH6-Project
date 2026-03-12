@@ -67,17 +67,14 @@ FText UBaseSkillConfig::BuildCostDescription(float InLevel) const
 UMouseTargetSkillConfig::UMouseTargetSkillConfig()
 {
 	AbilityClass = UMouseTargetSkill::StaticClass();
-	Data.SkillActivationType = ESkillActivationType::Targeted;
 }
 
 UMouseClickSkillConfig::UMouseClickSkillConfig()
 {
 	AbilityClass = UMouseClickSkill::StaticClass();
-	Data.SkillActivationType = ESkillActivationType::PointClick;
 }
 
 UInstantSkillConfig::UInstantSkillConfig()
 {
     AbilityClass = UInstantSkill::StaticClass();
-    Data.SkillActivationType = ESkillActivationType::Instant;
 }

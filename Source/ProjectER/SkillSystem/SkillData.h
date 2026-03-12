@@ -12,14 +12,14 @@
  * 
  */
 
-UENUM(BlueprintType)
-enum class ESkillActivationType : uint8 {
-    Instant    UMETA(DisplayName = "Instant"),
-    Targeted   UMETA(DisplayName = "Targeted"),
-    PointClick UMETA(DisplayName = "PointClick"),
-    ClickAndDrag       UMETA(DisplayName = "ClickAndDrag"),
-    Holding    UMETA(DisplayName = "Holding")
-};
+//UENUM(BlueprintType)
+//enum class ESkillActivationType : uint8 {
+//    Instant    UMETA(DisplayName = "Instant"),
+//    Targeted   UMETA(DisplayName = "Targeted"),
+//    PointClick UMETA(DisplayName = "PointClick"),
+//    ClickAndDrag       UMETA(DisplayName = "ClickAndDrag"),
+//    Holding    UMETA(DisplayName = "Holding")
+//};
 
 UENUM(BlueprintType)
 enum class ETargetRelationship : uint8 {
@@ -35,14 +35,14 @@ USTRUCT(BlueprintType)
 struct FSkillDefaultData {
     GENERATED_BODY()
 
-    UPROPERTY(EditDefaultsOnly, Category = "Skill")
-    ESkillActivationType SkillActivationType;
+    /*UPROPERTY(EditDefaultsOnly, Category = "Skill")
+    ESkillActivationType SkillActivationType;*/
 
     UPROPERTY(EditDefaultsOnly, Category = "Skill")
     ETargetRelationship ApplyTo = ETargetRelationship::None;
 
     UPROPERTY(EditDefaultsOnly, Category = "Skill")
-    bool bIsUseCasting;
+    bool bIsUseCasting = false;
 
     UPROPERTY(EditDefaultsOnly, Category = "Skill|Animation")
     TObjectPtr<UAnimMontage> AnimMontage;
