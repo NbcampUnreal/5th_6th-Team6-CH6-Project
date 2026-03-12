@@ -307,7 +307,7 @@ void ABasePlayerController::CheckHoveredActor()
 		{
 			// Key값을 1로 고정하여 화면에 로그가 도배되지 않고 제자리에서 실시간 갱신되게 합니다.
 			FString NameMsg = FString::Printf(TEXT("Hovered Actor: %s"), *HitActor->GetName());
-			GEngine->AddOnScreenDebugMessage(1, 0.1f, FColor::Cyan, NameMsg);
+			// GEngine->AddOnScreenDebugMessage(1, 0.1f, FColor::Cyan, NameMsg);
 		}
 		
 		// 이전 프레임과 똑같은 액터를 가리키고 있으면 무시
@@ -358,7 +358,7 @@ void ABasePlayerController::CheckHoveredActor()
 				{
 					FColor TextColor = (StencilValue == 250) ? FColor::Red : (StencilValue == 251) ? FColor::Green : FColor::White;
 					FString StencilMsg = FString::Printf(TEXT("Applied Stencil Value: %d"), StencilValue);
-					GEngine->AddOnScreenDebugMessage(2, 2.0f, TextColor, StencilMsg);
+					// GEngine->AddOnScreenDebugMessage(2, 2.0f, TextColor, StencilMsg);
 				}
 				
 				TargetObj->HighlightActor(true, StencilValue);
@@ -375,7 +375,7 @@ void ABasePlayerController::CheckHoveredActor()
 					// [디버그] 아이템/상자 스텐실 출력
 					if (GEngine)
 					{
-						GEngine->AddOnScreenDebugMessage(2, 2.0f, FColor::White, TEXT("Applied Stencil Value: 252 (Item/Box)"));
+						// GEngine->AddOnScreenDebugMessage(2, 2.0f, FColor::White, TEXT("Applied Stencil Value: 252 (Item/Box)"));
 					}
 				}
 			}
@@ -388,7 +388,7 @@ void ABasePlayerController::CheckHoveredActor()
 		// [디버그] 허공에 마우스를 올렸을 때
 		if (GEngine)
 		{
-			GEngine->AddOnScreenDebugMessage(1, 0.1f, FColor::Silver, TEXT("Hovered Actor: None (허공)"));
+			// GEngine->AddOnScreenDebugMessage(1, 0.1f, FColor::Silver, TEXT("Hovered Actor: None (허공)"));
 		}
 		
 		// 허공에 마우스를 올렸을 때 기존 하이라이트 지우기
@@ -463,7 +463,7 @@ void ABasePlayerController::MoveToMouseCursor()
 #if WITH_EDITOR
 			if (HitActor)
 			{
-				UE_LOG(LogTemp, Log, TEXT("Clicked Actor: %s"), *HitActor->GetName());
+				// UE_LOG(LogTemp, Log, TEXT("Clicked Actor: %s"), *HitActor->GetName());
 			}
 #endif
 
