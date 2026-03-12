@@ -145,7 +145,7 @@ void UWorldObstacleSubsystem::LoadAndInitializeTiles()
 
     if (!LevelObstacleDataPath.IsValid())
     {
-        UE_LOG(ObstacleSubsystem, Error,
+        UE_LOG(ObstacleSubsystem, Warning,
             TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> LevelObstacleDataPath is INVALID! Path: %s"),
             *LevelObstacleDataPath.ToString());
         return;
@@ -159,7 +159,7 @@ void UWorldObstacleSubsystem::LoadAndInitializeTiles()
     
     if (!LoadedObj)
     {
-        UE_LOG(ObstacleSubsystem, Error,
+        UE_LOG(ObstacleSubsystem, Warning,
             TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> TryLoad() FAILED! Asset not found at: %s"),
             *LevelObstacleDataPath.ToString());
         return;
@@ -174,7 +174,7 @@ void UWorldObstacleSubsystem::LoadAndInitializeTiles()
     
     if (!WorldReqList)
     {
-        UE_LOG(ObstacleSubsystem, Error,
+        UE_LOG(ObstacleSubsystem, Warning,
             TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> Cast to UWorldRequirementList FAILED! "
                  "Loaded object class: %s"),
             *LoadedObj->GetClass()->GetName());
@@ -195,7 +195,7 @@ void UWorldObstacleSubsystem::LoadAndInitializeTiles()
 
     if (!GetWorld())
     {
-        UE_LOG(ObstacleSubsystem, Error,
+        UE_LOG(ObstacleSubsystem, Warning,
             TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> GetWorld() returned NULL!"));
         return;
     }
@@ -229,23 +229,23 @@ void UWorldObstacleSubsystem::LoadAndInitializeTiles()
         }
         else
         {
-            UE_LOG(ObstacleSubsystem, Error,
+            UE_LOG(ObstacleSubsystem, Warning,
                 TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> TileData pointer is NULL for world: '%s'"),
                 *MapPackageLongName);
         }
     }
     else
     {
-        UE_LOG(ObstacleSubsystem, Error,
+        UE_LOG(ObstacleSubsystem, Warning,
             TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> NO MATCH FOUND for world name: '%s'"),
             *MapPackageLongName);
         
-        UE_LOG(ObstacleSubsystem, Error,
+        UE_LOG(ObstacleSubsystem, Warning,
             TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> Available keys in WorldRequirements:"));
         
         for (const auto& Pair : WorldReqList->WorldRequirements)
         {
-            UE_LOG(ObstacleSubsystem, Error,
+            UE_LOG(ObstacleSubsystem, Warning,
                 TEXT("  - '%s' (matches: %s)"),
                 *Pair.Key,
                 (Pair.Key == MapPackageLongName) ? TEXT("YES") : TEXT("NO"));
