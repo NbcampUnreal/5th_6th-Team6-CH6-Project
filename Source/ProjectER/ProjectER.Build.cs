@@ -19,7 +19,6 @@ public class ProjectER : ModuleRules
             "UMG",
             "Slate",
             "SlateCore",
-            "CommonUI",
             "GameplayAbilities",
             "GameplayTags",
             "GameplayTasks",
