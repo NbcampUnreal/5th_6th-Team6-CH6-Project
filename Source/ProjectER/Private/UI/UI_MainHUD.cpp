@@ -1218,7 +1218,7 @@ void UUI_MainHUD::UpdateInventoryUI()
     }
 
     FScriptArrayHelper ArrayHelper(ArrayProp, PropertyPtr);
-    UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Inventory has %d items"), ArrayHelper.Num());
+    // UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Inventory has %d items"), ArrayHelper.Num()); 패키징용 로그 주석
 
     // Grid의 각 버튼에 아이템 아이콘 설정
     for (int32 i = 0; i < GridChildren.Num(); ++i)
@@ -1231,23 +1231,22 @@ void UUI_MainHUD::UpdateInventoryUI()
             continue;
         }
 
-        UE_LOG(LogTemp, Log, TEXT("[UI_MainHUD] Processing Button %d: %s"), i, *ItemButton->GetName());
+        // UE_LOG(LogTemp, Log, TEXT("[UI_MainHUD] Processing Button %d: %s"), i, *ItemButton->GetName()); 패키징용 로그 주석
 
         // 버튼의 자식 이미지 찾기
         TArray<UWidget*> ButtonChildren = ItemButton->GetAllChildren();
-        UE_LOG(LogTemp, Log, TEXT("[UI_MainHUD] Button %d has %d children"), i, ButtonChildren.Num());
+        // UE_LOG(LogTemp, Log, TEXT("[UI_MainHUD] Button %d has %d children"), i, ButtonChildren.Num()); 패키징용 로그 주석
 
         UImage* IconImage = nullptr;
         for (int32 j = 0; j < ButtonChildren.Num(); ++j)
         {
             UWidget* Child = ButtonChildren[j];
-            UE_LOG(LogTemp, Log, TEXT("[UI_MainHUD] Button child %d type: %s, name: %s"),
-                j, *Child->GetClass()->GetName(), *Child->GetName());
+            // UE_LOG(LogTemp, Log, TEXT("[UI_MainHUD] Button child %d type: %s, name: %s"), j, *Child->GetClass()->GetName(), *Child->GetName()); 패키징용 로그 주석
 
             IconImage = Cast<UImage>(Child);
             if (IconImage)
             {
-                UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Found Image in Button %d!"), i);
+                // UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Found Image in Button %d!"), i); 패키징용 로그 주석
                 break;
             }
         }
