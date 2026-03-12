@@ -13,13 +13,23 @@ void FTopDownVisionModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 
-	AddShaderSourceDirectoryMapping(
+	/*AddShaderSourceDirectoryMapping(
 	TEXT("/Plugin/TopDownVision"),
 		FPaths::Combine(
 			IPluginManager::Get().FindPlugin(TEXT("TopDownVision"))->GetBaseDir(),
 			TEXT("Shaders")
 		)
-	);
+	);*/
+
+	// with safety check as well
+	TSharedPtr<IPlugin> Plugin = IPluginManager::Get().FindPlugin(TEXT("TopDownVision"));
+	if (Plugin.IsValid())
+	{
+		AddShaderSourceDirectoryMapping(
+			TEXT("/Plugin/TopDownVision"),
+			FPaths::Combine(Plugin->GetBaseDir(), TEXT("Shaders"))
+		);
+	}
 }
 
 void FTopDownVisionModule::ShutdownModule()
