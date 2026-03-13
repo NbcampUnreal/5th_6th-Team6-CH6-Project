@@ -1,0 +1,100 @@
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "SkillSystem/GameplayEffectComponent/BaseGEC.h"
+#include "SkillSystem/GameplayEffectComponent/BaseGECConfig.h"
+#include "SkillSystem/SkillNiagaraSpawnSettings.h"
+#include "SummonRangeBaseGEC.generated.h"
+
+/**
+ * 
+ */
+class ABaseRangeOverlapEffectActor;
+class USkillEffectDataAsset;
+struct FGameplayCueParameters;
+struct FGameplayEffectContextHandle;
+
+UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced, Abstract)
+class PROJECTER_API USummonRangeBaseConfig : public UBaseGECConfig
+{
+	GENERATED_BODY()
+
+public:
+	virtual FText BuildTooltipDescription(float InLevel) const override;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Base")
+	TSubclassOf<ABaseRangeOverlapEffectActor> RangeActorClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Base")
+	float LifeSpan = 1.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Base")
+	FVector CollisionRadius = FVector(100.0f);
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Rotation")
+	bool bSpawnZeroRotation = false;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Rotation", meta = (EditCondition = "!bSpawnZeroRotation"))
+	FRotator RotationOffset = FRotator::ZeroRotator;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Snap")
+	bool bSnapToGround = true;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Snap", meta = (EditCondition = "bSnapToGround"))
+	float FloatingHeight = 2.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Snap", meta = (EditCondition = "bSnapToGround"))
+	bool bUseBoxExtentOffset = true;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Snap", meta = (EditCondition = "bSnapToGround"))
+	TEnumAsByte<ECollisionChannel> GroundTraceChannel = ECC_Visibility;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Effect")
+	bool bHitOncePerTarget = true;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
+	FSkillNiagaraSpawnSettings SummonerSpawnVfx;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
+	FSkillNiagaraSpawnSettings RangeSpawnVfx;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
+	FSkillNiagaraSpawnSettings HitTargetVfx;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Effect")
+	TArray<TObjectPtr<USkillEffectDataAsset>> Applied;
+};
+
+UCLASS()
+class PROJECTER_API USummonRangeBaseGEC : public UBaseGEC
+{
+	GENERATED_BODY()
+protected:
+	virtual void OnGameplayEffectApplied(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const override;
+	virtual const USummonRangeBaseConfig* GetSummonConfig(const FGameplayEffectSpec& GESpec) const;
+	virtual FTransform CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const USummonRangeBaseConfig* Config) const;
+	virtual bool ShouldProcessOnInstigator(const AActor* Instigator) const;
+
+	template <typename TConfig>
+	const TConfig* ResolveTypedConfigFromSpec(const FGameplayEffectSpec& GESpec) const;
+
+	const UBaseGECConfig* ResolveConfigFromSpec(const FGameplayEffectSpec& GESpec) const;
+	FGameplayCueParameters BuildNiagaraCueParameters(const FGameplayEffectSpec& GESpec, const FGameplayTag& OriginalTag, const FGameplayEffectContextHandle& EffectContext, AActor* EffectCauser, const FVector& CueLocation, const UObject* SourceObject) const;
+	void InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetCueParameters) const;
+};
+
+template <typename TConfig>
+const TConfig* USummonRangeBaseGEC::ResolveTypedConfigFromSpec(const FGameplayEffectSpec& GESpec) const
+{
+	static_assert(TIsDerivedFrom<TConfig, UBaseGECConfig>::Value, "TConfig must derive from UBaseGECConfig");
+
+	const UBaseGECConfig* const BaseConfig = ResolveBaseConfigFromSpec(GESpec);
+	if (!IsValid(BaseConfig))
+	{
+		return nullptr;
+	}
+
+	return Cast<TConfig>(BaseConfig);
+}
