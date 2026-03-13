@@ -2,18 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "LevelManagement/Requirements/LevelAreaData.h"
 #include "LevelAreaTrackerComponent.generated.h"
-
-UENUM(BlueprintType)
-enum class EAreaHazardState : uint8
-{
-    Safe,
-    Hazard,
-    InstantDeath
-};
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnNodeChanged, int32, OldNodeID, int32, NewNodeID);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHazardStateChanged, EAreaHazardState, OldState, EAreaHazardState, NewState);
 
 UCLASS(ClassGroup=(LevelManagement), meta=(BlueprintSpawnableComponent))
 class PROJECTER_API ULevelAreaTrackerComponent : public UActorComponent
@@ -45,10 +35,10 @@ public:
     /* ---------- Delegates ---------- */
 
     UPROPERTY(BlueprintAssignable, Category="Area")
-    FOnNodeChanged OnNodeChanged;
+    FOnAreaNodeChanged OnNodeChanged;
 
     UPROPERTY(BlueprintAssignable, Category="Area")
-    FOnHazardStateChanged OnHazardStateChanged;
+    FOnAreaHazardStateTransition OnHazardStateChanged; 
 
 
     /* ---------- API ---------- */

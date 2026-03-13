@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "LevelManagement/Area/LevelAreaNode.h"
+#include "LevelManagement/Requirements/LevelAreaData.h"
 #include "CPU/Interface/GridNodeInterface.h"
 #include "LevelAreaGraphSubsystem.generated.h"
 
@@ -20,7 +21,8 @@ public:
 
     /* ---------- Hazard State ---------- */
 
-    TSet<int32> ActiveHazardNodeIDs;
+    // Maps NodeID → current hazard state
+    TMap<int32, EAreaHazardState> ActiveHazardNodes;
 
 
     /* ---------- Graph Building ---------- */
@@ -35,12 +37,13 @@ public:
     /* ---------- Hazard System ---------- */
 
     bool GenerateHazardOrder(int32 HazardCount, TArray<int32>& OutHazardOrder);
-    void ApplyHazardNodes(const TArray<int32>& NodeIDs);
+    void ApplyHazardNodes(const TArray<int32>& NodeIDs, EAreaHazardState State);
     void ClearHazards();
 
 
     /* ---------- Player Query ---------- */
 
+    EAreaHazardState GetNodeHazardState(int32 NodeID) const;
     bool IsNodeHazard(int32 NodeID) const;
 
 

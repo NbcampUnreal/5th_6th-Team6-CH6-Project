@@ -3,7 +3,6 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "LevelManagement/LevelAreaTrackerComponent.h"
-#include "LevelManagement/Area/LevelAreaComponent.h"
 #include "LevelManagement/LevelGraphManager/LevelAreaSubsystem/LevelAreaGraphSubsystem.h"
 #include "LogHelper/DebugLogHelper.h"
 
@@ -20,6 +19,7 @@ void ULevelAreaGameStateComponent::GetLifetimeReplicatedProps(
     DOREPLIFETIME(ULevelAreaGameStateComponent, HazardNodeIDs);
 }
 
+
 /* =====================================================================
    Server: Phase Advancement
    ===================================================================== */
@@ -33,13 +33,14 @@ void ULevelAreaGameStateComponent::AdvancePhase()
         World->GetSubsystem<ULevelAreaGraphSubsystem>();
     if (!Sub) return;
 
-    CurrentPhase++;//increment phase
+    CurrentPhase++;
 
-    // First phase: generate the full order for this round
+    // Generate the full order once at the start of the round
     if (HazardOrder.IsEmpty())
     {
         int32 TotalNodes = Sub->Nodes.Num();
-        // Leave at least one safe node — never hazard everything
+
+        // Always leave at least one safe node
         int32 MaxHazards = FMath::Max(0, TotalNodes - 1);
 
         if (!Sub->GenerateHazardOrder(MaxHazards, HazardOrder))
@@ -71,19 +72,17 @@ void ULevelAreaGameStateComponent::AdvancePhase()
     for (int32 i = StartIdx; i < EndIdx; i++)
         NewHazards.Add(HazardOrder[i]);
 
-    // Accumulate — phases are additive (previous hazards stay hazardous)
+    // Accumulate — previous hazards remain
     for (int32 ID : NewHazards)
         HazardNodeIDs.AddUnique(ID);
 
     UE_LOG(LevelAreaGraphManagement, Log,
-        TEXT("AdvancePhase >> Phase %d | New hazards: %d | Total: %d"),
-        CurrentPhase, NewHazards.Num(), HazardNodeIDs.Num());
+        TEXT("AdvancePhase >> Phase %d | New: %d | Total: %d | State: %s"),
+        CurrentPhase, NewHazards.Num(), HazardNodeIDs.Num(),
+        *UEnum::GetValueAsString(HazardStatePerPhase));
 
-    // Update server-side subsystem and room components
-    Sub->ApplyHazardNodes(HazardNodeIDs);
-    ApplyHazardToComponents(NewHazards, true);
-
-    // Replication triggers OnRep_HazardNodeIDs on clients automatically
+    // Apply to server-side subsystem — clients get it via OnRep
+    Sub->ApplyHazardNodes(NewHazards, HazardStatePerPhase);
 }
 
 void ULevelAreaGameStateComponent::ResetHazards()
@@ -92,40 +91,16 @@ void ULevelAreaGameStateComponent::ResetHazards()
     HazardNodeIDs.Reset();
     CurrentPhase = 0;
 
-    ApplyHazardToComponents(HazardNodeIDs, false);
-
     if (ULevelAreaGraphSubsystem* Sub =
         GetWorld()->GetSubsystem<ULevelAreaGraphSubsystem>())
     {
         Sub->ClearHazards();
     }
+
+    UE_LOG(LevelAreaGraphManagement, Log,
+        TEXT("ResetHazards >> Round reset complete"));
 }
 
-/* =====================================================================
-   Server: Notify Room Actors
-   ===================================================================== */
-
-void ULevelAreaGameStateComponent::ApplyHazardToComponents(
-    const TArray<int32>& NodeIDs, bool bHazard)
-{
-    if (NodeIDs.IsEmpty()) return;
-
-    UWorld* World = GetWorld();
-    if (!World) return;
-
-    // Iterate all actors with a LevelAreaComponent
-    for (TActorIterator<AActor> It(World); It; ++It)
-    {
-        if (ULevelAreaComponent* Comp =
-            It->FindComponentByClass<ULevelAreaComponent>())
-        {
-            if (NodeIDs.Contains(Comp->NodeID))
-            {
-                Comp->SetHazard(bHazard);
-            }
-        }
-    }
-}
 
 /* =====================================================================
    Client: OnRep
@@ -133,7 +108,6 @@ void ULevelAreaGameStateComponent::ApplyHazardToComponents(
 
 void ULevelAreaGameStateComponent::OnRep_HazardNodeIDs()
 {
-    // Mirror the replicated hazard set into the client's local subsystem
     NotifySubsystem(HazardNodeIDs);
 }
 
@@ -145,10 +119,10 @@ void ULevelAreaGameStateComponent::NotifySubsystem(const TArray<int32>& NodeIDs)
     if (ULevelAreaGraphSubsystem* Sub =
         World->GetSubsystem<ULevelAreaGraphSubsystem>())
     {
-        Sub->ApplyHazardNodes(NodeIDs);
+        Sub->ApplyHazardNodes(NodeIDs, HazardStatePerPhase);
     }
 
-    // Tell any tracker sitting inside a newly-hazardous node to re-evaluate
+    // Push refresh to any tracker already standing in a newly hazardous node
     for (TActorIterator<APawn> It(World); It; ++It)
     {
         if (ULevelAreaTrackerComponent* Tracker =

@@ -1,6 +1,6 @@
 #include "LevelAreaTrackerComponent.h"
 #include "Engine/World.h"
-#include "LevelGraphManager/LevelAreaSubsystem/LevelAreaGraphSubsystem.h"
+#include "LevelManagement/LevelGraphManager/LevelAreaSubsystem/LevelAreaGraphSubsystem.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
 #include "LogHelper/DebugLogHelper.h"
 

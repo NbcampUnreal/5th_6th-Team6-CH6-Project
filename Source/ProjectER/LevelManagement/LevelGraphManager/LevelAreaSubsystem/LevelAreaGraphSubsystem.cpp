@@ -27,7 +27,7 @@ void ULevelAreaGraphSubsystem::UnregisterNode(int32 NodeID)
 {
     if (Nodes.Remove(NodeID) > 0)
     {
-        ActiveHazardNodeIDs.Remove(NodeID);
+        ActiveHazardNodes.Remove(NodeID);
 
         UE_LOG(LevelAreaGraphManagement, Log,
             TEXT("UnregisterNode >> ID: %d removed"), NodeID);
@@ -107,37 +107,34 @@ bool ULevelAreaGraphSubsystem::GenerateHazardOrder(
     return OutHazardOrder.Num() == HazardCount;
 }
 
-void ULevelAreaGraphSubsystem::ApplyHazardNodes(const TArray<int32>& NodeIDs)
+void ULevelAreaGraphSubsystem::ApplyHazardNodes(
+    const TArray<int32>& NodeIDs, EAreaHazardState State)
 {
-    for (int32 OldID : ActiveHazardNodeIDs)
-    {
-        if (LevelAreaNode* Node = GetNode(OldID))
-            Node->SetFlag(1, false);
-    }
-
-    ActiveHazardNodeIDs.Reset();
-
     for (int32 ID : NodeIDs)
     {
-        ActiveHazardNodeIDs.Add(ID);
+        ActiveHazardNodes.Add(ID, State);
 
         if (LevelAreaNode* Node = GetNode(ID))
             Node->SetFlag(1, true);
     }
 
     UE_LOG(LevelAreaGraphManagement, Log,
-        TEXT("ApplyHazardNodes >> %d nodes now hazardous"), ActiveHazardNodeIDs.Num());
+        TEXT("ApplyHazardNodes >> %d nodes set to %s"),
+        NodeIDs.Num(), *UEnum::GetValueAsString(State));
 }
 
 void ULevelAreaGraphSubsystem::ClearHazards()
 {
-    for (int32 ID : ActiveHazardNodeIDs)
+    for (const TPair<int32, EAreaHazardState>& Pair : ActiveHazardNodes)
     {
-        if (LevelAreaNode* Node = GetNode(ID))
+        if (LevelAreaNode* Node = GetNode(Pair.Key))
             Node->SetFlag(1, false);
     }
 
-    ActiveHazardNodeIDs.Reset();
+    ActiveHazardNodes.Reset();
+
+    UE_LOG(LevelAreaGraphManagement, Log,
+        TEXT("ClearHazards >> All hazards cleared"));
 }
 
 
@@ -145,9 +142,15 @@ void ULevelAreaGraphSubsystem::ClearHazards()
    Player Query
    ===================================================================== */
 
+EAreaHazardState ULevelAreaGraphSubsystem::GetNodeHazardState(int32 NodeID) const
+{
+    const EAreaHazardState* Found = ActiveHazardNodes.Find(NodeID);
+    return Found ? *Found : EAreaHazardState::Safe;
+}
+
 bool ULevelAreaGraphSubsystem::IsNodeHazard(int32 NodeID) const
 {
-    return ActiveHazardNodeIDs.Contains(NodeID);
+    return ActiveHazardNodes.Contains(NodeID);
 }
 
 
