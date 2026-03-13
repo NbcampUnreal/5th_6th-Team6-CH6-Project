@@ -260,6 +260,9 @@ void UMouseTargetSkill::ApplyEffectsTarget(AActor* TargetActor, const TArray<TOb
 	FGameplayEffectContextHandle ContextHandle = SourceASC->MakeEffectContext();
 	ContextHandle.AddInstigator(Avatar, Avatar);
 	ContextHandle.SetAbility(this);
+	ContextHandle.AddOrigin(TargetActor->GetActorLocation());
+	FHitResult HitResult(TargetActor, nullptr, TargetActor->GetActorLocation(), FVector::UpVector);
+	ContextHandle.AddHitResult(HitResult);
 
 	UAbilitySystemComponent* const TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
 	if (!IsValid(TargetASC)) return;
