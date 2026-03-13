@@ -838,10 +838,18 @@ void ABaseMonster::OnCCChanged(FGameplayTag Tag, int32 NewCount)
 	{
 		SetbIsCombat(true);
 		SendStateTreeEvent(FGameplayTag::RequestGameplayTag("Event.State.Debuff"));
-	}
+		ASC->CancelAllAbilities();
+	} 
 	else
 	{
-		SetbIsCombat(false);
-		SendStateTreeEvent(MonsterTags.HitEventTag);
+		// 재검사용
+		SendStateTreeEvent(FGameplayTag::RequestGameplayTag("Event.State.Debuff"));
 	}
+}
+
+void ABaseMonster::OffCCChanged()
+{
+	// CC 상태 종료 후 Combat상태로 전환용
+	SetbIsCombat(false);
+	SendStateTreeEvent(MonsterTags.HitEventTag);
 }
