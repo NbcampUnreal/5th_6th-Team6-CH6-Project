@@ -511,11 +511,11 @@ void ABaseMonster::GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGamepl
 	TArray<TWeakObjectPtr<AER_PlayerState>> TeamPSArray = EPS->GetTeamArray(TeamIndex);
 
 	FVector MonsterLocation = GetActorLocation();
-	for (auto TeamPS : TeamPSArray)
+	for (int32 i = TeamPSArray.Num() - 1; i >= 0; --i)
 	{
-		if (!TeamPS.IsValid()) continue;
+		if (!TeamPSArray[i].IsValid()) continue;
 
-		APlayerController* PC = TeamPS->GetPlayerController();
+		APlayerController* PC = TeamPSArray[i]->GetPlayerController();
 		if (!PC) continue;
 
 		APawn* Pawn = PC->GetPawn();
@@ -523,9 +523,10 @@ void ABaseMonster::GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGamepl
 
 		FVector TeamLocation = Pawn->GetActorLocation();
 		float DistSq = FVector::DistSquared(TeamLocation, MonsterLocation);
-		if (DistSq > 1000000.f) // 1000보다 멀면 못받음
+
+		if (DistSq > 1000000.f)
 		{
-			TeamPSArray.Remove(TeamPS);
+			TeamPSArray.RemoveAt(i);
 		}
 	}
 
