@@ -646,62 +646,91 @@ void ABasePlayerController::ProcessMouseInteraction()
 // [김현수 추가분] 거리 체크 및 실제 습득 함수
 void ABasePlayerController::CheckInteractionDistance()
 {
-	if (InteractionTarget && ControlledBaseChar)
+	if (!InteractionTarget || !ControlledBaseChar)
 	{
-		float CurrentDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), InteractionTarget->GetActorLocation());
-		
-
-		// InteractionTargetDistance는 처음 클릭했을 때의 거리
-		if (CurrentDistance <= 150.f) // 거리에 따라서, 박스에 닿기 직전에 멈추는 현상이 남아 있음 수정 필요
-		{
-			if (ControlledBaseChar)
-			{
-				ControlledBaseChar->StopMove();
-			}
-			// 1. 타겟 상호작용 종류 판별 및 우선 실행 (UI 띄우기 / 스킬 쓰기)
-			if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(InteractionTarget))
-			{
-				// 타겟이 나와 같은 팀인지 확인
-				if (TargetChar->GetTeamType() == ControlledBaseChar->GetTeamType())
-				{
-					// 내 ASC를 가져와서 부활 스킬(GA_Revive)을 태그로 강제 실행시킵니다.
-					if (UAbilitySystemComponent* ASC = ControlledBaseChar->GetAbilitySystemComponent())
-					{
-						FGameplayTag ReviveTag = FGameplayTag::RequestGameplayTag(FName("Ability.Action.Revive"));
-						ASC->TryActivateAbilitiesByTag(FGameplayTagContainer(ReviveTag));
-						// UE_LOG(LogTemp, Warning, TEXT("아군 구조 스킬 발동 시도!"));
-					}
-					
-					InteractionTarget = nullptr; 
-				}
-			}
-			else if (II_ItemInteractable* Interactable = Cast<II_ItemInteractable>(InteractionTarget))
-			{
-				// 땅바닥 아이템 (BaseItemActor)
-				if (ABaseItemActor* AAA = Cast<ABaseItemActor>(Interactable))
-				{
-					AAA->PickupItem(ControlledBaseChar);
-					Server_RequestPickup(AAA);
-					InteractionTarget = nullptr;
-				}
-			}
-			else // LootableComponent가 있는 액터 (박스, 플레이어 시체, 몬스터 시체 등)
-			{
-				if (InteractionTarget)
-				{
-					Server_BeginLoot(InteractionTarget);
-					InteractionTarget = nullptr;
-					
-				}
-			}
-			
-			// 2. 상호작용 명령을 모두 내렸으니 이제서야 캐릭터를 정지시킴 (부드러운 정지 및 창 띄우기 동시 체감)
-			if (ControlledBaseChar)
-			{
-				//ControlledBaseChar->StopMove();
-			}
-		}
+		return;
 	}
+
+	const float CurrentDistance =
+		FVector::Dist(ControlledBaseChar->GetActorLocation(), InteractionTarget->GetActorLocation());
+
+	if (CurrentDistance > 150.f)
+	{
+		return;
+	}
+
+	ControlledBaseChar->StopMove();
+
+	// 캐릭터면 상태를 먼저 판별
+	if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(InteractionTarget))
+	{
+		const bool bSameTeam =
+			(TargetChar->GetTeamType() == ControlledBaseChar->GetTeamType());
+
+		bool bIsDown = false;
+		bool bIsDead = false;
+
+		if (UAbilitySystemComponent* TargetASC = TargetChar->GetAbilitySystemComponent())
+		{
+			bIsDown = TargetASC->HasMatchingGameplayTag(
+				FGameplayTag::RequestGameplayTag(FName("State.Life.Down")));
+
+			bIsDead = TargetASC->HasMatchingGameplayTag(
+				FGameplayTag::RequestGameplayTag(FName("State.Life.Death")));
+		}
+
+		// 아군 다운 -> 부활
+		if (bSameTeam && bIsDown)
+		{
+			if (UAbilitySystemComponent* ASC = ControlledBaseChar->GetAbilitySystemComponent())
+			{
+				const FGameplayTag ReviveTag =
+					FGameplayTag::RequestGameplayTag(FName("Ability.Action.Revive"));
+				ASC->TryActivateAbilitiesByTag(FGameplayTagContainer(ReviveTag));
+			}
+
+			InteractionTarget = nullptr;
+			return;
+		}
+
+		// 죽은 캐릭터 -> 루팅
+		if (bIsDead && TargetChar->FindComponentByClass<ULootableComponent>())
+		{
+			Server_BeginLoot(TargetChar);
+			InteractionTarget = nullptr;
+			return;
+		}
+
+		// 살아있는 캐릭터는 여기서 상호작용 없음
+		InteractionTarget = nullptr;
+		return;
+	}
+
+	// 바닥 아이템
+	if (ABaseItemActor* ItemActor = Cast<ABaseItemActor>(InteractionTarget))
+	{
+		Server_RequestPickup(ItemActor);
+		InteractionTarget = nullptr;
+		return;
+	}
+
+	// 박스처럼 인터페이스 기반 상호작용 액터
+	if (II_ItemInteractable* Interactable = Cast<II_ItemInteractable>(InteractionTarget))
+	{
+		Interactable->PickupItem(ControlledBaseChar);
+		InteractionTarget = nullptr;
+		return;
+	}
+
+	// 몬스터 시체 등 LootableComponent 기반 액터
+	if (InteractionTarget->FindComponentByClass<ULootableComponent>())
+	{
+		Server_BeginLoot(InteractionTarget);
+		InteractionTarget = nullptr;
+		return;
+	}
+
+	InteractionTarget = nullptr;
 }
 
 void ABasePlayerController::OnConfirm()
