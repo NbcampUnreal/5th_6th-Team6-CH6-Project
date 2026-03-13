@@ -1,4 +1,4 @@
-﻿#include "CharacterSystem/Player/BasePlayerController.h"
+#include "CharacterSystem/Player/BasePlayerController.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -128,6 +128,7 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 			InvComp->OnInventoryUpdated.RemoveDynamic(this, &ABasePlayerController::OnInventoryUpdated);
 			InvComp->OnInventoryUpdated.AddDynamic(this, &ABasePlayerController::OnInventoryUpdated);
 			UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] Inventory delegate bound (Server)!"));
+			OnInventoryUpdated();
 		}
 	}
 	else
@@ -1541,6 +1542,11 @@ void ABasePlayerController::OnInventoryUpdated()
 	}
 
 	UE_LOG(LogTemp, Error, TEXT("[BasePlayerController] Failed to find valid MainHUD!"));
+}
+
+void ABasePlayerController::Client_RefreshInventoryUI_Implementation()
+{
+	OnInventoryUpdated();
 }
 
 // 인벤토리 슬롯 사용

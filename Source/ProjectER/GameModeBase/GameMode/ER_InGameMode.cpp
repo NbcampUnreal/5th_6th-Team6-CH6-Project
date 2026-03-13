@@ -391,8 +391,7 @@ void AER_InGameMode::PostLogin(APlayerController* NewPlayer)
 	{
 		ERPC->Client_InGameInputMode();
 		ERPC->Client_StartPreload();
-
-		ERPC->OnInventoryUpdated();
+		ERPC->Client_RefreshInventoryUI(); // 인벤토리 UI 강제 갱신 지시
 	}
 
 	// 보존 데이터 제거
