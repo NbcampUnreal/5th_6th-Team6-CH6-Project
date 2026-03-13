@@ -31,6 +31,7 @@ public class ProjectER : ModuleRules
             "OnlineSubsystemSteam",
             "OnlineSubsystem",
             "OnlineSubsystemUtils",
+            "PhysicsCore",// for physic material
             //"UnrealEd",//for the editor function
 
         });

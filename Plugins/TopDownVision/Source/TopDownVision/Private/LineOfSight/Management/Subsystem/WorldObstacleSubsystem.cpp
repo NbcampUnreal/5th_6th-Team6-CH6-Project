@@ -185,13 +185,13 @@ void UWorldObstacleSubsystem::LoadAndInitializeTiles()
         TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> Cast successful, WorldReqList has %d entries"),
         WorldReqList->WorldRequirements.Num());
 
-    // Debug: Print all available world names in the map
+    /*// Debug: Print all available world names in the map
     for (const auto& Pair : WorldReqList->WorldRequirements)
     {
         UE_LOG(ObstacleSubsystem, Warning,
             TEXT("UWorldObstacleSubsystem::LoadAndInitializeTiles >> Available world key: '%s'"),
             *Pair.Key);
-    }
+    }*/
 
     if (!GetWorld())
     {

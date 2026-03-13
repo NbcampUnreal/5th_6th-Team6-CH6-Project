@@ -1,129 +1,154 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "OcclusionProbeComp.h"
 
-#include "FCurvedWorldUtil.h"
 #include "Components/SphereComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
+#include "DrawDebugHelpers.h"
 
-
-// Sets default values for this component's properties
 UOcclusionProbeComp::UOcclusionProbeComp()
 {
-	PrimaryComponentTick.bCanEverTick = true;
+    PrimaryComponentTick.bCanEverTick = true;
 }
 
 void UOcclusionProbeComp::BeginPlay()
 {
-	Super::BeginPlay();
+    Super::BeginPlay();
 
-	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
-	if (PC)
-	{
-		CameraManager = PC->PlayerCameraManager;
-	}
+    if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+    {
+        CameraManager = PC->PlayerCameraManager;
+        bCameraReady  = IsValid(CameraManager);
+    }
 
-	CurvedWorldSubsystem = GetWorld()->GetSubsystem<UCurvedWorldSubsystem>();
-
-	InitializeProbes();
+    InitializeProbes();
 }
 
+void UOcclusionProbeComp::SetCameraManager(APlayerCameraManager* InCameraManager)
+{
+    CameraManager = InCameraManager;
+    bCameraReady  = IsValid(CameraManager);
+}
 
 void UOcclusionProbeComp::InitializeProbes()
 {
-	ProbeSpheres.Reserve(NumProbes);
+    // Pre-allocate max probe count — probes are hidden/shown as needed
+    ProbeSpheres.Reserve(MaxProbeCount);
 
-	for (int32 i = 0; i < NumProbes; ++i)
-	{
-		FString Name = FString::Printf(TEXT("OcclusionProbe_%d"), i);
+    for (int32 i = 0; i < MaxProbeCount; ++i)
+    {
+        const FString Name = FString::Printf(TEXT("OcclusionProbe_%d"), i);
 
-		USphereComponent* Sphere = NewObject<USphereComponent>(GetOwner(), *Name);
-		Sphere->SetupAttachment(this);
-		Sphere->RegisterComponent();
+        USphereComponent* Sphere = NewObject<USphereComponent>(GetOwner(), *Name);
+        Sphere->SetupAttachment(this);
+        Sphere->RegisterComponent();
 
-		Sphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		Sphere->SetCollisionResponseToAllChannels(ECR_Ignore);
-		Sphere->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Overlap);
+        Sphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+        Sphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+        Sphere->SetCollisionResponseToChannel(OcclusionProbeChannel, ECR_Overlap);
 
-		ProbeSpheres.Add(Sphere);
-	}
+        // Hidden by default — only shown in debug mode
+        Sphere->SetHiddenInGame(!bDebugDraw);
+
+        ProbeSpheres.Add(Sphere);
+    }
 }
 
-void UOcclusionProbeComp::TickComponent(float DeltaTime,
-	ELevelTick TickType,
-	FActorComponentTickFunction* ThisTickFunction)
+void UOcclusionProbeComp::TickComponent(
+    float DeltaTime,
+    ELevelTick TickType,
+    FActorComponentTickFunction* ThisTickFunction)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	UpdateProbes();
+    if (!bCameraReady) return;
+
+    UpdateProbes();
 }
 
+bool UOcclusionProbeComp::RefreshFrustumParams()
+{
+    if (!IsValid(CameraManager)) return false;
+
+    return FFrustumProjectionMatcherHelper::ExtractFromCameraManager(CameraManager, FrustumParams);
+}
 
 void UOcclusionProbeComp::UpdateProbes()
 {
-	if (!CameraManager || !CurvedWorldSubsystem)
-		return;
+    if (!RefreshFrustumParams()) return;
 
-	FVector CameraLoc = CameraManager->GetCameraLocation();
-	FVector TargetLoc = GetComponentLocation();
+    const FVector CameraLoc  = FrustumParams.CameraLocation;
+    const FVector TargetLoc  = GetComponentLocation();
+    const FVector LineDir    = (TargetLoc - CameraLoc).GetSafeNormal();
+    const float   LineLength = FVector::Dist(CameraLoc, TargetLoc);
 
-	TArray<FVector> PathPoints =
-		FCurvedWorldUtil::GenerateCurvedPathPoints(
-			CameraLoc,
-			TargetLoc,
-			NumProbes,
-			CurvedWorldSubsystem,
-			ECurveMathType::ZHeightOnly);
+    // Hide all probes first — only active ones will be repositioned
+    for (USphereComponent* Sphere : ProbeSpheres)
+    {
+        Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        if (bDebugDraw) Sphere->SetHiddenInGame(true);
+    }
 
-	float SphereRadius = CalculateScreenProjectedRadius();
-	SphereRadius = FMath::Clamp(SphereRadius, MinSphereRadius, MaxSphereRadius);
+    // Walk from target outward toward camera — same logic as GenerateSweepsAlongLine
+    float DistToTarget = 0.f;
+    int32 ProbeIdx     = 0;
 
-	for (int32 i = 0; i < ProbeSpheres.Num(); ++i)
-	{
-		ProbeSpheres[i]->SetWorldLocation(PathPoints[i]);
-		ProbeSpheres[i]->SetSphereRadius(SphereRadius);
-	}
-}
+    while (ProbeIdx < MaxProbeCount)
+    {
+        const float DepthFromCamera = LineLength - DistToTarget;
 
-float UOcclusionProbeComp::CalculateScreenProjectedRadius() const
-{
-	if (!CameraManager)
-		return MinSphereRadius;
+        if (DepthFromCamera <= 0.f) break;
 
-	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-	if (!PC)
-		return MinSphereRadius;
+        float Radius = 0.f;
 
-	FVector ActorLocation = GetOwner()->GetActorLocation();
+        if (RocketHeadDistance > 0.f && DistToTarget <= RocketHeadDistance)
+        {
+            // Rocket head zone — exponent taper near target
+            const float NormalizedDist = FMath::Clamp(
+                DistToTarget / RocketHeadDistance, 0.f, 1.f);
 
-	FBox TargetBounds = GetOwner()->GetComponentsBoundingBox();
-	float ApproxRadius = TargetBounds.GetExtent().Size();
+            Radius = FMath::Pow(NormalizedDist, RocketHeadExponent) * TargetVisibleRadius;
+            Radius = FMath::Max(Radius, 1.f);
+        }
+        else
+        {
+            // Normal frustum projection matching outside rocket head zone
+            Radius = FFrustumProjectionMatcherHelper::CalculateSphereRadiusAtDepth(
+                FrustumParams,
+                LineLength,
+                TargetVisibleRadius,
+                DepthFromCamera);
 
-	FVector WorldEdge = ActorLocation + FVector(ApproxRadius, 0, 0);
+            if (Radius <= KINDA_SMALL_NUMBER) break;
+        }
 
-	FVector2D ScreenCenter;
-	FVector2D ScreenEdge;
+        // Cap radius so sphere never reaches past the target
+        const float ClampedRadius = FMath::Min(Radius, DistToTarget > 0.f ? DistToTarget : 1.f);
 
-	if (!PC->ProjectWorldLocationToScreen(ActorLocation, ScreenCenter))
-		return MinSphereRadius;
+        // Place probe on the straight camera-to-target line at this depth
+        const FVector ProbeLocation = CameraLoc + LineDir * DepthFromCamera;
 
-	if (!PC->ProjectWorldLocationToScreen(WorldEdge, ScreenEdge))
-		return MinSphereRadius;
+        USphereComponent* Sphere = ProbeSpheres[ProbeIdx];
+        Sphere->SetWorldLocation(ProbeLocation);
+        Sphere->SetSphereRadius(ClampedRadius);
+        Sphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 
-	float PixelRadius = FVector2D::Distance(ScreenCenter, ScreenEdge);
+        if (bDebugDraw)
+        {
+            Sphere->SetHiddenInGame(false);
 
-	float DistanceToCamera = FVector::Distance(
-		ActorLocation,
-		CameraManager->GetCameraLocation());
+            DrawDebugSphere(
+                GetWorld(),
+                ProbeLocation,
+                ClampedRadius,
+                8,
+                DistToTarget <= RocketHeadDistance ? FColor::Orange : FColor::Red,
+                false,
+                -1.f);
+        }
 
-	float FOV = CameraManager->GetFOVAngle();
-
-	float WorldRadius =
-		2.f * DistanceToCamera *
-		FMath::Tan(FMath::DegreesToRadians(PixelRadius * FOV / 1920.f));
-
-	return WorldRadius;
+        // Step away from target
+        DistToTarget += Radius * SweepGapRatio;
+        ++ProbeIdx;
+    }
 }

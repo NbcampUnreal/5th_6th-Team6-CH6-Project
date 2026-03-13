@@ -81,3 +81,20 @@ void UUI_HP_Bar::Update_HeadIcon(UTexture2D* NewIcon)
 		IMG_Head->SetBrushFromTexture(NewIcon);
     }
 }
+
+void UUI_HP_Bar::Update_PlayerName(FText PlayerName)
+{
+    if(IsValid(TXT_PlayerName))
+    {
+        TXT_PlayerName->SetText(PlayerName);
+	}
+}
+
+void UUI_HP_Bar::NativeConstruct()
+{
+    Super::NativeConstruct();
+    if (IsValid(IMG_Head))
+    {
+        IMG_Head->SetVisibility(ESlateVisibility::Hidden);
+    }
+}

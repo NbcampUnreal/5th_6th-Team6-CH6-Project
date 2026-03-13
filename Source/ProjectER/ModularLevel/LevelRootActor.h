@@ -35,9 +35,8 @@ public:
 	void UpdateAssetActors();
 
 private:
-
+	
 	bool IsValidToRun(UWorld*& OutWorld);
-
 
 
 protected:
