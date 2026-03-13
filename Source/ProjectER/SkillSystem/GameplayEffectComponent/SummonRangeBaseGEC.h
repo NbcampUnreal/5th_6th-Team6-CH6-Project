@@ -36,7 +36,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Base")
 	FVector LocationOffset = FVector::ZeroVector;
 
-
 	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Rotation")
 	bool bSpawnZeroRotation = false;
 
