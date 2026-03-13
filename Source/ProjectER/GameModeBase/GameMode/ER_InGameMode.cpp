@@ -1,4 +1,4 @@
-﻿#include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
@@ -80,6 +80,41 @@ void AER_InGameMode::InitGame(const FString& MapName, const FString& Options, FS
 
 void AER_InGameMode::Logout(AController* Exiting)
 {
+	// ── 게임 중 끊긴 플레이어 데이터 보존 (Super 호출 전에 처리) ──
+	if (bIsGameStarted)
+	{
+		APlayerController* PC = Cast<APlayerController>(Exiting);
+		if (PC && PC->PlayerState)
+		{
+			const FUniqueNetIdRepl UniqueId = PC->PlayerState->GetUniqueId();
+			const FString UniqueIdStr = UniqueId.IsValid() ? UniqueId->ToString() : FString();
+
+			if (!UniqueIdStr.IsEmpty())
+			{
+				FDisconnectedPlayerData Data;
+
+				// Pawn 보존: 컨트롤러에서 분리만 하고 파괴하지 않음
+				APawn* OwnedPawn = PC->GetPawn();
+				if (OwnedPawn)
+				{
+					PC->UnPossess();
+					Data.PreservedPawn = OwnedPawn;
+				}
+
+				// 타임아웃 타이머 설정
+				GetWorld()->GetTimerManager().SetTimer(
+					Data.TimeoutHandle, 
+					[this, UniqueIdStr]() { CleanupDisconnectedPlayer(UniqueIdStr); },
+					ReconnectTimeoutSeconds, false);
+
+				DisconnectedPlayers.Add(UniqueIdStr, Data);
+
+				UE_LOG(LogTemp, Warning, TEXT("[GM] Player disconnected mid-game. Preserving data for reconnect: %s (Timeout: %.0fs)"), 
+					*UniqueIdStr, ReconnectTimeoutSeconds);
+			}
+		}
+	}
+
 	Super::Logout(Exiting);
 
 	// 남아있는 플레이어 컨트롤러 수 계산
@@ -117,14 +152,72 @@ void AER_InGameMode::Logout(AController* Exiting)
 	}
 	else
 	{
-		// 게임 중 나감
-		if (RemainingPlayers < 1)
+		// 게임 중 나감 — 재접속 대기 중인 플레이어를 제외하고 남은 인원 계산
+		const int32 TotalActive = RemainingPlayers + DisconnectedPlayers.Num();
+		if (TotalActive < 1)
 		{
-			//로그아웃 시점에 플레이어가 1명일 시에 서버 초기화
-			//여기서 서버가 바로꺼지면 안되고 승리 패배 판정하고 나가야 할듯?
 			EndGame();
 		}
 	}
+}
+
+void AER_InGameMode::PreLogin(const FString& InAddress, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
+{
+	// 게임 시작 전(로비)이면 무조건 통과
+	if (!bIsGameStarted)
+	{
+		Super::PreLogin(InAddress, Options, UniqueId, ErrorMessage);
+		return;
+	}
+
+	// 게임 진행 중인 경우: 재접속 플레이어만 허용
+	const FString UniqueIdStr = UniqueId.IsValid() ? UniqueId->ToString() : FString();
+
+	if (!UniqueIdStr.IsEmpty() && DisconnectedPlayers.Contains(UniqueIdStr))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[GM] PreLogin >> Reconnecting player allowed: %s"), *UniqueIdStr);
+		Super::PreLogin(InAddress, Options, UniqueId, ErrorMessage);
+		return;
+	}
+
+	// 신규 플레이어 차단
+	UE_LOG(LogTemp, Warning, TEXT("[GM] PreLogin >> New player rejected (game in progress): %s"), *UniqueIdStr);
+	ErrorMessage = TEXT("Game is already in progress. New players cannot join.");
+}
+
+void AER_InGameMode::PostLogin(APlayerController* NewPlayer)
+{
+	Super::PostLogin(NewPlayer);
+
+	if (!NewPlayer || !NewPlayer->PlayerState)
+		return;
+
+	const FUniqueNetIdRepl UniqueId = NewPlayer->PlayerState->GetUniqueId();
+	const FString UniqueIdStr = UniqueId.IsValid() ? UniqueId->ToString() : FString();
+
+	// 재접속 플레이어인지 확인
+	FDisconnectedPlayerData* FoundData = DisconnectedPlayers.Find(UniqueIdStr);
+	if (!FoundData)
+		return;
+
+	UE_LOG(LogTemp, Warning, TEXT("[GM] PostLogin >> Reconnecting player detected: %s"), *UniqueIdStr);
+
+	// 타임아웃 타이머 해제
+	GetWorld()->GetTimerManager().ClearTimer(FoundData->TimeoutHandle);
+
+	// 보존된 Pawn 재연결
+	if (FoundData->PreservedPawn.IsValid())
+	{
+		NewPlayer->Possess(FoundData->PreservedPawn.Get());
+		UE_LOG(LogTemp, Warning, TEXT("[GM] PostLogin >> Pawn restored for: %s"), *UniqueIdStr);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[GM] PostLogin >> No preserved Pawn found for: %s (destroyed or timed out)"), *UniqueIdStr);
+	}
+
+	// 보존 데이터 제거
+	DisconnectedPlayers.Remove(UniqueIdStr);
 }
 
 void AER_InGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
@@ -402,4 +495,21 @@ void AER_InGameMode::TEMP_DespawnNeutrals()
 {
 	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
 	NeutralSS->TEMP_NeutralsALLDespawn();
+}
+
+void AER_InGameMode::CleanupDisconnectedPlayer(const FString& UniqueIdStr)
+{
+	FDisconnectedPlayerData* FoundData = DisconnectedPlayers.Find(UniqueIdStr);
+	if (!FoundData)
+		return;
+
+	UE_LOG(LogTemp, Warning, TEXT("[GM] Reconnect timeout expired for: %s. Cleaning up preserved data."), *UniqueIdStr);
+
+	// 보존된 Pawn 파괴
+	if (FoundData->PreservedPawn.IsValid())
+	{
+		FoundData->PreservedPawn->Destroy();
+	}
+
+	DisconnectedPlayers.Remove(UniqueIdStr);
 }
