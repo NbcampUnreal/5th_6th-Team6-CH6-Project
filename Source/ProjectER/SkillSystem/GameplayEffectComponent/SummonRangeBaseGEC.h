@@ -33,6 +33,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Base")
 	FVector CollisionRadius = FVector(100.0f);
 
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Base")
+	FVector LocationOffset = FVector::ZeroVector;
+
+
 	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Rotation")
 	bool bSpawnZeroRotation = false;
 
@@ -74,13 +78,13 @@ class PROJECTER_API USummonRangeBaseGEC : public UBaseGEC
 protected:
 	virtual void OnGameplayEffectApplied(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const override;
 	virtual const USummonRangeBaseConfig* GetSummonConfig(const FGameplayEffectSpec& GESpec) const;
-	virtual FTransform CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const USummonRangeBaseConfig* Config) const;
+	virtual FTransform CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator) const;
 	virtual bool ShouldProcessOnInstigator(const AActor* Instigator) const;
 
 	template <typename TConfig>
 	const TConfig* ResolveTypedConfigFromSpec(const FGameplayEffectSpec& GESpec) const;
 
-	const UBaseGECConfig* ResolveConfigFromSpec(const FGameplayEffectSpec& GESpec) const;
+	const UBaseGECConfig* ResolveBaseConfigFromSpec(const FGameplayEffectSpec& GESpec) const;
 	FGameplayCueParameters BuildNiagaraCueParameters(const FGameplayEffectSpec& GESpec, const FGameplayTag& OriginalTag, const FGameplayEffectContextHandle& EffectContext, AActor* EffectCauser, const FVector& CueLocation, const UObject* SourceObject) const;
 	void InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetCueParameters) const;
 };

@@ -14,7 +14,7 @@
 
 FText USummonRangeBaseConfig::BuildTooltipDescription(float InLevel) const
 {
-	TArray<FString> AppliedDescriptions;
+TArray<FString> AppliedDescriptions;
 
 	for (const USkillEffectDataAsset* const SkillEffectDataAsset : Applied)
 	{
@@ -142,7 +142,7 @@ const USummonRangeBaseConfig* USummonRangeBaseGEC::GetSummonConfig(const FGamepl
 	return nullptr;
 }
 
-FTransform USummonRangeBaseGEC::CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const USummonRangeBaseConfig* Config) const
+FTransform USummonRangeBaseGEC::CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator) const
 {
 	return FTransform();
 }
@@ -152,7 +152,7 @@ bool USummonRangeBaseGEC::ShouldProcessOnInstigator(const AActor* Instigator) co
 	return IsValid(Instigator);
 }
 
-const UBaseGECConfig* USummonRangeBaseGEC::ResolveConfigFromSpec(const FGameplayEffectSpec& GESpec) const
+const UBaseGECConfig* USummonRangeBaseGEC::ResolveBaseConfigFromSpec(const FGameplayEffectSpec& GESpec) const
 {
 	const USkillEffectDataAsset* const SkillDataAsset = Cast<USkillEffectDataAsset>(GESpec.GetEffectContext().GetSourceObject());
 	if (!IsValid(SkillDataAsset))
