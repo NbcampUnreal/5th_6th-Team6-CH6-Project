@@ -22,6 +22,10 @@ public:
     UPROPERTY(EditAnywhere, Category="Area")
     TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
 
+    // How often UpdateArea fires while loop is active
+    UPROPERTY(EditAnywhere, Category="Area|Timer")
+    float AreaUpdateInterval = 0.1f;
+
 
     /* ---------- State ---------- */
 
@@ -38,22 +42,51 @@ public:
     FOnAreaNodeChanged OnNodeChanged;
 
     UPROPERTY(BlueprintAssignable, Category="Area")
-    FOnAreaHazardStateTransition OnHazardStateChanged; 
+    FOnAreaHazardStateTransition OnHazardStateChanged;
 
 
     /* ---------- API ---------- */
 
+    // Main update — traces floor, updates CurrentNodeID, refreshes hazard state
     UFUNCTION(BlueprintCallable, Category="Area")
     void UpdateArea();
 
+    // Returns current hazard state of CurrentNodeID
     UFUNCTION(BlueprintCallable, BlueprintPure, Category="Area")
     EAreaHazardState GetHazardState() const;
 
     UFUNCTION(BlueprintCallable, BlueprintPure, Category="Area")
     bool IsInHazardArea() const { return CurrentHazardState != EAreaHazardState::Safe; }
 
+    // Push-based refresh — called from GameStateComponent when
+    // a room becomes hazardous under a standing player
     UFUNCTION(BlueprintCallable, Category="Area")
     void RefreshHazardState();
+
+
+    /* ---------- Timer ---------- */
+
+    // Start looped UpdateArea — call when pawn enters bridge overlap
+    UFUNCTION(BlueprintCallable, Category="Area|Timer")
+    void StartAreaUpdateLoop();
+
+    // Stop looped UpdateArea — call when pawn exits bridge overlap
+    UFUNCTION(BlueprintCallable, Category="Area|Timer")
+    void StopAreaUpdateLoop();
+
+    UFUNCTION(BlueprintCallable, BlueprintPure, Category="Area|Timer")
+    bool IsAreaUpdateLoopActive() const;
+
+
+    /* ---------- Debug ---------- */
+
+    // Performs the downward trace and returns the raw hit NodeID without updating state
+    UFUNCTION(BlueprintCallable, BlueprintPure, Category="Area|Debug")
+    int32 TraceForNodeID() const;
+
+    // Queries the subsystem for the hazard state of any given NodeID
+    UFUNCTION(BlueprintCallable, BlueprintPure, Category="Area|Debug")
+    EAreaHazardState GetHazardStateForNode(int32 InNodeID) const;
 
 
     /* ---------- Lifecycle ---------- */
@@ -64,4 +97,6 @@ public:
 private:
 
     EAreaHazardState CachedHazardState = EAreaHazardState::Safe;
+
+    FTimerHandle AreaUpdateTimerHandle;
 };

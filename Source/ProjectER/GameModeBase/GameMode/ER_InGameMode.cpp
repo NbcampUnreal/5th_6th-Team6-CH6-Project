@@ -1,4 +1,4 @@
-﻿#include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
@@ -14,6 +14,11 @@
 #include "Monster/BaseMonster.h"
 
 #include "CharacterSystem/Player/BasePlayerController.h"
+#include "CharacterSystem/Character/BaseCharacter.h"
+#include "AbilitySystemComponent.h"
+#include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
+#include "ItemSystem/Component/BaseInventoryComponent.h"
+#include "ItemSystem/Data/BaseItemData.h"
 
 void AER_InGameMode::BeginPlay()
 {
@@ -80,6 +85,118 @@ void AER_InGameMode::InitGame(const FString& MapName, const FString& Options, FS
 
 void AER_InGameMode::Logout(AController* Exiting)
 {
+	// ── 게임 중 끊긴 플레이어 데이터 보존 (Super 호출 전에 처리) ──
+	if (bIsGameStarted)
+	{
+		APlayerController* PC = Cast<APlayerController>(Exiting);
+		if (PC && PC->PlayerState)
+		{
+			const FUniqueNetIdRepl UniqueId = PC->PlayerState->GetUniqueId();
+			const FString UniqueIdStr = UniqueId.IsValid() ? UniqueId->ToString() : FString();
+
+			if (!UniqueIdStr.IsEmpty())
+			{
+				FDisconnectedPlayerData Data;
+
+				// Pawn 보존: 컨트롤러에서 분리만 하고 파괴하지 않음
+				APawn* OwnedPawn = PC->GetPawn();
+				if (!OwnedPawn)
+				{
+					if (ABasePlayerController* ERPC = Cast<ABasePlayerController>(PC))
+					{
+						OwnedPawn = ERPC->GetControlledBaseChar();
+					}
+				}
+
+				if (OwnedPawn)
+				{
+					// 이미 UnPossess 되었을 수 있으나 안 되어 있다면 수행
+					if (OwnedPawn->GetController() == PC)
+					{
+						PC->UnPossess();
+					}
+
+					// ★ 핵심: Owner 체인을 끊어야 PC 파괴 시 Pawn이 같이 파괴되지 않음
+					// UnPossess()는 Controller 포인터만 null로 만들 뿐, Owner는 여전히 PC를 가리킴
+					OwnedPawn->SetOwner(nullptr);
+
+					Data.PreservedPawn = OwnedPawn;
+				}
+
+				// PlayerState 데이터 캡처
+				AER_PlayerState* ERPS = Cast<AER_PlayerState>(PC->PlayerState);
+				if (ERPS)
+				{
+					Data.PlayerStateName = ERPS->PlayerStateName;
+					Data.TeamType        = ERPS->TeamType;
+					Data.bIsDead         = ERPS->bIsDead;
+					Data.bIsLose         = ERPS->bIsLose;
+					Data.bIsWin          = ERPS->bIsWin;
+					Data.RespawnTime     = ERPS->RespawnTime;
+					Data.KillCount       = ERPS->KillCount;
+					Data.DeathCount      = ERPS->DeathCount;
+					Data.AssistCount     = ERPS->AssistCount;
+
+					// ASC Attribute 데이터 추출
+					if (UAbilitySystemComponent* ASC = ERPS->GetAbilitySystemComponent())
+					{
+						for (TFieldIterator<FProperty> It(UBaseAttributeSet::StaticClass()); It; ++It)
+						{
+							if (FStructProperty* StructProp = CastField<FStructProperty>(*It))
+							{
+								if (StructProp->Struct == FGameplayAttributeData::StaticStruct())
+								{
+									FGameplayAttribute Attribute(*It);
+									Data.SavedAttributes.Add(It->GetName(), Attribute.GetNumericValue(ERPS->GetAttributeSet()));
+								}
+							}
+						}
+						
+						UE_LOG(LogTemp, Warning, TEXT("[GM] Logout >> Captured %d attributes for player: %s"), 
+							Data.SavedAttributes.Num(), *UniqueIdStr);
+					}
+
+					// 인벤토리 데이터 추출
+					if (UBaseInventoryComponent* Inv = OwnedPawn->FindComponentByClass<UBaseInventoryComponent>())
+					{
+						// Internal array 직접 접근을 못하므로 getter가 필요할 수 있으나, 
+						// .h에서 InventoryContents가 protected이므로 헬퍼가 필요함.
+						// 일단 리플렉션이나 다른 방법을 고려하거나, .h를 수정하여 접근 허용.
+						// (이미 h에서 protected이므로 파생클래스가 아니면 접근 불가)
+						// 하지만 TFieldIterator로 가져올 수 있음.
+						for (TFieldIterator<FArrayProperty> It(UBaseInventoryComponent::StaticClass()); It; ++It)
+						{
+							if (It->GetName() == TEXT("InventoryContents"))
+							{
+								FScriptArrayHelper Helper(*It, It->ContainerPtrToValuePtr<void>(Inv));
+								for (int32 i = 0; i < Helper.Num(); ++i)
+								{
+									UBaseItemData* Item = *reinterpret_cast<UBaseItemData**>(Helper.GetRawPtr(i));
+									Data.SavedInventory.Add(Item);
+								}
+								break;
+							}
+						}
+						
+						UE_LOG(LogTemp, Warning, TEXT("[GM] Logout >> Captured %d inventory items for player: %s"), 
+							Data.SavedInventory.Num(), *UniqueIdStr);
+					}
+				}
+
+				// 타임아웃 타이머 설정
+				GetWorld()->GetTimerManager().SetTimer(
+					Data.TimeoutHandle, 
+					[this, UniqueIdStr]() { CleanupDisconnectedPlayer(UniqueIdStr); },
+					ReconnectTimeoutSeconds, false);
+
+				DisconnectedPlayers.Add(UniqueIdStr, Data);
+
+				UE_LOG(LogTemp, Warning, TEXT("[GM] Player disconnected mid-game. Preserving data for reconnect: %s (Timeout: %.0fs)"), 
+					*UniqueIdStr, ReconnectTimeoutSeconds);
+			}
+		}
+	}
+
 	Super::Logout(Exiting);
 
 	// 남아있는 플레이어 컨트롤러 수 계산
@@ -117,14 +234,167 @@ void AER_InGameMode::Logout(AController* Exiting)
 	}
 	else
 	{
-		// 게임 중 나감
-		if (RemainingPlayers < 1)
+		// 게임 중 나감 — 재접속 대기 중인 플레이어를 제외하고 남은 인원 계산
+		const int32 TotalActive = RemainingPlayers + DisconnectedPlayers.Num();
+		if (TotalActive < 1)
 		{
-			//로그아웃 시점에 플레이어가 1명일 시에 서버 초기화
-			//여기서 서버가 바로꺼지면 안되고 승리 패배 판정하고 나가야 할듯?
 			EndGame();
 		}
 	}
+}
+
+void AER_InGameMode::PreLogin(const FString& InAddress, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
+{
+	// 게임 시작 전(로비)이면 무조건 통과
+	if (!bIsGameStarted)
+	{
+		Super::PreLogin(InAddress, Options, UniqueId, ErrorMessage);
+		return;
+	}
+
+	// 게임 진행 중인 경우: 재접속 플레이어만 허용
+	const FString UniqueIdStr = UniqueId.IsValid() ? UniqueId->ToString() : FString();
+
+	if (!UniqueIdStr.IsEmpty() && DisconnectedPlayers.Contains(UniqueIdStr))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[GM] PreLogin >> Reconnecting player allowed: %s"), *UniqueIdStr);
+		Super::PreLogin(InAddress, Options, UniqueId, ErrorMessage);
+		return;
+	}
+
+	// 신규 플레이어 차단
+	UE_LOG(LogTemp, Warning, TEXT("[GM] PreLogin >> New player rejected (game in progress): %s"), *UniqueIdStr);
+	ErrorMessage = TEXT("Game is already in progress. New players cannot join.");
+}
+
+void AER_InGameMode::PostLogin(APlayerController* NewPlayer)
+{
+	Super::PostLogin(NewPlayer);
+
+	if (!NewPlayer || !NewPlayer->PlayerState)
+		return;
+
+	const FUniqueNetIdRepl UniqueId = NewPlayer->PlayerState->GetUniqueId();
+	const FString UniqueIdStr = UniqueId.IsValid() ? UniqueId->ToString() : FString();
+
+	// 재접속 플레이어인지 확인
+	FDisconnectedPlayerData* FoundData = DisconnectedPlayers.Find(UniqueIdStr);
+	if (!FoundData)
+		return;
+
+	UE_LOG(LogTemp, Warning, TEXT("[GM] PostLogin >> Reconnecting player detected: %s"), *UniqueIdStr);
+
+	// 타임아웃 타이머 해제
+	GetWorld()->GetTimerManager().ClearTimer(FoundData->TimeoutHandle);
+
+	// 보존된 Pawn 재연결
+	if (FoundData->PreservedPawn.IsValid())
+	{
+		// Super::PostLogin() 에서 생성된 새로운 Pawn이 있다면 제거
+		if (APawn* NewPawn = NewPlayer->GetPawn())
+		{
+			if (NewPawn != FoundData->PreservedPawn.Get())
+			{
+				NewPawn->Destroy();
+			}
+		}
+
+		NewPlayer->Possess(FoundData->PreservedPawn.Get());
+		UE_LOG(LogTemp, Warning, TEXT("[GM] PostLogin >> Pawn restored for: %s"), *UniqueIdStr);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[GM] PostLogin >> No preserved Pawn found for: %s (destroyed or timed out)"), *UniqueIdStr);
+	}
+
+	// PlayerState 데이터 복원
+	AER_PlayerState* NewERPS = Cast<AER_PlayerState>(NewPlayer->PlayerState);
+	if (NewERPS)
+	{
+		NewERPS->PlayerStateName = FoundData->PlayerStateName;
+		NewERPS->TeamType        = FoundData->TeamType;
+		NewERPS->bIsDead         = FoundData->bIsDead;
+		NewERPS->bIsLose         = FoundData->bIsLose;
+		NewERPS->bIsWin          = FoundData->bIsWin;
+		NewERPS->RespawnTime     = FoundData->RespawnTime;
+		NewERPS->KillCount       = FoundData->KillCount;
+		NewERPS->DeathCount      = FoundData->DeathCount;
+		NewERPS->AssistCount     = FoundData->AssistCount;
+
+		// Attribute 데이터 복원
+		if (UAbilitySystemComponent* ASC = NewERPS->GetAbilitySystemComponent())
+		{
+			// ASC ActorInfo가 먼저 설정되어 있어야 함 (Possess 이후 시점이므로 안전)
+			for (const auto& Pair : FoundData->SavedAttributes)
+			{
+				FGameplayAttribute Attribute;
+				for (TFieldIterator<FProperty> It(UBaseAttributeSet::StaticClass()); It; ++It)
+				{
+					if (It->GetName() == Pair.Key)
+					{
+						Attribute = FGameplayAttribute(*It);
+						break;
+					}
+				}
+
+				if (Attribute.IsValid())
+				{
+					ASC->SetNumericAttributeBase(Attribute, Pair.Value);
+					// 현재 값도 동일하게 맞춤 (GE에 인한 보정 전 기본값)
+					ASC->SetNumericAttributeBase(Attribute, Pair.Value); 
+				}
+			}
+
+			UE_LOG(LogTemp, Warning, TEXT("[GM] PostLogin >> Restored %d attributes for player: %s"), 
+				FoundData->SavedAttributes.Num(), *UniqueIdStr);
+		}
+
+		// 인벤토리 데이터 복원
+		if (APawn* PreservedPawn = FoundData->PreservedPawn.Get())
+		{
+			if (UBaseInventoryComponent* Inv = PreservedPawn->FindComponentByClass<UBaseInventoryComponent>())
+			{
+				for (TFieldIterator<FArrayProperty> It(UBaseInventoryComponent::StaticClass()); It; ++It)
+				{
+					if (It->GetName() == TEXT("InventoryContents"))
+					{
+						FScriptArrayHelper Helper(*It, It->ContainerPtrToValuePtr<void>(Inv));
+						Helper.EmptyAndAddValues(FoundData->SavedInventory.Num());
+						for (int32 i = 0; i < FoundData->SavedInventory.Num(); ++i)
+						{
+							*reinterpret_cast<UBaseItemData**>(Helper.GetRawPtr(i)) = FoundData->SavedInventory[i];
+						}
+						break;
+					}
+				}
+				
+				UE_LOG(LogTemp, Warning, TEXT("[GM] PostLogin >> Restored %d inventory items for player: %s"), 
+					FoundData->SavedInventory.Num(), *UniqueIdStr);
+			}
+		}
+
+		UE_LOG(LogTemp, Warning, TEXT("[GM] PostLogin >> PlayerState restored for: %s (Team=%d, K/D/A=%d/%d/%d)"),
+			*UniqueIdStr, static_cast<int32>(NewERPS->TeamType), NewERPS->KillCount, NewERPS->DeathCount, NewERPS->AssistCount);
+	}
+
+	// GameState TeamCache에 재접속 플레이어 다시 추가
+	AER_GameState* ERGS = GetGameState<AER_GameState>();
+	if (ERGS && NewERPS)
+	{
+		const int32 TeamIdx = static_cast<int32>(NewERPS->TeamType);
+		TArray<TWeakObjectPtr<AER_PlayerState>>& TeamArr = ERGS->GetTeamArray(TeamIdx);
+		TeamArr.AddUnique(NewERPS);
+	}
+
+	// 재접속 플레이어에게 인게임 입력 모드 및 프리로드 지시
+	if (ABasePlayerController* ERPC = Cast<ABasePlayerController>(NewPlayer))
+	{
+		ERPC->Client_InGameInputMode();
+		ERPC->Client_StartPreload();
+	}
+
+	// 보존 데이터 제거
+	DisconnectedPlayers.Remove(UniqueIdStr);
 }
 
 void AER_InGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
@@ -132,6 +402,10 @@ void AER_InGameMode::HandleStartingNewPlayer_Implementation(APlayerController* N
 	Super::HandleStartingNewPlayer_Implementation(NewPlayer);
 
 	if (!NewPlayer)
+		return;
+
+	// 재접속 플레이어는 초기화 카운트에 포함하지 않음 (PostLogin에서 별도 처리)
+	if (bIsGameStarted)
 		return;
 
 	if (ABasePlayerController* PC = Cast<ABasePlayerController>(NewPlayer))
@@ -402,4 +676,21 @@ void AER_InGameMode::TEMP_DespawnNeutrals()
 {
 	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
 	NeutralSS->TEMP_NeutralsALLDespawn();
+}
+
+void AER_InGameMode::CleanupDisconnectedPlayer(const FString& UniqueIdStr)
+{
+	FDisconnectedPlayerData* FoundData = DisconnectedPlayers.Find(UniqueIdStr);
+	if (!FoundData)
+		return;
+
+	UE_LOG(LogTemp, Warning, TEXT("[GM] Reconnect timeout expired for: %s. Cleaning up preserved data."), *UniqueIdStr);
+
+	// 보존된 Pawn 파괴
+	if (FoundData->PreservedPawn.IsValid())
+	{
+		FoundData->PreservedPawn->Destroy();
+	}
+
+	DisconnectedPlayers.Remove(UniqueIdStr);
 }

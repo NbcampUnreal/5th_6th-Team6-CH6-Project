@@ -5,6 +5,8 @@
 #include "LevelManagement/Requirements/LevelAreaData.h"
 #include "LevelAreaGameStateComponent.generated.h"
 
+class ULevelAreaGraphData;
+
 UCLASS(ClassGroup=(LevelManagement), meta=(BlueprintSpawnableComponent))
 class PROJECTER_API ULevelAreaGameStateComponent : public UActorComponent
 {
@@ -14,23 +16,35 @@ public:
 
     ULevelAreaGameStateComponent();
 
+protected:
+
+    virtual void BeginPlay() override;
+
+public:
 
     /* ---------- Config ---------- */
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Hazard")
     int32 HazardsPerPhase = 1;
 
-    // State applied to newly hazardous nodes each phase
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Hazard")
     EAreaHazardState HazardStatePerPhase = EAreaHazardState::Hazard;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Hazard")
+    int32 HazardSeed = 0;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LevelArea")
+    ULevelAreaGraphData* GraphData;
 
 
     /* ---------- Replicated State ---------- */
 
-    UPROPERTY(ReplicatedUsing=OnRep_HazardNodeIDs, BlueprintReadOnly, Category="Hazard")
-    TArray<int32> HazardNodeIDs;
+    // Full collapse order — replicated once at start, never changes
+    UPROPERTY(ReplicatedUsing=OnRep_HazardOrder, BlueprintReadOnly, Category="Hazard")
+    TArray<int32> HazardOrder;
 
-    UPROPERTY(BlueprintReadOnly, Category="Hazard")
+    // Current phase — clients derive active hazards from this + HazardOrder
+    UPROPERTY(ReplicatedUsing=OnRep_CurrentPhase, BlueprintReadOnly, Category="Hazard")
     int32 CurrentPhase = 0;
 
 
@@ -43,6 +57,18 @@ public:
     void ResetHazards();
 
 
+    /* ---------- Getters ---------- */
+
+    UFUNCTION(BlueprintCallable, BlueprintPure, Category="Hazard")
+    int32 GetHazardSeed() const { return HazardSeed; }
+
+    UFUNCTION(BlueprintCallable, BlueprintPure, Category="Hazard")
+    int32 GetTotalPhases() const { return HazardOrder.Num() / FMath::Max(1, HazardsPerPhase); }
+
+    UFUNCTION(BlueprintCallable, BlueprintPure, Category="Hazard")
+    bool IsAllPhasesExhausted() const { return (CurrentPhase * HazardsPerPhase) >= HazardOrder.Num(); }
+
+
     /* ---------- Lifecycle ---------- */
 
     virtual void GetLifetimeReplicatedProps(
@@ -51,10 +77,14 @@ public:
 
 private:
 
-    TArray<int32> HazardOrder;
+    UFUNCTION()
+    void OnRep_HazardOrder();
 
     UFUNCTION()
-    void OnRep_HazardNodeIDs();
+    void OnRep_CurrentPhase();
 
-    void NotifySubsystem(const TArray<int32>& NodeIDs);
+    // Applies all hazards up to and including CurrentPhase from HazardOrder
+    void ApplyHazardsUpToCurrentPhase();
+
+    void NotifyTrackers();
 };

@@ -14,6 +14,12 @@ class PROJECTER_API ULevelAreaGraphSubsystem : public UWorldSubsystem, public IG
 
 public:
 
+    /* ---------- Lifecycle ---------- */
+
+    virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+    virtual void Deinitialize() override;
+
+
     /* ---------- Graph ---------- */
 
     TMap<int32, LevelAreaNode*> Nodes;
@@ -21,11 +27,10 @@ public:
 
     /* ---------- Hazard State ---------- */
 
-    // Maps NodeID → current hazard state
     TMap<int32, EAreaHazardState> ActiveHazardNodes;
 
 
-    /* ---------- Graph Building ---------- */
+    /* ---------- Graph Registration (Helper Actor uses this) ---------- */
 
     void RegisterNode(LevelAreaNode* Node);
     void UnregisterNode(int32 NodeID);
@@ -36,26 +41,24 @@ public:
 
     /* ---------- Hazard System ---------- */
 
-    bool GenerateHazardOrder(int32 HazardCount, TArray<int32>& OutHazardOrder);
+    bool GenerateHazardOrder(int32 HazardCount, int32 Seed, TArray<int32>& OutHazardOrder);
     void ApplyHazardNodes(const TArray<int32>& NodeIDs, EAreaHazardState State);
     void ClearHazards();
+
+    //--> BP exposed Gen
+    UFUNCTION(BlueprintCallable)
+    bool GenerateHazardOrder_BP(
+        int32 HazardCount,
+        int32 Seed,
+        //out
+        TArray<int32>& OutHazardOrder,
+        FString& ResultLog);
 
 
     /* ---------- Player Query ---------- */
 
     EAreaHazardState GetNodeHazardState(int32 NodeID) const;
     bool IsNodeHazard(int32 NodeID) const;
-
-
-    /* ---------- Surface → Node Mapping ---------- */
-
-    void RegisterFloorMaterial(UPhysicalMaterial* Material, int32 NodeID);
-    void RegisterFloorMesh(UStaticMesh* Mesh, int32 NodeID);
-
-    void UnregisterFloorMaterial(UPhysicalMaterial* Material);
-    void UnregisterFloorMesh(UStaticMesh* Mesh);
-
-    int32 FindNodeByHitResult(const FHitResult& Hit) const;
 
 
     /* ---------- IGridGraph ---------- */
@@ -67,17 +70,6 @@ public:
 
 
 private:
-
-    /* ---------- Surface Maps ---------- */
-
-    UPROPERTY()
-    TMap<TObjectPtr<UPhysicalMaterial>, int32> MaterialToNodeID;
-
-    UPROPERTY()
-    TMap<TObjectPtr<UStaticMesh>, int32> MeshToNodeID;
-
-
-    /* ---------- Graph Helpers ---------- */
 
     bool WouldCreateIsland(int32 CandidateID);
     bool IsGraphConnected() const;
