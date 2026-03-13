@@ -1,24 +1,18 @@
 #include "LevelAreaActor.h"
-#include "Net/UnrealNetwork.h"
-#include "Engine/World.h"
+
+#include "EngineUtils.h"
 #include "Components/StaticMeshComponent.h"
-#include "LevelManagement/LevelGraphManager/LevelAreaSubsystem/LevelAreaGraphSubsystem.h"
 #include "LogHelper/DebugLogHelper.h"
+
+#if WITH_EDITOR
+#include "Editor.h" // for geditor
+#endif
 
 ALevelAreaActor::ALevelAreaActor()
 {
     PrimaryActorTick.bCanEverTick = false;
-    bReplicates = true;
 
-    // Bare root — designer attaches whatever meshes they want
     SetRootComponent(CreateDefaultSubobject<USceneComponent>(TEXT("Root")));
-}
-
-void ALevelAreaActor::GetLifetimeReplicatedProps(
-    TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-    DOREPLIFETIME(ALevelAreaActor, HazardState);
 }
 
 
@@ -31,135 +25,143 @@ void ALevelAreaActor::ApplyMaterialToMeshes()
     if (!FloorMaterial)
     {
         UE_LOG(LevelAreaGraphManagement, Warning,
-            TEXT("ALevelAreaActor >> ApplyMaterialToMeshes: FloorMaterial is not set on %s"),
+            TEXT("ALevelAreaActor >> ApplyMaterialToMeshes: FloorMaterial not set on %s"),
             *GetName());
         return;
     }
 
-    TArray<UStaticMeshComponent*> MeshComponents;
-    GetComponents<UStaticMeshComponent>(MeshComponents);
+    TArray<AActor*> AttachedActors;
+    GetAttachedActors(AttachedActors);
 
-    if (MeshComponents.IsEmpty())
+    if (AttachedActors.IsEmpty())
     {
         UE_LOG(LevelAreaGraphManagement, Warning,
-            TEXT("ALevelAreaActor >> ApplyMaterialToMeshes: No StaticMeshComponents found on %s"),
+            TEXT("ALevelAreaActor >> ApplyMaterialToMeshes: No attached actors found on %s"),
             *GetName());
         return;
     }
 
-    for (UStaticMeshComponent* Mesh : MeshComponents)
+    for (AActor* Child : AttachedActors)
     {
-        Mesh->SetPhysMaterialOverride(FloorMaterial);
+        TArray<UStaticMeshComponent*> Meshes;
+        Child->GetComponents<UStaticMeshComponent>(Meshes);
 
-        UE_LOG(LevelAreaGraphManagement, Log,
-            TEXT("ALevelAreaActor >> Applied %s to %s on %s"),
-            *FloorMaterial->GetName(), *Mesh->GetName(), *GetName());
+        for (UStaticMeshComponent* Mesh : Meshes)
+        {
+            //set physic material
+            Mesh->SetPhysMaterialOverride(FloorMaterial);
+            // set trace reaction for area ID tracker
+            Mesh->SetCollisionResponseToChannel( FloorTraceChannel, ECR_Block);
+
+            UE_LOG(LevelAreaGraphManagement, Log,
+                TEXT("ALevelAreaActor >> Applied %s to %s on %s"),
+                *FloorMaterial->GetName(), *Mesh->GetName(), *Child->GetName());
+        }
     }
 }
 
-
-/* =====================================================================
-   Lifecycle
-   ===================================================================== */
-
-void ALevelAreaActor::BeginPlay()
+void ALevelAreaActor::BakeAllNodes()
 {
-    Super::BeginPlay();
+#if WITH_EDITOR
+    if (!GEditor) return;
 
-    if (HasAuthority())
-        RegisterWithSubsystem();
+    UWorld* EditorWorld = GEditor->GetEditorWorldContext().World();
+    if (!EditorWorld) return;
+
+    int32 BakedCount = 0;
+
+    for (TActorIterator<ALevelAreaActor> It(EditorWorld); It; ++It)
+    {
+        ALevelAreaActor* Actor = *It;
+        if (!Actor) continue;
+
+        Actor->BakeNode();
+        BakedCount++;
+    }
+
+    UE_LOG(LevelAreaGraphManagement, Log,
+        TEXT("ALevelAreaActor >> BakeAllNodes: Baked %d actors"), BakedCount);
+#endif
 }
 
-void ALevelAreaActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
+void ALevelAreaActor::ClearGraphData()
 {
-    if (HasAuthority())
-        UnregisterFromSubsystem();
+#if WITH_EDITOR
+    if (!GraphData)
+    {
+        UE_LOG(LevelAreaGraphManagement, Warning,
+            TEXT("ALevelAreaActor >> ClearGraphData: No GraphData assigned on %s"),
+            *GetName());
+        return;
+    }
 
-    Super::EndPlay(EndPlayReason);
+    int32 RemovedCount = GraphData->Nodes.Num();
+    GraphData->Nodes.Reset();
+    
+   bool DebugBoolChecker= GraphData->MarkPackageDirty();
+
+    UE_LOG(LevelAreaGraphManagement, Log,
+        TEXT("ALevelAreaActor >> ClearGraphData: Cleared %d nodes from %s"),
+        RemovedCount, *GraphData->GetName());
+#endif
 }
 
 
 /* =====================================================================
-   Subsystem Registration
+   Internal
    ===================================================================== */
 
-void ALevelAreaActor::RegisterWithSubsystem()
+void ALevelAreaActor::BakeNode()
 {
+#if WITH_EDITOR
     if (NodeID == INDEX_NONE)
     {
         UE_LOG(LevelAreaGraphManagement, Error,
-            TEXT("ALevelAreaActor >> %s has no NodeID set"), *GetName());
+            TEXT("ALevelAreaActor >> BakeNode: NodeID not set on %s"), *GetName());
         return;
     }
 
-    if (!FloorMaterial)
+    if (!GraphData)
     {
-        UE_LOG(LevelAreaGraphManagement, Warning,
-            TEXT("ALevelAreaActor >> %s has no FloorMaterial — tracker cannot detect this node"),
+        UE_LOG(LevelAreaGraphManagement, Error,
+            TEXT("ALevelAreaActor >> BakeNode: No GraphData assigned on %s"),
             *GetName());
+        return;
     }
 
-    OwnedNode = MakeUnique<LevelAreaNode>();
-    OwnedNode->SetNodeID(NodeID);
-    OwnedNode->SetRoomCenter(GetActorLocation());
+    FLevelAreaNodeRecord* Record = GraphData->Nodes.FindByPredicate(
+        [this](const FLevelAreaNodeRecord& R) { return R.NodeID == NodeID; });
 
-    for (int32 NeighborID : NeighborNodeIDs)
-        OwnedNode->AddConnection(NeighborID,
-            GetActorLocation(), GetActorLocation());
+    if (!Record)
+    {
+        GraphData->Nodes.Add(FLevelAreaNodeRecord());
+        Record = &GraphData->Nodes.Last();
+        Record->NodeID = NodeID;
+    }
 
-    ULevelAreaGraphSubsystem* Sub =
-        GetWorld()->GetSubsystem<ULevelAreaGraphSubsystem>();
-    if (!Sub) return;
+    Record->NeighborIDs.Reset();
 
-    Sub->RegisterNode(OwnedNode.Get());
+    for (ALevelAreaActor* Neighbor : NeighborActors)
+    {
+        if (!Neighbor || Neighbor->NodeID == INDEX_NONE)
+        {
+            UE_LOG(LevelAreaGraphManagement, Warning,
+                TEXT("ALevelAreaActor >> BakeNode: Skipping invalid neighbor on %s"),
+                *GetName());
+            continue;
+        }
 
-    if (FloorMaterial)
-        Sub->RegisterFloorMaterial(FloorMaterial, NodeID);
+        Record->NeighborIDs.AddUnique(Neighbor->NodeID);
 
-    UE_LOG(LevelAreaGraphManagement, Log,
-        TEXT("ALevelAreaActor >> Node %d registered | Material: %s"),
-        NodeID,
-        FloorMaterial ? *FloorMaterial->GetName() : TEXT("none"));
-}
+        UE_LOG(LevelAreaGraphManagement, Log,
+            TEXT("ALevelAreaActor >> BakeNode: Node %d → Neighbor %d"),
+            NodeID, Neighbor->NodeID);
+    }
 
-void ALevelAreaActor::UnregisterFromSubsystem()
-{
-    if (!OwnedNode) return;
-
-    ULevelAreaGraphSubsystem* Sub =
-        GetWorld()->GetSubsystem<ULevelAreaGraphSubsystem>();
-    if (!Sub) return;
-
-    Sub->UnregisterNode(OwnedNode->GetNodeID());
-
-    if (FloorMaterial)
-        Sub->UnregisterFloorMaterial(FloorMaterial);
-
-    OwnedNode.Reset();
-}
-
-
-/* =====================================================================
-   Hazard State
-   ===================================================================== */
-
-void ALevelAreaActor::SetHazardState(EAreaHazardState NewState)
-{
-    if (!HasAuthority()) return;
-
-    HazardState = NewState;
-    OnHazardStateChanged.Broadcast(HazardState);
+    bool DebugBoolChecker = GraphData->MarkPackageDirty();
 
     UE_LOG(LevelAreaGraphManagement, Log,
-        TEXT("ALevelAreaActor >> Node %d state: %s"),
-        NodeID, *UEnum::GetValueAsString(HazardState));
-}
-
-void ALevelAreaActor::OnRep_HazardState()
-{
-    OnHazardStateChanged.Broadcast(HazardState);
-
-    UE_LOG(LevelAreaGraphManagement, Log,
-        TEXT("ALevelAreaActor >> Node %d replicated state: %s"),
-        NodeID, *UEnum::GetValueAsString(HazardState));
+        TEXT("ALevelAreaActor >> BakeNode: Node %d baked | Neighbors: %d"),
+        NodeID, Record->NeighborIDs.Num());
+#endif
 }

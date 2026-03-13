@@ -2,9 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "LevelManagement/LevelAreaTrackerComponent.h"
-#include "LevelManagement/Requirements/LevelAreaData.h"
-#include "LevelManagement/Area/LevelAreaNode.h"
+#include "LevelManagement/Requirements/LevelAreaPhysicalMaterial.h"
+#include "LevelManagement/Requirements/LevelAreaGraphData.h"
 #include "LevelAreaActor.generated.h"
 
 UCLASS()
@@ -22,51 +21,35 @@ public:
 	int32 NodeID = INDEX_NONE;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Area")
-	TArray<int32> NeighborNodeIDs;
+	TArray<TObjectPtr<ALevelAreaActor>> NeighborActors;
 
-	// Physical material to register — stamped onto child meshes via ApplyMaterialToMeshes()
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Area|Surface")
-	TObjectPtr<UPhysicalMaterial> FloorMaterial = nullptr;
+	TObjectPtr<ULevelAreaPhysicalMaterial> FloorMaterial = nullptr;
+
+	// set the trace channel for area id checker
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Area|Surface")
+	TEnumAsByte<ECollisionChannel> FloorTraceChannel = ECC_Visibility;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Area|Bake")
+	TObjectPtr<ULevelAreaGraphData> GraphData = nullptr;
 
 
 	/* ---------- Editor Utility ---------- */
 
-	// Stamps FloorMaterial onto every StaticMeshComponent parented to this actor.
-	// Call this in the editor after setting FloorMaterial.
 	UFUNCTION(CallInEditor, Category="Area|Surface")
 	void ApplyMaterialToMeshes();
 
+	// Bakes all ALevelAreaActors in the level into their GraphData assets
+	UFUNCTION(CallInEditor, Category="Area|Bake")
+	void BakeAllNodes();
 
-	/* ---------- Replicated State ---------- */
-
-	UPROPERTY(ReplicatedUsing=OnRep_HazardState, BlueprintReadOnly, Category="Area")
-	EAreaHazardState HazardState = EAreaHazardState::Safe;
-
-	UPROPERTY(BlueprintAssignable, Category="Area")
-	FOnAreaHazardStateChanged OnHazardStateChanged; 
-
-
-	/* ---------- Server API ---------- */
-
-	UFUNCTION(BlueprintCallable, Category="Area", BlueprintAuthorityOnly)
-	void SetHazardState(EAreaHazardState NewState);
-
-
-	/* ---------- Lifecycle ---------- */
-
-	virtual void BeginPlay() override;
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-	virtual void GetLifetimeReplicatedProps(
-		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	// Clears all node records from the GraphData asset
+	UFUNCTION(CallInEditor, Category="Area|Bake")
+	void ClearGraphData();
 
 
 private:
 
-	TUniquePtr<LevelAreaNode> OwnedNode;
-
-	void RegisterWithSubsystem();
-	void UnregisterFromSubsystem();
-
-	UFUNCTION()
-	void OnRep_HazardState();
+	// Bakes this single node into GraphData — called internally by BakeAllNodes
+	void BakeNode();
 };

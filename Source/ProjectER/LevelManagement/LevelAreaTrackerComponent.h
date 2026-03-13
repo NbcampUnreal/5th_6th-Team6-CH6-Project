@@ -38,22 +38,37 @@ public:
     FOnAreaNodeChanged OnNodeChanged;
 
     UPROPERTY(BlueprintAssignable, Category="Area")
-    FOnAreaHazardStateTransition OnHazardStateChanged; 
+    FOnAreaHazardStateTransition OnHazardStateChanged;
 
 
     /* ---------- API ---------- */
 
+    // Main update — traces floor, updates CurrentNodeID, refreshes hazard state
     UFUNCTION(BlueprintCallable, Category="Area")
     void UpdateArea();
 
+    // Returns current hazard state of CurrentNodeID
     UFUNCTION(BlueprintCallable, BlueprintPure, Category="Area")
     EAreaHazardState GetHazardState() const;
 
     UFUNCTION(BlueprintCallable, BlueprintPure, Category="Area")
     bool IsInHazardArea() const { return CurrentHazardState != EAreaHazardState::Safe; }
 
+    // Push-based refresh — called from GameStateComponent when
+    // a room becomes hazardous under a standing player
     UFUNCTION(BlueprintCallable, Category="Area")
     void RefreshHazardState();
+
+
+    /* ---------- Debug ---------- */
+
+    // Performs the downward trace and returns the raw hit NodeID without updating state
+    UFUNCTION(BlueprintCallable, BlueprintPure, Category="Area|Debug")
+    int32 TraceForNodeID() const;
+
+    // Queries the subsystem for the hazard state of any given NodeID
+    UFUNCTION(BlueprintCallable, BlueprintPure, Category="Area|Debug")
+    EAreaHazardState GetHazardStateForNode(int32 InNodeID) const;
 
 
     /* ---------- Lifecycle ---------- */
