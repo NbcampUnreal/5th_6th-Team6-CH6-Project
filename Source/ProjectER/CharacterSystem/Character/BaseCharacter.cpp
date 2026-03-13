@@ -4,8 +4,8 @@
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
 #include "CharacterSystem/Data/CharacterData.h"
 #include "CharacterSystem/Player/BasePlayerController.h"
-#include "ItemSystem/Component/LootableComponent.h"
-#include "ItemSystem/Component/BaseInventoryComponent.h"
+#include "ItemSystem/Component/LootableComponent.h" // [김현수 추가분]
+#include "ItemSystem/Component/BaseInventoryComponent.h" // [김현수 추가분]
 
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -45,7 +45,6 @@
 
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "LineOfSight/MainVisionRTManager.h"
-#include "LineOfSight/Management/VisionPlayerStateComp.h"
 #include "LineOfSight/Management/VisionPlayerStateComp.h"
 
 
@@ -1423,6 +1422,7 @@ void ABaseCharacter::HandleDeath()
 		
 		SetTarget(nullptr);
 		
+		// [김현수 추가분]
 		// LootableComponent 초기화: 플레이어의 인벤토리 아이템을 루팅 가능하게 설정
 		if (ULootableComponent* LootComp = FindComponentByClass<ULootableComponent>())
 		{
@@ -1585,6 +1585,7 @@ void ABaseCharacter::Multicast_Revive_Implementation(FVector RespawnLocation)
 		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	}
 
+	// [김현수 추가분]
 	// 메시 콜리전 복구
 	if (GetMesh())
 	{
@@ -1601,6 +1602,7 @@ void ABaseCharacter::Multicast_Revive_Implementation(FVector RespawnLocation)
 		// GetCharacterMovement()->Activate(); 
 	}
 	
+	// [김현수 추가분]
 	// LootableComponent 초기화 (부활 후 루팅 불가능하도록)
 	if (ULootableComponent* LootComp = FindComponentByClass<ULootableComponent>())
 	{
@@ -1622,12 +1624,13 @@ void ABaseCharacter::Multicast_Death_Implementation()
 		PlayAnimMontage(DeathMontage);
 	}
 
-	// 캡슐 콜리전 완전 비활성화 (플레이어가 시체를 통과할 수 있도록)
+	// Capsule 비활성화
 	if (GetCapsuleComponent())
 	{
 		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 
+	// [김현수 추가분]
 	// 메시 콜리전을 QueryOnly로 설정 (우클릭/raycast감지 가능, 플레이어 통과 가능)
 	if (GetMesh())
 	{
