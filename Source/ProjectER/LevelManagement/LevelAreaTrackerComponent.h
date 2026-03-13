@@ -22,6 +22,10 @@ public:
     UPROPERTY(EditAnywhere, Category="Area")
     TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
 
+    // How often UpdateArea fires while loop is active
+    UPROPERTY(EditAnywhere, Category="Area|Timer")
+    float AreaUpdateInterval = 0.1f;
+
 
     /* ---------- State ---------- */
 
@@ -60,6 +64,20 @@ public:
     void RefreshHazardState();
 
 
+    /* ---------- Timer ---------- */
+
+    // Start looped UpdateArea — call when pawn enters bridge overlap
+    UFUNCTION(BlueprintCallable, Category="Area|Timer")
+    void StartAreaUpdateLoop();
+
+    // Stop looped UpdateArea — call when pawn exits bridge overlap
+    UFUNCTION(BlueprintCallable, Category="Area|Timer")
+    void StopAreaUpdateLoop();
+
+    UFUNCTION(BlueprintCallable, BlueprintPure, Category="Area|Timer")
+    bool IsAreaUpdateLoopActive() const;
+
+
     /* ---------- Debug ---------- */
 
     // Performs the downward trace and returns the raw hit NodeID without updating state
@@ -79,4 +97,6 @@ public:
 private:
 
     EAreaHazardState CachedHazardState = EAreaHazardState::Safe;
+
+    FTimerHandle AreaUpdateTimerHandle;
 };

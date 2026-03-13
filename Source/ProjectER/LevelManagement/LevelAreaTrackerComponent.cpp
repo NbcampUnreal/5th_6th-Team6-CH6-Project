@@ -16,6 +16,10 @@ void ULevelAreaTrackerComponent::BeginPlay()
 }
 
 
+/* =====================================================================
+   API
+   ===================================================================== */
+
 void ULevelAreaTrackerComponent::UpdateArea()
 {
     AActor* Owner = GetOwner();
@@ -57,6 +61,68 @@ void ULevelAreaTrackerComponent::RefreshHazardState()
         *GetOwner()->GetName(), *UEnum::GetValueAsString(NewState));
 
     OnHazardStateChanged.Broadcast(OldState, NewState);
+}
+
+
+/* =====================================================================
+   Timer
+   ===================================================================== */
+
+void ULevelAreaTrackerComponent::StartAreaUpdateLoop()
+{
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    if (World->GetTimerManager().IsTimerActive(AreaUpdateTimerHandle))
+    {
+        UE_LOG(LevelAreaGraphManagement, Log,
+            TEXT("LevelAreaTrackerComponent >> %s area update loop already active"),
+            *GetOwner()->GetName());
+        return;
+    }
+
+    World->GetTimerManager().SetTimer(
+        AreaUpdateTimerHandle,
+        this,
+        &ULevelAreaTrackerComponent::UpdateArea,
+        AreaUpdateInterval,
+        true  // looping
+    );
+
+    UE_LOG(LevelAreaGraphManagement, Log,
+        TEXT("LevelAreaTrackerComponent >> %s area update loop started (%.2fs interval)"),
+        *GetOwner()->GetName(), AreaUpdateInterval);
+}
+
+void ULevelAreaTrackerComponent::StopAreaUpdateLoop()
+{
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    if (!World->GetTimerManager().IsTimerActive(AreaUpdateTimerHandle))
+    {
+        UE_LOG(LevelAreaGraphManagement, Log,
+            TEXT("LevelAreaTrackerComponent >> %s area update loop already inactive"),
+            *GetOwner()->GetName());
+        return;
+    }
+
+    World->GetTimerManager().ClearTimer(AreaUpdateTimerHandle);
+
+    // One final update to lock state to the room the pawn landed in
+    UpdateArea();
+
+    UE_LOG(LevelAreaGraphManagement, Log,
+        TEXT("LevelAreaTrackerComponent >> %s area update loop stopped"),
+        *GetOwner()->GetName());
+}
+
+bool ULevelAreaTrackerComponent::IsAreaUpdateLoopActive() const
+{
+    const UWorld* World = GetWorld();
+    if (!World) return false;
+
+    return World->GetTimerManager().IsTimerActive(AreaUpdateTimerHandle);
 }
 
 
