@@ -44,7 +44,14 @@ struct FDisconnectedPlayerData
 	/** 타임아웃 타이머 핸들 */
 	FTimerHandle TimeoutHandle;
 
+	// ── 보존할 Attribute 데이터 ──
+	UPROPERTY()
+	TMap<FString, float> SavedAttributes;
+
 	// ── 보존할 PlayerState 데이터 ──
+	UPROPERTY()
+	TArray<class UBaseItemData*> SavedInventory;
+
 	FString PlayerStateName;
 	ETeamType TeamType = ETeamType::None;
 	bool bIsDead = false;

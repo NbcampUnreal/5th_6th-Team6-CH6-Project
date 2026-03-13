@@ -14,6 +14,11 @@
 #include "Monster/BaseMonster.h"
 
 #include "CharacterSystem/Player/BasePlayerController.h"
+#include "CharacterSystem/Character/BaseCharacter.h"
+#include "AbilitySystemComponent.h"
+#include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
+#include "ItemSystem/Component/BaseInventoryComponent.h"
+#include "ItemSystem/Data/BaseItemData.h"
 
 void AER_InGameMode::BeginPlay()
 {
@@ -95,9 +100,21 @@ void AER_InGameMode::Logout(AController* Exiting)
 
 				// Pawn 보존: 컨트롤러에서 분리만 하고 파괴하지 않음
 				APawn* OwnedPawn = PC->GetPawn();
+				if (!OwnedPawn)
+				{
+					if (ABasePlayerController* ERPC = Cast<ABasePlayerController>(PC))
+					{
+						OwnedPawn = ERPC->GetControlledBaseChar();
+					}
+				}
+
 				if (OwnedPawn)
 				{
-					PC->UnPossess();
+					// 이미 UnPossess 되었을 수 있으나 안 되어 있다면 수행
+					if (OwnedPawn->GetController() == PC)
+					{
+						PC->UnPossess();
+					}
 
 					// ★ 핵심: Owner 체인을 끊어야 PC 파괴 시 Pawn이 같이 파괴되지 않음
 					// UnPossess()는 Controller 포인터만 null로 만들 뿐, Owner는 여전히 PC를 가리킴
@@ -119,6 +136,51 @@ void AER_InGameMode::Logout(AController* Exiting)
 					Data.KillCount       = ERPS->KillCount;
 					Data.DeathCount      = ERPS->DeathCount;
 					Data.AssistCount     = ERPS->AssistCount;
+
+					// ASC Attribute 데이터 추출
+					if (UAbilitySystemComponent* ASC = ERPS->GetAbilitySystemComponent())
+					{
+						for (TFieldIterator<FProperty> It(UBaseAttributeSet::StaticClass()); It; ++It)
+						{
+							if (FStructProperty* StructProp = CastField<FStructProperty>(*It))
+							{
+								if (StructProp->Struct == FGameplayAttributeData::StaticStruct())
+								{
+									FGameplayAttribute Attribute(*It);
+									Data.SavedAttributes.Add(It->GetName(), Attribute.GetNumericValue(ERPS->GetAttributeSet()));
+								}
+							}
+						}
+						
+						UE_LOG(LogTemp, Warning, TEXT("[GM] Logout >> Captured %d attributes for player: %s"), 
+							Data.SavedAttributes.Num(), *UniqueIdStr);
+					}
+
+					// 인벤토리 데이터 추출
+					if (UBaseInventoryComponent* Inv = OwnedPawn->FindComponentByClass<UBaseInventoryComponent>())
+					{
+						// Internal array 직접 접근을 못하므로 getter가 필요할 수 있으나, 
+						// .h에서 InventoryContents가 protected이므로 헬퍼가 필요함.
+						// 일단 리플렉션이나 다른 방법을 고려하거나, .h를 수정하여 접근 허용.
+						// (이미 h에서 protected이므로 파생클래스가 아니면 접근 불가)
+						// 하지만 TFieldIterator로 가져올 수 있음.
+						for (TFieldIterator<FArrayProperty> It(UBaseInventoryComponent::StaticClass()); It; ++It)
+						{
+							if (It->GetName() == TEXT("InventoryContents"))
+							{
+								FScriptArrayHelper Helper(*It, It->ContainerPtrToValuePtr<void>(Inv));
+								for (int32 i = 0; i < Helper.Num(); ++i)
+								{
+									UBaseItemData* Item = *reinterpret_cast<UBaseItemData**>(Helper.GetRawPtr(i));
+									Data.SavedInventory.Add(Item);
+								}
+								break;
+							}
+						}
+						
+						UE_LOG(LogTemp, Warning, TEXT("[GM] Logout >> Captured %d inventory items for player: %s"), 
+							Data.SavedInventory.Num(), *UniqueIdStr);
+					}
 				}
 
 				// 타임아웃 타이머 설정
@@ -228,6 +290,15 @@ void AER_InGameMode::PostLogin(APlayerController* NewPlayer)
 	// 보존된 Pawn 재연결
 	if (FoundData->PreservedPawn.IsValid())
 	{
+		// Super::PostLogin() 에서 생성된 새로운 Pawn이 있다면 제거
+		if (APawn* NewPawn = NewPlayer->GetPawn())
+		{
+			if (NewPawn != FoundData->PreservedPawn.Get())
+			{
+				NewPawn->Destroy();
+			}
+		}
+
 		NewPlayer->Possess(FoundData->PreservedPawn.Get());
 		UE_LOG(LogTemp, Warning, TEXT("[GM] PostLogin >> Pawn restored for: %s"), *UniqueIdStr);
 	}
@@ -249,6 +320,58 @@ void AER_InGameMode::PostLogin(APlayerController* NewPlayer)
 		NewERPS->KillCount       = FoundData->KillCount;
 		NewERPS->DeathCount      = FoundData->DeathCount;
 		NewERPS->AssistCount     = FoundData->AssistCount;
+
+		// Attribute 데이터 복원
+		if (UAbilitySystemComponent* ASC = NewERPS->GetAbilitySystemComponent())
+		{
+			// ASC ActorInfo가 먼저 설정되어 있어야 함 (Possess 이후 시점이므로 안전)
+			for (const auto& Pair : FoundData->SavedAttributes)
+			{
+				FGameplayAttribute Attribute;
+				for (TFieldIterator<FProperty> It(UBaseAttributeSet::StaticClass()); It; ++It)
+				{
+					if (It->GetName() == Pair.Key)
+					{
+						Attribute = FGameplayAttribute(*It);
+						break;
+					}
+				}
+
+				if (Attribute.IsValid())
+				{
+					ASC->SetNumericAttributeBase(Attribute, Pair.Value);
+					// 현재 값도 동일하게 맞춤 (GE에 인한 보정 전 기본값)
+					ASC->SetNumericAttributeBase(Attribute, Pair.Value); 
+				}
+			}
+
+			UE_LOG(LogTemp, Warning, TEXT("[GM] PostLogin >> Restored %d attributes for player: %s"), 
+				FoundData->SavedAttributes.Num(), *UniqueIdStr);
+		}
+
+		// 인벤토리 데이터 복원
+		if (APawn* PreservedPawn = FoundData->PreservedPawn.Get())
+		{
+			if (UBaseInventoryComponent* Inv = PreservedPawn->FindComponentByClass<UBaseInventoryComponent>())
+			{
+				for (TFieldIterator<FArrayProperty> It(UBaseInventoryComponent::StaticClass()); It; ++It)
+				{
+					if (It->GetName() == TEXT("InventoryContents"))
+					{
+						FScriptArrayHelper Helper(*It, It->ContainerPtrToValuePtr<void>(Inv));
+						Helper.EmptyAndAddValues(FoundData->SavedInventory.Num());
+						for (int32 i = 0; i < FoundData->SavedInventory.Num(); ++i)
+						{
+							*reinterpret_cast<UBaseItemData**>(Helper.GetRawPtr(i)) = FoundData->SavedInventory[i];
+						}
+						break;
+					}
+				}
+				
+				UE_LOG(LogTemp, Warning, TEXT("[GM] PostLogin >> Restored %d inventory items for player: %s"), 
+					FoundData->SavedInventory.Num(), *UniqueIdStr);
+			}
+		}
 
 		UE_LOG(LogTemp, Warning, TEXT("[GM] PostLogin >> PlayerState restored for: %s (Team=%d, K/D/A=%d/%d/%d)"),
 			*UniqueIdStr, static_cast<int32>(NewERPS->TeamType), NewERPS->KillCount, NewERPS->DeathCount, NewERPS->AssistCount);

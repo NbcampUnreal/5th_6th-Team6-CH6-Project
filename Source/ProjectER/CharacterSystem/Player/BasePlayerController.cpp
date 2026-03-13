@@ -1560,19 +1560,18 @@ void ABasePlayerController::PawnLeavingGame()
     UE_LOG(LogTemp, Warning, TEXT("[PC] PawnLeavingGame Before | PC=%s | Pawn=%s"),
         *GetNameSafe(this),
         *GetNameSafe(GetPawn()));
-	
-	if (GetPawn())
+
+	APawn* OwnedPawn = GetPawn();
+	if (OwnedPawn == nullptr)
 	{
-		UnPossess();
-		GetPawn()->SetOwner(nullptr);
+		return;
 	}
+
+	UnPossess();
 
 	    UE_LOG(LogTemp, Warning, TEXT("[PC] PawnLeavingGame After | PC=%s | Pawn=%s"),
         *GetNameSafe(this),
         *GetNameSafe(GetPawn()));
-
-
-    Super::PawnLeavingGame();
 
 
 }
