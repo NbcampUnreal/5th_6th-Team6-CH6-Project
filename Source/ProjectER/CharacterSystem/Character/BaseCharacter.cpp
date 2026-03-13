@@ -1817,6 +1817,15 @@ void ABaseCharacter::UpdateOverheadUI()
 			HPBarWidgetInstance->Update_HeadIcon(HeroData->CharacterIcon);
 		}
 		
+		AER_PlayerState* TargetPS = GetPlayerState<AER_PlayerState>();
+		if (IsValid(TargetPS))
+		{
+			FText PlayerName = FText::FromString(TargetPS->GetPlayerName());
+			HPBarWidgetInstance->Update_PlayerName(PlayerName);
+		}
+		
+
+		
 	}
 }
 
