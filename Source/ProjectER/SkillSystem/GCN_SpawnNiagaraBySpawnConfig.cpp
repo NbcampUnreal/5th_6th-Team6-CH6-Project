@@ -3,8 +3,7 @@
 
 #include "SkillSystem/GCN_SpawnNiagaraBySpawnConfig.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGECConfig.h"
-#include "SkillSystem/GameplayEffectComponent/SummonRangeAtBone.h"
-#include "SkillSystem/GameplayEffectComponent/SummonRangeGEC.h"
+#include "SkillSystem/GameplayEffectComponent/SummonRangeBaseGEC.h"
 #include "SkillSystem/SkillNiagaraSpawnHelper.h"
 
 #include "Engine/Blueprint.h"
@@ -33,46 +32,28 @@ namespace
 			return ENiagaraCueSettingType::None;
 		}
 
-		if (const USummonRangeByWorldOriginGECConfig* const WorldConfig = Cast<USummonRangeByWorldOriginGECConfig>(Config))
+		const USummonRangeBaseConfig* const SummonConfig = Cast<USummonRangeBaseConfig>(Config);
+		if (!IsValid(SummonConfig))
 		{
-			if (WorldConfig->SummonerSpawnVfx.CueTag == CueTag)
-			{
-				OutSettings = WorldConfig->SummonerSpawnVfx;
-				return ENiagaraCueSettingType::Summoner;
-			}
-
-			if (WorldConfig->RangeSpawnVfx.CueTag == CueTag)
-			{
-				OutSettings = WorldConfig->RangeSpawnVfx;
-				return ENiagaraCueSettingType::Range;
-			}
-
-			if (WorldConfig->HitTargetVfx.CueTag == CueTag)
-			{
-				OutSettings = WorldConfig->HitTargetVfx;
-				return ENiagaraCueSettingType::Hit;
-			}
+			return ENiagaraCueSettingType::None;
 		}
 
-		if (const USummonRangeByBoneGECConfig* const BoneConfig = Cast<USummonRangeByBoneGECConfig>(Config))
+		if (SummonConfig->SummonerSpawnVfx.CueTag == CueTag)
 		{
-			if (BoneConfig->SummonerSpawnVfx.CueTag == CueTag)
-			{
-				OutSettings = BoneConfig->SummonerSpawnVfx;
-				return ENiagaraCueSettingType::Summoner;
-			}
+			OutSettings = SummonConfig->SummonerSpawnVfx;
+			return ENiagaraCueSettingType::Summoner;
+		}
 
-			if (BoneConfig->RangeSpawnVfx.CueTag == CueTag)
-			{
-				OutSettings = BoneConfig->RangeSpawnVfx;
-				return ENiagaraCueSettingType::Range;
-			}
+		if (SummonConfig->RangeSpawnVfx.CueTag == CueTag)
+		{
+			OutSettings = SummonConfig->RangeSpawnVfx;
+			return ENiagaraCueSettingType::Range;
+		}
 
-			if (BoneConfig->HitTargetVfx.CueTag == CueTag)
-			{
-				OutSettings = BoneConfig->HitTargetVfx;
-				return ENiagaraCueSettingType::Hit;
-			}
+		if (SummonConfig->HitTargetVfx.CueTag == CueTag)
+		{
+			OutSettings = SummonConfig->HitTargetVfx;
+			return ENiagaraCueSettingType::Hit;
 		}
 
 		return ENiagaraCueSettingType::None;

@@ -329,6 +329,9 @@ bool ULootableComponent::TakeItem(int32 SlotIndex, APawn* Taker)
 			*Taker->GetName(), *ItemData->ItemName.ToString());
 
 		ReduceItem(SlotIndex);
+		
+		//TODO: The loot interaction need to be synced -> need server client communication
+		
 		return true;
 	}
 	else
@@ -336,6 +339,7 @@ bool ULootableComponent::TakeItem(int32 SlotIndex, APawn* Taker)
 		UE_LOG(LogTemp, Warning, TEXT("[LootableComponent] TakeItem: Failed to add item to inventory (full?)"));
 		return false;
 	}
+	
 }
 
 // ========================================

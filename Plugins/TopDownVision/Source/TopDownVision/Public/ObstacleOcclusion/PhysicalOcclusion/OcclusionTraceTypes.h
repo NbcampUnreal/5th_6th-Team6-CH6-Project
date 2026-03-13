@@ -34,4 +34,6 @@ struct FOcclusionProbe
 
 	// Runtime state — not a UPROPERTY, not serialized
 	TSet<TWeakObjectPtr<AActor>> PreviousHits;
+
+	TSet<int32> HitSweepIndices;
 };

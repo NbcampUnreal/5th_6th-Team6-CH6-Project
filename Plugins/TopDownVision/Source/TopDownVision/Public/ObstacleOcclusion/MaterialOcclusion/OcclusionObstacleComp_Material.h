@@ -1,23 +1,21 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
 #include "ObstacleOcclusion/OcclusionInterface.h"
 #include "OcclusionObstacleComp_Material.generated.h"
 
-//FD
-class UStaticMeshComponent;
+class UMeshComponent;
 class UMaterialInstanceDynamic;
 
 /**
- * This use same occlusion interface as the physical mesh swapper comp.
- * but the difference is that this does not swap mesh, but toggle and update the material occlusion
+ * Uses the same occlusion interface as the physical mesh swapper comp.
+ * Does not swap meshes — drives material occlusion alpha on tagged meshes.
+ * Supports both static and skeletal meshes via UMeshComponent.
  */
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOPDOWNVISION_API UOcclusionObstacleComp_Material : public USceneComponent , public IOcclusionInterface
+class TOPDOWNVISION_API UOcclusionObstacleComp_Material : public USceneComponent, public IOcclusionInterface
 {
 	GENERATED_BODY()
 
@@ -53,15 +51,17 @@ protected:
 	FName AlphaParameterName = TEXT("OcclusionAlpha");
 
 private:
-
+	
+	UPROPERTY(Transient)
 	TSet<TWeakObjectPtr<UObject>> ActiveOverlaps;
 
-	float CurrentAlpha = 0.f;
-	bool  bShouldBeOccluded = false;
+	float CurrentAlpha     = 0.f;
+	bool bShouldBeOccluded = false;
 
 	UPROPERTY(Transient)
 	TArray<UMaterialInstanceDynamic*> DynamicMaterials;
 
+	// UMeshComponent covers both static and skeletal meshes
 	UPROPERTY(VisibleAnywhere)
-	TArray<TSoftObjectPtr<UStaticMeshComponent>> TargetMeshes;
+	TArray<TSoftObjectPtr<UMeshComponent>> TargetMeshes;
 };
