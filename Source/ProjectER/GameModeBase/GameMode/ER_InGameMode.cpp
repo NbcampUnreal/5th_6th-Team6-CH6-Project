@@ -98,7 +98,27 @@ void AER_InGameMode::Logout(AController* Exiting)
 				if (OwnedPawn)
 				{
 					PC->UnPossess();
+
+					// ★ 핵심: Owner 체인을 끊어야 PC 파괴 시 Pawn이 같이 파괴되지 않음
+					// UnPossess()는 Controller 포인터만 null로 만들 뿐, Owner는 여전히 PC를 가리킴
+					OwnedPawn->SetOwner(nullptr);
+
 					Data.PreservedPawn = OwnedPawn;
+				}
+
+				// PlayerState 데이터 캡처
+				AER_PlayerState* ERPS = Cast<AER_PlayerState>(PC->PlayerState);
+				if (ERPS)
+				{
+					Data.PlayerStateName = ERPS->PlayerStateName;
+					Data.TeamType        = ERPS->TeamType;
+					Data.bIsDead         = ERPS->bIsDead;
+					Data.bIsLose         = ERPS->bIsLose;
+					Data.bIsWin          = ERPS->bIsWin;
+					Data.RespawnTime     = ERPS->RespawnTime;
+					Data.KillCount       = ERPS->KillCount;
+					Data.DeathCount      = ERPS->DeathCount;
+					Data.AssistCount     = ERPS->AssistCount;
 				}
 
 				// 타임아웃 타이머 설정
@@ -216,6 +236,40 @@ void AER_InGameMode::PostLogin(APlayerController* NewPlayer)
 		UE_LOG(LogTemp, Warning, TEXT("[GM] PostLogin >> No preserved Pawn found for: %s (destroyed or timed out)"), *UniqueIdStr);
 	}
 
+	// PlayerState 데이터 복원
+	AER_PlayerState* NewERPS = Cast<AER_PlayerState>(NewPlayer->PlayerState);
+	if (NewERPS)
+	{
+		NewERPS->PlayerStateName = FoundData->PlayerStateName;
+		NewERPS->TeamType        = FoundData->TeamType;
+		NewERPS->bIsDead         = FoundData->bIsDead;
+		NewERPS->bIsLose         = FoundData->bIsLose;
+		NewERPS->bIsWin          = FoundData->bIsWin;
+		NewERPS->RespawnTime     = FoundData->RespawnTime;
+		NewERPS->KillCount       = FoundData->KillCount;
+		NewERPS->DeathCount      = FoundData->DeathCount;
+		NewERPS->AssistCount     = FoundData->AssistCount;
+
+		UE_LOG(LogTemp, Warning, TEXT("[GM] PostLogin >> PlayerState restored for: %s (Team=%d, K/D/A=%d/%d/%d)"),
+			*UniqueIdStr, static_cast<int32>(NewERPS->TeamType), NewERPS->KillCount, NewERPS->DeathCount, NewERPS->AssistCount);
+	}
+
+	// GameState TeamCache에 재접속 플레이어 다시 추가
+	AER_GameState* ERGS = GetGameState<AER_GameState>();
+	if (ERGS && NewERPS)
+	{
+		const int32 TeamIdx = static_cast<int32>(NewERPS->TeamType);
+		TArray<TWeakObjectPtr<AER_PlayerState>>& TeamArr = ERGS->GetTeamArray(TeamIdx);
+		TeamArr.AddUnique(NewERPS);
+	}
+
+	// 재접속 플레이어에게 인게임 입력 모드 및 프리로드 지시
+	if (ABasePlayerController* ERPC = Cast<ABasePlayerController>(NewPlayer))
+	{
+		ERPC->Client_InGameInputMode();
+		ERPC->Client_StartPreload();
+	}
+
 	// 보존 데이터 제거
 	DisconnectedPlayers.Remove(UniqueIdStr);
 }
@@ -225,6 +279,10 @@ void AER_InGameMode::HandleStartingNewPlayer_Implementation(APlayerController* N
 	Super::HandleStartingNewPlayer_Implementation(NewPlayer);
 
 	if (!NewPlayer)
+		return;
+
+	// 재접속 플레이어는 초기화 카운트에 포함하지 않음 (PostLogin에서 별도 처리)
+	if (bIsGameStarted)
 		return;
 
 	if (ABasePlayerController* PC = Cast<ABasePlayerController>(NewPlayer))

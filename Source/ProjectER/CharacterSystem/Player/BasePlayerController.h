@@ -55,6 +55,7 @@ protected:
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void SetupInputComponent() override;
 	virtual void PlayerTick(float DeltaTime) override;
+	virtual void PawnLeavingGame() override;
 	
 	virtual void OnRep_Pawn() override;
 	

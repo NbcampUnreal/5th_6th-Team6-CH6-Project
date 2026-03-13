@@ -1554,3 +1554,25 @@ void ABasePlayerController::SetSoundMix(EAudioType AudioType, float Volume)
 		true
 	);
 };
+
+void ABasePlayerController::PawnLeavingGame()
+{
+    UE_LOG(LogTemp, Warning, TEXT("[PC] PawnLeavingGame Before | PC=%s | Pawn=%s"),
+        *GetNameSafe(this),
+        *GetNameSafe(GetPawn()));
+	
+	if (GetPawn())
+	{
+		UnPossess();
+		GetPawn()->SetOwner(nullptr);
+	}
+
+	    UE_LOG(LogTemp, Warning, TEXT("[PC] PawnLeavingGame After | PC=%s | Pawn=%s"),
+        *GetNameSafe(this),
+        *GetNameSafe(GetPawn()));
+
+
+    Super::PawnLeavingGame();
+
+
+}

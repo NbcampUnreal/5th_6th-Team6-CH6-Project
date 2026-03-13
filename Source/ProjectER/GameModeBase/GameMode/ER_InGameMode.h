@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "CharacterSystem/Interface/TargetableInterface.h"
 #include "ER_InGameMode.generated.h"
 
 
@@ -42,6 +43,17 @@ struct FDisconnectedPlayerData
 
 	/** 타임아웃 타이머 핸들 */
 	FTimerHandle TimeoutHandle;
+
+	// ── 보존할 PlayerState 데이터 ──
+	FString PlayerStateName;
+	ETeamType TeamType = ETeamType::None;
+	bool bIsDead = false;
+	bool bIsLose = false;
+	bool bIsWin = false;
+	float RespawnTime = 5.f;
+	int32 KillCount = 0;
+	int32 DeathCount = 0;
+	int32 AssistCount = 0;
 };
 
 UCLASS()
