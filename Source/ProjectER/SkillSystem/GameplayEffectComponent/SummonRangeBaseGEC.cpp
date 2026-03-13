@@ -70,13 +70,13 @@ void USummonRangeBaseGEC::OnGameplayEffectApplied(FActiveGameplayEffectsContaine
 		return;
 	}
 
-	const USummonRangeBaseConfig* const SpawnConfig = GetSummonConfig(GESpec);
-	if (!IsValid(SpawnConfig) || !IsValid(SpawnConfig->RangeActorClass))
+	const USummonRangeBaseConfig* const SpawnConfig = ResolveTypedConfigFromSpec<USummonRangeBaseConfig>(GESpec);
+	if (!IsValid(SpawnConfig) || !SpawnConfig->IsA(GetRequiredConfigClass()) || !IsValid(SpawnConfig->RangeActorClass))
 	{
 		return;
 	}
 
-	const FTransform SpawnTransform = CalculateSpawnTransform(GESpec, EffectInstigator, SpawnConfig);
+	const FTransform SpawnTransform = CalculateSpawnTransform(GESpec, EffectInstigator);
 	const FVector RangeSpawnLocation = SpawnTransform.GetLocation();
 	const FTransform SummonerTransform = EffectInstigator->GetActorTransform();
 
