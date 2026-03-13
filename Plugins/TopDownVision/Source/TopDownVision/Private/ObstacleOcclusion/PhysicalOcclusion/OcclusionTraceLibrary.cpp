@@ -3,6 +3,7 @@
 #include "TopDownVision/Public/ObstacleOcclusion/OcclusionInterface.h"
 #include "TopDownVisionDebug.h"
 #include "DrawDebugHelpers.h"
+#include "Engine/OverlapResult.h"
 
 void FOcclusionTraceLibrary::RunProbes(
     TArray<FOcclusionProbe>& Probes,
@@ -27,22 +28,26 @@ void FOcclusionTraceLibrary::RunProbe(
     if (!World) return;
 
     TSet<TWeakObjectPtr<AActor>> CurrentHits;
+    Probe.HitSweepIndices.Reset();
 
     FCollisionQueryParams Params;
+    Params.bTraceComplex = false;
     for (AActor* Ignored : IgnoredActors)
     {
         if (Ignored) Params.AddIgnoredActor(Ignored);
     }
 
-    for (const FOcclusionSweepConfig& Sweep : Probe.Sweeps)
+    for (int32 SweepIdx = 0; SweepIdx < Probe.Sweeps.Num(); ++SweepIdx)
     {
-        const FVector SweepOrigin = Probe.BaseOrigin + Sweep.OriginOffset;
+        const FOcclusionSweepConfig& Sweep      = Probe.Sweeps[SweepIdx];
+        const FVector                SweepOrigin = Probe.BaseOrigin + Sweep.OriginOffset;
 
-        TArray<FHitResult> Hits;
-        World->SweepMultiByChannel(
-            Hits,
+        // Static overlap at position only — does NOT travel along a path
+        // Prevents every sphere from hitting obstacles near the target
+        TArray<FOverlapResult> Overlaps;
+        World->OverlapMultiByChannel(
+            Overlaps,
             SweepOrigin,
-            Probe.Target,
             FQuat::Identity,
             Probe.Channel,
             FCollisionShape::MakeSphere(Sweep.SphereRadius),
@@ -50,7 +55,7 @@ void FOcclusionTraceLibrary::RunProbe(
 
         if (bDebugDraw)
         {
-            const FColor LineColor = Hits.Num() > 0 ? FColor::Red : FColor::Green;
+            const FColor LineColor = Overlaps.Num() > 0 ? FColor::Red : FColor::Green;
             DrawDebugLine(
                 World,
                 SweepOrigin,
@@ -60,33 +65,40 @@ void FOcclusionTraceLibrary::RunProbe(
                 -1.f,
                 0,
                 2.f);
-
-            for (const FHitResult& Hit : Hits)
-            {
-                DrawDebugSphere(
-                    World,
-                    Hit.ImpactPoint,
-                    Sweep.SphereRadius,
-                    8,
-                    FColor::Orange,
-                    false,
-                    -1.f);
-            }
         }
 
-        for (const FHitResult& Hit : Hits)
+        for (int32 i = 0; i < Overlaps.Num(); ++i)
         {
-            AActor* HitActor = Hit.GetActor();
+            AActor* HitActor = Overlaps[i].GetActor();
             if (!HitActor) continue;
 
             TArray<UOcclusionObstacleComp_Physical*> Comps;
             HitActor->GetComponents<UOcclusionObstacleComp_Physical>(Comps);
+
+            if (bDebugDraw)
+            {
+                const FColor HitColor = Comps.Num() > 0 ? FColor::Orange : FColor::White;
+                DrawDebugString(
+                    World,
+                    HitActor->GetActorLocation(),
+                    FString::Printf(TEXT("%s [%s] Sphere[%d]"),
+                        *HitActor->GetName(),
+                        Comps.Num() > 0 ? TEXT("OCCLUSION") : TEXT("other"),
+                        SweepIdx),
+                    nullptr,
+                    HitColor,
+                    0.f,
+                    true);
+            }
+
             if (Comps.Num() == 0) continue;
 
             CurrentHits.Add(HitActor);
+            Probe.HitSweepIndices.Add(SweepIdx);
         }
     }
 
+    // Hit diff — notify enter for new hits, exit for dropped hits
     for (const TWeakObjectPtr<AActor>& Current : CurrentHits)
     {
         if (!Probe.PreviousHits.Contains(Current))
@@ -114,7 +126,8 @@ void FOcclusionTraceLibrary::NotifyEnter(AActor* Actor, UObject* TracerIdentity)
         IOcclusionInterface::Execute_OnOcclusionEnter(Comp, TracerIdentity);
     }
 
-    UE_LOG(Occlusion, Log, TEXT("FOcclusionTraceLibrary::NotifyEnter>> %s (%d comps)"),
+    UE_LOG(Occlusion, Log,
+        TEXT("FOcclusionTraceLibrary::NotifyEnter>> %s (%d comps)"),
         *Actor->GetName(), Comps.Num());
 }
 
@@ -130,6 +143,7 @@ void FOcclusionTraceLibrary::NotifyExit(AActor* Actor, UObject* TracerIdentity)
         IOcclusionInterface::Execute_OnOcclusionExit(Comp, TracerIdentity);
     }
 
-    UE_LOG(Occlusion, Log, TEXT("FOcclusionTraceLibrary::NotifyExit>> %s (%d comps)"),
-        *Actor->GetName(), Comps.Num())
+    UE_LOG(Occlusion, Log,
+        TEXT("FOcclusionTraceLibrary::NotifyExit>> %s (%d comps)"),
+        *Actor->GetName(), Comps.Num());
 }

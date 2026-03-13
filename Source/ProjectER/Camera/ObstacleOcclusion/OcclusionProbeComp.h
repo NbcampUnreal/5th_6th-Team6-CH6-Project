@@ -1,68 +1,90 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
-#include "CurvedWorldSubsystem.h"
+#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/FrustumToProjectionMatcherHelper.h"
 #include "OcclusionProbeComp.generated.h"
 
-
 /*
- *  This will be used for detecting the obstacle hiding the character on the camera view
- *
- *  this is made in a separate component,
- *  -->because there are cases when there are multiple actors need to be shown in one camera other than player character
- *
- *  also, this will not use capsule but array of sphere collisions because of the curve made by curved world bender shader.
+ * Used for detecting obstacles hiding the character on the camera view.
+ * Made as a separate component — multiple actors may need to be shown in one camera.
+ * Uses an array of sphere collisions placed along the camera-to-target line
+ * with frustum-correct radii so each sphere matches the projected screen size.
  */
 
 class USphereComponent;
 class APlayerCameraManager;
+class UCameraComponent;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class PROJECTER_API UOcclusionProbeComp : public USceneComponent
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	UOcclusionProbeComp();
+
+    UOcclusionProbeComp();
+
+    UFUNCTION(BlueprintCallable, Category="Occlusion Probe")
+    void SetCameraManager(APlayerCameraManager* InCameraManager);
 
 protected:
-	virtual void BeginPlay() override;
+
+    virtual void BeginPlay() override;
 
 public:
-	virtual void TickComponent(float DeltaTime,
-		ELevelTick TickType,
-		FActorComponentTickFunction* ThisTickFunction) override;
+
+    virtual void TickComponent(
+        float DeltaTime,
+        ELevelTick TickType,
+        FActorComponentTickFunction* ThisTickFunction) override;
 
 private:
 
-	void InitializeProbes();
-	void UpdateProbes();
-	float CalculateScreenProjectedRadius() const;
+    void InitializeProbes();
+    void UpdateProbes();
+    bool RefreshFrustumParams();
 
 private:
 
-	UPROPERTY(EditAnywhere, Category="Occlusion")
-	int32 NumProbes = 12;
+    // How many sphere probes to place along the line
+    UPROPERTY(EditAnywhere, Category="Occlusion Probe")
+    int32 MaxProbeCount = 12;
 
-	UPROPERTY(EditAnywhere, Category="Occlusion")
-	float MinSphereRadius = 25.f;
+    // World units radius around the target that probes should not enter
+    // Prevents probes from overlapping with the target's own collision
+    UPROPERTY(EditAnywhere, Category="Occlusion Probe")
+    float TargetVisibleRadius = 60.f;
 
-	UPROPERTY(EditAnywhere, Category="Occlusion")
-	float MaxSphereRadius = 200.f;
+    // Distance between each sphere = current radius * this value
+    // 1.0 = spheres touch, 2.0 = one radius gap between each
+    UPROPERTY(EditAnywhere, Category="Occlusion Probe", meta=(ClampMin=0.1f))
+    float SweepGapRatio = 1.5f;
 
-	
-	UPROPERTY(EditAnywhere, Category="Occlusion")
-	TEnumAsByte<ECollisionChannel> OcclusionProbeChannel = ECC_GameTraceChannel3;
-		
-	UPROPERTY()
-	TArray<USphereComponent*> ProbeSpheres;
+    // Rocket head 
 
-	UPROPERTY()
-	APlayerCameraManager* CameraManager;
+    // World units from target where rocket head taper takes effect
+    UPROPERTY(EditAnywhere, Category="Occlusion Probe|RocketHead", meta=(ClampMin=0.f))
+    float RocketHeadDistance = 150.f;
 
-	UPROPERTY()
-	UCurvedWorldSubsystem* CurvedWorldSubsystem;
+    // Taper shape — 1.0 = linear, > 1.0 = concave (sharp tip), < 1.0 = convex (quick widen)
+    UPROPERTY(EditAnywhere, Category="Occlusion Probe|RocketHead", meta=(ClampMin=0.1f))
+    float RocketHeadExponent = 2.f;
+
+    // Debug
+
+    UPROPERTY(EditAnywhere, Category="Occlusion Probe|Debug")
+    bool bDebugDraw = false;
+
+    UPROPERTY(EditAnywhere, Category="Occlusion Probe")
+    TEnumAsByte<ECollisionChannel> OcclusionProbeChannel = ECC_GameTraceChannel3;
+
+    UPROPERTY()
+    TArray<USphereComponent*> ProbeSpheres;
+
+    UPROPERTY()
+    APlayerCameraManager* CameraManager = nullptr;
+
+    FCameraFrustumParams FrustumParams;
+    bool bCameraReady = false;
 };

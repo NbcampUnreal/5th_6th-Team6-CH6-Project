@@ -40,8 +40,10 @@ public:
 	UStateTreeComponent* GetStateTreeComponent();
 	void SetTargetPlayer(AActor* Target);
 	AActor* GetTargetPlayer();
+	UFUNCTION(BlueprintCallable)
 	void SetbIsCombat(bool Target);
 	bool GetbIsCombat();
+	UFUNCTION(BlueprintCallable)
 	void SetbIsDead(bool Target);
 	bool GetbIsDead();
 	UMonsterRangeComponent* GetMonsterRangeComp() { return MonsterRangeComp; };

@@ -8,6 +8,22 @@
 
 class UBaseItemData;
 
+// enum for looting reaction
+UENUM(BlueprintType)
+enum class ELootReactionType : uint8
+{
+	None =255 UMETA(DisplayName="None"),
+
+	LootSuccess =0 UMETA(DisplayName="LootSuccess"),
+	LootFail =1 UMETA(DisplayName="LootFail"),
+};
+
+
+//Delegate to call bp exposed reaction
+DECLARE_DYNAMIC_DELEGATE_TwoParams(FOnLootableItemClicked, UBaseItemData*, ItemData, bool, bDidSuccess);// loot reaction
+
+//TODO -> need multi player case sync for reaction
+
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class PROJECTER_API ULootableComponent : public UActorComponent
 {
@@ -24,6 +40,13 @@ protected:
 
 
 public:
+
+	//========= Delegate Interaction =======//
+
+	/*UPROPERTY(BlueprintAssignable, Category="Lootable|BPInteraction")
+	FOnLootableItemClicked OnLootableItemClicked;*/
+
+	
 	// ========================================
 	// BaseBoxActor 호환 인터페이스
 	// ========================================
@@ -84,6 +107,7 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Lootable")
 	bool TakeItem(int32 SlotIndex, class APawn* Taker);
+	
 
 	// ========================================
 	// 델리게이트

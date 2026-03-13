@@ -3,10 +3,6 @@
 
 #include "LevelRootActor.h"
 
-#if WITH_EDITOR
-#include "Editor.h"
-#endif
-
 DEFINE_LOG_CATEGORY(LevelExtraction);
 
 // Sets default values
@@ -20,12 +16,6 @@ ALevelRootActor::ALevelRootActor()
 
 bool ALevelRootActor::IsValidToRun(UWorld*& OutWorld)
 {
-	if (!GEditor)
-	{
-		UE_LOG(LevelExtraction, Error,
-			TEXT("Invalid GEditor."));
-		return false;
-	}
 
 	if (!TargetAsset)
 	{

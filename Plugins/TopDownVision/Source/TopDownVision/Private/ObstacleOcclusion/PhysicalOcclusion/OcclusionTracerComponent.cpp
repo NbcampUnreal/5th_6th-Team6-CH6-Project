@@ -196,12 +196,10 @@ void UOcclusionTracerComponent::RebuildProbe()
 
     if (bAutoGenerateSweeps)
     {
-        // Radii computed inside GenerateSweepsAlongLine
         GenerateSweepsAlongLine(LineDirection, LineLength);
     }
     else
     {
-        // Manual config — compute radii from depth
         for (int32 i = 0; i < Probe.Sweeps.Num(); ++i)
         {
             const FVector SweepOrigin = CameraLocation + Probe.Sweeps[i].OriginOffset;
@@ -222,28 +220,54 @@ void UOcclusionTracerComponent::GenerateSweepsAlongLine(
 {
     Probe.Sweeps.Reset();
 
-    // Start one TargetVisibleRadius away from the target, walk toward camera
-    float DepthFromCamera = LineLength - TargetVisibleRadius;
+    // Start exactly at target, walk toward camera
+    float DistToTarget = 0.f;
 
     for (int32 i = 0; i < MaxAutoSweepCount; ++i)
     {
+        const float DepthFromCamera = LineLength - DistToTarget;
+
         if (DepthFromCamera <= 0.f) break;
 
-        const float Radius = FFrustumProjectionMatcherHelper::CalculateSphereRadiusAtDepth(
-            FrustumParams,
-            LineLength,
-            TargetVisibleRadius,
-            DepthFromCamera);
+        float Radius = 0.f;
 
-        if (Radius <= KINDA_SMALL_NUMBER) break;
+        if (RocketHeadDistance > 0.f && DistToTarget <= RocketHeadDistance)
+        {
+            // Within rocket head zone — 0 at tip, 1 at boundary
+            const float NormalizedDist = FMath::Clamp(
+                DistToTarget / RocketHeadDistance, 0.f, 1.f);
+
+            // Exp > 1 = concave (sharp tip, gradual widen)
+            // Exp < 1 = convex (quick widen near tip)
+            // Exp 1   = linear
+            Radius = FMath::Pow(NormalizedDist, RocketHeadExponent) * TargetVisibleRadius;
+
+            // Enforce minimum so loop can step forward — skip tiny spheres at the very tip
+            Radius = FMath::Max(Radius, 1.f);
+        }
+        else
+        {
+            // Outside rocket head zone — normal frustum projection matching
+            Radius = FFrustumProjectionMatcherHelper::CalculateSphereRadiusAtDepth(
+                FrustumParams,
+                LineLength,
+                TargetVisibleRadius,
+                DepthFromCamera);
+
+            if (Radius <= KINDA_SMALL_NUMBER) break;
+        }
+
+        // Cap radius by remaining distance to target —
+        // geometric guarantee that sweep never reaches past the target
+        const float ClampedRadius = FMath::Min(Radius, DistToTarget > 0.f ? DistToTarget : 1.f);
 
         FOcclusionSweepConfig Config;
         Config.OriginOffset = LineDirection * DepthFromCamera;
-        Config.SphereRadius = Radius;
+        Config.SphereRadius = ClampedRadius;
         Probe.Sweeps.Add(Config);
 
-        // Step toward camera — gap is current radius * ratio
-        DepthFromCamera -= Radius * SweepGapRatio;
+        // Step away from target — gap is current radius * ratio
+        DistToTarget += Radius * SweepGapRatio;
     }
 }
 
@@ -256,13 +280,21 @@ void UOcclusionTracerComponent::DrawDebug() const
     const FVector TargetLocation = Probe.Target;
 
     DrawDebugLine(World, CameraLocation, TargetLocation, DebugColorNoHit, false, -1.f, 5, 0.5f);
-    DrawDebugSphere(World, TargetLocation, TargetVisibleRadius, 12, DebugColorTarget, false, -1.f);
 
-    for (const FOcclusionSweepConfig& Sweep : Probe.Sweeps)
+    // Target position — point only, not a sphere, to avoid implying it is a trace shape
+    DrawDebugPoint(World, TargetLocation, 12.f, DebugColorTarget, false, -1.f);
+
+    for (int32 i = 0; i < Probe.Sweeps.Num(); ++i)
     {
-        const FVector SweepOrigin = CameraLocation + Sweep.OriginOffset;
+        const FOcclusionSweepConfig& Sweep      = Probe.Sweeps[i];
+        const FVector                SweepOrigin = CameraLocation + Sweep.OriginOffset;
+
+        // Orange = this sweep hit a valid occlusion comp this frame, Red = no hit
+        const FColor SphereColor = Probe.HitSweepIndices.Contains(i)
+            ? FColor::Orange
+            : DebugColorHit;
 
         DrawDebugSphere(World, SweepOrigin, 4.f, 6, DebugColorSweepOrigin, false, -1.f);
-        DrawDebugSphere(World, SweepOrigin, Sweep.SphereRadius, 8, DebugColorHit, false, -1.f);
+        DrawDebugSphere(World, SweepOrigin, Sweep.SphereRadius, 8, SphereColor, false, -1.f);
     }
 }
