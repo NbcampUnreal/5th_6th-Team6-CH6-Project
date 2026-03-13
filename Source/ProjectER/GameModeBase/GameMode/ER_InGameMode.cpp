@@ -1,4 +1,4 @@
-#include "GameModeBase/GameMode/ER_InGameMode.h"
+﻿#include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
@@ -391,6 +391,8 @@ void AER_InGameMode::PostLogin(APlayerController* NewPlayer)
 	{
 		ERPC->Client_InGameInputMode();
 		ERPC->Client_StartPreload();
+
+		ERPC->OnInventoryUpdated();
 	}
 
 	// 보존 데이터 제거
