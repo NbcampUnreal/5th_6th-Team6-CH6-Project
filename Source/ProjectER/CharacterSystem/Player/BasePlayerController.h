@@ -55,6 +55,7 @@ protected:
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void SetupInputComponent() override;
 	virtual void PlayerTick(float DeltaTime) override;
+	virtual void PawnLeavingGame() override;
 	
 	virtual void OnRep_Pawn() override;
 	
@@ -92,6 +93,10 @@ protected:
 	// 미니맵 클릭 이동 _ mpyi
 public:
 	void OnMinimapClicked(FVector _TargetWorldPos);
+
+	UFUNCTION(BlueprintCallable)
+	class ABaseCharacter* GetControlledBaseChar() const { return ControlledBaseChar; }
+
 	
 protected:
 	// 입력 매핑 컨텍스트 (IMC)
@@ -121,6 +126,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<UTopDownCameraComp> TopDownCameraComp;
 	
+
 private:
 	// 마우스 입력 키다운 플래그
 	uint8 bIsMousePressed : 1;
