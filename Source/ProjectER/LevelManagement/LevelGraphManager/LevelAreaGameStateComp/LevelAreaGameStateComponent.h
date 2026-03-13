@@ -5,6 +5,8 @@
 #include "LevelManagement/Requirements/LevelAreaData.h"
 #include "LevelAreaGameStateComponent.generated.h"
 
+class ULevelAreaGraphData;
+
 UCLASS(ClassGroup=(LevelManagement), meta=(BlueprintSpawnableComponent))
 class PROJECTER_API ULevelAreaGameStateComponent : public UActorComponent
 {
@@ -14,13 +16,15 @@ public:
 
     ULevelAreaGameStateComponent();
 
+protected:
+    virtual void BeginPlay() override;// now load the graph using the 
 
+public:
     /* ---------- Config ---------- */
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Hazard")
     int32 HazardsPerPhase = 1;
 
-    // State applied to newly hazardous nodes each phase
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Hazard")
     EAreaHazardState HazardStatePerPhase = EAreaHazardState::Hazard;
 
@@ -32,6 +36,15 @@ public:
 
     UPROPERTY(BlueprintReadOnly, Category="Hazard")
     int32 CurrentPhase = 0;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Hazard")
+    int32 HazardSeed = 0;// for random
+
+
+
+    /* -------- Graph Data Asset -------*/
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LevelArea")
+    ULevelAreaGraphData* GraphData;
 
 
     /* ---------- Server API ---------- */
@@ -48,6 +61,10 @@ public:
     virtual void GetLifetimeReplicatedProps(
         TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+
+    /* ----- Getter for the seed -----*/
+    UFUNCTION(BlueprintCallable, Category="Hazard")
+    int32 GetHazardSeed() const { return HazardSeed; }
 
 private:
 
