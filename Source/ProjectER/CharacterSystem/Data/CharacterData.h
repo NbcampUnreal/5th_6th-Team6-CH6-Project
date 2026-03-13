@@ -58,7 +58,7 @@ public:
 	
 	// 레벨업 시 출력 이펙트 (VFX)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VFX|LevelUp")
-	TObjectPtr<class UNiagaraSystem> LevelUpVFX;
+	TSoftObjectPtr<class UNiagaraSystem> LevelUpVFX;
 	
 	// 레벨업 이펙트 크기 (Scale) 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VFX|LevelUp")
@@ -66,7 +66,7 @@ public:
 	
 	// 사망 시 출력 이펙트 (VFX)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VFX|Death")
-	TObjectPtr<class UNiagaraSystem> DeathVFX;
+	TSoftObjectPtr<class UNiagaraSystem> DeathVFX;
 	
 	// 사망 이펙트 크기 (Scale) 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VFX|Death")
@@ -74,19 +74,19 @@ public:
 
 	// 일반 공격 피격 시 출력 사운드 (SFX)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SFX|AutoAttack")
-	TObjectPtr<class USoundBase> BasicHitSFX;
+	TSoftObjectPtr<class USoundBase> BasicHitSFX;
 	
 	// 부활 시 출력 사운드 (SFX)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SFX|Revive")
-	TObjectPtr<class USoundBase> ReviveSFX;
+	TSoftObjectPtr<class USoundBase> ReviveSFX;
 	
 	// 레벨업 시 출력 사운드 (SFX)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SFX|LevelUp")
-	TObjectPtr<class USoundBase> LevelUpSFX;
+	TSoftObjectPtr<class USoundBase> LevelUpSFX;
 	
 	// 사망 시 출력 사운드 (SFX)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SFX|Death")
-	TObjectPtr<class USoundBase> DeathSFX;
+	TSoftObjectPtr<class USoundBase> DeathSFX;
 	
 	// 공통 스킬 (일반 공격, 아군 살리기 등)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Common")
@@ -99,6 +99,18 @@ public:
 	// 발사 소켓 이름 (예: "Muzzle_01", "ArrowSocket")
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Ranged")
 	FName MuzzleSocketName;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Ranged")
+	float VirtualProjectileSpeed = 2000.0f; // 가상 발사체의 속도
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Ranged|VFX")
+	TObjectPtr<class UNiagaraSystem> MuzzleEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Ranged|VFX")
+	TObjectPtr<class UNiagaraSystem> TrailEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Ranged|VFX")
+	TObjectPtr<class UNiagaraSystem> HitEffect;
 	
 	// 특수 스킬 (Q, W, E, R)
 	UPROPERTY(EditDefaultsOnly, Category = "SkillDataAsset")
