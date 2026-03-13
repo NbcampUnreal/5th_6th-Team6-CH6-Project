@@ -12,8 +12,6 @@ enum class EAreaHazardState : uint8
 	InstantDeath = 2    UMETA(DisplayName = "InstantDeath"),
 };
 
-//Put Delegate in here!!!!
-
 // Used by ALevelAreaActor — broadcasts current state only
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAreaHazardStateChanged, EAreaHazardState, NewState);
 
