@@ -36,4 +36,5 @@ public:
 
 protected:
 	virtual FTransform CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator) const override;
+	FVector GetAnyLocation(const FGameplayEffectContextHandle& ContextHandle) const;
 };
