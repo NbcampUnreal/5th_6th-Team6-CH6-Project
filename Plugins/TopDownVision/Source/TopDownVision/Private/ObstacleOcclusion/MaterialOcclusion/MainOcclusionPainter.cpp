@@ -129,7 +129,6 @@ void UMainOcclusionPainter::DrawProviderArea()
         return;
     }
 
-    // Precompute aspect ratios once outside the loop
     const float ScreenAspect = static_cast<float>(VPX) / static_cast<float>(VPY);
     const float RTAspect     = RTWidth / RTHeight;
     const float AspectScale  = ScreenAspect / RTAspect;
@@ -138,7 +137,6 @@ void UMainOcclusionPainter::DrawProviderArea()
     {
         if (!Target.IsValid()) continue;
 
-        // Lazy MID init — uses target material if set, falls back to painter default
         if (!Target.IsMIDReady())
         {
             Target.InitializeMID(this, DefaultBrushMaterial);
@@ -149,59 +147,55 @@ void UMainOcclusionPainter::DrawProviderArea()
         const FVector WorldPos    = Target.PrimitiveComp->GetComponentLocation();
         const float VisibleRadius = Target.GetRadius();
 
-        // Project world position to screen
         FVector2D ScreenPos;
         if (!PlayerController->ProjectWorldLocationToScreen(WorldPos, ScreenPos))
             continue;
 
-        // Normalize to 0..1 viewport UV
         const FVector2D ScreenUV = ScreenPos / FVector2D(VPX, VPY);
 
-        const float TargetDistance = FVector::Dist(
-            FrustumParams.CameraLocation, WorldPos);
-
+        const float TargetDistance = FVector::Dist(FrustumParams.CameraLocation, WorldPos);
         if (TargetDistance <= KINDA_SMALL_NUMBER) continue;
 
-        // Project world radius to normalized screen space (0..1 of screen height)
         const float NormalizedRadius = VisibleRadius /
             (FMath::Tan(FrustumParams.FrustumHalfAngleRad) * TargetDistance);
 
-        // Y size — fraction of RT height
         const float BrushSizeRT_Y = NormalizedRadius * RTHeight;
-
-        // X size — divide by AspectScale to correct screen vs RT aspect ratio
         const float BrushSizeRT_X = BrushSizeRT_Y / AspectScale;
 
         if (BrushSizeRT_Y <= 0.f) continue;
 
-        // Center brush on projected screen position in RT space
         const FVector2D BrushPos(
             ScreenUV.X * RTWidth  - BrushSizeRT_X * 0.5f,
             ScreenUV.Y * RTHeight - BrushSizeRT_Y * 0.5f);
 
-        // Only param needed — shape driven by texture, coord/size handled by tile item
         Target.BrushMID->SetScalarParameterValue(RevealAlphaParam, Target.RevealAlpha);
+
+        // Normalize tile rect into RT 0-1 space to match TexCoord[0]
+        Target.BrushMID->SetVectorParameterValue(
+            TEXT("TilePos"),
+            FLinearColor(BrushPos.X / RTWidth, BrushPos.Y / RTHeight, 0.f, 0.f));
+        Target.BrushMID->SetVectorParameterValue(
+            TEXT("TileSize"),
+            FLinearColor(BrushSizeRT_X / RTWidth, BrushSizeRT_Y / RTHeight, 0.f, 0.f));
 
         const FMaterialRenderProxy* RenderProxy = Target.BrushMID->GetRenderProxy();
         if (!RenderProxy) continue;
-        
+
+        // Use material-direct constructor — avoids GWhiteTexture overriding material path
         FCanvasTileItem TileItem(
             BrushPos,
-            GWhiteTexture,
-            FVector2D(BrushSizeRT_X, BrushSizeRT_Y),
-            FLinearColor::White);
+            RenderProxy,
+            FVector2D(BrushSizeRT_X, BrushSizeRT_Y));
 
-        // UV0/UV1 correctly passes 0-1 to texture sampling in material
-        // unlike TexCoord[0] which returns absolute RT pixel coords
         TileItem.UV0 = FVector2D(0.f, 0.f);
         TileItem.UV1 = FVector2D(1.f, 1.f);
-        TileItem.MaterialRenderProxy = Target.BrushMID->GetRenderProxy();
-        TileItem.BlendMode = SE_BLEND_Additive; // multiple brushes accumulate in RT
+        TileItem.BlendMode = SE_BLEND_Additive;
         Canvas->DrawItem(TileItem);
     }
 
     UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(this, Context);
 }
+
 
 bool UMainOcclusionPainter::RefreshFrustumParams()
 {
