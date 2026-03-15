@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "SkillSystem/GameplayEffectComponent/LaunchProjectile.h"
@@ -12,6 +12,13 @@
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 #include "SkillSystem/GameAbility/SkillBase.h"
 
+#include "SkillSystem/GameplayEffectComponent/LaunchProjectile.h"
+#include "SkillSystem/Actor/Projectile/ProjectileBase.h"
+#include "SkillSystem/GameplayEffectComponent/SummonRangeAtBone.h"
+
+#include "GameFramework/Character.h"
+#include "Components/SkeletalMeshComponent.h"
+
 ULaunchProjectile::ULaunchProjectile()
 {
 	ConfigClass = ULaunchProjectileConfig::StaticClass();
@@ -19,31 +26,89 @@ ULaunchProjectile::ULaunchProjectile()
 
 TSubclassOf<UBaseGECConfig> ULaunchProjectile::GetRequiredConfigClass() const
 {
-	return TSubclassOf<ULaunchProjectileConfig>();
+	return ULaunchProjectileConfig::StaticClass();
 }
 
-FText ULaunchProjectileConfig::BuildTooltipDescription(float InLevel) const
+void ULaunchProjectile::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetCueParameters) const
 {
-	TArray<FString> AppliedDescriptions;
+	Super::InitializeRangeActor(RangeActor, Config, Instigator, Context, HitTargetCueParameters);
 
-	for (const USkillEffectDataAsset* SkillEffectDataAsset : Applied)
+	AProjectileBase* const ProjectileActor = Cast<AProjectileBase>(RangeActor);
+	const ULaunchProjectileConfig* const ProjectileConfig = Cast<ULaunchProjectileConfig>(Config);
+
+	if (IsValid(ProjectileActor) && IsValid(ProjectileConfig))
 	{
-		if (!IsValid(SkillEffectDataAsset))
-		{
-			continue;
-		}
+		ProjectileActor->SetProjectileMovement(ProjectileConfig->InitialSpeed, ProjectileConfig->GravityScale, ProjectileConfig->bDestroyOnHit);
+	}
+}
 
-		const FString Desc = SkillEffectDataAsset->BuildEffectDescription(InLevel).ToString();
-		if (!Desc.IsEmpty())
+FTransform ULaunchProjectile::CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator) const
+{
+	const ULaunchProjectileConfig* Config = ResolveTypedConfigFromSpec<ULaunchProjectileConfig>(GESpec);
+	if (!IsValid(Config) || !IsValid(Instigator))
+	{
+		return FTransform::Identity;
+	}
+
+	FVector SpawnLocation = Instigator->GetActorLocation();
+	FRotator SpawnRotation = Instigator->GetActorRotation();
+
+	// 1. 기본 위치 및 회전 결정 (Bone 고려)
+	if (!Config->BoneName.IsNone())
+	{
+		const ACharacter* const Character = Cast<ACharacter>(Instigator);
+		const USkeletalMeshComponent* Mesh = Character ? Character->GetMesh() : Instigator->FindComponentByClass<USkeletalMeshComponent>();
+		
+		if (IsValid(Mesh) && Mesh->DoesSocketExist(Config->BoneName))
 		{
-			AppliedDescriptions.Add(Desc);
+			SpawnLocation = Mesh->GetSocketLocation(Config->BoneName);
+			
+			// bUseInstigatorRotation이 false일 때만 본의 회전을 사용
+			if (!Config->bUseInstigatorRotation)
+			{
+				SpawnRotation = Mesh->GetSocketRotation(Config->BoneName);
+			}
 		}
 	}
 
-	if (AppliedDescriptions.IsEmpty())
+	// 2. 발사 방향 결정 (Targeting - 타겟 위치가 있을 경우)
+	if (Config->bUseEffectContextDirection)
 	{
-		return FText::GetEmpty();
+		FVector TargetLocation = SpawnLocation;
+		const FGameplayEffectContextHandle &Context = GESpec.GetContext();
+		if (Context.HasOrigin())
+		{
+			TargetLocation = Context.GetOrigin();
+		}
+		else if (const FHitResult *Hit = Context.GetHitResult())
+		{
+			if (!Hit->Location.IsZero())
+			{
+				TargetLocation = Hit->Location;
+			}
+			else if (Hit->GetActor())
+			{
+				TargetLocation = Hit->GetActor()->GetActorLocation();
+			}
+		}
+
+		// 위치가 다를 때만 조준 회전값 적용
+		if (!TargetLocation.Equals(SpawnLocation))
+		{
+			SpawnRotation = (TargetLocation - SpawnLocation).Rotation();
+		}
 	}
 
-	return FText::FromString(FString::Join(AppliedDescriptions, TEXT("\n")));
+	// 3. Offset 및 특수 설정 적용
+	if (Config->bSpawnZeroRotation)
+	{
+		SpawnRotation = FRotator::ZeroRotator;
+	}
+	
+	SpawnRotation += Config->RotationOffset;
+
+	// Local Offset 적용 (최종 회전값 기준)
+	SpawnLocation += SpawnRotation.Quaternion().RotateVector(Config->LocationOffset);
+
+	return FTransform(SpawnRotation, SpawnLocation);
 }
