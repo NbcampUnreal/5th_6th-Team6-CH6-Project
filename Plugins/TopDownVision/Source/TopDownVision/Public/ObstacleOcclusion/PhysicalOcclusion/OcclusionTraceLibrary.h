@@ -24,6 +24,15 @@ public:
         UObject*                 TracerIdentity,
         bool                     bDebugDraw = false);
 
+    // ── Fibonacci cone line trace method (new) ────────────────────────────
+
+    static void RunLineProbe(
+        FOcclusionProbe&        Probe,
+        UWorld*                 World,
+        const TArray<AActor*>&  IgnoredActors,
+        UObject*                TracerIdentity,
+        bool                    bDebugDraw = false);
+
 private:
 
     static void NotifyEnter(AActor* Actor, UObject* TracerIdentity);

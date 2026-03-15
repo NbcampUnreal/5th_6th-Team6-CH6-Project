@@ -9,6 +9,16 @@
 class UCameraComponent;
 class APlayerCameraManager;
 
+UENUM(BlueprintType)
+enum class EOcclusionTraceMethod : uint8
+{
+    // Sphere array along camera-to-target line — frustum-aware sizing, rocket head near target
+    SphereArray     UMETA(DisplayName="Sphere Array"),
+
+    // Fibonacci cone multi-line traces — simpler, no behind-target problem
+    FibonacciCone   UMETA(DisplayName="Fibonacci Cone"),
+};
+
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class TOPDOWNVISION_API UOcclusionTracerComponent : public USceneComponent
 {
@@ -44,8 +54,9 @@ public:
 
     // ── Config ────────────────────────────────────────────────────────────
 
+    // Which trace method to use
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer")
-    TArray<FOcclusionSweepConfig> SweepConfigs;
+    EOcclusionTraceMethod TraceMethod = EOcclusionTraceMethod::FibonacciCone;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer")
     float TargetVisibleRadius = 100.f;
@@ -59,33 +70,42 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer")
     float TraceInterval = 0.1f;
 
-    // ── Sweep generation ──────────────────────────────────────────────────
+    // ── Fibonacci cone config ─────────────────────────────────────────────
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sweeps")
+    /** Number of line trace endpoints distributed via fibonacci pattern.
+     *  19 = solid coverage, 37 = near-perfect, higher = diminishing returns */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Fibonacci Cone",
+              meta=(EditCondition="TraceMethod==EOcclusionTraceMethod::FibonacciCone", ClampMin=1))
+    int32 NumTracePoints = 19;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Fibonacci Cone",
+		  meta=(EditCondition="TraceMethod==EOcclusionTraceMethod::FibonacciCone", ClampMin=0.f))
+	float BehindTargetFilterOffset = 50.f;
+
+    // ── Sphere array config (legacy) ──────────────────────────────────────
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array")
+    TArray<FOcclusionSweepConfig> SweepConfigs;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array",
+              meta=(EditCondition="TraceMethod==EOcclusionTraceMethod::SphereArray"))
     bool bAutoGenerateSweeps = true;
 
-    /** Hard cap on generated sweep count */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sweeps",
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array",
               meta=(EditCondition="bAutoGenerateSweeps", ClampMin=1))
     int32 MaxAutoSweepCount = 20;
 
-    /** Distance between each sphere = previous sphere radius * this value.
-     *  1.0 = spheres touch, 2.0 = one radius gap between each */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sweeps",
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array",
               meta=(EditCondition="bAutoGenerateSweeps", ClampMin=0.1f))
     float SweepGapRatio = 1.5f;
 
-    // ── Rocket head ───────────────────────────────────────────────────────
+    // ── Rocket head (sphere array only) ───────────────────────────────────
 
-    // World units from target where rocket head taper takes effect
-    // Beyond this distance — normal frustum matching is used
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sweeps|RocketHead",
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array|Rocket Head",
               meta=(ClampMin=0.f))
     float RocketHeadDistance = 150.f;
 
-    // Controls taper shape within rocket head zone
-    // 1.0 = linear, < 1.0 = gradual (convex), > 1.0 = steep (concave)
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sweeps|RocketHead",
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array|Rocket Head",
               meta=(ClampMin=0.1f))
     float RocketHeadExponent = 2.f;
 
@@ -113,8 +133,11 @@ private:
     bool RefreshFrustumParams();
     void DrawDebug() const;
 
-    // Can be overridden — e.g. curved world shader needs curved placement
+    // Sphere array generation — can be overridden for curved world
     virtual void GenerateSweepsAlongLine(const FVector& LineDirection, float LineLength);
+
+    // Fibonacci cone generation
+    void GenerateFibonacciLines(const FVector& TargetLocation);
 
     FOcclusionProbe Probe;
     FCameraFrustumParams FrustumParams;

@@ -11,8 +11,8 @@ class UMaterialParameterCollection;
 class UMaterialParameterCollectionInstance;
 
 // Delegate
-DOUBLERTBUFFERDRAWER_API DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDrawToBackBuffer, UCanvasRenderTarget2D*, BackRT);
-DOUBLERTBUFFERDRAWER_API DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFrameUpdate);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDrawToBackBuffer, UCanvasRenderTarget2D*, BackRT);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFrameUpdate);
 
 // Log
 

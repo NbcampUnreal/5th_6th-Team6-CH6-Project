@@ -121,14 +121,6 @@ void UOcclusionTracerComponent::OnOwnerBecameHidden()
     {
         if (!Previous.IsValid()) continue;
 
-        /*TArray<UOcclusionObstacleComp_Physical*> Comps;
-        Previous->GetComponents<UOcclusionObstacleComp_Physical>(Comps);
-
-        for (UOcclusionObstacleComp_Physical* Comp : Comps)
-        {
-            IOcclusionInterface::Execute_OnOcclusionExit(Comp, this);
-        }*/
-
         // Query by interface — covers Physical, Material, or any future obstacle comp
         TArray<UActorComponent*> Comps = Previous->GetComponentsByInterface(UOcclusionInterface::StaticClass());
 
@@ -159,7 +151,15 @@ void UOcclusionTracerComponent::RunTrace()
 
     RebuildProbe();
 
-    FOcclusionTraceLibrary::RunProbe(Probe, GetWorld(), IgnoredActors, this, bDebugDraw);
+    // Dispatch to correct method
+    if (TraceMethod == EOcclusionTraceMethod::FibonacciCone)
+    {
+        FOcclusionTraceLibrary::RunLineProbe(Probe, GetWorld(), IgnoredActors, this, bDebugDraw);
+    }
+    else
+    {
+        FOcclusionTraceLibrary::RunProbe(Probe, GetWorld(), IgnoredActors, this, bDebugDraw);
+    }
 
     if (bDebugDraw)
         DrawDebug();
@@ -201,7 +201,34 @@ void UOcclusionTracerComponent::RebuildProbe()
     Probe.BaseOrigin = CameraLocation;
     Probe.Target     = TargetLocation;
 
-    if (bAutoGenerateSweeps)
+    // Flatten camera forward to XY — used as the depth axis in RunLineProbe.
+    // Matches the normal of a vertical plane yaw-rotated toward the camera
+    // regardless of camera pitch.
+    Probe.CameraForwardH = FVector(
+        FrustumParams.CameraForward.X,
+        FrustumParams.CameraForward.Y,
+        0.f).GetSafeNormal();
+    
+    // Secondary sphere filter — radius derived from frustum projection at pawn depth,
+    // same method used by sphere array probe to correctly size spheres on screen.
+    // Center offset toward camera by half radius so the sphere sits just in front
+    // of the pawn rather than centered on it.
+    const float FrustumRadius = FFrustumProjectionMatcherHelper::CalculateSphereRadiusAtDepth(
+        FrustumParams,
+        LineLength,
+        TargetVisibleRadius,
+        LineLength);
+
+    const FVector ToCameraDir = (CameraLocation - TargetLocation).GetSafeNormal();
+    Probe.SecondaryFilterSphereCenter = TargetLocation
+        + ToCameraDir * (FrustumRadius * 0.5f);
+    Probe.SecondaryFilterSphereRadius = FrustumRadius;
+
+    if (TraceMethod == EOcclusionTraceMethod::FibonacciCone)
+    {
+        GenerateFibonacciLines(TargetLocation);
+    }
+    else if (bAutoGenerateSweeps)
     {
         GenerateSweepsAlongLine(LineDirection, LineLength);
     }
@@ -220,6 +247,49 @@ void UOcclusionTracerComponent::RebuildProbe()
         }
     }
 }
+
+// ── Fibonacci cone generation ─────────────────────────────────────────────────
+
+void UOcclusionTracerComponent::GenerateFibonacciLines(const FVector& TargetLocation)
+{
+    Probe.Lines.Reset();
+
+    if (NumTracePoints <= 0) return;
+
+    const FVector CameraLocation = FrustumParams.CameraLocation;
+
+    // Build a camera-plane basis so endpoints sit in the plane perpendicular
+    // to the camera-to-target direction, centered on the target
+    const FVector ToTarget   = (TargetLocation - CameraLocation).GetSafeNormal();
+
+    // Pick a stable up reference — avoid degenerate cross product when ToTarget is nearly vertical
+    const FVector WorldUp    = FMath::Abs(ToTarget.Z) < 0.99f ? FVector::UpVector : FVector::RightVector;
+    const FVector PlaneRight = FVector::CrossProduct(ToTarget, WorldUp).GetSafeNormal();
+    const FVector PlaneUp    = FVector::CrossProduct(PlaneRight, ToTarget).GetSafeNormal();
+
+    // Golden angle in radians — drives the fibonacci spiral
+    const float GoldenAngle  = PI * (3.f - FMath::Sqrt(5.f));
+
+    for (int32 i = 0; i < NumTracePoints; ++i)
+    {
+        // Radius grows outward using sqrt so area density stays even across the disk
+        const float Radius = FMath::Sqrt(static_cast<float>(i + 0.5f) / NumTracePoints)
+                             * TargetVisibleRadius;
+
+        const float Angle  = i * GoldenAngle;
+
+        // Place endpoint on the plane centered at the target
+        const FVector EndPoint = TargetLocation
+            + PlaneRight * FMath::Cos(Angle) * Radius
+            + PlaneUp    * FMath::Sin(Angle) * Radius;
+
+        FOcclusionLineConfig Line;
+        Line.EndPoint = EndPoint;
+        Probe.Lines.Add(Line);
+    }
+}
+
+// ── Sphere array generation (unchanged) ───────────────────────────────────────
 
 void UOcclusionTracerComponent::GenerateSweepsAlongLine(
     const FVector& LineDirection,
@@ -278,6 +348,8 @@ void UOcclusionTracerComponent::GenerateSweepsAlongLine(
     }
 }
 
+// ── Debug ─────────────────────────────────────────────────────────────────────
+
 void UOcclusionTracerComponent::DrawDebug() const
 {
     UWorld* World = GetWorld();
@@ -288,20 +360,38 @@ void UOcclusionTracerComponent::DrawDebug() const
 
     DrawDebugLine(World, CameraLocation, TargetLocation, DebugColorNoHit, false, -1.f, 5, 0.5f);
 
-    // Target position — point only, not a sphere, to avoid implying it is a trace shape
+    // Target position — point only, not a sphere
     DrawDebugPoint(World, TargetLocation, 12.f, DebugColorTarget, false, -1.f);
 
-    for (int32 i = 0; i < Probe.Sweeps.Num(); ++i)
+    if (TraceMethod == EOcclusionTraceMethod::FibonacciCone)
     {
-        const FOcclusionSweepConfig& Sweep      = Probe.Sweeps[i];
-        const FVector                SweepOrigin = CameraLocation + Sweep.OriginOffset;
+        for (int32 i = 0; i < Probe.Lines.Num(); ++i)
+        {
+            const FVector& EndPoint = Probe.Lines[i].EndPoint;
 
-        // Orange = this sweep hit a valid occlusion comp this frame, Red = no hit
-        const FColor SphereColor = Probe.HitSweepIndices.Contains(i)
-            ? FColor::Orange
-            : DebugColorHit;
+            // Orange = this line hit a valid occlusion comp, Green = no hit
+            const FColor LineColor = Probe.HitLineIndices.Contains(i)
+                ? FColor::Orange
+                : DebugColorNoHit;
 
-        DrawDebugSphere(World, SweepOrigin, 4.f, 6, DebugColorSweepOrigin, false, -1.f);
-        DrawDebugSphere(World, SweepOrigin, Sweep.SphereRadius, 8, SphereColor, false, -1.f);
+            DrawDebugLine(World, CameraLocation, EndPoint, LineColor, false, -1.f, 0, 0.5f);
+            DrawDebugPoint(World, EndPoint, 6.f, DebugColorSweepOrigin, false, -1.f);
+        }
+    }
+    else
+    {
+        for (int32 i = 0; i < Probe.Sweeps.Num(); ++i)
+        {
+            const FOcclusionSweepConfig& Sweep       = Probe.Sweeps[i];
+            const FVector                SweepOrigin = CameraLocation + Sweep.OriginOffset;
+
+            // Orange = this sweep hit a valid occlusion comp this frame, Red = no hit
+            const FColor SphereColor = Probe.HitSweepIndices.Contains(i)
+                ? FColor::Orange
+                : DebugColorHit;
+
+            DrawDebugSphere(World, SweepOrigin, 4.f, 6, DebugColorSweepOrigin, false, -1.f);
+            DrawDebugSphere(World, SweepOrigin, Sweep.SphereRadius, 8, SphereColor, false, -1.f);
+        }
     }
 }
