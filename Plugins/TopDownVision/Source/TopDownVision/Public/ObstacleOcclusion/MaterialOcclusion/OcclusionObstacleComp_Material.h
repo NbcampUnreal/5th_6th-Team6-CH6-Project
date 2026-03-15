@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
-#include "ObstacleOcclusion/OcclusionInterface.h"
+#include "ObstacleOcclusion/OcclusionTracer/OcclusionInterface.h"
 #include "OcclusionObstacleComp_Material.generated.h"
 
 class UMeshComponent;
@@ -28,6 +28,9 @@ public:
 
     UFUNCTION(BlueprintCallable, Category="Occlusion")
     void InitializeCollisionAndShadow();
+
+    UFUNCTION(BlueprintCallable, Category="Occlusion")
+    void SetFadeSpeed(float InFadeSpeed) { FadeSpeed=InFadeSpeed;}
 
     virtual void OnOcclusionEnter_Implementation(UObject* SourceTracer) override;
     virtual void OnOcclusionExit_Implementation(UObject* SourceTracer) override;

@@ -1,13 +1,13 @@
-﻿#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionTracerComponent.h"
+﻿#include "TopDownVision/Public/ObstacleOcclusion/OcclusionTracer/OcclusionTracerComponent.h"
 
-#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionTraceLibrary.h"
+#include "TopDownVision/Public/ObstacleOcclusion/OcclusionTracer/OcclusionTraceLibrary.h"
 #include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/FrustumToProjectionMatcherHelper.h"
 #include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include "GameFramework/PlayerController.h"
 #include "DrawDebugHelpers.h"
 #include "TopDownVisionDebug.h"
-#include "TopDownVision/Public/ObstacleOcclusion/OcclusionInterface.h"
+#include "TopDownVision/Public/ObstacleOcclusion/OcclusionTracer/OcclusionInterface.h"
 
 UOcclusionTracerComponent::UOcclusionTracerComponent()
 {
@@ -117,17 +117,11 @@ void UOcclusionTracerComponent::OnOwnerBecameHidden()
 
     GetWorld()->GetTimerManager().ClearTimer(TraceTimerHandle);
 
-    for (const TWeakObjectPtr<AActor>& Previous : Probe.PreviousHits)
+    // PreviousHits now tracks components directly — notify each one individually
+    for (const TWeakObjectPtr<UActorComponent>& Previous : Probe.PreviousHits)
     {
         if (!Previous.IsValid()) continue;
-
-        // Query by interface — covers Physical, Material, or any future obstacle comp
-        TArray<UActorComponent*> Comps = Previous->GetComponentsByInterface(UOcclusionInterface::StaticClass());
-
-        for (UActorComponent* Comp : Comps)
-        {
-            IOcclusionInterface::Execute_OnOcclusionExit(Comp, this);
-        }
+        IOcclusionInterface::Execute_OnOcclusionExit(Previous.Get(), this);
     }
 
     Probe.PreviousHits.Empty();
@@ -191,6 +185,8 @@ bool UOcclusionTracerComponent::RefreshFrustumParams()
     return false;
 }
 
+// ── Rebuild probe — virtual so curved world subclass can override ──────────────
+
 void UOcclusionTracerComponent::RebuildProbe()
 {
     const FVector TargetLocation = GetOwner()->GetActorLocation() + TargetLocationOffset;
@@ -208,7 +204,7 @@ void UOcclusionTracerComponent::RebuildProbe()
         FrustumParams.CameraForward.X,
         FrustumParams.CameraForward.Y,
         0.f).GetSafeNormal();
-    
+
     // Secondary sphere filter — radius derived from frustum projection at pawn depth,
     // same method used by sphere array probe to correctly size spheres on screen.
     // Center offset toward camera by half radius so the sphere sits just in front
@@ -248,7 +244,7 @@ void UOcclusionTracerComponent::RebuildProbe()
     }
 }
 
-// ── Fibonacci cone generation ─────────────────────────────────────────────────
+// ── Fibonacci cone generation — virtual for curved world override ─────────────
 
 void UOcclusionTracerComponent::GenerateFibonacciLines(const FVector& TargetLocation)
 {
@@ -289,7 +285,7 @@ void UOcclusionTracerComponent::GenerateFibonacciLines(const FVector& TargetLoca
     }
 }
 
-// ── Sphere array generation (unchanged) ───────────────────────────────────────
+// ── Sphere array generation — virtual for curved world override ───────────────
 
 void UOcclusionTracerComponent::GenerateSweepsAlongLine(
     const FVector& LineDirection,
@@ -297,14 +293,19 @@ void UOcclusionTracerComponent::GenerateSweepsAlongLine(
 {
     Probe.Sweeps.Reset();
 
-    // Start exactly at target, walk toward camera
-    float DistToTarget = 0.f;
+    // Start from MinDistFromTarget — skips the area immediately adjacent to the pawn
+    // where rocket head shrinkage caused false negatives on low meshes
+    float DistToTarget = FMath::Max(MinDistFromTarget, 0.f);
 
     for (int32 i = 0; i < MaxAutoSweepCount; ++i)
     {
         const float DepthFromCamera = LineLength - DistToTarget;
 
         if (DepthFromCamera <= 0.f) break;
+
+        // MaxDistFromCamera culling — stop placing spheres beyond this depth
+        // Occluders further than this cannot realistically cover the pawn on screen
+        if (DepthFromCamera < LineLength - MaxDistFromCamera) break;
 
         float Radius = 0.f;
 
@@ -319,7 +320,7 @@ void UOcclusionTracerComponent::GenerateSweepsAlongLine(
             // Exp 1   = linear
             Radius = FMath::Pow(NormalizedDist, RocketHeadExponent) * TargetVisibleRadius;
 
-            // Enforce minimum so loop can step forward — skip tiny spheres at the very tip
+            // Enforce minimum so loop can step forward
             Radius = FMath::Max(Radius, 1.f);
         }
         else
@@ -377,6 +378,19 @@ void UOcclusionTracerComponent::DrawDebug() const
             DrawDebugLine(World, CameraLocation, EndPoint, LineColor, false, -1.f, 0, 0.5f);
             DrawDebugPoint(World, EndPoint, 6.f, DebugColorSweepOrigin, false, -1.f);
         }
+
+        // Show secondary filter sphere — helps tune radius visually
+        if (Probe.SecondaryFilterSphereRadius > 0.f)
+        {
+            DrawDebugSphere(
+                World,
+                Probe.SecondaryFilterSphereCenter,
+                Probe.SecondaryFilterSphereRadius,
+                16,
+                FColor::Cyan,
+                false,
+                -1.f);
+        }
     }
     else
     {
@@ -392,6 +406,46 @@ void UOcclusionTracerComponent::DrawDebug() const
 
             DrawDebugSphere(World, SweepOrigin, 4.f, 6, DebugColorSweepOrigin, false, -1.f);
             DrawDebugSphere(World, SweepOrigin, Sweep.SphereRadius, 8, SphereColor, false, -1.f);
+        }
+
+        // Show rocket head zone boundary — magenta line from target to where taper ends.
+        // If MinDistFromTarget >= RocketHeadDistance the zone is skipped entirely
+        // and no rocket head spheres will appear — tune accordingly.
+        if (RocketHeadDistance > 0.f)
+        {
+            const FVector LineDir       = (TargetLocation - CameraLocation).GetSafeNormal();
+            const FVector RocketHeadEnd = TargetLocation + LineDir * RocketHeadDistance;
+
+            // Magenta line shows full rocket head zone extent
+            DrawDebugLine(World, TargetLocation, RocketHeadEnd, FColor::Magenta, false, -1.f, 0, 1.5f);
+
+            // Magenta sphere marks where taper ends and normal frustum sizing begins
+            DrawDebugSphere(World, RocketHeadEnd, 8.f, 8, FColor::Magenta, false, -1.f);
+        }
+
+        // White sphere shows where the first sweep actually starts (MinDistFromTarget).
+        // If this sits further from target than the magenta sphere, rocket head is skipped.
+        if (MinDistFromTarget > 0.f)
+        {
+            const FVector LineDir        = (TargetLocation - CameraLocation).GetSafeNormal();
+            const FVector FirstSweepPos  = TargetLocation + LineDir * MinDistFromTarget;
+
+            DrawDebugSphere(World, FirstSweepPos, 8.f, 8, FColor::White, false, -1.f);
+        }
+
+        // MaxDistFromCamera boundary — shows where sphere placement stops on the camera side
+        {
+            const FVector LineDir         = (TargetLocation - CameraLocation).GetSafeNormal();
+            const float   ActualLineLength = FVector::Dist(CameraLocation, TargetLocation);
+            const float   CullDepth       = ActualLineLength - MaxDistFromCamera;
+
+            if (CullDepth > 0.f)
+            {
+                const FVector CullPos = CameraLocation + LineDir * MaxDistFromCamera;
+
+                // Blue sphere marks the far culling boundary
+                DrawDebugSphere(World, CullPos, 8.f, 8, FColor::Blue, false, -1.f);
+            }
         }
     }
 }

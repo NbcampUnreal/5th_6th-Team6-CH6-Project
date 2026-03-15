@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
-#include "ObstacleOcclusion/OcclusionInterface.h"
+#include "ObstacleOcclusion/OcclusionTracer/OcclusionInterface.h"
 #include "OcclusionObstacleComp_Physical.generated.h"
 
 class UMeshComponent;

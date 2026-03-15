@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
-#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionTraceTypes.h"
+#include "TopDownVision/Public/ObstacleOcclusion/OcclusionTracer/OcclusionTraceTypes.h"
 #include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/FrustumToProjectionMatcherHelper.h"
 #include "OcclusionTracerComponent.generated.h"
 
@@ -54,7 +54,6 @@ public:
 
     // ── Config ────────────────────────────────────────────────────────────
 
-    // Which trace method to use
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer")
     EOcclusionTraceMethod TraceMethod = EOcclusionTraceMethod::FibonacciCone;
 
@@ -73,16 +72,12 @@ public:
     // ── Fibonacci cone config ─────────────────────────────────────────────
 
     /** Number of line trace endpoints distributed via fibonacci pattern.
-     *  19 = solid coverage, 37 = near-perfect, higher = diminishing returns */
+     *  19 = solid coverage, 37 = near-perfect, 50 = maximum */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Fibonacci Cone",
-              meta=(EditCondition="TraceMethod==EOcclusionTraceMethod::FibonacciCone", ClampMin=1))
+              meta=(EditCondition="TraceMethod==EOcclusionTraceMethod::FibonacciCone", ClampMin=1, ClampMax=50))
     int32 NumTracePoints = 19;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Fibonacci Cone",
-		  meta=(EditCondition="TraceMethod==EOcclusionTraceMethod::FibonacciCone", ClampMin=0.f))
-	float BehindTargetFilterOffset = 50.f;
-
-    // ── Sphere array config (legacy) ──────────────────────────────────────
+    // ── Sphere array config ───────────────────────────────────────────────
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array")
     TArray<FOcclusionSweepConfig> SweepConfigs;
@@ -91,20 +86,38 @@ public:
               meta=(EditCondition="TraceMethod==EOcclusionTraceMethod::SphereArray"))
     bool bAutoGenerateSweeps = true;
 
+    /** Hard cap on generated sweep count */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array",
               meta=(EditCondition="bAutoGenerateSweeps", ClampMin=1))
     int32 MaxAutoSweepCount = 20;
 
+    /** Distance between each sphere = previous sphere radius * this value.
+     *  1.0 = spheres touch, 2.0 = one radius gap between each */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array",
               meta=(EditCondition="bAutoGenerateSweeps", ClampMin=0.1f))
     float SweepGapRatio = 1.5f;
 
+    /** Minimum distance from target before placing first sphere —
+     *  skips the area immediately adjacent to the pawn where false positives occur */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array",
+              meta=(EditCondition="bAutoGenerateSweeps", ClampMin=0.f))
+    float MinDistFromTarget = 100.f;
+
+    /** Maximum distance from camera to place spheres —
+     *  occluders beyond this range cannot realistically cover the pawn on screen */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array",
+              meta=(EditCondition="bAutoGenerateSweeps", ClampMin=0.f))
+    float MaxDistFromCamera = 2000.f;
+
     // ── Rocket head (sphere array only) ───────────────────────────────────
 
+    // World units from target where rocket head taper takes effect
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array|Rocket Head",
               meta=(ClampMin=0.f))
     float RocketHeadDistance = 150.f;
 
+    // Controls taper shape within rocket head zone
+    // 1.0 = linear, < 1.0 = gradual (convex), > 1.0 = steep (concave)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array|Rocket Head",
               meta=(ClampMin=0.1f))
     float RocketHeadExponent = 2.f;
@@ -126,20 +139,23 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Debug")
     FColor DebugColorSweepOrigin = FColor::Yellow;
 
-private:
+protected:
 
-    void RunTrace();
-    void RebuildProbe();
-    bool RefreshFrustumParams();
-    void DrawDebug() const;
+    // ── Overridable for curved world subclasses ───────────────────────────
 
-    // Sphere array generation — can be overridden for curved world
+    // Rebuilds probe data each trace — override in curved world subclass
+    // to place spheres along the curved path instead of a straight line
+    virtual void RebuildProbe();
+
+    // Sphere array generation — override in curved world subclass
+    // to step along the curved path rather than a straight line direction
     virtual void GenerateSweepsAlongLine(const FVector& LineDirection, float LineLength);
 
-    // Fibonacci cone generation
-    void GenerateFibonacciLines(const FVector& TargetLocation);
+    // Fibonacci cone generation — override in curved world subclass
+    // if line endpoints need to follow the curve
+    virtual void GenerateFibonacciLines(const FVector& TargetLocation);
 
-    FOcclusionProbe Probe;
+    FOcclusionProbe      Probe;
     FCameraFrustumParams FrustumParams;
 
     UPROPERTY()
@@ -150,6 +166,14 @@ private:
 
     UPROPERTY()
     TObjectPtr<APlayerCameraManager> CameraManager = nullptr;
+
+private:
+
+    void RunTrace();
+    bool RefreshFrustumParams();
+
+	// this can also be overriden as well
+    virtual void DrawDebug() const;
 
     FTimerHandle TraceTimerHandle;
 

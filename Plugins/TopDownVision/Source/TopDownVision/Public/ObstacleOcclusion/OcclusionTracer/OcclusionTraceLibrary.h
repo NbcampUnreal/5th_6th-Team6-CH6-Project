@@ -1,10 +1,12 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionTraceTypes.h"
+#include "TopDownVision/Public/ObstacleOcclusion/OcclusionTracer/OcclusionTraceTypes.h"
 
+//FD
 class UWorld;
 class AActor;
+class UPrimitiveComponent;
 
 class TOPDOWNVISION_API FOcclusionTraceLibrary
 {
@@ -35,8 +37,10 @@ public:
 
 private:
 
-    static void NotifyEnter(AActor* Actor, UObject* TracerIdentity);
-    static void NotifyExit(AActor* Actor, UObject* TracerIdentity);
+    static void NotifyEnter(UActorComponent* Comp, UObject* TracerIdentity);
+    static void NotifyExit(UActorComponent* Comp, UObject* TracerIdentity);
+
+    static UActorComponent* FindOwningOcclusionComp(UPrimitiveComponent* HitPrimitive);
 
     FOcclusionTraceLibrary() = delete;
 };
