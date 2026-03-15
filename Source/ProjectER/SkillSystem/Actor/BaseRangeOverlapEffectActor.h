@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -14,49 +14,53 @@ class UBoxComponent;
 class UCapsuleComponent;
 
 UCLASS()
-class PROJECTER_API ABaseRangeOverlapEffectActor : public AActor
-{
-	GENERATED_BODY()
-	
-public:	
-	// Sets default values for this actor's properties
-	ABaseRangeOverlapEffectActor();
+class PROJECTER_API ABaseRangeOverlapEffectActor : public AActor {
+  GENERATED_BODY()
 
-	void InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget, const UObject* InHitTargetCueSourceObject, const FGameplayCueParameters& InHitTargetCueParameters);
+public:
+  // Sets default values for this actor's properties
+  ABaseRangeOverlapEffectActor();
+
+  void InitializeEffectData(
+      const TArray<FGameplayEffectSpecHandle> &InEffectSpecHandles,
+      AActor *InInstigatorActor, const FVector &InCollisionSize,
+      bool bInHitOncePerTarget, const UObject *InHitTargetCueSourceObject,
+      const FGameplayCueParameters &InHitTargetCueParameters);
+
 protected:
-	virtual void BeginPlay() override;
-	virtual void ApplyCollisionSize(const FVector& InCollisionSize);
-	void SetCollisionComponent(UShapeComponent* InCollisionComponent);
+  virtual void BeginPlay() override;
+  virtual void ApplyCollisionSize(const FVector &InCollisionSize);
+  void SetCollisionComponent(UShapeComponent *InCollisionComponent);
 
-	UFUNCTION()
-	void OnShapeBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-public:	
-	
+  UFUNCTION()
+  virtual void OnShapeBeginOverlap(UPrimitiveComponent *OverlappedComp, AActor *OtherActor, UPrimitiveComponent *OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult);
+
+public:
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Collision")
-	TObjectPtr<UShapeComponent> CollisionComponent;
+  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Collision")
+  TObjectPtr<UShapeComponent> CollisionComponent;
 
-	UPROPERTY()
-	TArray<FGameplayEffectSpecHandle> EffectSpecHandles;
+  UPROPERTY()
+  TArray<FGameplayEffectSpecHandle> EffectSpecHandles;
 
-	UPROPERTY()
-	TObjectPtr<AActor> InstigatorActor;
+  UPROPERTY()
+  TObjectPtr<AActor> InstigatorActor;
 
-	UPROPERTY()
-	bool bHitOncePerTarget = true;
+  UPROPERTY()
+  bool bHitOncePerTarget = true;
 
-	UPROPERTY()
-	FVector PendingCollisionSize = FVector::ZeroVector;
+  UPROPERTY()
+  FVector PendingCollisionSize = FVector::ZeroVector;
 
-	UPROPERTY()
-	bool bHasPendingCollisionSize = false;
+  UPROPERTY()
+  bool bHasPendingCollisionSize = false;
 
-	UPROPERTY()
-	TSet<TObjectPtr<AActor>> HitActors;
+  UPROPERTY()
+  TSet<TObjectPtr<AActor>> HitActors;
 
-	UPROPERTY()
-	TObjectPtr<const UObject> HitTargetCueSourceObject;
+  UPROPERTY()
+  TObjectPtr<const UObject> HitTargetCueSourceObject;
 
-	UPROPERTY()
-	FGameplayCueParameters HitTargetCueParameters;
+  UPROPERTY()
+  FGameplayCueParameters HitTargetCueParameters;
 };
