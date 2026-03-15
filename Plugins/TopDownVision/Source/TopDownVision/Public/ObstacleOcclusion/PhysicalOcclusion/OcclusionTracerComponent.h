@@ -31,10 +31,10 @@ public:
     void SetCameraManager(APlayerCameraManager* InCameraManager);
 
     UFUNCTION(BlueprintCallable, Category="Occlusion Tracer")
-    void OnBecameVisible();
+    void OnOwnerBecameVisible();
 
     UFUNCTION(BlueprintCallable, Category="Occlusion Tracer")
-    void OnBecameHidden();
+    void OnOwnerBecameHidden();
 
     UFUNCTION(BlueprintNativeEvent, Category="Occlusion Tracer")
     void OnTracerActivated();
@@ -48,10 +48,10 @@ public:
     TArray<FOcclusionSweepConfig> SweepConfigs;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer")
-    float TargetVisibleRadius = 60.f;
+    float TargetVisibleRadius = 100.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer")
-    FVector TargetLocationOffset = FVector(0.f, 0.f, 60.f);
+    FVector TargetLocationOffset = FVector(0.f, 0.f, 100.f);
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer")
     TEnumAsByte<ECollisionChannel> OcclusionChannel = ECC_GameTraceChannel1;

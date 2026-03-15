@@ -3,40 +3,53 @@
 
 DEFINE_LOG_CATEGORY(OcclusionSubsystem);
 
-void UOcclusionSubsystem::RegisterTarget(UPrimitiveComponent* PrimComp, UMaterialInterface* BrushMat, float RadiusPadding)
+int32 UOcclusionSubsystem::RegisterTarget(UPrimitiveComponent* PrimComp, UMaterialInterface* BrushMat, float VisionHalfRadius)
 {
-	if (!IsValid(PrimComp)) return;
+	if (!IsValid(PrimComp)) return INDEX_NONE;
 
-	// Prevent duplicate registration
-	for (const FOcclusionBrushTarget& T : Targets)
+	for (int32 i = 0; i < Targets.Num(); ++i)
 	{
-		if (T.PrimitiveComp == PrimComp) return;
+		if (Targets[i].PrimitiveComp == PrimComp) return i; // already registered
 	}
 
 	FOcclusionBrushTarget Target;
 	Target.PrimitiveComp = PrimComp;
-	Target.RadiusPadding = RadiusPadding;
-	Target.BrushMaterial = BrushMat; // nullptr is valid — painter default used as fallback
+	Target.VisibleRadius = VisionHalfRadius*2.f;
+	Target.BrushMaterial = BrushMat;
 
-	Targets.Add(Target);
+	const int32 Index = Targets.Add(Target);
 
 	UE_LOG(OcclusionSubsystem, Log,
-		TEXT("UOcclusionSubsystem::RegisterTarget>> %s | Material: %s | Total: %d"),
-		*PrimComp->GetOwner()->GetName(),
-		BrushMat ? *BrushMat->GetName() : TEXT("None (painter default)"),
-		Targets.Num());
+		TEXT("UOcclusionSubsystem::RegisterTarget>> %s | Index: %d | Total: %d"),
+		*PrimComp->GetOwner()->GetName(), Index, Targets.Num());
+
+	return Index;
+}
+
+void UOcclusionSubsystem::UpdateTargetByIndex(int32 Index, float NewRevealAlpha, float NewVisionHalfRadius)
+{
+	if (!Targets.IsValidIndex(Index)) return;
+
+	Targets[Index].RevealAlpha = FMath::Clamp(NewRevealAlpha, 0.f, 1.f);
+
+	if (NewVisionHalfRadius >= 0.f)
+		Targets[Index].VisibleRadius = NewVisionHalfRadius*2.f;
 }
 
 void UOcclusionSubsystem::UnregisterTarget(UPrimitiveComponent* PrimComp)
 {
 	if (!IsValid(PrimComp)) return;
 
-	Targets.RemoveAll([PrimComp](const FOcclusionBrushTarget& T)
+	for (int32 i = Targets.Num() - 1; i >= 0; --i)
 	{
-		return T.PrimitiveComp == PrimComp;
-	});
+		if (Targets[i].PrimitiveComp != PrimComp) continue;
 
-	UE_LOG(OcclusionSubsystem, Log,
-		TEXT("UOcclusionSubsystem::UnregisterTarget>> %s | Total: %d"),
-		*PrimComp->GetOwner()->GetName(), Targets.Num());
+		Targets.RemoveAtSwap(i);
+
+		UE_LOG(OcclusionSubsystem, Log,
+			TEXT("UOcclusionSubsystem::UnregisterTarget>> %s | Total: %d"),
+			*PrimComp->GetOwner()->GetName(), Targets.Num());
+
+		return;
+	}
 }

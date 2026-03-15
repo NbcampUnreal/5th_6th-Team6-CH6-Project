@@ -145,7 +145,7 @@ void UMainOcclusionPainter::DrawProviderArea()
         if (!Target.IsMIDReady()) continue;
 
         const FVector WorldPos    = Target.PrimitiveComp->GetComponentLocation();
-        const float VisibleRadius = Target.GetRadius();
+        const float VisibleRadius = Target.GetVisibleRadius();
 
         FVector2D ScreenPos;
         if (!PlayerController->ProjectWorldLocationToScreen(WorldPos, ScreenPos))

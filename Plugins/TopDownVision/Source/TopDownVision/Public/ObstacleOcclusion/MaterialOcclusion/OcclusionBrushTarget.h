@@ -16,7 +16,7 @@ struct FOcclusionBrushTarget
     TWeakObjectPtr<UPrimitiveComponent> PrimitiveComp;
 
     UPROPERTY()
-    float RadiusPadding = 30.f;
+    float VisibleRadius = 100.f;
 
     // Scales brush intensity — drives visual effects in material
     UPROPERTY()
@@ -34,12 +34,7 @@ struct FOcclusionBrushTarget
 
     bool IsMIDReady() const { return IsValid() && BrushMID != nullptr; }
 
-    float GetRadius() const
-    {
-        return PrimitiveComp.IsValid()
-            ? PrimitiveComp->Bounds.SphereRadius + RadiusPadding
-            : 0.f;
-    }
+    float GetVisibleRadius() const {return VisibleRadius; }
 
     // Called lazily by painter on first draw — Outer must be a valid UObject for GC
     void InitializeMID(UObject* Outer, UMaterialInterface* FallbackMaterial);

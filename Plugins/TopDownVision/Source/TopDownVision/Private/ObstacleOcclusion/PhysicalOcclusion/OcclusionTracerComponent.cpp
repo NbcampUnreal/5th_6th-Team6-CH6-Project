@@ -8,7 +8,6 @@
 #include "DrawDebugHelpers.h"
 #include "TopDownVisionDebug.h"
 #include "TopDownVision/Public/ObstacleOcclusion/OcclusionInterface.h"
-#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionObstacleComp_Physical.h"
 
 UOcclusionTracerComponent::UOcclusionTracerComponent()
 {
@@ -23,7 +22,7 @@ void UOcclusionTracerComponent::BeginPlay()
 void UOcclusionTracerComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     Super::EndPlay(EndPlayReason);
-    OnBecameHidden();
+    OnOwnerBecameHidden();
 }
 
 void UOcclusionTracerComponent::InitializeProbeTracer()
@@ -83,7 +82,7 @@ void UOcclusionTracerComponent::SetCameraManager(APlayerCameraManager* InCameraM
 
 // ── Visibility API ────────────────────────────────────────────────────────────
 
-void UOcclusionTracerComponent::OnBecameVisible()
+void UOcclusionTracerComponent::OnOwnerBecameVisible()
 {
     if (!IsActive()) return;
 
@@ -112,7 +111,7 @@ void UOcclusionTracerComponent::OnBecameVisible()
         *GetOwner()->GetName());
 }
 
-void UOcclusionTracerComponent::OnBecameHidden()
+void UOcclusionTracerComponent::OnOwnerBecameHidden()
 {
     if (!IsActive()) return;
 
@@ -122,10 +121,18 @@ void UOcclusionTracerComponent::OnBecameHidden()
     {
         if (!Previous.IsValid()) continue;
 
-        TArray<UOcclusionObstacleComp_Physical*> Comps;
+        /*TArray<UOcclusionObstacleComp_Physical*> Comps;
         Previous->GetComponents<UOcclusionObstacleComp_Physical>(Comps);
 
         for (UOcclusionObstacleComp_Physical* Comp : Comps)
+        {
+            IOcclusionInterface::Execute_OnOcclusionExit(Comp, this);
+        }*/
+
+        // Query by interface — covers Physical, Material, or any future obstacle comp
+        TArray<UActorComponent*> Comps = Previous->GetComponentsByInterface(UOcclusionInterface::StaticClass());
+
+        for (UActorComponent* Comp : Comps)
         {
             IOcclusionInterface::Execute_OnOcclusionExit(Comp, this);
         }

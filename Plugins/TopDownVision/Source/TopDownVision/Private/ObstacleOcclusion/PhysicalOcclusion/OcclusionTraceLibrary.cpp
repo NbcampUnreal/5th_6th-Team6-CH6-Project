@@ -1,5 +1,4 @@
 ﻿#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionTraceLibrary.h"
-#include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/OcclusionObstacleComp_Physical.h"
 #include "TopDownVision/Public/ObstacleOcclusion/OcclusionInterface.h"
 #include "TopDownVisionDebug.h"
 #include "DrawDebugHelpers.h"
@@ -39,11 +38,9 @@ void FOcclusionTraceLibrary::RunProbe(
 
     for (int32 SweepIdx = 0; SweepIdx < Probe.Sweeps.Num(); ++SweepIdx)
     {
-        const FOcclusionSweepConfig& Sweep      = Probe.Sweeps[SweepIdx];
+        const FOcclusionSweepConfig& Sweep       = Probe.Sweeps[SweepIdx];
         const FVector                SweepOrigin = Probe.BaseOrigin + Sweep.OriginOffset;
 
-        // Static overlap at position only — does NOT travel along a path
-        // Prevents every sphere from hitting obstacles near the target
         TArray<FOverlapResult> Overlaps;
         World->OverlapMultiByChannel(
             Overlaps,
@@ -72,8 +69,7 @@ void FOcclusionTraceLibrary::RunProbe(
             AActor* HitActor = Overlaps[i].GetActor();
             if (!HitActor) continue;
 
-            TArray<UOcclusionObstacleComp_Physical*> Comps;
-            HitActor->GetComponents<UOcclusionObstacleComp_Physical>(Comps);
+            TArray<UActorComponent*> Comps = HitActor->GetComponentsByInterface(UOcclusionInterface::StaticClass());
 
             if (bDebugDraw)
             {
@@ -98,7 +94,6 @@ void FOcclusionTraceLibrary::RunProbe(
         }
     }
 
-    // Hit diff — notify enter for new hits, exit for dropped hits
     for (const TWeakObjectPtr<AActor>& Current : CurrentHits)
     {
         if (!Probe.PreviousHits.Contains(Current))
@@ -118,10 +113,9 @@ void FOcclusionTraceLibrary::NotifyEnter(AActor* Actor, UObject* TracerIdentity)
 {
     if (!Actor) return;
 
-    TArray<UOcclusionObstacleComp_Physical*> Comps;
-    Actor->GetComponents<UOcclusionObstacleComp_Physical>(Comps);
+    TArray<UActorComponent*> Comps = Actor->GetComponentsByInterface(UOcclusionInterface::StaticClass());
 
-    for (UOcclusionObstacleComp_Physical* Comp : Comps)
+    for (UActorComponent* Comp : Comps)
     {
         IOcclusionInterface::Execute_OnOcclusionEnter(Comp, TracerIdentity);
     }
@@ -135,10 +129,9 @@ void FOcclusionTraceLibrary::NotifyExit(AActor* Actor, UObject* TracerIdentity)
 {
     if (!Actor) return;
 
-    TArray<UOcclusionObstacleComp_Physical*> Comps;
-    Actor->GetComponents<UOcclusionObstacleComp_Physical>(Comps);
+    TArray<UActorComponent*> Comps = Actor->GetComponentsByInterface(UOcclusionInterface::StaticClass());
 
-    for (UOcclusionObstacleComp_Physical* Comp : Comps)
+    for (UActorComponent* Comp : Comps)
     {
         IOcclusionInterface::Execute_OnOcclusionExit(Comp, TracerIdentity);
     }

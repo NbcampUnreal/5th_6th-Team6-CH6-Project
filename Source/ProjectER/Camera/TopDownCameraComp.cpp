@@ -58,6 +58,7 @@ void UTopDownCameraComp::TickComponent(float DeltaTime, ELevelTick TickType,
 		CurveSubSystem ? TEXT("Valid") : TEXT("NULL"),
 		*GetComponentLocation().ToString());
 
+	//Movement
 	if (bIsFreeCamMode)
 	{
 		TickFreeCamMode(DeltaTime);

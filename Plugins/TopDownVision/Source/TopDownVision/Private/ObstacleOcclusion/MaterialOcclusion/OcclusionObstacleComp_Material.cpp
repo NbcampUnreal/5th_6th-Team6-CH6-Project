@@ -10,10 +10,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogMaterialOcclusion, Log, All);
 UOcclusionObstacleComp_Material::UOcclusionObstacleComp_Material()
 {
     PrimaryComponentTick.bCanEverTick = true;
-
-    FadeSpeed          = 6.0f;
-    AlphaParameterName = TEXT("OcclusionAlpha");
-    MeshTag            = TEXT("OcclusionMesh");
+    PrimaryComponentTick.bStartWithTickEnabled = false;
 }
 
 void UOcclusionObstacleComp_Material::BeginPlay()
@@ -24,7 +21,6 @@ void UOcclusionObstacleComp_Material::BeginPlay()
         TEXT("MaterialOcclusion >> BeginPlay for %s"),
         *GetOwner()->GetName());
 
-    DiscoverChildMeshes();
     InitializeMaterials();
 }
 
@@ -35,11 +31,45 @@ void UOcclusionObstacleComp_Material::TickComponent(
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    const float TargetAlpha = bShouldBeOccluded ? 1.0f : 0.0f;
+    const float TargetAlpha = bShouldBeOccluded ? 1.f : 0.f;
 
     CurrentAlpha = FMath::FInterpTo(CurrentAlpha, TargetAlpha, DeltaTime, FadeSpeed);
 
     UpdateMaterialAlpha();
+
+    if (FMath::IsNearlyEqual(CurrentAlpha, TargetAlpha, 0.001f))
+    {
+        CurrentAlpha = TargetAlpha;
+        UpdateMaterialAlpha();
+        SetComponentTickEnabled(false);
+    }
+}
+
+void UOcclusionObstacleComp_Material::SetupOcclusionMeshes()
+{
+    DiscoverChildMeshes();
+}
+
+void UOcclusionObstacleComp_Material::InitializeCollisionAndShadow()
+{
+    for (TSoftObjectPtr<UMeshComponent> MeshPtr : TargetMeshes)
+    {
+        UMeshComponent* Mesh = MeshPtr.Get();
+        if (!Mesh) continue;
+
+        if (UStaticMeshComponent* StaticMesh = Cast<UStaticMeshComponent>(Mesh))
+        {
+            StaticMesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+            StaticMesh->SetCollisionResponseToChannel(OcclusionTraceChannel, ECR_Block);
+            StaticMesh->SetCollisionResponseToChannel(MouseTraceChannel, ECR_Ignore);
+
+            UE_LOG(LogMaterialOcclusion, Log,
+                TEXT("MaterialOcclusion >> Set ECR_Block on %s"),
+                *StaticMesh->GetName());
+        }
+
+        Mesh->SetCastShadow(false);
+    }
 }
 
 // ── IOcclusionInterface ───────────────────────────────────────────────────────
@@ -50,6 +80,8 @@ void UOcclusionObstacleComp_Material::OnOcclusionEnter_Implementation(UObject* S
 
     ActiveOverlaps.Add(SourceTracer);
     bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+
+    SetComponentTickEnabled(true);
 
     UE_LOG(LogMaterialOcclusion, Verbose,
         TEXT("MaterialOcclusion >> Enter %s | overlaps: %d"),
@@ -63,6 +95,8 @@ void UOcclusionObstacleComp_Material::OnOcclusionExit_Implementation(UObject* So
     ActiveOverlaps.Remove(SourceTracer);
     CleanupInvalidOverlaps();
     bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+
+    SetComponentTickEnabled(true);
 
     UE_LOG(LogMaterialOcclusion, Verbose,
         TEXT("MaterialOcclusion >> Exit %s | overlaps: %d"),
@@ -80,7 +114,6 @@ void UOcclusionObstacleComp_Material::DiscoverChildMeshes()
         TEXT("MaterialOcclusion >> Discovering meshes for %s"),
         *GetOwner()->GetName());
 
-    // OccludedTag unused — material version drives a single alpha on all tagged meshes
     TArray<TSoftObjectPtr<UMeshComponent>> Dummy;
 
     UOcclusionMeshUtil::DiscoverChildMeshes(
@@ -106,9 +139,11 @@ void UOcclusionObstacleComp_Material::InitializeMaterials()
 
 void UOcclusionObstacleComp_Material::UpdateMaterialAlpha()
 {
+
     for (UMaterialInstanceDynamic* MID : DynamicMaterials)
     {
-        if (MID) MID->SetScalarParameterValue(AlphaParameterName, CurrentAlpha);
+        if (!MID) continue;
+        MID->SetScalarParameterValue(AlphaParameterName,   CurrentAlpha);
     }
 }
 

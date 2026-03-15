@@ -10,6 +10,7 @@
 UOcclusionObstacleComp_Physical::UOcclusionObstacleComp_Physical()
 {
     PrimaryComponentTick.bCanEverTick = true;
+    PrimaryComponentTick.bStartWithTickEnabled = false;// manual tick toggle
 }
 
 void UOcclusionObstacleComp_Physical::BeginPlay()
@@ -43,6 +44,14 @@ void UOcclusionObstacleComp_Physical::TickComponent(float DeltaTime, ELevelTick 
     CurrentAlpha = FMath::FInterpTo(CurrentAlpha, TargetAlpha, DeltaTime, FadeSpeed);
 
     UpdateMaterialAlpha();
+
+    // tick stopping condition
+    if (FMath::IsNearlyEqual(CurrentAlpha, TargetAlpha, 0.001f))
+    {
+        CurrentAlpha = TargetAlpha;// snap to exact value
+        UpdateMaterialAlpha();// update
+        SetComponentTickEnabled(false); // disable tick
+    }
 }
 
 // ── IOcclusionInterface — called by OcclusionProbeComp hit diff ───────────────
@@ -53,6 +62,8 @@ void UOcclusionObstacleComp_Physical::OnOcclusionEnter_Implementation(UObject* S
 
     ActiveOverlaps.Add(SourceTracer);
     bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+
+    SetComponentTickEnabled(true);// start the tick
 
     UE_LOG(Occlusion, Log,
         TEXT("UOcclusionObstacleComponent::OnOcclusionEnter>> %s | ActiveOverlaps: %d"),
@@ -66,6 +77,8 @@ void UOcclusionObstacleComp_Physical::OnOcclusionExit_Implementation(UObject* So
     ActiveOverlaps.Remove(SourceTracer);
     CleanupInvalidOverlaps();
     bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+
+    SetComponentTickEnabled(true);// restart the tick if the tick was disabled before
 
     UE_LOG(Occlusion, Log,
         TEXT("UOcclusionObstacleComponent::OnOcclusionExit>> %s | ActiveOverlaps: %d"),
