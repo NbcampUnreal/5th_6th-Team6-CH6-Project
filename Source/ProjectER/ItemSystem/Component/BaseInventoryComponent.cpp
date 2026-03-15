@@ -1,4 +1,4 @@
-﻿// File: 5th_6th-Team6-CH6-Project/Source/ProjectER/ItemSystem/Component/BaseInventoryComponent.cpp
+// File: 5th_6th-Team6-CH6-Project/Source/ProjectER/ItemSystem/Component/BaseInventoryComponent.cpp
 
 #include "ItemSystem/Component/BaseInventoryComponent.h"
 #include "ItemSystem/Data/BaseItemData.h"
@@ -25,8 +25,8 @@ void UBaseInventoryComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Initialize inventory slots with nullptrs on the server
-	if (GetOwner()->HasAuthority())
+	// Initialize inventory slots with nullptrs on the server only if not already initialized
+	if (GetOwner()->HasAuthority() && InventoryContents.Num() == 0)
 	{
 		InventoryContents.Init(nullptr, MaxSlots);
 	}

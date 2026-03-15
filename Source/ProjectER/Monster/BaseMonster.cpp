@@ -127,16 +127,12 @@ void ABaseMonster::PossessedBy(AController* newController)
 		MonsterRangeComp->OnPlayerOut.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
 		
 		ASC->RegisterGameplayTagEvent(
-			FGameplayTag::RequestGameplayTag("State.Debuff.Hard.Stun"),
-			EGameplayTagEventType::AnyCountChange
-			).AddUObject(this, &ABaseMonster::OnCCChanged);
-		ASC->RegisterGameplayTagEvent(
 			FGameplayTag::RequestGameplayTag("State.Debuff.Hard.Airborne"),
 			EGameplayTagEventType::NewOrRemoved
 			).AddUObject(this, &ABaseMonster::OnCCChanged);
 		ASC->RegisterGameplayTagEvent(
-			FGameplayTag::RequestGameplayTag("State.Debuff.Soft.Root"),
-			EGameplayTagEventType::NewOrRemoved
+			FGameplayTag::RequestGameplayTag("State.Debuff.Hard.Stun"),
+			EGameplayTagEventType::AnyCountChange
 			).AddUObject(this, &ABaseMonster::OnCCChanged);
 	}
 }
@@ -515,11 +511,11 @@ void ABaseMonster::GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGamepl
 	TArray<TWeakObjectPtr<AER_PlayerState>> TeamPSArray = EPS->GetTeamArray(TeamIndex);
 
 	FVector MonsterLocation = GetActorLocation();
-	for (auto TeamPS : TeamPSArray)
+	for (int32 i = TeamPSArray.Num() - 1; i >= 0; --i)
 	{
-		if (!TeamPS.IsValid()) continue;
+		if (!TeamPSArray[i].IsValid()) continue;
 
-		APlayerController* PC = TeamPS->GetPlayerController();
+		APlayerController* PC = TeamPSArray[i]->GetPlayerController();
 		if (!PC) continue;
 
 		APawn* Pawn = PC->GetPawn();
@@ -527,9 +523,10 @@ void ABaseMonster::GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGamepl
 
 		FVector TeamLocation = Pawn->GetActorLocation();
 		float DistSq = FVector::DistSquared(TeamLocation, MonsterLocation);
-		if (DistSq > 1000000.f) // 1000보다 멀면 못받음
+
+		if (DistSq > 1000000.f)
 		{
-			TeamPSArray.Remove(TeamPS);
+			TeamPSArray.RemoveAt(i);
 		}
 	}
 
@@ -840,14 +837,20 @@ void ABaseMonster::OnCCChanged(FGameplayTag Tag, int32 NewCount)
 {
 	if (NewCount > 0)
 	{
-		//ASC->CancelAllAbilities();
-		SendStateTreeEvent(FGameplayTag::RequestGameplayTag("Event.State.Debuff.Hard"));
-		// Hard CC 적용됨
-	}
+		SetbIsCombat(true);
+		SendStateTreeEvent(FGameplayTag::RequestGameplayTag("Event.State.Debuff"));
+		ASC->CancelAllAbilities();
+	} 
 	else
 	{
-		//SetbIsCombat(false);
-		SendStateTreeEvent(MonsterTags.HitEventTag);
-		// Hard CC 해제됨
+		// 재검사용
+		SendStateTreeEvent(FGameplayTag::RequestGameplayTag("Event.State.Debuff"));
 	}
+}
+
+void ABaseMonster::OffCCChanged()
+{
+	// CC 상태 종료 후 Combat상태로 전환용
+	SetbIsCombat(false);
+	SendStateTreeEvent(MonsterTags.HitEventTag);
 }
