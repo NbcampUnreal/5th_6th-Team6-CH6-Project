@@ -6,7 +6,6 @@
 #include "SkillSystem/GameplayEffectComponent/SummonRangeAtBone.h"
 #include "LaunchProjectile.generated.h"
 
-class AProjectileBase;
 
 UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced)
 class PROJECTER_API ULaunchProjectileConfig : public USummonRangeByBoneGECConfig
