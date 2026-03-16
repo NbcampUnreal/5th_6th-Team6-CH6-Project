@@ -5,7 +5,7 @@
 #include "CharacterSystem/Data/CharacterData.h"
 #include "CharacterSystem/Player/BasePlayerController.h"
 #include "ItemSystem/Component/LootableComponent.h" // [김현수 추가분]
-#include "ItemSystem/Component/BaseInventoryComponent.h" // [김현수 추가분]
+#include "ItemSystem/Component/BaseInventoryComponent.h" // [김현수 추가분] 빈사/사망 전환 시 food 효과 정리용
 
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -1396,6 +1396,12 @@ void ABaseCharacter::HandleDeath()
 {
 	if (HasAuthority())
 	{
+		// [김현수 추가분] 사망 진입 시 진행 중인 food 회복 효과와 대기 큐를 즉시 제거
+		if (UBaseInventoryComponent* InvComp = FindComponentByClass<UBaseInventoryComponent>())
+		{
+			InvComp->ClearFoodHealEffects();
+		}
+
 		if (AbilitySystemComponent.IsValid()) // 중복 사망 방지
 		{
 			FGameplayTag DeathTag = ProjectER::State::Life::Death;
@@ -1539,6 +1545,12 @@ void ABaseCharacter::HandleDown()
 {
 	if (HasAuthority())
 	{
+		// [김현수 추가분] 빈사 진입 시 진행 중인 food 회복 효과와 대기 큐를 즉시 제거
+		if (UBaseInventoryComponent* InvComp = FindComponentByClass<UBaseInventoryComponent>())
+		{
+			InvComp->ClearFoodHealEffects();
+		}
+
 		if (AbilitySystemComponent.IsValid())
 		{
 			// 기존 진행 중인 모든 어빌리티 취소 (공격, 캐스팅 등)
