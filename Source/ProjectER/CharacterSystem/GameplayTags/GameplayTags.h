@@ -199,6 +199,17 @@ namespace ProjectER
 				UE_DECLARE_GAMEPLAY_TAG_EXTERN(R);
 			}
 		}
+		namespace Decal
+		{
+			namespace Skill
+			{
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(AutoAttack);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(Q);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(W);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(E);
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(R);
+			}
+		}
 
 		namespace Combat
 		{

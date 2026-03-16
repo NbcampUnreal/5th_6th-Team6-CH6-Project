@@ -107,6 +107,24 @@ struct FMonsterSoundData
 	TObjectPtr<USoundBase> TestSound;
 };
 
+USTRUCT(BlueprintType)
+struct FMonsterDecalData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TObjectPtr<UMaterialInterface> DecalMeterial;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	FVector DecalScale = FVector(0, 0, 0);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	FVector PositionOffset = FVector(0, 0, 0);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	FRotator RotationOffset = FRotator(0, 0, 0);
+};
+
 
 // 몬스터 데이터
 UCLASS()
@@ -153,6 +171,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Effect")
 	TMap<EMonsterActionType, FMonsterSoundData> Sounds;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "MonsterData|Effect")
+	TMap<EMonsterActionType, FMonsterDecalData> DecalMeterials;
 
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Visual")
