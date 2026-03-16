@@ -506,7 +506,8 @@ void ABasePlayerController::MoveToMouseCursor()
 							InteractionTarget = HitActor; 
 						
 							ControlledBaseChar->SetTarget(nullptr); // 공격 타겟 초기화
-							ControlledBaseChar->MoveToLocation(Hit.Location); // 아군을 향해 이동
+				
+							ControlledBaseChar->MoveToLocation(HitActor->GetActorLocation());
 							return; 
 						}
 					}	
@@ -651,10 +652,9 @@ void ABasePlayerController::CheckInteractionDistance()
 		return;
 	}
 
-	const float CurrentDistance =
-		FVector::Dist(ControlledBaseChar->GetActorLocation(), InteractionTarget->GetActorLocation());
+	const float CurrentDistance = ControlledBaseChar->GetDistanceTo(InteractionTarget);
 
-	if (CurrentDistance > 150.f)
+	if (CurrentDistance > 200.f)
 	{
 		return;
 	}
