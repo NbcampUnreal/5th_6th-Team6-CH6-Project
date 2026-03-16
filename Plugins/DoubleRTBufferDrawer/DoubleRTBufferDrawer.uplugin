@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "DoubleRTBufferDrawer",
+	"Description": "this is for RT attatched to pawn to update the RT draw while keeping the location update per delta tick whitle keeping the seperate tick for RT update",
+	"Category": "Rendering",
+	"CreatedBy": "NarpNarp",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "DoubleRTBufferDrawer",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
