@@ -3,16 +3,21 @@
 #include "TopDownCameraComp.h"
 
 #include "CurvedWorldSubsystem.h"
-#include "Camera/CameraComponent.h"
+
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
+
+// sub comps
 #include "GameFramework/SpringArmComponent.h"
+#include "Camera/CameraComponent.h"
 #include "LineOfSight/MainVisionRTManager.h"
 #include "ObstacleOcclusion/MaterialOcclusion/MainOcclusionPainter.h"
+#include "Visual/PostProcessVolumeActivator/CameraPPVolumeActivator.h"
 
 #include "LogHelper/DebugLogHelper.h"
+
 
 //Log
 DEFINE_LOG_CATEGORY(MainCameraComp);
@@ -40,6 +45,8 @@ UTopDownCameraComp::UTopDownCameraComp()
 	MainVisionRTManager = CreateDefaultSubobject<UMainVisionRTManager>(TEXT("MainVisionRTComp"));
 	// Occlusion Painter RT
 	OcclusionPainter = CreateDefaultSubobject<UMainOcclusionPainter>(TEXT("OcclusionPainter"));
+	// PostProcess Activator
+	PostProcessActivator=CreateDefaultSubobject<UCameraPPVolumeActivator>(TEXT("PostProcessActivator"));
 
 	UE_LOG(MainCameraComp, Log,
 		TEXT("%s UTopDownCameraComp::Constructor >> Component created"),
@@ -444,6 +451,17 @@ void UTopDownCameraComp::PrepareSubComponents()
 	{
 		UE_LOG(MainCameraComp, Error,
 			TEXT("%s UTopDownCameraComp::PrepareSubComponents >> OcclusionPainter is NULL"),
+			*DebugLogHelper::GetClientDebugName(this));
+	}
+
+	if (PostProcessActivator)
+	{
+		PostProcessActivator->Initialize(this);
+	}
+	else
+	{
+		UE_LOG(MainCameraComp, Error,
+			TEXT("%s UTopDownCameraComp::PrepareSubComponents >> PostProcessActivator is NULL"),
 			*DebugLogHelper::GetClientDebugName(this));
 	}
 }

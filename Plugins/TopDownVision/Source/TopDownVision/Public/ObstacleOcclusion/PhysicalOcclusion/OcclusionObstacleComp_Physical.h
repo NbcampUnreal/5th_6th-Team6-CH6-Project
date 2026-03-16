@@ -23,28 +23,28 @@ public:
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-    // Discovers child meshes and generates shadow proxies — call in editor via CallInEditor
     UFUNCTION(BlueprintCallable, Category="Occlusion Setup")
     void SetupOcclusionMeshes();
 
-    // Sets collision and shadow settings on discovered meshes
     UFUNCTION(BlueprintCallable, Category="Occlusion Setup")
     void InitializeCollisionAndShadow();
+
+    UFUNCTION(BlueprintCallable, Category="Occlusion")
+    void SetFadeSpeed(float InFadeSpeed) { FadeSpeed = InFadeSpeed; }
+
+    UFUNCTION(BlueprintCallable, Category="Occlusion")
+    void SetShouldCastShadow(bool bCastShadow) { bCastShadowWhenOccluded = bCastShadow; }
 
     virtual void OnOcclusionEnter_Implementation(UObject* SourceTracer) override;
     virtual void OnOcclusionExit_Implementation(UObject* SourceTracer) override;
 
 private:
 
-    // Creates hidden mesh proxies for shadow casting
-    // Static: UStaticMeshComponent proxy
-    // Skeletal: USkeletalMeshComponent proxy with SetLeaderPoseComponent for anim mirroring
-    void GenerateShadowProxyMeshes();
-
-    void InitializeMaterials();     // MID creation at runtime
-    void UpdateMaterialAlpha();     // sends visibility alpha to MIDs each tick
+    void GenerateShadowProxyMeshes();  // delegates to OcclusionMeshUtil
+    void InitializeMaterials();
+    void UpdateMaterialAlpha();
     void CleanupInvalidOverlaps();
-    void DiscoverChildMeshes();     // finds tagged meshes from owner actor hierarchy
+    void DiscoverChildMeshes();
 
 protected:
 
@@ -66,12 +66,14 @@ protected:
     UPROPERTY(EditAnywhere, Category="Occlusion")
     TEnumAsByte<ECollisionChannel> MouseTraceChannel = ECC_Visibility;
 
-    // Curved world proxy material — fully opaque, WPO driven by MPC
-    // Used for all shadow proxies (static and skeletal) — no MID needed
+    UPROPERTY(EditAnywhere, Category="Occlusion|Shadow")
+    bool bCastShadowWhenOccluded = true;
+    
     UPROPERTY(EditAnywhere, Category="Occlusion|Shadow")
     TObjectPtr<UMaterialInterface> ShadowProxyMaterial;
 
 private:
+
     UPROPERTY(Transient)
     TSet<TWeakObjectPtr<UObject>> ActiveOverlaps;
 
@@ -80,23 +82,26 @@ private:
     bool  bLastOcclusionState = false;
 
     UPROPERTY(Transient)
-    TArray<UMaterialInstanceDynamic*> NormalDynamicMaterials;
+    TArray<UMaterialInstanceDynamic*> NormalStaticMIDs;
 
     UPROPERTY(Transient)
-    TArray<UMaterialInstanceDynamic*> OccludedDynamicMaterials;
+    TArray<UMaterialInstanceDynamic*> NormalSkeletalMIDs;
 
-    // UMeshComponent covers both static and skeletal meshes
+    UPROPERTY(Transient)
+    TArray<UMaterialInstanceDynamic*> OccludedStaticMIDs;
+
+    UPROPERTY(Transient)
+    TArray<UMaterialInstanceDynamic*> OccludedSkeletalMIDs;
+
     UPROPERTY(VisibleAnywhere)
     TArray<TSoftObjectPtr<UMeshComponent>> NormalMeshes;
 
     UPROPERTY(VisibleAnywhere)
     TArray<TSoftObjectPtr<UMeshComponent>> OccludedMeshes;
 
-    // Static mesh shadow proxies
     UPROPERTY(VisibleAnywhere, Category="Occlusion|Shadow")
     TArray<TObjectPtr<UStaticMeshComponent>> StaticShadowProxies;
 
-    // Skeletal mesh shadow proxies — mirrors animations via SetLeaderPoseComponent
     UPROPERTY(VisibleAnywhere, Category="Occlusion|Shadow")
     TArray<TObjectPtr<USkeletalMeshComponent>> SkeletalShadowProxies;
 };

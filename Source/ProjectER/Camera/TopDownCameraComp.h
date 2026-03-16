@@ -21,6 +21,8 @@ class UMainVisionRTManager;
 class UCurvedWorldSubsystem;
 // Occlusion RT
 class UMainOcclusionPainter;
+// Post Process volume activator
+class UCameraPPVolumeActivator;
 
 PROJECTER_API DECLARE_LOG_CATEGORY_EXTERN(MainCameraComp, Log, All);
 
@@ -54,6 +56,10 @@ public:
 	FVector GetCameraWorldLocation() const { return GetComponentLocation(); }
 	UCameraComponent* GetCameraComp() const { return CameraComp; }
 	USpringArmComponent* GetCameraBoomComp() const { return SpringArm; }
+	UCameraPPVolumeActivator* GetPPActivatorComp() const {return PostProcessActivator; }
+
+
+	//bool flag checking
 	bool IsCameraPanFreeMode() const { return bIsFreeCamMode; }
 
 
@@ -96,6 +102,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera|Components")
 	TObjectPtr<UMainOcclusionPainter> OcclusionPainter;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera|Components")
+	TObjectPtr<UCameraPPVolumeActivator> PostProcessActivator;
 	
 	// Cached subsystem
 	UPROPERTY(Transient)
