@@ -1704,6 +1704,7 @@ void ABaseCharacter::InitUI()
 			HUD->InitHeroDataFactory(HeroData);
 			HUD->InitASCFactory(GetAbilitySystemComponent());
 			PC->setMainHud(HUD->getMainHUD());
+			PC->OnInventoryUpdated();
 			
 			// 얼굴 아이콘 설정
 			HUD->getMainHUD()->SetMyFaceIcon(HeroData->CharacterIcon);
