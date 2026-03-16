@@ -60,7 +60,9 @@ struct FOcclusionProbe
     float   SecondaryFilterSphereRadius = 0.f;
 
     // Runtime state — not serialized
-    TSet<TWeakObjectPtr<UActorComponent>> PreviousHits;
+    //TSet<TWeakObjectPtr<UActorComponent>> PreviousHits;
+
+    TSet<TWeakObjectPtr<UObject>> PreviousHits;// to cover actor and actor comp -> change to uobject
     TSet<int32> HitSweepIndices;
     TSet<int32> HitLineIndices;
 };

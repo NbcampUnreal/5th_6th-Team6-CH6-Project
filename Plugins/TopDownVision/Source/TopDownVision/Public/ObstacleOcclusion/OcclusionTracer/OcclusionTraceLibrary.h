@@ -37,10 +37,14 @@ public:
 
 private:
 
-    static void NotifyEnter(UActorComponent* Comp, UObject* TracerIdentity);
-    static void NotifyExit(UActorComponent* Comp, UObject* TracerIdentity);
+    /*static void NotifyEnter(UActorComponent* Comp, UObject* TracerIdentity);
+    static void NotifyExit(UActorComponent* Comp, UObject* TracerIdentity);*/
 
-    static UActorComponent* FindOwningOcclusionComp(UPrimitiveComponent* HitPrimitive);
+    // UObject* covers both UActorComponent (existing comps) and AActor (binder)
+    static void NotifyEnter(UObject* OcclusionObject, UObject* TracerIdentity);
+    static void NotifyExit(UObject* OcclusionObject, UObject* TracerIdentity);
+
+    static UObject* FindOwningOcclusionObject(UPrimitiveComponent* HitPrimitive);
 
     FOcclusionTraceLibrary() = delete;
 };

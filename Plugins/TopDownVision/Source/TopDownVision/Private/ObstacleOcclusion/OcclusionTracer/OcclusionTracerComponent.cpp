@@ -117,8 +117,7 @@ void UOcclusionTracerComponent::OnOwnerBecameHidden()
 
     GetWorld()->GetTimerManager().ClearTimer(TraceTimerHandle);
 
-    // PreviousHits now tracks components directly — notify each one individually
-    for (const TWeakObjectPtr<UActorComponent>& Previous : Probe.PreviousHits)
+    for (const TWeakObjectPtr<UObject>& Previous : Probe.PreviousHits)
     {
         if (!Previous.IsValid()) continue;
         IOcclusionInterface::Execute_OnOcclusionExit(Previous.Get(), this);

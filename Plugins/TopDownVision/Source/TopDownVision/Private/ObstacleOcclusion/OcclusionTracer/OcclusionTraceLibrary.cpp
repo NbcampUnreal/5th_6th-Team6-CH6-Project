@@ -1,38 +1,43 @@
-﻿#include "TopDownVision/Public/ObstacleOcclusion/OcclusionTracer/OcclusionTraceLibrary.h"
-#include "TopDownVision/Public/ObstacleOcclusion/OcclusionTracer/OcclusionInterface.h"
+﻿#include "ObstacleOcclusion/OcclusionTracer/OcclusionTraceLibrary.h"
+#include "ObstacleOcclusion/Binder/OcclusionBinder.h"
 #include "TopDownVisionDebug.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
+#include "ObstacleOcclusion/Manager/OcclusionBinderSubsystem.h"
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 
-UActorComponent* FOcclusionTraceLibrary::FindOwningOcclusionComp(UPrimitiveComponent* HitPrimitive)
+UObject* FOcclusionTraceLibrary::FindOwningOcclusionObject(UPrimitiveComponent* HitPrimitive)
 {
     if (!HitPrimitive) return nullptr;
 
-    // Walk up the attachment chain from the hit primitive —
-    // the first ancestor that implements IOcclusionInterface is the owning comp.
-    // This correctly handles multi-comp actors by finding the specific comp
-    // whose mesh subtree contains the hit primitive.
+    // 1. Walk attachment chain — mesh is child of occlusion comp
     USceneComponent* Current = HitPrimitive;
     while (Current)
     {
         if (Current->GetClass()->ImplementsInterface(UOcclusionInterface::StaticClass()))
             return Current;
-
         Current = Current->GetAttachParent();
     }
 
-    // No occlusion comp found in attachment chain —
-    // fall back to first interface comp on the actor.
-    // This path fires when meshes are attached to the actor root rather than
-    // directly to the occlusion comp — for full per-comp accuracy, meshes should
-    // be children of their respective occlusion comp in the hierarchy.
+    // 2. GetComponentsByInterface on actor — comp lives on same actor as mesh
     AActor* Owner = HitPrimitive->GetOwner();
     if (!Owner) return nullptr;
 
     TArray<UActorComponent*> Comps = Owner->GetComponentsByInterface(UOcclusionInterface::StaticClass());
-    return Comps.Num() > 0 ? Comps[0] : nullptr;
+    if (Comps.Num() > 0) return Comps[0];
+
+    // 3. Binder subsystem lookup — mesh belongs to a world-placed bound actor
+    if (UWorld* World = HitPrimitive->GetWorld())
+    {
+        if (UOcclusionBinderSubsystem* Sub = World->GetSubsystem<UOcclusionBinderSubsystem>())
+        {
+            if (AOcclusionBinder* Binder = Sub->FindBinder(HitPrimitive))
+                return Binder;
+        }
+    }
+
+    return nullptr;
 }
 
 // ── RunProbes ─────────────────────────────────────────────────────────────────
@@ -61,7 +66,7 @@ void FOcclusionTraceLibrary::RunProbe(
 {
     if (!World) return;
 
-    TSet<TWeakObjectPtr<UActorComponent>> CurrentHits;
+    TSet<TWeakObjectPtr<UObject>> CurrentHits;
     Probe.HitSweepIndices.Reset();
 
     FCollisionQueryParams Params;
@@ -93,23 +98,21 @@ void FOcclusionTraceLibrary::RunProbe(
 
         for (int32 i = 0; i < Overlaps.Num(); ++i)
         {
-            UPrimitiveComponent* HitPrim = Overlaps[i].GetComponent();
+            UPrimitiveComponent* HitPrim  = Overlaps[i].GetComponent();
             AActor*              HitActor = Overlaps[i].GetActor();
             if (!HitActor || !HitPrim) continue;
 
-            // Find the specific occlusion comp that owns the hit primitive —
-            // prevents multi-comp actors from all triggering on a single mesh hit
-            UActorComponent* OcclusionComp = FindOwningOcclusionComp(HitPrim);
+            UObject* OcclusionObject = FindOwningOcclusionObject(HitPrim);
 
             if (bDebugDraw)
             {
-                const FColor HitColor = OcclusionComp ? FColor::Orange : FColor::White;
+                const FColor HitColor = OcclusionObject ? FColor::Orange : FColor::White;
                 DrawDebugString(
                     World,
                     HitActor->GetActorLocation(),
                     FString::Printf(TEXT("%s [%s] Sphere[%d]"),
                         *HitActor->GetName(),
-                        OcclusionComp ? TEXT("OCCLUSION") : TEXT("other"),
+                        OcclusionObject ? TEXT("OCCLUSION") : TEXT("other"),
                         SweepIdx),
                     nullptr,
                     HitColor,
@@ -117,20 +120,20 @@ void FOcclusionTraceLibrary::RunProbe(
                     true);
             }
 
-            if (!OcclusionComp) continue;
+            if (!OcclusionObject) continue;
 
-            CurrentHits.Add(OcclusionComp);
+            CurrentHits.Add(OcclusionObject);
             Probe.HitSweepIndices.Add(SweepIdx);
         }
     }
 
-    for (const TWeakObjectPtr<UActorComponent>& Current : CurrentHits)
+    for (const TWeakObjectPtr<UObject>& Current : CurrentHits)
     {
         if (!Probe.PreviousHits.Contains(Current))
             NotifyEnter(Current.Get(), TracerIdentity);
     }
 
-    for (const TWeakObjectPtr<UActorComponent>& Previous : Probe.PreviousHits)
+    for (const TWeakObjectPtr<UObject>& Previous : Probe.PreviousHits)
     {
         if (Previous.IsValid() && !CurrentHits.Contains(Previous))
             NotifyExit(Previous.Get(), TracerIdentity);
@@ -150,7 +153,7 @@ void FOcclusionTraceLibrary::RunLineProbe(
 {
     if (!World) return;
 
-    TSet<TWeakObjectPtr<UActorComponent>> CurrentHits;
+    TSet<TWeakObjectPtr<UObject>> CurrentHits;
     Probe.HitLineIndices.Reset();
 
     FCollisionQueryParams Params;
@@ -160,8 +163,6 @@ void FOcclusionTraceLibrary::RunLineProbe(
         if (Ignored) Params.AddIgnoredActor(Ignored);
     }
 
-    // Project pawn XY position onto camera horizontal forward axis —
-    // absolute world position avoids drift with laterally offset cameras (e.g. 45 degree yaw rig).
     const float PawnDepthOnCamAxis = FVector::DotProduct(
         FVector(Probe.Target.X, Probe.Target.Y, 0.f),
         Probe.CameraForwardH);
@@ -196,7 +197,7 @@ void FOcclusionTraceLibrary::RunLineProbe(
                         > Probe.SecondaryFilterSphereRadius) return false;
                 }
 
-                return FindOwningOcclusionComp(H.GetComponent()) != nullptr;
+                return FindOwningOcclusionObject(H.GetComponent()) != nullptr;
             });
 
             DrawDebugLine(
@@ -212,44 +213,35 @@ void FOcclusionTraceLibrary::RunLineProbe(
 
         for (const FHitResult& Hit : Hits)
         {
-            // Ignore hits at or behind the camera
             if (Hit.Distance <= KINDA_SMALL_NUMBER) continue;
 
-            // Primary filter — depth plane along camera horizontal forward axis.
-            // Rejects anything at or past the pawn's absolute depth on the camera axis.
             const float HitDepth = FVector::DotProduct(
                 FVector(Hit.ImpactPoint.X, Hit.ImpactPoint.Y, 0.f),
                 Probe.CameraForwardH);
 
             if (HitDepth >= PawnDepthOnCamAxis) continue;
 
-            // Secondary filter — frustum-sized sphere offset toward camera by half radius.
-            // Rejects hits geometrically too far from the pawn to realistically occlude it.
             if (Probe.SecondaryFilterSphereRadius > 0.f)
             {
-                const float DistToSphereCenter = FVector::Dist(
-                    Hit.ImpactPoint,
-                    Probe.SecondaryFilterSphereCenter);
-
-                if (DistToSphereCenter > Probe.SecondaryFilterSphereRadius) continue;
+                if (FVector::Dist(Hit.ImpactPoint, Probe.SecondaryFilterSphereCenter)
+                    > Probe.SecondaryFilterSphereRadius) continue;
             }
 
             UPrimitiveComponent* HitPrim  = Hit.GetComponent();
             AActor*              HitActor = Hit.GetActor();
             if (!HitActor || !HitPrim) continue;
 
-            // Find the specific occlusion comp that owns the hit primitive
-            UActorComponent* OcclusionComp = FindOwningOcclusionComp(HitPrim);
+            UObject* OcclusionObject = FindOwningOcclusionObject(HitPrim);
 
             if (bDebugDraw)
             {
-                const FColor HitColor = OcclusionComp ? FColor::Orange : FColor::White;
+                const FColor HitColor = OcclusionObject ? FColor::Orange : FColor::White;
                 DrawDebugString(
                     World,
                     Hit.ImpactPoint,
                     FString::Printf(TEXT("%s [%s] Line[%d] HitD:%.0f PawnD:%.0f SphereD:%.0f/%.0f"),
                         *HitActor->GetName(),
-                        OcclusionComp ? TEXT("OCCLUSION") : TEXT("other"),
+                        OcclusionObject ? TEXT("OCCLUSION") : TEXT("other"),
                         LineIdx,
                         HitDepth,
                         PawnDepthOnCamAxis,
@@ -261,21 +253,20 @@ void FOcclusionTraceLibrary::RunLineProbe(
                     true);
             }
 
-            if (!OcclusionComp) continue;
+            if (!OcclusionObject) continue;
 
-            CurrentHits.Add(OcclusionComp);
+            CurrentHits.Add(OcclusionObject);
             Probe.HitLineIndices.Add(LineIdx);
         }
     }
 
-    // Hit diff — notify enter for new hits, exit for dropped hits
-    for (const TWeakObjectPtr<UActorComponent>& Current : CurrentHits)
+    for (const TWeakObjectPtr<UObject>& Current : CurrentHits)
     {
         if (!Probe.PreviousHits.Contains(Current))
             NotifyEnter(Current.Get(), TracerIdentity);
     }
 
-    for (const TWeakObjectPtr<UActorComponent>& Previous : Probe.PreviousHits)
+    for (const TWeakObjectPtr<UObject>& Previous : Probe.PreviousHits)
     {
         if (Previous.IsValid() && !CurrentHits.Contains(Previous))
             NotifyExit(Previous.Get(), TracerIdentity);
@@ -286,26 +277,26 @@ void FOcclusionTraceLibrary::RunLineProbe(
 
 // ── Notify ────────────────────────────────────────────────────────────────────
 
-void FOcclusionTraceLibrary::NotifyEnter(UActorComponent* Comp, UObject* TracerIdentity)
+void FOcclusionTraceLibrary::NotifyEnter(UObject* OcclusionObject, UObject* TracerIdentity)
 {
-    if (!Comp) return;
+    if (!OcclusionObject) return;
 
-    IOcclusionInterface::Execute_OnOcclusionEnter(Comp, TracerIdentity);
+    // Execute_OnOcclusionEnter works on any UObject implementing IOcclusionInterface —
+    // covers UActorComponent (existing comps) and AActor (binder)
+    IOcclusionInterface::Execute_OnOcclusionEnter(OcclusionObject, TracerIdentity);
 
     UE_LOG(Occlusion, Log,
-        TEXT("FOcclusionTraceLibrary::NotifyEnter>> %s on %s"),
-        *Comp->GetName(),
-        *Comp->GetOwner()->GetName());
+        TEXT("FOcclusionTraceLibrary::NotifyEnter>> %s"),
+        *OcclusionObject->GetName());
 }
 
-void FOcclusionTraceLibrary::NotifyExit(UActorComponent* Comp, UObject* TracerIdentity)
+void FOcclusionTraceLibrary::NotifyExit(UObject* OcclusionObject, UObject* TracerIdentity)
 {
-    if (!Comp) return;
+    if (!OcclusionObject) return;
 
-    IOcclusionInterface::Execute_OnOcclusionExit(Comp, TracerIdentity);
+    IOcclusionInterface::Execute_OnOcclusionExit(OcclusionObject, TracerIdentity);
 
     UE_LOG(Occlusion, Log,
-        TEXT("FOcclusionTraceLibrary::NotifyExit>> %s on %s"),
-        *Comp->GetName(),
-        *Comp->GetOwner()->GetName());
+        TEXT("FOcclusionTraceLibrary::NotifyExit>> %s"),
+        *OcclusionObject->GetName());
 }
