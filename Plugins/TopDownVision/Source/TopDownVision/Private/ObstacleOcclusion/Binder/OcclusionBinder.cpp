@@ -6,6 +6,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "TopDownVisionDebug.h"
 
+
 DEFINE_LOG_CATEGORY(OcclusionBinder);
 
 AOcclusionBinder::AOcclusionBinder()
@@ -20,7 +21,7 @@ void AOcclusionBinder::BeginPlay()
 {
     Super::BeginPlay();
 
-    DiscoverAndRegisterMeshes();
+    //DiscoverAndRegisterMeshes();
     InitializeMaterials();
 }
 
@@ -108,7 +109,7 @@ void AOcclusionBinder::SetupBoundActors()
         {
             if (!Mesh) continue;
 
-            // Collision — static only, skeletal uses physics asset
+            // Collision
             if (UStaticMeshComponent* StaticMesh = Cast<UStaticMeshComponent>(Mesh))
             {
                 StaticMesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
@@ -122,6 +123,8 @@ void AOcclusionBinder::SetupBoundActors()
         }
     }
 
+    DiscoverAndRegisterMeshes();
+    
     UE_LOG(OcclusionBinder, Log,
         TEXT("AOcclusionBinder::SetupBoundActors>> Setup complete for %s | Bound actors: %d"),
         *GetName(), BoundActors.Num());
