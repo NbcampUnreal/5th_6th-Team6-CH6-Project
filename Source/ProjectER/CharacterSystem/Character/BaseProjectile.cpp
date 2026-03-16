@@ -109,7 +109,10 @@ void ABaseProjectile::Tick(float DeltaTime)
 	else
 	{
 		// 타겟 자체가 소멸했다면(Destroy) 투사체도 삭제
-		Destroy();
+		if (ProjectileMovement && ProjectileMovement->bIsHomingProjectile)
+		{
+			Destroy();
+		}
 	}
 }
 
@@ -155,7 +158,6 @@ void ABaseProjectile::InitializeProjectile()
 		{
 			MeshComp->SetStaticMesh(ProjectileData->ProjectileMesh);
 			MeshComp->SetHiddenInGame(false); 
-			// MeshComp->SetRelativeScale3D(ProjectileData->Scale); // <-- 아래 2번 항목 참조
 		}
 		else 
 		{
