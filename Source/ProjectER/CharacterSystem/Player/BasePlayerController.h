@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "ItemSystem/Interface/I_ItemInteractable.h" // [김현수 추가분]
 
@@ -266,9 +266,6 @@ public:
 	// 인벤토리 업데이트 핸들러
 	UFUNCTION()
 	void OnInventoryUpdated();
-
-	UFUNCTION(Client, Reliable)
-	void Client_RefreshInventoryUI();
 private:
 	UPROPERTY()
 	UUI_MainHUD* MainHUD;
