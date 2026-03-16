@@ -92,6 +92,7 @@ Content/Teammate/minimumTax/TestMap/PCG_RoadGenerationTestMap_REMOTE_2094.umap
 
 # VS Code settings and workspace files
 .vscode/
+.vscode
 ProjectER.code-workspace
 .aiexclude
 
