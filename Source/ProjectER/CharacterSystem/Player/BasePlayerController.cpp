@@ -128,6 +128,7 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 			InvComp->OnInventoryUpdated.RemoveDynamic(this, &ABasePlayerController::OnInventoryUpdated);
 			InvComp->OnInventoryUpdated.AddDynamic(this, &ABasePlayerController::OnInventoryUpdated);
 			UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] Inventory delegate bound (Server)!"));
+			OnInventoryUpdated();
 		}
 	}
 	else

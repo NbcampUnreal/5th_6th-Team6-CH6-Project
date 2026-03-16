@@ -262,6 +262,10 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 	void UI_AssistCountUpdate(int32 AssistCount);
+
+	// 인벤토리 업데이트 핸들러
+	UFUNCTION()
+	void OnInventoryUpdated();
 private:
 	UPROPERTY()
 	UUI_MainHUD* MainHUD;
@@ -299,6 +303,8 @@ private:
 		ECollisionChannel TraceChannel,
 		bool bTraceComplex,
 		FHitResult& OutHitResult);
+
+
 
 private:
 	// UI 클래스
@@ -340,10 +346,6 @@ private:
 
 	// Handler for loot depleted delegate
 	void HandleLootDepleted();
-
-	// 인벤토리 업데이트 핸들러
-	UFUNCTION()
-	void OnInventoryUpdated();
 
 	// Add reference to curved world subsystem
 	UPROPERTY()
