@@ -29,6 +29,14 @@ void UOcclusionObstacleComp_Physical::TickComponent(float DeltaTime, ELevelTick 
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+    //Temp
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComp_Physical::TickComponent>> %s | CurrentAlpha: %.3f | bShouldBeOccluded: %s"),
+        *GetOwner()->GetName(),
+        CurrentAlpha,
+        bShouldBeOccluded ? TEXT("true") : TEXT("false"));
+
+    
     const float TargetAlpha = bShouldBeOccluded ? 1.f : 0.f;
 
     if (bShouldBeOccluded != bLastOcclusionState)
@@ -69,12 +77,31 @@ void UOcclusionObstacleComp_Physical::OnOcclusionExit_Implementation(UObject* So
     if (!SourceTracer) return;
     ActiveOverlaps.Remove(SourceTracer);
     CleanupInvalidOverlaps();
-    bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+
+    if (!bForceOccluded)
+        bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+    
     SetComponentTickEnabled(true);
 
     UE_LOG(Occlusion, Log,
         TEXT("UOcclusionObstacleComp_Physical::OnOcclusionExit>> %s | ActiveOverlaps: %d"),
         *SourceTracer->GetName(), ActiveOverlaps.Num());
+}
+
+void UOcclusionObstacleComp_Physical::ForceOcclude_Implementation(bool bForce)
+{
+    bForceOccluded = bForce;
+    bShouldBeOccluded = bForce ? true : ActiveOverlaps.Num() > 0;
+    SetComponentTickEnabled(true);
+
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComp_Physical::ForceOcclude>> %s | bForce: %s | NormalStaticMIDs: %d | NormalSkeletalMIDs: %d | OccludedStaticMIDs: %d | OccludedSkeletalMIDs: %d"),
+        *GetOwner()->GetName(),
+        bForce ? TEXT("true") : TEXT("false"),
+        NormalStaticMIDs.Num(),
+        NormalSkeletalMIDs.Num(),
+        OccludedStaticMIDs.Num(),
+        OccludedSkeletalMIDs.Num());
 }
 
 // ── Setup ─────────────────────────────────────────────────────────────────────

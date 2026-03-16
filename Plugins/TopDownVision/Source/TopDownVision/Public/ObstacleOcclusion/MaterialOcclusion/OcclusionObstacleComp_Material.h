@@ -41,7 +41,8 @@ public:
 
     virtual void OnOcclusionEnter_Implementation(UObject* SourceTracer) override;
     virtual void OnOcclusionExit_Implementation(UObject* SourceTracer) override;
-
+    virtual void ForceOcclude_Implementation(bool bForce) override;
+    
 private:
 
     void DiscoverChildMeshes();
@@ -82,6 +83,8 @@ private:
 
     float CurrentAlpha      = 0.f;
     bool  bShouldBeOccluded = false;
+
+    bool bForceOccluded = false;
 
     UPROPERTY(Transient)
     TArray<UMaterialInstanceDynamic*> StaticMIDs;

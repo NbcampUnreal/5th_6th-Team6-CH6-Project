@@ -63,12 +63,26 @@ void UOcclusionObstacleComp_Material::OnOcclusionExit_Implementation(UObject* So
     if (!SourceTracer) return;
     ActiveOverlaps.Remove(SourceTracer);
     CleanupInvalidOverlaps();
-    bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+    
+    if (!bForceOccluded)
+        bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+
     SetComponentTickEnabled(true);
 
     UE_LOG(LogMaterialOcclusion, Verbose,
         TEXT("UOcclusionObstacleComp_Material::OnOcclusionExit>> %s | ActiveOverlaps: %d"),
         *GetOwner()->GetName(), ActiveOverlaps.Num());
+}
+
+void UOcclusionObstacleComp_Material::ForceOcclude_Implementation(bool bForce)
+{
+    bForceOccluded = bForce;
+    bShouldBeOccluded = bForce ? true : ActiveOverlaps.Num() > 0;
+    SetComponentTickEnabled(true);
+
+    UE_LOG(LogMaterialOcclusion, Log,
+        TEXT("UOcclusionObstacleComp_Material::ForceOcclude>> %s | bForce: %s"),
+        *GetOwner()->GetName(), bForce ? TEXT("true") : TEXT("false"));
 }
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
