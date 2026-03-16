@@ -198,6 +198,17 @@ namespace ProjectER
 				UE_DEFINE_GAMEPLAY_TAG_COMMENT(R, "GameplayCue.Sound.Skill.R", "R Particle");
 			}
 		}
+		namespace Decal
+		{
+			namespace Skill
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(AutoAttack, "GameplayCue.Decal.Skill.AutoAttack", "AutoAttack Decal");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Q, "GameplayCue.Decal.Skill.Q", "Q Decal");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(W, "GameplayCue.Decal.Skill.W", "W Decal");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(E, "GameplayCue.Decal.Skill.E", "E Decal");
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(R, "GameplayCue.Decal.Skill.R", "R Decal");
+			}
+		}
 
 		namespace Combat
 		{

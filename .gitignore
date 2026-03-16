@@ -89,3 +89,12 @@ Content/Teammate/minimumTax/TestMap/PCG_RoadGenerationTestMap_BASE_2094.umap
 Content/Teammate/minimumTax/TestMap/PCG_RoadGenerationTestMap_LOCAL_2094.umap
 Content/Teammate/minimumTax/TestMap/PCG_RoadGenerationTestMap_REMOTE_2094.umap
 *.zip
+
+# VS Code settings and workspace files
+.vscode/
+.vscode
+ProjectER.code-workspace
+.aiexclude
+
+# IDE Search Ignore File
+.ignore

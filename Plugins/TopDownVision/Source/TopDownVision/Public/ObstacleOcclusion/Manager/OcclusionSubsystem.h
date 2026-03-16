@@ -21,11 +21,14 @@ public:
 
 	// BrushMat — per-target brush material, overrides painter default if set
 	UFUNCTION(BlueprintCallable, Category="OcclusionSubsystem")
-	void RegisterTarget(UPrimitiveComponent* PrimComp, UMaterialInterface* BrushMat, float RadiusPadding = 100.f);
+	int32  RegisterTarget(UPrimitiveComponent* PrimComp, UMaterialInterface* BrushMat, float VisionHalfRadius);
 
 	UFUNCTION(BlueprintCallable, Category="OcclusionSubsystem")
 	void UnregisterTarget(UPrimitiveComponent* PrimComp);
 
+	UFUNCTION(BlueprintCallable, Category="OcclusionSubsystem")
+	void UpdateTargetByIndex(int32 Index, float NewRevealAlpha, float VisionHalfRadius);
+	
 	// ── Read by MainOcclusionPainter each draw ────────────────────────────────────
 
 	const TArray<FOcclusionBrushTarget>& GetTargets() const { return Targets; }

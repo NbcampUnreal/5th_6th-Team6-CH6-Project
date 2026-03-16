@@ -476,3 +476,68 @@ float FeatherApprox(
 
     return Feather;
 }
+
+
+//-----------------------------------------
+// FeatherOutward_2D_Soft_Opacity
+// Opacity-aware version of FeatherOutward_2D_Soft.
+// Use this when the input RT contains PARTIAL alpha values (not just 0/1 binary).
+// Each pixel outputs max(centerAlpha, max over neighborhood of (neighborAlpha * gaussianFalloff(dist))).
+float FeatherOutward_2D_Soft_Opacity(
+    Texture2D MaskTex,
+    SamplerState MaskSampler,
+    float2 UV,
+    float2 TexelSize,       // 1 / RTSize
+    float FeatherPercent,   // 0..1 fraction of RT
+    int NumSamples,         // samples per axis
+    float Sigma             // Gaussian softness, 0..1
+)
+{
+    float Center = MaskTex.SampleLevel(MaskSampler, UV, 0).r;
+
+    // Early-out: fully opaque center needs no expansion
+    if (Center >= 1.0)
+        return 1.0;
+
+    // Start at center value — never shrink existing alpha
+    float BestAlpha = Center;
+
+    NumSamples = clamp(NumSamples, 1, 32);
+
+    float MaxRadiusX = FeatherPercent / TexelSize.x;
+    float MaxRadiusY = FeatherPercent / TexelSize.y;
+
+    [unroll(32)]
+    for (int i = 0; i < 32; i++)
+    {
+        if (i >= NumSamples) break;
+        float fx = (float(i) / float(NumSamples - 1) - 0.5) * 2.0 * MaxRadiusX;
+
+        [unroll(32)]
+        for (int j = 0; j < 32; j++)
+        {
+            if (j >= NumSamples) break;
+            float fy = (float(j) / float(NumSamples - 1) - 0.5) * 2.0 * MaxRadiusY;
+
+            if (fx == 0 && fy == 0) continue;
+
+            float2 SampleUV = UV + float2(fx * TexelSize.x, fy * TexelSize.y);
+            SampleUV = clamp(SampleUV, 0.0, 1.0);
+
+            float SampleAlpha = MaskTex.SampleLevel(MaskSampler, SampleUV, 0).r;
+
+            // Skip zero-alpha neighbors — nothing to spread
+            if (SampleAlpha <= 0.0) continue;
+
+            // Attenuate neighbor's alpha by Gaussian distance weight
+            float DistNorm = length(float2(fx / MaxRadiusX, fy / MaxRadiusY)); // 0..1
+            float DistWeight = exp(-DistNorm * DistNorm / (2.0 * Sigma * Sigma));
+
+            // Max-blend: strongest influence wins
+            BestAlpha = max(BestAlpha, SampleAlpha * DistWeight);
+        }
+    }
+
+    return saturate(BestAlpha);
+}
+

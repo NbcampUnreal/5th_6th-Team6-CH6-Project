@@ -71,6 +71,7 @@ private:
 	};
 
 	UAbilitySystemComponent* ResolveOwnerAbilitySystemComponent() const;
+	bool CanUseItemsInCurrentLifeState() const;
 	FGameplayTag GetSetByCallerTagFromStatType(EItemStatType StatType) const;
 
 	bool ApplyItemEffect(UUsableItemData* ItemData);
@@ -89,4 +90,6 @@ private:
 public:
 	UPROPERTY(BlueprintAssignable, Category = "Inventory")
 	FOnInventoryUpdatedSignature OnInventoryUpdated;
+
+	void ClearFoodHealEffects();
 };
