@@ -1,7 +1,7 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "SkillSystem/Actor/SphereOverlapEffectActor.h"
+#include "SkillSystem/Actor/ABaseRangeOverlapEffectActor/SphereOverlapEffectActor.h"
 #include "Components/SphereComponent.h"
 
 ASphereOverlapEffectActor::ASphereOverlapEffectActor()

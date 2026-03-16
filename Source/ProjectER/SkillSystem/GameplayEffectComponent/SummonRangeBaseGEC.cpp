@@ -1,4 +1,4 @@
-﻿#include "SkillSystem/GameplayEffectComponent/SummonRangeBaseGEC.h"
+#include "SkillSystem/GameplayEffectComponent/SummonRangeBaseGEC.h"
 
 #include "Abilities/GameplayAbilityTypes.h"
 #include "AbilitySystemComponent.h"
@@ -8,7 +8,7 @@
 #include "GameplayEffect.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/Pawn.h"
-#include "SkillSystem/Actor/BaseRangeOverlapEffectActor.h"
+#include "SkillSystem/Actor/ABaseRangeOverlapEffectActor/BaseRangeOverlapEffectActor.h"
 #include "SkillSystem/GameAbility/SkillBase.h"
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 
@@ -111,13 +111,19 @@ void USummonRangeBaseGEC::OnGameplayEffectApplied(FActiveGameplayEffectsContaine
 		SummonerTransform.GetLocation(),
 		SpawnConfig);
 
-	const FGameplayCueParameters RangeCueParams = BuildNiagaraCueParameters(
+	FGameplayCueParameters RangeCueParams = BuildNiagaraCueParameters(
 		GESpec,
 		SpawnConfig->RangeSpawnVfx.CueTag,
 		ContextHandle,
 		DeferredSpawnedActor,
 		RangeSpawnLocation,
-		SpawnConfig);
+		SpawnConfig,
+		SpawnTransform.GetRotation().GetForwardVector());
+
+	if (IsValid(DeferredSpawnedActor))
+	{
+		RangeCueParams.TargetAttachComponent = DeferredSpawnedActor->GetRootComponent();
+	}
 
 	UAbilitySystemComponent* const InstigatorASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(EffectInstigator);
 	if (!IsValid(InstigatorASC))
@@ -171,14 +177,14 @@ const UBaseGECConfig* USummonRangeBaseGEC::ResolveBaseConfigFromSpec(const FGame
 	return SkillContainer.SkillEffectDefinition[DataIndex].Config;
 }
 
-FGameplayCueParameters USummonRangeBaseGEC::BuildNiagaraCueParameters(const FGameplayEffectSpec& GESpec, const FGameplayTag& OriginalTag, const FGameplayEffectContextHandle& EffectContext, AActor* EffectCauser, const FVector& CueLocation, const UObject* SourceObject) const
+FGameplayCueParameters USummonRangeBaseGEC::BuildNiagaraCueParameters(const FGameplayEffectSpec& GESpec, const FGameplayTag& OriginalTag, const FGameplayEffectContextHandle& EffectContext, AActor* EffectCauser, const FVector& CueLocation, const UObject* SourceObject, const FVector& CueNormal) const
 {
 	FGameplayCueParameters CueParams(GESpec);
 	CueParams.OriginalTag = OriginalTag;
 	CueParams.Instigator = EffectContext.GetInstigator();
 	CueParams.EffectCauser = EffectCauser;
 	CueParams.Location = CueLocation;
-	CueParams.Normal = FVector::UpVector;
+	CueParams.Normal = CueNormal;
 	CueParams.GameplayEffectLevel = GESpec.GetLevel();
 
 	if (SourceObject != nullptr)

@@ -1,7 +1,7 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "SkillSystem/Actor/BoxRangeOverlapEffectActor.h"
+#include "SkillSystem/Actor/ABaseRangeOverlapEffectActor/BoxRangeOverlapEffectActor.h"
 #include "Components/BoxComponent.h"
 
 ABoxRangeOverlapEffectActor::ABoxRangeOverlapEffectActor()

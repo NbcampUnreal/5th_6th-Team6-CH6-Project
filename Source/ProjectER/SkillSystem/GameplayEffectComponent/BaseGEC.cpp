@@ -6,12 +6,12 @@
 
 UBaseGEC::UBaseGEC()
 {
-	ConfigClass = UBaseGEC::StaticClass();
+	ConfigClass = UBaseGECConfig::StaticClass();
 }
 
 TSubclassOf<UBaseGECConfig> UBaseGEC::GetRequiredConfigClass() const
 {
-	return UBaseGEC::StaticClass();
+	return UBaseGECConfig::StaticClass();
 }
 
 void UBaseGEC::OnGameplayEffectExecuted(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const

@@ -1,7 +1,7 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "SkillSystem/Actor/BaseRangeOverlapEffectActor.h"
+#include "SkillSystem/Actor/ABaseRangeOverlapEffectActor/BaseRangeOverlapEffectActor.h"
 #include "Components/ShapeComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
@@ -96,21 +96,21 @@ void ABaseRangeOverlapEffectActor::OnShapeBeginOverlap(UPrimitiveComponent* Over
 	}
 
 	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor);
-	if (!IsValid(TargetASC) || EffectSpecHandles.Num() <= 0)
-	{
-		return;
-	}
+	UAbilitySystemComponent* InstigatorASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(InstigatorActor);
+
+	if(!IsValid(InstigatorASC)) return;
+	if(!IsValid(TargetASC)) return;
+	if(EffectSpecHandles.Num() <= 0) return;
 
 	for (const FGameplayEffectSpecHandle& EffectSpecHandle : EffectSpecHandles)
 	{
 		if (EffectSpecHandle.IsValid())
 		{
-			TargetASC->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
+			InstigatorASC->ApplyGameplayEffectSpecToTarget(*EffectSpecHandle.Data.Get(), TargetASC);
 		}
 	}
 
-	UAbilitySystemComponent* const InstigatorASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(InstigatorActor);
-	if (IsValid(InstigatorASC) && HitTargetCueParameters.OriginalTag.IsValid())
+	if (HitTargetCueParameters.OriginalTag.IsValid())
 	{
 		FGameplayCueParameters CueParameters = HitTargetCueParameters;
 		CueParameters.Location = OtherActor->GetActorLocation();
@@ -125,6 +125,11 @@ void ABaseRangeOverlapEffectActor::OnShapeBeginOverlap(UPrimitiveComponent* Over
 	if (bHitOncePerTarget)
 	{
 		HitActors.Add(OtherActor);
+	}
+
+	if (bDestroyOnOverlap)
+	{
+		Destroy();
 	}
 }
 
