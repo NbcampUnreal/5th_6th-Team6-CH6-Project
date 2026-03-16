@@ -136,7 +136,7 @@ void AER_OutGameMode::StartGame()
     {
         UE_LOG(LogTemp, Log, TEXT("[GM] : StartGame"));
         int32 PlayerCount = GS->PlayerArray.Num();
-        FString TravelURL = FString::Printf(TEXT("/Game/Level/BasicMap?PlayerCount=%d"), PlayerCount);
+        FString TravelURL = FString::Printf(TEXT("/Game/Level/BattleMap/BattleMap?PlayerCount=%d"), PlayerCount);
 
         GetWorld()->ServerTravel(TravelURL, true);
     }

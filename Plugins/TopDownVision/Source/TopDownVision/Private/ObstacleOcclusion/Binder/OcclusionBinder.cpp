@@ -12,7 +12,7 @@ DEFINE_LOG_CATEGORY(OcclusionBinder);
 AOcclusionBinder::AOcclusionBinder()
 {
     PrimaryActorTick.bCanEverTick = true;
-    PrimaryActorTick.bStartWithTickEnabled = true;
+    PrimaryActorTick.bStartWithTickEnabled = false;
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
