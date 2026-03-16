@@ -203,6 +203,10 @@ namespace ProjectER
 		namespace Combat
 		{
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Hit);
+			namespace HitEffect
+			{
+				UE_DECLARE_GAMEPLAY_TAG_EXTERN(Aurora);
+			}
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Revive);
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(TryRevive);
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(LevelUp);

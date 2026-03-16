@@ -202,6 +202,10 @@ namespace ProjectER
 		namespace Combat
 		{
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Hit, "GameplayCue.Combat.Hit", "Cue for Attack Hit");
+			namespace HitEffect
+			{
+				UE_DEFINE_GAMEPLAY_TAG_COMMENT(Aurora, "GameplayCue.Combat.HitEffect.Aurora", "Cue for Aurora Auto Attack Hit");
+			}
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Revive, "GameplayCue.Combat.Revive", "Cue for Revive");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(TryRevive, "GameplayCue.Combat.TryRevive", "Cue for Try Revive Ally");
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(LevelUp, "GameplayCue.Combat.LevelUp", "Cue for Level Up");
