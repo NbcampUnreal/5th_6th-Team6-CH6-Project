@@ -58,7 +58,7 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Projectile")
 	TObjectPtr<UStaticMeshComponent> MeshComp;
 	
-	UPROPERTY(VisibleAnywhere, Category = "Projectile")
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Projectile")
 	TObjectPtr<UNiagaraComponent> ProjectileVFXComp;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Visual")

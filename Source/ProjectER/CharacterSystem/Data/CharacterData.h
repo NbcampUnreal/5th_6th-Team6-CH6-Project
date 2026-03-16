@@ -91,10 +91,6 @@ public:
 	// 공통 스킬 (일반 공격, 아군 살리기 등)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Common")
 	TMap<FGameplayTag, TSoftClassPtr<UGameplayAbility>> Abilities;
-	
-	// 원거리 발사체 클래스
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Ranged")
-	TSubclassOf<ABaseProjectile> ProjectileClass;
 
 	// 발사 소켓 이름 (예: "Muzzle_01", "ArrowSocket")
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Ranged")
