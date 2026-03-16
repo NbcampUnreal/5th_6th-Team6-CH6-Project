@@ -34,10 +34,7 @@ void UBaseInventoryComponent::BeginPlay()
 
 void UBaseInventoryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	StopFoodHealTimer();
-	PendingFoodHealQueue.Empty();
-	bIsFoodHealEffectActive = false;
-
+	ClearFoodHealEffects();
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -164,7 +161,14 @@ void UBaseInventoryComponent::UseItem(const int32 SlotIndex)
 		return;
 	}
 
+	if (!CanUseItemsInCurrentLifeState())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] UseItem: blocked while Down/Death. Item='%s'"), *UsableItem->ItemName.ToString());
+		return;
+	}
+
 	const bool bEffectApplied = ApplyItemEffect(UsableItem);
+
 	if (!bEffectApplied)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] UseItem: Failed to apply effect for item '%s'"), *UsableItem->ItemName.ToString());
@@ -233,6 +237,20 @@ UAbilitySystemComponent* UBaseInventoryComponent::ResolveOwnerAbilitySystemCompo
 	}
 
 	return ASC;
+}
+
+bool UBaseInventoryComponent::CanUseItemsInCurrentLifeState() const
+{
+	UAbilitySystemComponent* const ASC = ResolveOwnerAbilitySystemComponent();
+	if (ASC == nullptr)
+	{
+		return false;
+	}
+
+	const bool bIsDown = ASC->HasMatchingGameplayTag(ProjectER::State::Life::Down);
+	const bool bIsDead = ASC->HasMatchingGameplayTag(ProjectER::State::Life::Death);
+
+	return !bIsDown && !bIsDead;
 }
 
 FGameplayTag UBaseInventoryComponent::GetSetByCallerTagFromStatType(const EItemStatType StatType) const
@@ -342,6 +360,12 @@ bool UBaseInventoryComponent::EnqueueFoodHeal(UUsableItemData* ItemData)
 		return false;
 	}
 
+	if (!CanUseItemsInCurrentLifeState())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] EnqueueFoodHeal: blocked while Down/Death"));
+		return false;
+	}
+
 	if (ItemData->TotalHealAmount <= 0.0f)
 	{
 		UE_LOG(LogTemp, Error, TEXT("[BaseInventoryComponent] EnqueueFoodHeal: Invalid TotalHealAmount %.2f"), ItemData->TotalHealAmount);
@@ -381,6 +405,11 @@ bool UBaseInventoryComponent::EnqueueFoodHeal(UUsableItemData* ItemData)
 bool UBaseInventoryComponent::ApplyHealAmount(const float HealAmount)
 {
 	if (HealAmount <= 0.0f)
+	{
+		return false;
+	}
+
+	if (!CanUseItemsInCurrentLifeState())
 	{
 		return false;
 	}
@@ -456,6 +485,13 @@ void UBaseInventoryComponent::HandleFoodHealTick()
 		return;
 	}
 
+	if (!CanUseItemsInCurrentLifeState())
+	{
+		UE_LOG(LogTemp, Log, TEXT("[BaseInventoryComponent] HandleFoodHealTick: owner became Down/Death, clear food heal"));
+		ClearFoodHealEffects();
+		return;
+	}
+
 	if (CurrentFoodHealEffect.RemainingTicks <= 0 || CurrentFoodHealEffect.RemainingHealAmount <= 0.0f)
 	{
 		StopFoodHealTimer();
@@ -493,4 +529,14 @@ void UBaseInventoryComponent::HandleFoodHealTick()
 	StopFoodHealTimer();
 	bIsFoodHealEffectActive = false;
 	StartNextFoodHealEffect();
+}
+
+void UBaseInventoryComponent::ClearFoodHealEffects()
+{
+	StopFoodHealTimer();
+	PendingFoodHealQueue.Empty();
+	CurrentFoodHealEffect = FPendingFoodHealEffect();
+	bIsFoodHealEffectActive = false;
+
+	UE_LOG(LogTemp, Log, TEXT("[BaseInventoryComponent] ClearFoodHealEffects: cleared all food heal effects"));
 }
