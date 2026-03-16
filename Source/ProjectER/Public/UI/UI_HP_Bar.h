@@ -33,7 +33,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
 	void Update_HeadIcon(UTexture2D* NewIcon);
 
+	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
+	void Update_PlayerName(FText PlayerName);
+
 protected:
+	virtual void NativeConstruct() override; // 생성자
+
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* PB_HP;
 
@@ -46,4 +51,7 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UImage* IMG_Head;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* TXT_PlayerName;
 };

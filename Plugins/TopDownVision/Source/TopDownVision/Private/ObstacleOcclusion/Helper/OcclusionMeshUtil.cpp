@@ -1,5 +1,7 @@
 ﻿#include "ObstacleOcclusion/Helper/OcclusionMeshUtil.h"
+#include "Components/MeshComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
 DEFINE_LOG_CATEGORY(OcclusionMeshHelper);
@@ -8,8 +10,8 @@ void UOcclusionMeshUtil::DiscoverChildMeshes(
     USceneComponent* Root,
     FName NormalTag,
     FName OccludedTag,
-    TArray<TSoftObjectPtr<UStaticMeshComponent>>& OutNormalMeshes,
-    TArray<TSoftObjectPtr<UStaticMeshComponent>>& OutOccludedMeshes)
+    TArray<TSoftObjectPtr<UMeshComponent>>& OutNormalMeshes,
+    TArray<TSoftObjectPtr<UMeshComponent>>& OutOccludedMeshes)
 {
     OutNormalMeshes.Empty();
     OutOccludedMeshes.Empty();
@@ -30,31 +32,31 @@ void UOcclusionMeshUtil::DiscoverChildMeshes(
 
     for (USceneComponent* Child : Children)
     {
-        if (UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(Child))
+        // UMeshComponent is common parent of UStaticMeshComponent and USkeletalMeshComponent
+        UMeshComponent* Mesh = Cast<UMeshComponent>(Child);
+        if (!Mesh) continue;
+
+        if (NormalTag != NAME_None && Mesh->ComponentHasTag(NormalTag))
         {
-            if (Mesh->ComponentHasTag(NormalTag))
-            {
-                OutNormalMeshes.Add(Mesh);
+            OutNormalMeshes.Add(Mesh);
 
-                UE_LOG(OcclusionMeshHelper, Log,
-                    TEXT("UOcclusionMeshUtil::DiscoverChildMeshes>> Found NormalMesh: %s"),
-                    *Mesh->GetName());
-            }
-            else if (Mesh->ComponentHasTag(OccludedTag))
-            {
-                OutOccludedMeshes.Add(Mesh);
+            UE_LOG(OcclusionMeshHelper, Log,
+                TEXT("UOcclusionMeshUtil::DiscoverChildMeshes>> Found NormalMesh: %s (%s)"),
+                *Mesh->GetName(), *Mesh->GetClass()->GetName());
+        }
+        else if (OccludedTag != NAME_None && Mesh->ComponentHasTag(OccludedTag))
+        {
+            OutOccludedMeshes.Add(Mesh);
 
-                UE_LOG(OcclusionMeshHelper, Log,
-                    TEXT("UOcclusionMeshUtil::DiscoverChildMeshes>> Found OccludedMesh: %s"),
-                    *Mesh->GetName());
-            }
+            UE_LOG(OcclusionMeshHelper, Log,
+                TEXT("UOcclusionMeshUtil::DiscoverChildMeshes>> Found OccludedMesh: %s (%s)"),
+                *Mesh->GetName(), *Mesh->GetClass()->GetName());
         }
     }
 
     UE_LOG(OcclusionMeshHelper, Log,
         TEXT("UOcclusionMeshUtil::DiscoverChildMeshes>> Result -> Normal: %d | Occluded: %d"),
-        OutNormalMeshes.Num(),
-        OutOccludedMeshes.Num());
+        OutNormalMeshes.Num(), OutOccludedMeshes.Num());
 
     if (OutNormalMeshes.Num() == 0 && OutOccludedMeshes.Num() == 0)
     {
@@ -64,7 +66,8 @@ void UOcclusionMeshUtil::DiscoverChildMeshes(
     }
 }
 
-void UOcclusionMeshUtil::CreateDynamicMaterials(const TArray<TSoftObjectPtr<UStaticMeshComponent>>& Meshes,
+void UOcclusionMeshUtil::CreateDynamicMaterials(
+    const TArray<TSoftObjectPtr<UMeshComponent>>& Meshes,
     TArray<UMaterialInstanceDynamic*>& OutMIDs)
 {
     OutMIDs.Empty();
@@ -73,9 +76,9 @@ void UOcclusionMeshUtil::CreateDynamicMaterials(const TArray<TSoftObjectPtr<USta
         TEXT("UOcclusionMeshUtil::CreateDynamicMaterials>> Creating MIDs for %d meshes"),
         Meshes.Num());
 
-    for (const TSoftObjectPtr<UStaticMeshComponent>& MeshPtr : Meshes)
+    for (const TSoftObjectPtr<UMeshComponent>& MeshPtr : Meshes)
     {
-        UStaticMeshComponent* Mesh = MeshPtr.Get();
+        UMeshComponent* Mesh = MeshPtr.Get();
 
         if (!Mesh)
         {
@@ -84,12 +87,11 @@ void UOcclusionMeshUtil::CreateDynamicMaterials(const TArray<TSoftObjectPtr<USta
             continue;
         }
 
-        int32 MaterialCount = Mesh->GetNumMaterials();
+        const int32 MaterialCount = Mesh->GetNumMaterials();
 
         UE_LOG(OcclusionMeshHelper, Log,
-            TEXT("UOcclusionMeshUtil::CreateDynamicMaterials>> Mesh %s has %d materials"),
-            *Mesh->GetName(),
-            MaterialCount);
+            TEXT("UOcclusionMeshUtil::CreateDynamicMaterials>> Mesh %s (%s) has %d materials"),
+            *Mesh->GetName(), *Mesh->GetClass()->GetName(), MaterialCount);
 
         for (int32 i = 0; i < MaterialCount; i++)
         {
@@ -99,8 +101,7 @@ void UOcclusionMeshUtil::CreateDynamicMaterials(const TArray<TSoftObjectPtr<USta
             {
                 UE_LOG(OcclusionMeshHelper, Warning,
                     TEXT("UOcclusionMeshUtil::CreateDynamicMaterials>> Mesh %s slot %d has no material"),
-                    *Mesh->GetName(),
-                    i);
+                    *Mesh->GetName(), i);
                 continue;
             }
 
@@ -113,15 +114,13 @@ void UOcclusionMeshUtil::CreateDynamicMaterials(const TArray<TSoftObjectPtr<USta
 
                 UE_LOG(OcclusionMeshHelper, Log,
                     TEXT("UOcclusionMeshUtil::CreateDynamicMaterials>> MID created for %s slot %d"),
-                    *Mesh->GetName(),
-                    i);
+                    *Mesh->GetName(), i);
             }
             else
             {
                 UE_LOG(OcclusionMeshHelper, Warning,
                     TEXT("UOcclusionMeshUtil::CreateDynamicMaterials>> Failed MID creation for %s slot %d"),
-                    *Mesh->GetName(),
-                    i);
+                    *Mesh->GetName(), i);
             }
         }
     }
