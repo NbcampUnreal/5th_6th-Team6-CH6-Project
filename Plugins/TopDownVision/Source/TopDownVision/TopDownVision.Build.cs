@@ -30,6 +30,8 @@ public class TopDownVision : ModuleRules
 				"Core",
 				// ... add other public dependencies that you statically link with here ...
 				"Projects",// for plugin module (IPluginManager::Get())
+				
+				"DoubleRTBufferDrawer",// for Main RT Drawer
 			}
 			);
 			
