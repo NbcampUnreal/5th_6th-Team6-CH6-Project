@@ -106,12 +106,7 @@ void SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(UWorld* World, const FSkill
 		}
 
 		const FTransform ParentTransform = AttachComponent->GetSocketTransform(Settings.SocketOrBoneName);
-		
-		// EAttachLocation::KeepRelativeOffset를 사용하기 때문에, 지정할 회전값은 반드시 '상대 회전(Relative Rotation)' 이어야 합니다.
-		// 그래서 CalculateRelativeRotation 함수를 호출하여 완벽히 분리된 로컬 회전값을 도출합니다.
 		const FRotator RelativeAttachRotation = CalculateRelativeRotation(Settings, ParentTransform, OptionalLookAtTarget);
-
-		//UE_LOG(LogTemp, Warning, TEXT("SpawnNiagaraBySettings::AppliedRelative: %s"), *RelativeAttachRotation.ToString());
 		ResultNC = UNiagaraFunctionLibrary::SpawnSystemAttached(LoadedNiagaraSystem, AttachComponent, Settings.SocketOrBoneName, Settings.LocationOffset, RelativeAttachRotation, Settings.Scale, EAttachLocation::KeepRelativeOffset, true, ENCPoolMethod::None, true, false);
 	}
 	else {

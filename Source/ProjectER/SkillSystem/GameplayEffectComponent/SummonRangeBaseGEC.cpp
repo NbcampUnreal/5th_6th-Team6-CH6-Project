@@ -103,13 +103,6 @@ void USummonRangeBaseGEC::OnGameplayEffectApplied(FActiveGameplayEffectsContaine
 	InitializeRangeActor(DeferredSpawnedActor, SpawnConfig, EffectInstigator, ContextHandle, HitTargetCueParameters);
 	DeferredSpawnedActor->FinishSpawning(SpawnTransform);
 
-	if (IsValid(World))
-	{
-		FVector StartLoc = SpawnTransform.GetLocation();// 회전값에서 앞방향(X축) 벡터를 꺼내 100을 곱합니다.
-		FVector EndLoc = StartLoc + SpawnTransform.GetRotation().GetForwardVector() * 300.0f;
-		DrawDebugLine(World, StartLoc, EndLoc, FColor::Green, false, 10.0f, 0, 2.0f);
-	}
-
 	const FGameplayCueParameters SummonerCueParams = BuildNiagaraCueParameters(
 		GESpec,
 		SpawnConfig->SummonerSpawnVfx.CueTag,
@@ -126,7 +119,6 @@ void USummonRangeBaseGEC::OnGameplayEffectApplied(FActiveGameplayEffectsContaine
 		RangeSpawnLocation,
 		SpawnConfig,
 		SpawnTransform.GetRotation().GetForwardVector());
-	UE_LOG(LogTemp, Warning, TEXT("OnGameplayEffectApplied::RangeCueParams's Rotation : %s"), *SpawnTransform.GetRotation().ToString());
 
 	if (IsValid(DeferredSpawnedActor))
 	{
