@@ -13,14 +13,27 @@ enum class EPointActorType : uint8
 	ObjectPoint,
 };
 
+//16개
 UENUM(BlueprintType)
 enum class ERegionType : uint8
 {
-	None,
-	Region1,
-	Region2,
-	Region3,
-	Region4,
+	None = 0,
+	Alley = 1,
+	Temple = 2,
+	Downtown = 3,
+	Pond = 4,
+	Hospital = 5,
+	ArcheryRange = 6,
+	School = 7,
+	Hotel = 8,
+	Forest = 9,
+	Cathedral = 10,
+	Cemetery = 11,
+	Factory = 12,
+	Dock = 13,
+	Uptown = 14,
+	Beach = 15,
+	ResearchCenter = 16
 };
 
 
