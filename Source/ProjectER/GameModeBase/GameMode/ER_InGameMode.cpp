@@ -1,4 +1,4 @@
-﻿#include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
@@ -475,6 +475,17 @@ void AER_InGameMode::StartGame()
 			if (!WeakThis.IsValid()) return;
 			WeakThis->StartGame_Initialize();
 		});
+
+	// 게임 카운트다운 시작 시 로딩 화면 닫기
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (ABasePlayerController* PC = Cast<ABasePlayerController>(It->Get()))
+		{
+			PC->Client_CloseLoadingUI();
+			UE_LOG(LogTemp, Log, TEXT("[GM] CloseLoadingUI"));
+		}
+	}
+
 	GetWorldTimerManager().SetTimer(StartCountdownTimerHandle, this, &AER_InGameMode::TickCountdown, 1.0f, true);
 }
 

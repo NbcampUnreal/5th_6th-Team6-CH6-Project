@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "ItemSystem/Interface/I_ItemInteractable.h" // [김현수 추가분]
 
@@ -334,9 +334,6 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> LoadingUIClass;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UUserWidget> LoadingUIInstance;
 
 	// Currently bound loot component for automatic popup close
 	TWeakObjectPtr<class ULootableComponent> BoundLootComponent;

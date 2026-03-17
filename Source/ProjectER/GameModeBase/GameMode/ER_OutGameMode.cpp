@@ -135,8 +135,19 @@ void AER_OutGameMode::StartGame()
     if (GS)
     {
         UE_LOG(LogTemp, Log, TEXT("[GM] : StartGame"));
+
+        // 트래블 전 모든 클라이언트에게 로딩 화면을 띄우도록 지시
+        for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+        {
+            if (ABasePlayerController* PC = Cast<ABasePlayerController>(It->Get()))
+            {
+                PC->Client_OpenLoadingUI();
+            }
+        }
+
         int32 PlayerCount = GS->PlayerArray.Num();
-        FString TravelURL = FString::Printf(TEXT("/Game/Level/BattleMap/BattleMap?PlayerCount=%d"), PlayerCount);
+        //FString TravelURL = FString::Printf(TEXT("/Game/Level/BattleMap/BattleMap?PlayerCount=%d"), PlayerCount);
+        FString TravelURL = FString::Printf(TEXT("/Game/Level/BasicMap?PlayerCount=%d"), PlayerCount);
 
         GetWorld()->ServerTravel(TravelURL, true);
     }
