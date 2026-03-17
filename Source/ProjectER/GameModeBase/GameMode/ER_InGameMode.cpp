@@ -492,7 +492,8 @@ void AER_InGameMode::StartGame()
 
 			if (RespawnSS)
 			{
-				const int32 Idx = FMath::RandRange(1, 1);
+				// 초기라서 무작위 위치 지정 중 추후 수정 필요
+				const int32 Idx = FMath::RandRange(1, 4);
 				FTransform Location = RespawnSS->GetRespawnPointLocation(Idx);
 				PC->GetPawn()->SetActorTransform(Location);
 				UE_LOG(LogTemp, Log, TEXT("[GM] Success Get SpawnPoint %d"), Idx);
