@@ -19,6 +19,11 @@ class UUI_ToolTip;
 class UCharacterData;
 class UAbilitySystemComponent;
 
+// [김현수 추가분]
+class UUniformGridPanel;
+class UBaseInventoryComponent;
+class UW_InventorySlot;
+
 
 UENUM(BlueprintType)
 enum class ECharacterStat : uint8
@@ -82,6 +87,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	void UpdateInventoryUI();
 
+	UUI_MainHUD(const FObjectInitializer& ObjectInitializer);
+
 protected:
 	// 마우스 우클릭 확인용
 	virtual void NativeConstruct() override; // 생성자
@@ -116,6 +123,18 @@ private:
 	class USceneCaptureComponent2D* MinimapCaptureComponent;
 	class UCharacterData* HeroData;
 	class UAbilitySystemComponent* ASC;
+
+	void EnsureInventorySlotWidgets();
+	UBaseInventoryComponent* ResolveInventoryComponent() const;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UW_InventorySlot>> InventorySlotWidgets;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
+	int32 InventoryColumnCount = 4;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
+	int32 DefaultInventorySlotCount = 8;
 
 protected:
 	UPROPERTY(meta = (BindWidget))
@@ -371,4 +390,8 @@ protected:
 
 	float debugHP_01 = 1000.f;
 	float debugHP_02 = 1000.f;
+
+private:
+	void RefreshInventoryGridLayout(); // [김현수 추가분]
 };
+

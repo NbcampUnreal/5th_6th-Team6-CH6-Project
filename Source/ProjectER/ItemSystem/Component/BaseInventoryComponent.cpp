@@ -17,7 +17,7 @@
 UBaseInventoryComponent::UBaseInventoryComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
-	MaxSlots = 20;
+	MaxSlots = 8;
 	SetIsReplicatedByDefault(true);
 }
 
@@ -539,4 +539,60 @@ void UBaseInventoryComponent::ClearFoodHealEffects()
 	bIsFoodHealEffectActive = false;
 
 	UE_LOG(LogTemp, Log, TEXT("[BaseInventoryComponent] ClearFoodHealEffects: cleared all food heal effects"));
+}
+
+bool UBaseInventoryComponent::SwapSlots(int32 FromIndex, int32 ToIndex)
+{
+	AActor* const OwnerActor = GetOwner();
+	if (OwnerActor == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] SwapSlots: Owner is null"));
+		return false;
+	}
+
+	if (FromIndex == ToIndex)
+	{
+		return false;
+	}
+
+	if (!InventoryContents.IsValidIndex(FromIndex) || !InventoryContents.IsValidIndex(ToIndex))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] SwapSlots: Invalid index From=%d To=%d"), FromIndex, ToIndex);
+		return false;
+	}
+
+	// 클라이언트면 서버에 요청
+	if (!OwnerActor->HasAuthority())
+	{
+		Server_SwapSlots(FromIndex, ToIndex);
+		return true;
+	}
+
+	// 빈 슬롯에서 드래그한 경우는 무시
+	if (InventoryContents[FromIndex] == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] SwapSlots: Source slot is empty. From=%d"), FromIndex);
+		return false;
+	}
+
+	UBaseItemData* Temp = InventoryContents[FromIndex];
+	InventoryContents[FromIndex] = InventoryContents[ToIndex];
+	InventoryContents[ToIndex] = Temp;
+
+	OnInventoryUpdated.Broadcast();
+	return true;
+}
+
+bool UBaseInventoryComponent::Server_SwapSlots_Validate(int32 FromIndex, int32 ToIndex)
+{
+	return FromIndex >= 0
+		&& FromIndex < MaxSlots
+		&& ToIndex >= 0
+		&& ToIndex < MaxSlots
+		&& FromIndex != ToIndex;
+}
+
+void UBaseInventoryComponent::Server_SwapSlots_Implementation(int32 FromIndex, int32 ToIndex)
+{
+	SwapSlots(FromIndex, ToIndex);
 }

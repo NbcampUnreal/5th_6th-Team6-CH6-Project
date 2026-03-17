@@ -1,6 +1,7 @@
 ﻿#include "GameModeBase/PointActor/ER_PointActor.h"
 #include "GameModeBase/Subsystem/NeutralSpawn/ER_NeutralSpawnSubsystem.h"
 #include "GameModeBase/Subsystem/Object/ER_ObjectSubsystem.h"
+#include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
 
 #include "Components/DecalComponent.h"
 #include "Components/SceneComponent.h"
@@ -50,6 +51,13 @@ void AER_PointActor::BeginPlay()
 			OSS->RegisterPoint(this);
 		}
 	}
+	else if (PointType == EPointActorType::RespawnPoint)
+	{
+		if (UER_RespawnSubsystem* RSS = GetWorld()->GetSubsystem<UER_RespawnSubsystem>())
+		{
+			RSS->RegisterPoint(this);
+		}
+	}
 	
 }
 
@@ -69,6 +77,13 @@ void AER_PointActor::EndPlay(const EEndPlayReason::Type Reason)
 			if (UER_ObjectSubsystem* OSS = GetWorld()->GetSubsystem<UER_ObjectSubsystem>())
 			{
 				OSS->UnregisterPoint(this);
+			}
+		}
+		else if (PointType == EPointActorType::RespawnPoint)
+		{
+			if (UER_RespawnSubsystem* RSS = GetWorld()->GetSubsystem<UER_RespawnSubsystem>())
+			{
+				RSS->UnregisterPoint(this);
 			}
 		}
 	}
