@@ -1,4 +1,4 @@
-#include "GameModeBase/GameMode/ER_InGameMode.h"
+﻿#include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
@@ -476,13 +476,31 @@ void AER_InGameMode::StartGame()
 			WeakThis->StartGame_Initialize();
 		});
 
+	UER_RespawnSubsystem* RespawnSS = GetWorld()->GetSubsystem<UER_RespawnSubsystem>();
+	if (RespawnSS)
+	{
+		RespawnSS->InitializeRespawnPoints();
+		RespawnSS->ResetAssignedSpawnPoints();
+	}
+
 	// 게임 카운트다운 시작 시 로딩 화면 닫기
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
 		if (ABasePlayerController* PC = Cast<ABasePlayerController>(It->Get()))
 		{
 			PC->Client_CloseLoadingUI();
-			UE_LOG(LogTemp, Log, TEXT("[GM] CloseLoadingUI"));
+
+			if (RespawnSS)
+			{
+				const int32 Idx = FMath::RandRange(1, 1);
+				FTransform Location = RespawnSS->GetRespawnPointLocation(Idx);
+				PC->GetPawn()->SetActorTransform(Location);
+				UE_LOG(LogTemp, Log, TEXT("[GM] Success Get SpawnPoint %d"), Idx);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Log, TEXT("[GM] Failed Get SpawnPoint"));
+			}
 		}
 	}
 
@@ -520,6 +538,12 @@ void AER_InGameMode::StartGame_Initialize()
 	if (ObjectSS)
 	{
 		ObjectSS->InitializeObjectPoints(ObjectClass);
+	}
+
+	UER_RespawnSubsystem* RespawnSS = GetWorld()->GetSubsystem<UER_RespawnSubsystem>();
+	if (RespawnSS)
+	{
+		RespawnSS->InitializeRespawnMap(*ERGS);
 	}
 }
 
