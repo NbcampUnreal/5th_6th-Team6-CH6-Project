@@ -8,7 +8,7 @@
 #include "GameplayEffect.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/Pawn.h"
-#include "SkillSystem/Actor/ABaseRangeOverlapEffectActor/BaseRangeOverlapEffectActor.h"
+#include "SkillSystem/Actor/BaseRangeOverlapEffectActor/BaseRangeOverlapEffectActor.h"
 #include "SkillSystem/GameAbility/SkillBase.h"
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 
