@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "SkillSystem/GameplayEffectComponent/SummonRangeAtBone.h"
@@ -28,7 +28,7 @@ bool USummonRangeAtBone::ShouldProcessOnInstigator(const AActor* Instigator) con
 	return Instigator->HasAuthority();
 }
 
-FTransform USummonRangeAtBone::CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator) const
+FTransform USummonRangeAtBone::CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const AActor* TargetActor) const
 {
 	const USummonRangeByBoneGECConfig* const BoneConfig = ResolveTypedConfigFromSpec<USummonRangeByBoneGECConfig>(GESpec);
 	if (!IsValid(BoneConfig) || !IsValid(Instigator))
@@ -54,45 +54,14 @@ FTransform USummonRangeAtBone::CalculateSpawnTransform(const FGameplayEffectSpec
 		}
 	}
 
-	FRotator CombinedRotation = FRotator::ZeroRotator;
-	if (BoneConfig->bSpawnZeroRotation)
-	{
-		CombinedRotation = FRotator::ZeroRotator;
-	}
-	else if (BoneConfig->bUseInstigatorRotation)
+	FRotator CombinedRotation = BaseRotation;
+	if (BoneConfig->bUseInstigatorRotation)
 	{
 		CombinedRotation = Instigator->GetActorRotation();
 	}
-	else
-	{
-		CombinedRotation = BaseRotation + BoneConfig->RotationOffset;
-	}
 
-	FVector TargetLocation = BaseLocation + CombinedRotation.RotateVector(BoneConfig->LocationOffset);
-
-	if (BoneConfig->bSnapToGround)
-	{
-		FHitResult FloorHit;
-		FVector TraceEnd = TargetLocation;
-		TraceEnd.Z -= 1000.0f;
-
-		FCollisionQueryParams QueryParams;
-		QueryParams.AddIgnoredActor(Instigator);
-
-		if (World->LineTraceSingleByChannel(FloorHit, TargetLocation, TraceEnd, BoneConfig->GroundTraceChannel, QueryParams))
-		{
-			TargetLocation.X = FloorHit.Location.X;
-			TargetLocation.Y = FloorHit.Location.Y;
-
-			float FinalZOffset = BoneConfig->FloatingHeight;
-			if (BoneConfig->bUseBoxExtentOffset)
-			{
-				FinalZOffset += BoneConfig->CollisionRadius.Z;
-			}
-
-			TargetLocation.Z = FloorHit.Location.Z + FinalZOffset;
-		}
-	}
+	FVector TargetLocation = BaseLocation;
+	ApplyCommonSpawnOptions(TargetLocation, CombinedRotation, BoneConfig, Instigator);
 
 	//DrawDebugBox(World, TargetLocation, BoneConfig->CollisionRadius, CombinedRotation.Quaternion(), FColor::Red, false, 5.0f, 0, 2.0f);
 	return FTransform(CombinedRotation, TargetLocation);

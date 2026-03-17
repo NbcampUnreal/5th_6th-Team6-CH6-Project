@@ -67,7 +67,7 @@ void ULaunchProjectile::InitializeRangeActor(ABaseRangeOverlapEffectActor* Range
 	}
 }
 
-FTransform ULaunchProjectile::CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator) const
+FTransform ULaunchProjectile::CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const AActor* TargetActor) const
 {
 	const ULaunchProjectileConfig* Config = ResolveTypedConfigFromSpec<ULaunchProjectileConfig>(GESpec);
 	if (!IsValid(Config) || !IsValid(Instigator))
@@ -124,16 +124,8 @@ FTransform ULaunchProjectile::CalculateSpawnTransform(const FGameplayEffectSpec&
 		}
 	}
 
-	// 3. Offset 및 특수 설정 적용
-	if (Config->bSpawnZeroRotation)
-	{
-		SpawnRotation = FRotator::ZeroRotator;
-	}
-	
-	SpawnRotation += Config->RotationOffset;
-
-	// Local Offset 적용 (최종 회전값 기준)
-	SpawnLocation += SpawnRotation.Quaternion().RotateVector(Config->LocationOffset);
+	// 3. 공통 오프셋 및 지면 보정 적용
+	ApplyCommonSpawnOptions(SpawnLocation, SpawnRotation, Config, Instigator);
 
 	return FTransform(SpawnRotation, SpawnLocation);
-}
+}
