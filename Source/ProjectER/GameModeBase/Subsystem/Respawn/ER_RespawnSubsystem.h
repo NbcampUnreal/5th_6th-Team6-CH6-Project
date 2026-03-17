@@ -1,9 +1,10 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
+#include "GameModeBase/PointActor/ER_PointActor.h"
 #include "ER_RespawnSubsystem.generated.h"
 
 // 팀 전멸 판정, 부활 처리 담당
@@ -38,7 +39,24 @@ public:
 
 	void InitializeRespawnMap(AER_GameState& GS);
 
+	void InitializeRespawnPoints();
+
+	void ResetAssignedSpawnPoints();
+
+	FTransform GetRespawnPointLocation(int32 index);
+
+	void RegisterPoint(AActor* Point);
+
+	void UnregisterPoint(AActor* Point);
+
+public:
+	TArray<TWeakObjectPtr<AActor>> Points;
 
 private:
 	TMap<int32, FTimerHandle> RespawnMap;
+	// 리스폰 위치를 모아둘 맵
+	TMap<ERegionType, TArray<TWeakObjectPtr<AActor>>> RespawnPointsByRegion;
+
+	// 이미 할당된 스폰 포인트 인덱스 추적
+	TMap<ERegionType, TArray<int32>> AssignedSpawnIndices;
 };
