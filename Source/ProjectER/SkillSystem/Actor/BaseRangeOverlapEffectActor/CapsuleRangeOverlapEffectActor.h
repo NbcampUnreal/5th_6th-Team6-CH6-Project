@@ -3,18 +3,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "SkillSystem/Actor/ABaseRangeOverlapEffectActor/BaseRangeOverlapEffectActor.h"
-#include "SphereOverlapEffectActor.generated.h"
+#include "SkillSystem/Actor/BaseRangeOverlapEffectActor/BaseRangeOverlapEffectActor.h"
+#include "CapsuleRangeOverlapEffectActor.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class PROJECTER_API ASphereOverlapEffectActor : public ABaseRangeOverlapEffectActor
+class PROJECTER_API ACapsuleRangeOverlapEffectActor : public ABaseRangeOverlapEffectActor
 {
 	GENERATED_BODY()
 public:
-	ASphereOverlapEffectActor();
+	ACapsuleRangeOverlapEffectActor();
 
 protected:
 	virtual void ApplyCollisionSize(const FVector& InCollisionSize) override;
@@ -22,5 +22,5 @@ protected:
 
 private:
 	UPROPERTY(VisibleAnywhere, Category = "Collision")
-	TObjectPtr<USphereComponent> SphereComponent;
+	TObjectPtr<UCapsuleComponent> CapsuleComponent;
 };
