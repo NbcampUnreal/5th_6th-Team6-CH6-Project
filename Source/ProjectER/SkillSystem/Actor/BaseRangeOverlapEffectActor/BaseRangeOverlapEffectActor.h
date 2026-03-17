@@ -12,6 +12,7 @@ class UShapeComponent;
 class USphereComponent;
 class UBoxComponent;
 class UCapsuleComponent;
+class UAreaPeriodicEffectComponent;
 
 UCLASS()
 class PROJECTER_API ABaseRangeOverlapEffectActor : public AActor {
@@ -27,6 +28,9 @@ public:
       bool bInHitOncePerTarget, const UObject *InHitTargetCueSourceObject,
       const FGameplayCueParameters &InHitTargetCueParameters);
 
+  /** 컴포넌트를 이 액터의 도트 관리자로 설정 (GEC에서 호출) */
+  void SetAreaPeriodicComponent(UAreaPeriodicEffectComponent* InComponent);
+
 protected:
   virtual void BeginPlay() override;
   virtual void ApplyCollisionSize(const FVector &InCollisionSize);
@@ -34,6 +38,17 @@ protected:
 
   UFUNCTION()
   virtual void OnShapeBeginOverlap(UPrimitiveComponent *OverlappedComp, AActor *OtherActor, UPrimitiveComponent *OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult);
+
+  UFUNCTION()
+  virtual void OnShapeEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+  /** 주기적 트리거 발생 시 호출되는 로직 */
+  UFUNCTION()
+  virtual void OnAreaPeriodicTrigger(const TArray<AActor*>& Targets);
+
+  /** 타겟들에게 효과 적용 */
+  void ApplyEffectsToTargets(const TArray<AActor*>& Targets);
+  void ApplyEffectsToTarget(AActor* TargetActor);
 
 public:
   UPROPERTY()
@@ -66,4 +81,8 @@ protected:
 
   UPROPERTY()
   FGameplayCueParameters HitTargetCueParameters;
+
+  /** 도트 로직용 컴포넌트 */
+  UPROPERTY()
+  TObjectPtr<UAreaPeriodicEffectComponent> AreaPeriodicComponent;
 };

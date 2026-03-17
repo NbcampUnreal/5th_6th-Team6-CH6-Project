@@ -6,6 +6,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
+#include "SkillSystem/Component/AreaPeriodicEffectComponent.h"
 
 // Sets default values
 ABaseRangeOverlapEffectActor::ABaseRangeOverlapEffectActor()
@@ -32,10 +33,11 @@ void ABaseRangeOverlapEffectActor::InitializeEffectData(const TArray<FGameplayEf
 void ABaseRangeOverlapEffectActor::BeginPlay()
 {
 	Super::BeginPlay();
-
+    
 	if (HasAuthority() && IsValid(CollisionComponent))
 	{
 		CollisionComponent->OnComponentBeginOverlap.AddDynamic(this, &ABaseRangeOverlapEffectActor::OnShapeBeginOverlap);
+		CollisionComponent->OnComponentEndOverlap.AddDynamic(this, &ABaseRangeOverlapEffectActor::OnShapeEndOverlap);
 	}
 }
 
@@ -79,11 +81,6 @@ void ABaseRangeOverlapEffectActor::OnShapeBeginOverlap(UPrimitiveComponent* Over
 		return;
 	}
 
-	if (bHitOncePerTarget && HitActors.Contains(OtherActor))
-	{
-		return;
-	}
-
 	if (ITargetableInterface* MyInstigatorTargetable = Cast<ITargetableInterface>(InstigatorActor))
 	{
 		if (ITargetableInterface* OtherTargetable = Cast<ITargetableInterface>(OtherActor))
@@ -95,12 +92,69 @@ void ABaseRangeOverlapEffectActor::OnShapeBeginOverlap(UPrimitiveComponent* Over
 		}
 	}
 
-	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor);
+	// 주기적 효과가 설정되어 있다면 컴포넌트에 타겟 추가
+	if (IsValid(AreaPeriodicComponent))
+	{
+		AreaPeriodicComponent->AddTarget(OtherActor);
+		return;
+	}
+
+	if (bHitOncePerTarget && HitActors.Contains(OtherActor))
+	{
+		return;
+	}
+
+	ApplyEffectsToTarget(OtherActor);
+
+	if (bHitOncePerTarget)
+	{
+		HitActors.Add(OtherActor);
+	}
+
+	if (bDestroyOnOverlap)
+	{
+		Destroy();
+	}
+}
+
+void ABaseRangeOverlapEffectActor::OnShapeEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (HasAuthority() && IsValid(OtherActor) && IsValid(AreaPeriodicComponent))
+	{
+		AreaPeriodicComponent->RemoveTarget(OtherActor);
+	}
+}
+
+void ABaseRangeOverlapEffectActor::SetAreaPeriodicComponent(UAreaPeriodicEffectComponent* InComponent)
+{
+	if (IsValid(InComponent))
+	{
+		AreaPeriodicComponent = InComponent;
+		AreaPeriodicComponent->OnAreaPeriodicTrigger.AddDynamic(this, &ABaseRangeOverlapEffectActor::OnAreaPeriodicTrigger);
+	}
+}
+
+void ABaseRangeOverlapEffectActor::OnAreaPeriodicTrigger(const TArray<AActor*>& Targets)
+{
+	ApplyEffectsToTargets(Targets);
+}
+
+void ABaseRangeOverlapEffectActor::ApplyEffectsToTargets(const TArray<AActor*>& Targets)
+{
+	for (AActor* Target : Targets)
+	{
+		ApplyEffectsToTarget(Target);
+	}
+}
+
+void ABaseRangeOverlapEffectActor::ApplyEffectsToTarget(AActor* TargetActor)
+{
+	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
 	UAbilitySystemComponent* InstigatorASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(InstigatorActor);
 
-	if(!IsValid(InstigatorASC)) return;
-	if(!IsValid(TargetASC)) return;
-	if(EffectSpecHandles.Num() <= 0) return;
+	if (!IsValid(InstigatorASC)) return;
+	if (!IsValid(TargetASC)) return;
+	if (EffectSpecHandles.Num() <= 0) return;
 
 	for (const FGameplayEffectSpecHandle& EffectSpecHandle : EffectSpecHandles)
 	{
@@ -113,23 +167,13 @@ void ABaseRangeOverlapEffectActor::OnShapeBeginOverlap(UPrimitiveComponent* Over
 	if (HitTargetCueParameters.OriginalTag.IsValid())
 	{
 		FGameplayCueParameters CueParameters = HitTargetCueParameters;
-		CueParameters.Location = OtherActor->GetActorLocation();
+		CueParameters.Location = TargetActor->GetActorLocation();
 		CueParameters.EffectCauser = this;
 		CueParameters.SourceObject = HitTargetCueSourceObject;
 		{
 			FScopedPredictionWindow ForcedWindow(InstigatorASC, FPredictionKey(), false);
 			InstigatorASC->ExecuteGameplayCue(CueParameters.OriginalTag, CueParameters);
 		}
-	}
-
-	if (bHitOncePerTarget)
-	{
-		HitActors.Add(OtherActor);
-	}
-
-	if (bDestroyOnOverlap)
-	{
-		Destroy();
 	}
 }
 
