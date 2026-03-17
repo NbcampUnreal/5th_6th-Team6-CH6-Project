@@ -24,7 +24,6 @@ void AOcclusionBinder::BeginPlay()
     RegisterToSubsystem();
     InitializeMaterials();
 
-    // Push correct initial state — fully visible
     CurrentAlpha = 1.f;
     UpdateMaterialAlpha();
 }
@@ -34,18 +33,14 @@ void AOcclusionBinder::EndPlay(const EEndPlayReason::Type EndPlayReason)
     Super::EndPlay(EndPlayReason);
 
     if (UOcclusionBinderSubsystem* Sub = GetWorld()->GetSubsystem<UOcclusionBinderSubsystem>())
-    {
         Sub->UnregisterBinder(this);
-    }
 }
 
 void AOcclusionBinder::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    // 1 = visible, 0 = occluded
     const float TargetAlpha = bShouldBeOccluded ? 0.f : 1.f;
-
     CurrentAlpha = FMath::FInterpTo(CurrentAlpha, TargetAlpha, DeltaTime, FadeSpeed);
 
     UpdateMaterialAlpha();
@@ -63,10 +58,8 @@ void AOcclusionBinder::Tick(float DeltaTime)
 void AOcclusionBinder::OnOcclusionEnter_Implementation(UObject* SourceTracer)
 {
     if (!SourceTracer) return;
-
     ActiveOverlaps.Add(SourceTracer);
     bShouldBeOccluded = ActiveOverlaps.Num() > 0;
-
     SetActorTickEnabled(true);
 
     UE_LOG(OcclusionBinder, Log,
@@ -77,7 +70,6 @@ void AOcclusionBinder::OnOcclusionEnter_Implementation(UObject* SourceTracer)
 void AOcclusionBinder::OnOcclusionExit_Implementation(UObject* SourceTracer)
 {
     if (!SourceTracer) return;
-
     ActiveOverlaps.Remove(SourceTracer);
     CleanupInvalidOverlaps();
 
@@ -127,7 +119,6 @@ void AOcclusionBinder::SetupBoundActors()
 
             if (UStaticMeshComponent* StaticMesh = Cast<UStaticMeshComponent>(Mesh))
             {
-                // Normal mesh — gets occlusion collision
                 if (StaticMesh->ComponentHasTag(NormalMeshTag))
                 {
                     StaticMesh->Modify();
@@ -141,7 +132,6 @@ void AOcclusionBinder::SetupBoundActors()
                         TEXT("AOcclusionBinder::SetupBoundActors>> Set occlusion collision on %s from %s"),
                         *StaticMesh->GetName(), *Actor->GetName());
                 }
-                // Occluded visual mesh — no collision, visual only
                 else if (StaticMesh->ComponentHasTag(OccludedMeshTag))
                 {
                     StaticMesh->Modify();
@@ -155,7 +145,7 @@ void AOcclusionBinder::SetupBoundActors()
         }
 
         Actor->Modify();
-        bool DebugBoolCheck=Actor->MarkPackageDirty();
+        Actor->MarkPackageDirty();
     }
 
     DiscoverMeshes();
@@ -185,13 +175,9 @@ void AOcclusionBinder::DiscoverMeshes()
             if (!Mesh) continue;
 
             if (Mesh->ComponentHasTag(NormalMeshTag))
-            {
                 NormalMeshes.Add(Mesh);
-            }
             else if (Mesh->ComponentHasTag(OccludedMeshTag))
-            {
                 OccludedMeshes.Add(Mesh);
-            }
         }
 
         UE_LOG(OcclusionBinder, Log,
@@ -199,7 +185,6 @@ void AOcclusionBinder::DiscoverMeshes()
             *GetName(), *Actor->GetName(), NormalMeshes.Num(), OccludedMeshes.Num());
     }
 
-    // Mark dirty so mesh arrays serialize with the level
     Modify();
 
     UE_LOG(OcclusionBinder, Log,
@@ -212,8 +197,6 @@ void AOcclusionBinder::RegisterToSubsystem()
     UOcclusionBinderSubsystem* Sub = GetWorld()->GetSubsystem<UOcclusionBinderSubsystem>();
     if (!Sub) return;
 
-    // Only register normal meshes — occluded visual meshes have no collision
-    // so they can never be hit by the tracer
     for (TSoftObjectPtr<UMeshComponent> MeshPtr : NormalMeshes)
     {
         UMeshComponent* Mesh = MeshPtr.Get();
@@ -230,7 +213,6 @@ void AOcclusionBinder::RegisterToSubsystem()
 
 void AOcclusionBinder::GenerateShadowProxies()
 {
-    // Destroy existing proxies before regenerating
     for (TObjectPtr<UStaticMeshComponent> Proxy : StaticShadowProxies)
         if (Proxy) Proxy->DestroyComponent();
     StaticShadowProxies.Empty();
@@ -239,7 +221,6 @@ void AOcclusionBinder::GenerateShadowProxies()
         if (Proxy) Proxy->DestroyComponent();
     SkeletalShadowProxies.Empty();
 
-    // Shadow proxies only for normal meshes — occluded visuals don't need them
     for (AActor* Actor : BoundActors)
     {
         if (!IsValid(Actor)) continue;
@@ -259,11 +240,7 @@ void AOcclusionBinder::GenerateShadowProxies()
         TArray<TObjectPtr<USkeletalMeshComponent>> TempSkeletal;
 
         UOcclusionMeshUtil::GenerateShadowProxyMeshes(
-            Actor,
-            ActorNormalMeshes,
-            ShadowProxyMaterial,
-            TempStatic,
-            TempSkeletal);
+            Actor, ActorNormalMeshes, ShadowProxyMaterial, TempStatic, TempSkeletal);
 
         StaticShadowProxies.Append(TempStatic);
         SkeletalShadowProxies.Append(TempSkeletal);
@@ -278,15 +255,20 @@ void AOcclusionBinder::InitializeMaterials()
 {
     NormalDynamicMaterials.Reset();
     OccludedDynamicMaterials.Reset();
+    NormalIsRTMaterial.Reset();
+    OccludedIsRTMaterial.Reset();
 
     auto CreateMIDs = [this](
         const TArray<TSoftObjectPtr<UMeshComponent>>& Meshes,
-        TArray<UMaterialInstanceDynamic*>& OutMIDs)
+        TArray<UMaterialInstanceDynamic*>& OutMIDs,
+        TArray<bool>& OutIsRT)
     {
         for (TSoftObjectPtr<UMeshComponent> MeshPtr : Meshes)
         {
             UMeshComponent* Mesh = MeshPtr.Get();
             if (!Mesh) continue;
+
+            const bool bIsRT = Mesh->ComponentHasTag(RTMaterialTag);
 
             for (int32 i = 0; i < Mesh->GetNumMaterials(); ++i)
             {
@@ -298,12 +280,13 @@ void AOcclusionBinder::InitializeMaterials()
 
                 Mesh->SetMaterial(i, MID);
                 OutMIDs.Add(MID);
+                OutIsRT.Add(bIsRT);
             }
         }
     };
 
-    CreateMIDs(NormalMeshes, NormalDynamicMaterials);
-    CreateMIDs(OccludedMeshes, OccludedDynamicMaterials);
+    CreateMIDs(NormalMeshes,   NormalDynamicMaterials,   NormalIsRTMaterial);
+    CreateMIDs(OccludedMeshes, OccludedDynamicMaterials, OccludedIsRTMaterial);
 
     UE_LOG(OcclusionBinder, Log,
         TEXT("AOcclusionBinder::InitializeMaterials>> %s | Normal MIDs: %d | Occluded MIDs: %d"),
@@ -312,24 +295,39 @@ void AOcclusionBinder::InitializeMaterials()
 
 void AOcclusionBinder::UpdateMaterialAlpha()
 {
-    // Normal meshes — fade OUT when occluded
-    for (UMaterialInstanceDynamic* MID : NormalDynamicMaterials)
+    // CurrentAlpha: 1 = visible, 0 = occluded
+    // Material expects: 1 = visible, 0 = occluded
+    // So pass CurrentAlpha directly to normal meshes — no inversion needed
+    const float NormalParamAlpha   = CurrentAlpha;
+    // Occluded visual meshes fade IN — opposite direction
+    const float OccludedParamAlpha = 1.f - CurrentAlpha;
+    const float ForceParam         = bForceOccluded ? 1.f : 0.f;
+
+    for (int32 i = 0; i < NormalDynamicMaterials.Num(); ++i)
     {
-        if (MID) MID->SetScalarParameterValue(AlphaParameterName, CurrentAlpha);
+        UMaterialInstanceDynamic* MID = NormalDynamicMaterials[i];
+        if (!MID) continue;
+
+        MID->SetScalarParameterValue(AlphaParameterName, NormalParamAlpha);
+
+        if (NormalIsRTMaterial.IsValidIndex(i) && NormalIsRTMaterial[i])
+            MID->SetScalarParameterValue(ForceOccludeParameterName, ForceParam);
     }
 
-    // Occluded visual meshes — fade IN when occluded
-    const float OccludedAlpha = 1.f - CurrentAlpha;
-    for (UMaterialInstanceDynamic* MID : OccludedDynamicMaterials)
+    for (int32 i = 0; i < OccludedDynamicMaterials.Num(); ++i)
     {
-        if (MID) MID->SetScalarParameterValue(AlphaParameterName, OccludedAlpha);
+        UMaterialInstanceDynamic* MID = OccludedDynamicMaterials[i];
+        if (!MID) continue;
+
+        MID->SetScalarParameterValue(AlphaParameterName, OccludedParamAlpha);
+
+        if (OccludedIsRTMaterial.IsValidIndex(i) && OccludedIsRTMaterial[i])
+            MID->SetScalarParameterValue(ForceOccludeParameterName, ForceParam);
     }
 }
 
 void AOcclusionBinder::CleanupInvalidOverlaps()
 {
     for (auto It = ActiveOverlaps.CreateIterator(); It; ++It)
-    {
         if (!It->IsValid()) It.RemoveCurrent();
-    }
 }

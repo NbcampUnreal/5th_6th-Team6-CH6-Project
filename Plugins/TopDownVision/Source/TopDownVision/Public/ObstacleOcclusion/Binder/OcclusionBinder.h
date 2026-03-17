@@ -37,22 +37,23 @@ public:
     virtual void OnOcclusionEnter_Implementation(UObject* SourceTracer) override;
     virtual void OnOcclusionExit_Implementation(UObject* SourceTracer) override;
     virtual void ForceOcclude_Implementation(bool bForce) override;
-    
+
     // ── Config ────────────────────────────────────────────────────────────
 
-    // Actors to bind — populate in editor by dragging world actors here
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
     TArray<TObjectPtr<AActor>> BoundActors;
 
     // Tag for normal visible meshes — fades OUT when occluded
-    // These meshes also get collision set for occlusion tracing
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
     FName NormalMeshTag = TEXT("OcclusionMesh");
 
     // Tag for occluded visual meshes — fades IN when occluded
-    // These meshes are visual only — no collision
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
     FName OccludedMeshTag = TEXT("OccludedVisual");
+
+    // Tag for meshes using RT-based material — gets ForceOccluded parameter
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
+    FName RTMaterialTag = TEXT("RTOcclusionMesh");
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
     float FadeSpeed = 6.f;
@@ -61,12 +62,14 @@ public:
     FName AlphaParameterName = TEXT("OcclusionAlpha");
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
+    FName ForceOccludeParameterName = TEXT("ForceOccluded");
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
     TEnumAsByte<ECollisionChannel> OcclusionTraceChannel = ECC_GameTraceChannel1;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
     TEnumAsByte<ECollisionChannel> MouseTraceChannel = ECC_Visibility;
 
-    // Curved world proxy material — fully opaque, WPO driven by MPC
     UPROPERTY(EditAnywhere, Category="Occlusion Binder|Shadow")
     TObjectPtr<UMaterialInterface> ShadowProxyMaterial;
 
@@ -79,37 +82,33 @@ private:
     void UpdateMaterialAlpha();
     void CleanupInvalidOverlaps();
 
-    // Normal meshes — tagged NormalMeshTag — fade OUT when occluded (alpha = 1 - CurrentAlpha)
-    // Serialized — populated at editor time
     UPROPERTY(VisibleAnywhere, Category="Occlusion Binder")
     TArray<TSoftObjectPtr<UMeshComponent>> NormalMeshes;
 
-    // Occluded visual meshes — tagged OccludedMeshTag — fade IN when occluded (alpha = CurrentAlpha)
-    // Visual only — no collision
-    // Serialized — populated at editor time
     UPROPERTY(VisibleAnywhere, Category="Occlusion Binder")
     TArray<TSoftObjectPtr<UMeshComponent>> OccludedMeshes;
 
-    // Shadow proxies — generated per bound actor at editor time
     UPROPERTY(VisibleAnywhere, Category="Occlusion Binder|Shadow")
     TArray<TObjectPtr<UStaticMeshComponent>> StaticShadowProxies;
 
     UPROPERTY(VisibleAnywhere, Category="Occlusion Binder|Shadow")
     TArray<TObjectPtr<USkeletalMeshComponent>> SkeletalShadowProxies;
 
-    // MIDs — Transient, recreated at runtime
+    // Parallel arrays — index matches NormalMeshes/OccludedMeshes per slot
     UPROPERTY(Transient)
     TArray<UMaterialInstanceDynamic*> NormalDynamicMaterials;
 
     UPROPERTY(Transient)
     TArray<UMaterialInstanceDynamic*> OccludedDynamicMaterials;
 
+    // Tracks which MID indices belong to RT material meshes
+    TArray<bool> NormalIsRTMaterial;
+    TArray<bool> OccludedIsRTMaterial;
+
     UPROPERTY(Transient)
     TSet<TWeakObjectPtr<UObject>> ActiveOverlaps;
 
-    // Start at 1 — fully visible
     float CurrentAlpha      = 1.f;
     bool  bShouldBeOccluded = false;
-
-    bool bForceOccluded = false;
+    bool  bForceOccluded    = false;
 };

@@ -50,6 +50,8 @@ void ADecorativeSplineMeshActor::BuildSplineMesh()
     for (int32 i = 0; i < LoopCount; ++i)
         GenerateSegment(i);
 
+    const bool DebugChecker=MarkPackageDirty();
+
     UE_LOG(LogTemp, Log,
         TEXT("ADecorativeSplineMeshActor::BuildSplineMesh>> Generated %d segments on %s"),
         SplineMeshComponents.Num(), *GetName());
@@ -59,18 +61,23 @@ void ADecorativeSplineMeshActor::BuildSplineMesh()
 
 void ADecorativeSplineMeshActor::ClearSplineMeshComponents()
 {
+    Modify();
+
     for (TObjectPtr<USplineMeshComponent> Comp : SplineMeshComponents)
     {
         if (Comp)
-        {
             Comp->DestroyComponent();
-        }
     }
+
     SplineMeshComponents.Empty();
+
+    const bool DebugChecker=MarkPackageDirty();
 }
 
 void ADecorativeSplineMeshActor::GenerateSegment(int32 SegmentIndex)
 {
+    Modify();
+
     USplineMeshComponent* Segment = NewObject<USplineMeshComponent>(
         this,
         USplineMeshComponent::StaticClass(),
@@ -96,13 +103,11 @@ void ADecorativeSplineMeshActor::GenerateSegment(int32 SegmentIndex)
 
     Segment->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    // Apply occlusion tag so DiscoverChildMeshes can find this segment
     if (bApplyOcclusionTag && !OcclusionMeshTag.IsNone())
         Segment->ComponentTags.AddUnique(OcclusionMeshTag);
 
     Segment->RegisterComponent();
     AddInstanceComponent(Segment);
-
     Segment->UpdateMesh();
 
     SplineMeshComponents.Add(Segment);
@@ -114,7 +119,6 @@ void ADecorativeSplineMeshActor::GetLocationAndTangent(
     FVector& OutLocation,
     FVector& OutTangent) const
 {
-    // Distance along spline for this segment point
     const float Distance = (bIsStart ? SegmentIndex : SegmentIndex + 1) * SectionLength;
 
     OutLocation = SplineComponent->GetLocationAtDistanceAlongSpline(
@@ -123,6 +127,5 @@ void ADecorativeSplineMeshActor::GetLocationAndTangent(
     OutTangent = SplineComponent->GetTangentAtDistanceAlongSpline(
         Distance, ESplineCoordinateSpace::Local);
 
-    // Scale tangent to section length so deformation is proportional
     OutTangent = OutTangent.GetSafeNormal() * SectionLength;
 }

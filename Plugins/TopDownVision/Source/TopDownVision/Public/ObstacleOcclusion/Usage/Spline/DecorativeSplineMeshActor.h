@@ -70,6 +70,6 @@ private:
         FVector& OutTangent) const;
 
     // All generated segments — rebuilt on each BuildSplineMesh call
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere, Category="Spline Mesh")
     TArray<TObjectPtr<USplineMeshComponent>> SplineMeshComponents;
 };
