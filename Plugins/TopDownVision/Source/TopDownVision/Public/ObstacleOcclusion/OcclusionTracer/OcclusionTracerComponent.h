@@ -79,47 +79,38 @@ public:
 
     // ── Sphere array config ───────────────────────────────────────────────
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array")
-    TArray<FOcclusionSweepConfig> SweepConfigs;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array",
-              meta=(EditCondition="TraceMethod==EOcclusionTraceMethod::SphereArray"))
-    bool bAutoGenerateSweeps = true;
-
     /** Hard cap on generated sweep count */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array",
-              meta=(EditCondition="bAutoGenerateSweeps", ClampMin=1))
+              meta=(EditCondition="TraceMethod==EOcclusionTraceMethod::SphereArray", ClampMin=1))
     int32 MaxAutoSweepCount = 20;
 
-    /** Distance between each sphere = previous sphere radius * this value.
-     *  1.0 = spheres touch, 2.0 = one radius gap between each */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array",
-              meta=(EditCondition="bAutoGenerateSweeps", ClampMin=0.1f))
-    float SweepGapRatio = 1.5f;
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array",
+			  meta=(EditCondition="TraceMethod==EOcclusionTraceMethod::SphereArray", ClampMin=1))
+	float SweepGapRatio = 1.5;
+	
     /** Minimum distance from target before placing first sphere —
      *  skips the area immediately adjacent to the pawn where false positives occur */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array",
-              meta=(EditCondition="bAutoGenerateSweeps", ClampMin=0.f))
+              meta=(EditCondition="TraceMethod==EOcclusionTraceMethod::SphereArray", ClampMin=0.f))
     float MinDistFromTarget = 100.f;
 
     /** Maximum distance from camera to place spheres —
      *  occluders beyond this range cannot realistically cover the pawn on screen */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array",
-              meta=(EditCondition="bAutoGenerateSweeps", ClampMin=0.f))
+              meta=(EditCondition="TraceMethod==EOcclusionTraceMethod::SphereArray", ClampMin=0.f))
     float MaxDistFromCamera = 2000.f;
 
     // ── Rocket head (sphere array only) ───────────────────────────────────
 
     // World units from target where rocket head taper takes effect
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array|Rocket Head",
-              meta=(ClampMin=0.f))
+              meta=(EditCondition="TraceMethod==EOcclusionTraceMethod::SphereArray", ClampMin=0.f))
     float RocketHeadDistance = 150.f;
 
     // Controls taper shape within rocket head zone
     // 1.0 = linear, < 1.0 = gradual (convex), > 1.0 = steep (concave)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Tracer|Sphere Array|Rocket Head",
-              meta=(ClampMin=0.1f))
+              meta=(EditCondition="TraceMethod==EOcclusionTraceMethod::SphereArray", ClampMin=0.1f))
     float RocketHeadExponent = 2.f;
 
     // ── Debug ─────────────────────────────────────────────────────────────
@@ -141,18 +132,13 @@ public:
 
 protected:
 
-    // ── Overridable for curved world subclasses ───────────────────────────
-
     // Rebuilds probe data each trace — override in curved world subclass
-    // to place spheres along the curved path instead of a straight line
     virtual void RebuildProbe();
 
     // Sphere array generation — override in curved world subclass
-    // to step along the curved path rather than a straight line direction
     virtual void GenerateSweepsAlongLine(const FVector& LineDirection, float LineLength);
 
     // Fibonacci cone generation — override in curved world subclass
-    // if line endpoints need to follow the curve
     virtual void GenerateFibonacciLines(const FVector& TargetLocation);
 
     FOcclusionProbe      Probe;
@@ -171,11 +157,8 @@ private:
 
     void RunTrace();
     bool RefreshFrustumParams();
-
-	// this can also be overriden as well
     virtual void DrawDebug() const;
 
     FTimerHandle TraceTimerHandle;
-
     bool bCameraReady = false;
 };

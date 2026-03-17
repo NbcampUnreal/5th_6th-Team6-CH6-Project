@@ -155,7 +155,7 @@ void AOcclusionBinder::SetupBoundActors()
         }
 
         Actor->Modify();
-        Actor->MarkPackageDirty();
+        bool DebugBoolCheck=Actor->MarkPackageDirty();
     }
 
     DiscoverMeshes();

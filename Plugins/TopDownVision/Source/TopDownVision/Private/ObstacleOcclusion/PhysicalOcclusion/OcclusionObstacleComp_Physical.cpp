@@ -16,7 +16,14 @@ UOcclusionObstacleComp_Physical::UOcclusionObstacleComp_Physical()
 void UOcclusionObstacleComp_Physical::BeginPlay()
 {
     Super::BeginPlay();
-    InitializeMaterials();
+    
+   
+    
+    InitializeMaterials();// make mid
+
+    CurrentAlpha=1.f;//always start as non occluded
+    
+    UpdateMaterialAlpha();// forced first update
 }
 
 void UOcclusionObstacleComp_Physical::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -37,7 +44,7 @@ void UOcclusionObstacleComp_Physical::TickComponent(float DeltaTime, ELevelTick 
         bShouldBeOccluded ? TEXT("true") : TEXT("false"));
 
     
-    const float TargetAlpha = bShouldBeOccluded ? 1.f : 0.f;
+    const float TargetAlpha = bShouldBeOccluded ? 0.f : 1.f;
 
     if (bShouldBeOccluded != bLastOcclusionState)
     {
@@ -230,8 +237,8 @@ void UOcclusionObstacleComp_Physical::InitializeMaterials()
 
 void UOcclusionObstacleComp_Physical::UpdateMaterialAlpha()
 {
-    const float NormalAlpha   = 1.f - CurrentAlpha;
-    const float OccludedAlpha = CurrentAlpha;
+    const float NormalAlpha   =  CurrentAlpha;
+    const float OccludedAlpha = 1.f - CurrentAlpha;
 
     for (UMaterialInstanceDynamic* MID : NormalStaticMIDs)
         if (MID) MID->SetScalarParameterValue(AlphaParameterName, NormalAlpha);

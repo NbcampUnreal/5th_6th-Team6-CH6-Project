@@ -63,6 +63,9 @@ protected:
     FName AlphaParameterName = TEXT("OcclusionAlpha");
 
     UPROPERTY(EditAnywhere, Category="Occlusion")
+    FName ForceOccludeParameterName = TEXT("FullOcclusionAlpha");// this is for making the mesh fade not only the brush area
+
+    UPROPERTY(EditAnywhere, Category="Occlusion")
     TEnumAsByte<ECollisionChannel> OcclusionTraceChannel = ECC_GameTraceChannel1;
 
     UPROPERTY(EditAnywhere, Category="Occlusion")
@@ -81,10 +84,13 @@ private:
     UPROPERTY(Transient)
     TSet<TWeakObjectPtr<UObject>> ActiveOverlaps;
 
-    float CurrentAlpha      = 0.f;
-    bool  bShouldBeOccluded = false;
+    float CurrentAlpha       =   0.f;
+    float CurrentForceAlpha  =   0.f;
+    bool  bShouldBeOccluded  = false;
 
-    bool bForceOccluded = false;
+    bool bForceOccluded      = false;
+    //                       =      ;
+    // fuck
 
     UPROPERTY(Transient)
     TArray<UMaterialInstanceDynamic*> StaticMIDs;
