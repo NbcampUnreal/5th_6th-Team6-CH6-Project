@@ -16,7 +16,14 @@ UOcclusionObstacleComp_Physical::UOcclusionObstacleComp_Physical()
 void UOcclusionObstacleComp_Physical::BeginPlay()
 {
     Super::BeginPlay();
-    InitializeMaterials();
+    
+   
+    
+    InitializeMaterials();// make mid
+
+    CurrentAlpha=1.f;//always start as non occluded
+    
+    UpdateMaterialAlpha();// forced first update
 }
 
 void UOcclusionObstacleComp_Physical::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -29,7 +36,15 @@ void UOcclusionObstacleComp_Physical::TickComponent(float DeltaTime, ELevelTick 
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    const float TargetAlpha = bShouldBeOccluded ? 1.f : 0.f;
+    //Temp
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComp_Physical::TickComponent>> %s | CurrentAlpha: %.3f | bShouldBeOccluded: %s"),
+        *GetOwner()->GetName(),
+        CurrentAlpha,
+        bShouldBeOccluded ? TEXT("true") : TEXT("false"));
+
+    
+    const float TargetAlpha = bShouldBeOccluded ? 0.f : 1.f;
 
     if (bShouldBeOccluded != bLastOcclusionState)
     {
@@ -69,12 +84,31 @@ void UOcclusionObstacleComp_Physical::OnOcclusionExit_Implementation(UObject* So
     if (!SourceTracer) return;
     ActiveOverlaps.Remove(SourceTracer);
     CleanupInvalidOverlaps();
-    bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+
+    if (!bForceOccluded)
+        bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+    
     SetComponentTickEnabled(true);
 
     UE_LOG(Occlusion, Log,
         TEXT("UOcclusionObstacleComp_Physical::OnOcclusionExit>> %s | ActiveOverlaps: %d"),
         *SourceTracer->GetName(), ActiveOverlaps.Num());
+}
+
+void UOcclusionObstacleComp_Physical::ForceOcclude_Implementation(bool bForce)
+{
+    bForceOccluded = bForce;
+    bShouldBeOccluded = bForce ? true : ActiveOverlaps.Num() > 0;
+    SetComponentTickEnabled(true);
+
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComp_Physical::ForceOcclude>> %s | bForce: %s | NormalStaticMIDs: %d | NormalSkeletalMIDs: %d | OccludedStaticMIDs: %d | OccludedSkeletalMIDs: %d"),
+        *GetOwner()->GetName(),
+        bForce ? TEXT("true") : TEXT("false"),
+        NormalStaticMIDs.Num(),
+        NormalSkeletalMIDs.Num(),
+        OccludedStaticMIDs.Num(),
+        OccludedSkeletalMIDs.Num());
 }
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
@@ -203,8 +237,8 @@ void UOcclusionObstacleComp_Physical::InitializeMaterials()
 
 void UOcclusionObstacleComp_Physical::UpdateMaterialAlpha()
 {
-    const float NormalAlpha   = 1.f - CurrentAlpha;
-    const float OccludedAlpha = CurrentAlpha;
+    const float NormalAlpha   =  CurrentAlpha;
+    const float OccludedAlpha = 1.f - CurrentAlpha;
 
     for (UMaterialInstanceDynamic* MID : NormalStaticMIDs)
         if (MID) MID->SetScalarParameterValue(AlphaParameterName, NormalAlpha);

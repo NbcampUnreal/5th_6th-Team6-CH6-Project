@@ -5,11 +5,11 @@
 #include "ObstacleOcclusion/OcclusionTracer/OcclusionInterface.h"
 #include "OcclusionBinder.generated.h"
 
-// FD
 class UMeshComponent;
 class UStaticMeshComponent;
 class USkeletalMeshComponent;
 class UMaterialInstanceDynamic;
+class UMaterialInterface;
 class UOcclusionBinderSubsystem;
 
 TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(OcclusionBinder, Log, All);
@@ -29,8 +29,6 @@ public:
 
     // ── Editor setup ──────────────────────────────────────────────────────
 
-    // Discovers meshes from all bound actors and sets their collision —
-    // call once in editor after populating BoundActors
     UFUNCTION(CallInEditor, BlueprintCallable, Category="Occlusion Binder")
     void SetupBoundActors();
 
@@ -38,12 +36,23 @@ public:
 
     virtual void OnOcclusionEnter_Implementation(UObject* SourceTracer) override;
     virtual void OnOcclusionExit_Implementation(UObject* SourceTracer) override;
-
+    virtual void ForceOcclude_Implementation(bool bForce) override;
+    
     // ── Config ────────────────────────────────────────────────────────────
 
     // Actors to bind — populate in editor by dragging world actors here
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
     TArray<TObjectPtr<AActor>> BoundActors;
+
+    // Tag for normal visible meshes — fades OUT when occluded
+    // These meshes also get collision set for occlusion tracing
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
+    FName NormalMeshTag = TEXT("OcclusionMesh");
+
+    // Tag for occluded visual meshes — fades IN when occluded
+    // These meshes are visual only — no collision
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
+    FName OccludedMeshTag = TEXT("OccludedVisual");
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
     float FadeSpeed = 6.f;
@@ -57,24 +66,50 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
     TEnumAsByte<ECollisionChannel> MouseTraceChannel = ECC_Visibility;
 
+    // Curved world proxy material — fully opaque, WPO driven by MPC
+    UPROPERTY(EditAnywhere, Category="Occlusion Binder|Shadow")
+    TObjectPtr<UMaterialInterface> ShadowProxyMaterial;
+
 private:
 
-    void DiscoverAndRegisterMeshes();
+    void DiscoverMeshes();
+    void RegisterToSubsystem();
+    void GenerateShadowProxies();
     void InitializeMaterials();
     void UpdateMaterialAlpha();
     void CleanupInvalidOverlaps();
 
-    // Runtime MIDs — created from bound actors' mesh materials at BeginPlay
-    UPROPERTY(Transient)
-    TArray<UMaterialInstanceDynamic*> DynamicMaterials;
+    // Normal meshes — tagged NormalMeshTag — fade OUT when occluded (alpha = 1 - CurrentAlpha)
+    // Serialized — populated at editor time
+    UPROPERTY(VisibleAnywhere, Category="Occlusion Binder")
+    TArray<TSoftObjectPtr<UMeshComponent>> NormalMeshes;
 
-    // Cached mesh components from all bound actors — used for MID creation
+    // Occluded visual meshes — tagged OccludedMeshTag — fade IN when occluded (alpha = CurrentAlpha)
+    // Visual only — no collision
+    // Serialized — populated at editor time
+    UPROPERTY(VisibleAnywhere, Category="Occlusion Binder")
+    TArray<TSoftObjectPtr<UMeshComponent>> OccludedMeshes;
+
+    // Shadow proxies — generated per bound actor at editor time
+    UPROPERTY(VisibleAnywhere, Category="Occlusion Binder|Shadow")
+    TArray<TObjectPtr<UStaticMeshComponent>> StaticShadowProxies;
+
+    UPROPERTY(VisibleAnywhere, Category="Occlusion Binder|Shadow")
+    TArray<TObjectPtr<USkeletalMeshComponent>> SkeletalShadowProxies;
+
+    // MIDs — Transient, recreated at runtime
     UPROPERTY(Transient)
-    TArray<TWeakObjectPtr<UMeshComponent>> BoundMeshes;
+    TArray<UMaterialInstanceDynamic*> NormalDynamicMaterials;
+
+    UPROPERTY(Transient)
+    TArray<UMaterialInstanceDynamic*> OccludedDynamicMaterials;
 
     UPROPERTY(Transient)
     TSet<TWeakObjectPtr<UObject>> ActiveOverlaps;
 
-    float CurrentAlpha      = 0.f;
+    // Start at 1 — fully visible
+    float CurrentAlpha      = 1.f;
     bool  bShouldBeOccluded = false;
+
+    bool bForceOccluded = false;
 };
