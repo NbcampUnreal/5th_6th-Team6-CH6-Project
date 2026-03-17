@@ -55,6 +55,16 @@ void UAreaPeriodicEffectComponent::RemoveTarget(AActor* InTarget)
 	}
 }
 
+void UAreaPeriodicEffectComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (GetOwner() && GetOwner()->HasAuthority())
+	{
+		StartPeriodicTrigger();
+	}
+}
+
 void UAreaPeriodicEffectComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	StopPeriodicTrigger();

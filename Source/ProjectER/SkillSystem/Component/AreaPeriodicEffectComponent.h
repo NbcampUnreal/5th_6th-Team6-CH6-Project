@@ -36,6 +36,7 @@ public:
 	void RemoveTarget(AActor* InTarget);
 
 protected:
+	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	/** 타이머에 의해 호출되는 내부 트리거 함수 */
