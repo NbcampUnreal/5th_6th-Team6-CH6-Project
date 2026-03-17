@@ -2,6 +2,9 @@
 #include "Engine/AssetManager.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Blueprint/UserWidget.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
 
 void UER_AssetPreloadSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -82,4 +85,34 @@ void UER_AssetPreloadSubsystem::OnMonsterAssetsLoadedAsync()
 
 	// 로딩 왼료 이벤트를 Broadcasting 하여 PlayerController 등에서 처리할 수 있게 함
 	OnPreloadComplete.Broadcast();
+}
+
+void UER_AssetPreloadSubsystem::ShowLoadingScreen(TSubclassOf<UUserWidget> LoadingUIClass)
+{
+	if (!LoadingUIClass || LoadingUIInstance) return;
+
+	LoadingUIInstance = CreateWidget<UUserWidget>(GetGameInstance(), LoadingUIClass);
+	if (LoadingUIInstance)
+	{
+		if (GEngine && GEngine->GameViewport)
+		{
+			GEngine->GameViewport->AddViewportWidgetContent(LoadingUIInstance->TakeWidget(), 100);
+		}
+	}
+}
+
+void UER_AssetPreloadSubsystem::HideLoadingScreen()
+{
+	if (!LoadingUIInstance)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Preload] HideLoadingScreen: No active LoadingUIInstance to remove."));
+		return;
+	}
+
+	if (GEngine && GEngine->GameViewport)
+	{
+		GEngine->GameViewport->RemoveViewportWidgetContent(LoadingUIInstance->TakeWidget());
+	}
+
+	LoadingUIInstance = nullptr;
 }

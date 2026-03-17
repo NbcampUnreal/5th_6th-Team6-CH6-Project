@@ -32,6 +32,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "ProjectER|Preload")
 	FOnPreloadCompleteDelegate OnPreloadComplete;
 
+	/** 로딩 화면 표시/해제 (Seamless Travel 대응을 위해 서브시스템에서 관리) */
+	void ShowLoadingScreen(TSubclassOf<UUserWidget> LoadingUIClass);
+	void HideLoadingScreen();
+
 private:
 	// 비동기 로딩 핸들러 콜백
 	void OnMonsterAssetsLoadedAsync();
@@ -43,4 +47,8 @@ protected:
 	// 가비지 컬렉션(GC)을 방지하기 위해 로드된 객체들을 들고 있는 배열
 	UPROPERTY()
 	TArray<UObject*> PreloadedAssets;
+
+	/** 현재 표시 중인 로딩 UI 인스턴스 */
+	UPROPERTY()
+	TObjectPtr<UUserWidget> LoadingUIInstance;
 };
