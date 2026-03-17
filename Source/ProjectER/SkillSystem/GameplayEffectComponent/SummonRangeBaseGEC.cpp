@@ -156,24 +156,7 @@ bool USummonRangeBaseGEC::ShouldProcessOnInstigator(const AActor* Instigator) co
 	return IsValid(Instigator);
 }
 
-const UBaseGECConfig* USummonRangeBaseGEC::ResolveBaseConfigFromSpec(const FGameplayEffectSpec& GESpec) const
-{
-	const USkillEffectDataAsset* const SkillDataAsset = Cast<USkillEffectDataAsset>(GESpec.GetEffectContext().GetSourceObject());
-	if (!IsValid(SkillDataAsset))
-	{
-		return nullptr;
-	}
 
-	const FGameplayTag IndexTag = SkillDataAsset->GetIndexTag();
-	const int32 DataIndex = FMath::RoundToInt(GESpec.GetSetByCallerMagnitude(IndexTag, false, -1.0f));
-	const FSkillEffectContainer& SkillContainer = SkillDataAsset->GetData();
-	if (!SkillContainer.SkillEffectDefinition.IsValidIndex(DataIndex))
-	{
-		return nullptr;
-	}
-
-	return SkillContainer.SkillEffectDefinition[DataIndex].Config;
-}
 
 FGameplayCueParameters USummonRangeBaseGEC::BuildNiagaraCueParameters(const FGameplayEffectSpec& GESpec, const FGameplayTag& OriginalTag, const FGameplayEffectContextHandle& EffectContext, AActor* EffectCauser, const FVector& CueLocation, const UObject* SourceObject, const FVector& CueNormal) const
 {

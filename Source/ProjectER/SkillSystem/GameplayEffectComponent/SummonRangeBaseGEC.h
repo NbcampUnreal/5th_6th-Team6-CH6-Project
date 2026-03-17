@@ -80,26 +80,9 @@ protected:
 	virtual void ExecuteGameplayCues(const FGameplayEffectSpec& GESpec, const FGameplayEffectContextHandle& ContextHandle, AActor* EffectInstigator, ABaseRangeOverlapEffectActor* RangeActor, const FTransform& SpawnTransform, const USummonRangeBaseConfig* Config) const;
 	virtual AActor* GetTargetActorFromContainer(FActiveGameplayEffectsContainer& ActiveGEContainer) const;
 
-	template <typename TConfig>
-	const TConfig* ResolveTypedConfigFromSpec(const FGameplayEffectSpec& GESpec) const;
-
-	const UBaseGECConfig* ResolveBaseConfigFromSpec(const FGameplayEffectSpec& GESpec) const;
 	FGameplayCueParameters BuildNiagaraCueParameters(const FGameplayEffectSpec& GESpec, const FGameplayTag& OriginalTag, const FGameplayEffectContextHandle& EffectContext, AActor* EffectCauser, const FVector& CueLocation, const UObject* SourceObject, const FVector& CueNormal = FVector::UpVector) const;
 	virtual void InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetCueParameters) const;
 	virtual void SnapLocationToGround(FVector& InOutLocation, const USummonRangeBaseConfig* Config, const AActor* Instigator) const;
 	virtual void ApplyCommonSpawnOptions(FVector& InOutLocation, FRotator& InOutRotation, const USummonRangeBaseConfig* Config, const AActor* Instigator) const;
 };
 
-template <typename TConfig>
-const TConfig* USummonRangeBaseGEC::ResolveTypedConfigFromSpec(const FGameplayEffectSpec& GESpec) const
-{
-	static_assert(TIsDerivedFrom<TConfig, UBaseGECConfig>::Value, "TConfig must derive from UBaseGECConfig");
-
-	const UBaseGECConfig* const BaseConfig = ResolveBaseConfigFromSpec(GESpec);
-	if (!IsValid(BaseConfig))
-	{
-		return nullptr;
-	}
-
-	return Cast<TConfig>(BaseConfig);
-}
