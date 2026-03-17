@@ -80,7 +80,7 @@ FTransform USummonRangeGEC::CalculateSpawnTransform(const FGameplayEffectSpec& G
 		}
 	}
 
-	DrawDebugBox(World, TargetLocation, WorldConfig->CollisionRadius, CombinedRotation.Quaternion(), FColor::Green, false, 5.0f, 0, 2.0f);
+	//DrawDebugBox(World, TargetLocation, WorldConfig->CollisionRadius, CombinedRotation.Quaternion(), FColor::Green, false, 5.0f, 0, 2.0f);
 	return FTransform(CombinedRotation, TargetLocation);
 }
 

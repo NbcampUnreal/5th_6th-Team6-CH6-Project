@@ -94,6 +94,6 @@ FTransform USummonRangeAtBone::CalculateSpawnTransform(const FGameplayEffectSpec
 		}
 	}
 
-	DrawDebugBox(World, TargetLocation, BoneConfig->CollisionRadius, CombinedRotation.Quaternion(), FColor::Red, false, 5.0f, 0, 2.0f);
+	//DrawDebugBox(World, TargetLocation, BoneConfig->CollisionRadius, CombinedRotation.Quaternion(), FColor::Red, false, 5.0f, 0, 2.0f);
 	return FTransform(CombinedRotation, TargetLocation);
 }

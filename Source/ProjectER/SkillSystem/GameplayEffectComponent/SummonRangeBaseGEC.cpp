@@ -14,8 +14,7 @@
 
 FText USummonRangeBaseConfig::BuildTooltipDescription(float InLevel) const
 {
-TArray<FString> AppliedDescriptions;
-
+	TArray<FString> AppliedDescriptions;
 	for (const USkillEffectDataAsset* const SkillEffectDataAsset : Applied)
 	{
 		if (!IsValid(SkillEffectDataAsset))
