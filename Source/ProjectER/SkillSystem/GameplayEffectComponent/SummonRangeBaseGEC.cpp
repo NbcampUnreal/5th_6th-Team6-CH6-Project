@@ -8,14 +8,13 @@
 #include "GameplayEffect.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/Pawn.h"
-#include "SkillSystem/Actor/ABaseRangeOverlapEffectActor/BaseRangeOverlapEffectActor.h"
+#include "SkillSystem/Actor/BaseRangeOverlapEffectActor/BaseRangeOverlapEffectActor.h"
 #include "SkillSystem/GameAbility/SkillBase.h"
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 
 FText USummonRangeBaseConfig::BuildTooltipDescription(float InLevel) const
 {
-TArray<FString> AppliedDescriptions;
-
+	TArray<FString> AppliedDescriptions;
 	for (const USkillEffectDataAsset* const SkillEffectDataAsset : Applied)
 	{
 		if (!IsValid(SkillEffectDataAsset))

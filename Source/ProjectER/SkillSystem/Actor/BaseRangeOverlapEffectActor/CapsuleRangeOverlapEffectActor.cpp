@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "SkillSystem/Actor/ABaseRangeOverlapEffectActor/CapsuleRangeOverlapEffectActor.h"
+#include "SkillSystem/Actor/BaseRangeOverlapEffectActor/CapsuleRangeOverlapEffectActor.h"
 #include "Components/CapsuleComponent.h"
 
 ACapsuleRangeOverlapEffectActor::ACapsuleRangeOverlapEffectActor()
