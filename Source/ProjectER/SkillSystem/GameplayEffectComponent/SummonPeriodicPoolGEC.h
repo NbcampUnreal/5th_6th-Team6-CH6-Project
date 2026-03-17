@@ -3,11 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "SkillSystem/GameplayEffectComponent/SummonRangeBaseGEC.h"
+#include "SkillSystem/GameplayEffectComponent/SummonRangeGEC.h"
 #include "SummonPeriodicPoolGEC.generated.h"
 
-UCLASS()
-class PROJECTER_API USummonPeriodicPoolConfig : public USummonRangeBaseConfig
+UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced)
+class PROJECTER_API USummonPeriodicPoolConfig : public USummonRangeByWorldOriginGECConfig
 {
     GENERATED_BODY()
 
@@ -20,11 +20,12 @@ public:
 };
 
 UCLASS()
-class PROJECTER_API USummonPeriodicPoolGEC : public USummonRangeBaseGEC
+class PROJECTER_API USummonPeriodicPoolGEC : public USummonRangeGEC
 {
     GENERATED_BODY()
 
 public:
+    USummonPeriodicPoolGEC();
     virtual TSubclassOf<UBaseGECConfig> GetRequiredConfigClass() const override;
 
 protected:
