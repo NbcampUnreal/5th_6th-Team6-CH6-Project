@@ -1,4 +1,4 @@
-﻿#include "CharacterSystem/Player/BasePlayerController.h"
+#include "CharacterSystem/Player/BasePlayerController.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -1080,7 +1080,7 @@ void ABasePlayerController::Client_StartPreload_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("[Client] Client_StartPreload_Implementation called."));
 
-	Client_OpenLoadingUI();
+	//Client_OpenLoadingUI();
 
 	if (UGameInstance* GI = GetGameInstance())
 	{
@@ -1098,7 +1098,6 @@ void ABasePlayerController::OnPreloadComplete()
 {
 	UE_LOG(LogTemp, Warning, TEXT("[Client] OnPreloadComplete: All assets loaded. Notifying Server..."));
 	Server_NotifyLoadComplete();
-	Client_CloseLoadingUI();
 }
 
 void ABasePlayerController::Server_NotifyLoadComplete_Implementation()
@@ -1321,29 +1320,24 @@ void ABasePlayerController::Client_CloseLootUI_Implementation()
 
 void ABasePlayerController::Client_OpenLoadingUI_Implementation()
 {
-	if (!LoadingUIClass)
+	if (UGameInstance* GI = GetGameInstance())
 	{
-		return;
+		if (UER_AssetPreloadSubsystem* PSS = GI->GetSubsystem<UER_AssetPreloadSubsystem>())
+		{
+			PSS->ShowLoadingScreen(LoadingUIClass);
+		}
 	}
-
-	if (IsValid(LoadingUIInstance))
-	{
-		return;
-	}
-
-	LoadingUIInstance = CreateWidget<UUserWidget>(this, LoadingUIClass);
-	LoadingUIInstance->AddToViewport();
 }
 
 void ABasePlayerController::Client_CloseLoadingUI_Implementation()
 {
-	if (!IsValid(LoadingUIInstance))
+	if (UGameInstance* GI = GetGameInstance())
 	{
-		return;
+		if (UER_AssetPreloadSubsystem* PSS = GI->GetSubsystem<UER_AssetPreloadSubsystem>())
+		{
+			PSS->HideLoadingScreen();
+		}
 	}
-	LoadingUIInstance->RemoveFromParent();
-	LoadingUIInstance = nullptr;
-
 }
 
 void ABasePlayerController::Server_BeginLootFromActor_Implementation(AActor* TargetActor)
