@@ -7,6 +7,8 @@
 
 class USphereComponent;
 class UBaseItemData;
+class UStaticMeshComponent;
+class UPrimitiveComponent;
 
 UCLASS()
 class PROJECTER_API ABaseItemActor : public AActor, public II_ItemInteractable
@@ -18,9 +20,20 @@ public:
 
 public:
 	virtual void BeginPlay() override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// 상호작용 인터페이스 구현
 	virtual void PickupItem(APawn* InHandler) override;
+
+	// [추가] 인벤토리에서 떨어질 때 데이터 초기화
+	void InitializeFromItemData(UBaseItemData* InItemData, APawn* InDropperPawn = nullptr);
+
+protected:
+	// [추가] ItemData가 복제되면 클라이언트에서도 메시 갱신
+	UFUNCTION()
+	void OnRep_ItemData();
+
+	void RefreshVisualFromItemData();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item|Interaction")
 	TObjectPtr<USphereComponent> InteractionSphere;
@@ -31,9 +44,20 @@ public:
 		bool bFromSweep, const FHitResult& SweepResult);
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item|Data")
+	// [기존] 여기만 ReplicatedUsing으로 바꿉니다
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, ReplicatedUsing = OnRep_ItemData, Category = "Item|Data")
 	TObjectPtr<UBaseItemData> ItemData;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item|Mesh")
 	TObjectPtr<UStaticMeshComponent> ItemMesh;
+
+private:
+	// [추가] 드랍 직후 즉시 다시 먹는 버그 방지용
+	UPROPERTY()
+	TObjectPtr<APawn> LastDropperPawn = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Item|Drop")
+	float InitialPickupIgnoreTime = 0.25f;
+
+	float DroppedAtTime = 0.f;
 };

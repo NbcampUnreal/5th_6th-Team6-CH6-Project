@@ -2,66 +2,127 @@
 #include "ItemSystem/Data/BaseItemData.h"
 #include "ItemSystem/Component/BaseInventoryComponent.h"
 #include "Components/SphereComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Net/UnrealNetwork.h"
 
 ABaseItemActor::ABaseItemActor()
 {
-    PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = false;
 
-    ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
-    RootComponent = ItemMesh;
+	bReplicates = true;
+	SetReplicateMovement(true);
 
-    InteractionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionSphere"));
-    InteractionSphere->SetupAttachment(RootComponent);
-    InteractionSphere->SetSphereRadius(150.f);
+	ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
+	RootComponent = ItemMesh;
 
-    InteractionSphere->SetCollisionProfileName(TEXT("Trigger"));
+	InteractionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionSphere"));
+	InteractionSphere->SetupAttachment(RootComponent);
+	InteractionSphere->SetSphereRadius(150.f);
+	InteractionSphere->SetCollisionProfileName(TEXT("Trigger"));
 }
 
 void ABaseItemActor::BeginPlay()
 {
-    Super::BeginPlay();
+	Super::BeginPlay();
 
-    if (InteractionSphere)
-    {
-        InteractionSphere->OnComponentBeginOverlap.AddDynamic(this, &ABaseItemActor::OnOverlapBegin);
-    }
+	RefreshVisualFromItemData();
+
+	if (InteractionSphere)
+	{
+		InteractionSphere->OnComponentBeginOverlap.AddDynamic(this, &ABaseItemActor::OnOverlapBegin);
+	}
+}
+
+void ABaseItemActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ABaseItemActor, ItemData);
+}
+
+void ABaseItemActor::InitializeFromItemData(UBaseItemData* InItemData, APawn* InDropperPawn)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	ItemData = InItemData;
+	LastDropperPawn = InDropperPawn;
+	DroppedAtTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+
+	RefreshVisualFromItemData();
+	ForceNetUpdate();
+}
+
+void ABaseItemActor::OnRep_ItemData()
+{
+	RefreshVisualFromItemData();
+}
+
+void ABaseItemActor::RefreshVisualFromItemData()
+{
+	if (!ItemMesh)
+	{
+		return;
+	}
+
+	if (ItemData && !ItemData->ItemMesh.IsNull())
+	{
+		if (UStaticMesh* Mesh = ItemData->ItemMesh.LoadSynchronous())
+		{
+			ItemMesh->SetStaticMesh(Mesh);
+			return;
+		}
+	}
+
+	ItemMesh->SetStaticMesh(nullptr);
 }
 
 void ABaseItemActor::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
-    bool bFromSweep, const FHitResult& SweepResult)
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+	bool bFromSweep, const FHitResult& SweepResult)
 {
-    // 데이터가 있고, 타입이 Automatic일 때만 바로 습득 진행
-    if (OtherActor && OtherActor != this && ItemData)
-    {
-        if (ItemData->PickupType == EItemPickupType::Automatic)
-        {
-            APawn* OverlappedPawn = Cast<APawn>(OtherActor);
-            if (OverlappedPawn)
-            {
-                PickupItem(OverlappedPawn);
-            }
-        }
-        // Interaction 타입이라면 아무것도 하지 않음 (우클릭을 기다림)
-    }
+	if (OtherActor && OtherActor == LastDropperPawn)
+	{
+		const float Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+		if (Now - DroppedAtTime < InitialPickupIgnoreTime)
+		{
+			return;
+		}
+	}
+
+	if (OtherActor && OtherActor != this && ItemData)
+	{
+		if (ItemData->PickupType == EItemPickupType::Automatic)
+		{
+			APawn* OverlappedPawn = Cast<APawn>(OtherActor);
+			if (OverlappedPawn)
+			{
+				PickupItem(OverlappedPawn);
+			}
+		}
+	}
 }
 
 void ABaseItemActor::PickupItem(APawn* InHandler)
 {
+	if (!HasAuthority())
+	{
+		return;
+	}
 
-    if (!HasAuthority())
-        return;
+	if (!InHandler || !ItemData)
+	{
+		return;
+	}
 
-    if (!InHandler || !ItemData) return;
-
-    UBaseInventoryComponent* Inventory = InHandler->FindComponentByClass<UBaseInventoryComponent>();
-
-    if (Inventory)
-    {
-        if (Inventory->AddItem(ItemData))
-        {
-            UE_LOG(LogTemp, Warning, TEXT("Item Picked Up: %s"), *ItemData->ItemName.ToString());
-            Destroy();
-        }
-    }
+	UBaseInventoryComponent* Inventory = InHandler->FindComponentByClass<UBaseInventoryComponent>();
+	if (Inventory)
+	{
+		if (Inventory->AddItem(ItemData))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Item Picked Up: %s"), *ItemData->ItemName.ToString());
+			Destroy();
+		}
+	}
 }
