@@ -107,7 +107,7 @@ void SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(UWorld* World, const FSkill
 
 		const FTransform ParentTransform = AttachComponent->GetSocketTransform(Settings.SocketOrBoneName);
 		const FRotator RelativeAttachRotation = CalculateRelativeRotation(Settings, ParentTransform, OptionalLookAtTarget);
-		ResultNC = UNiagaraFunctionLibrary::SpawnSystemAttached(LoadedNiagaraSystem, AttachComponent, Settings.SocketOrBoneName, Settings.LocationOffset, RelativeAttachRotation, Settings.Scale, EAttachLocation::KeepRelativeOffset, true, ENCPoolMethod::None, true, false);
+		ResultNC = UNiagaraFunctionLibrary::SpawnSystemAttached(LoadedNiagaraSystem, AttachComponent, Settings.SocketOrBoneName, Settings.LocationOffset, RelativeAttachRotation, Settings.Scale, EAttachLocation::KeepRelativeOffset, true, ENCPoolMethod::None, false, false);
 	}
 	else {
 		const FVector SourceLocation = SourceTransform.GetLocation();
@@ -117,11 +117,14 @@ void SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(UWorld* World, const FSkill
 			: Settings.LocationOffset;
 		const FVector SpawnLocation = SourceLocation + WorldLocationOffset;
 		const FRotator SpawnRotation = CalculateWorldRotation(Settings, SourceTransform, OptionalLookAtTarget);
-		ResultNC = UNiagaraFunctionLibrary::SpawnSystemAtLocation(World, LoadedNiagaraSystem, SpawnLocation, SpawnRotation, Settings.Scale, true, true);
+		ResultNC = UNiagaraFunctionLibrary::SpawnSystemAtLocation(World, LoadedNiagaraSystem, SpawnLocation, SpawnRotation, Settings.Scale, true, false);
 	}
 	
 	if (!IsValid(ResultNC)) {
 		UE_LOG(LogTemp, Warning, TEXT("ResultNC is Null, Niagara is Not Spawn"));
 		return;
+	}
+	else{
+		ResultNC->Activate();
 	}
 }

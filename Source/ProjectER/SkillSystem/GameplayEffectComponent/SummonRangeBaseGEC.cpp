@@ -1,6 +1,7 @@
 #include "SkillSystem/GameplayEffectComponent/SummonRangeBaseGEC.h"
 
 #include "Abilities/GameplayAbilityTypes.h"
+#include "GameplayEffectTypes.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemGlobals.h"
@@ -11,6 +12,7 @@
 #include "SkillSystem/Actor/BaseRangeOverlapEffectActor/BaseRangeOverlapEffectActor.h"
 #include "SkillSystem/GameAbility/SkillBase.h"
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
+#include "SkillSystem/SkillNiagaraSpawnConfig.h"
 
 FText USummonRangeBaseConfig::BuildTooltipDescription(float InLevel) const
 {
@@ -96,11 +98,11 @@ void USummonRangeBaseGEC::OnGameplayEffectApplied(FActiveGameplayEffectsContaine
 	// 3. 초기화 및 마무리
 	const FGameplayCueParameters HitTargetCueParameters = BuildNiagaraCueParameters(
 		GESpec,
-		SpawnConfig->HitTargetVfx.CueTag,
+		IsValid(SpawnConfig->HitTargetVfx) ? SpawnConfig->HitTargetVfx->CueTag : FGameplayTag(),
 		ContextHandle,
 		DeferredSpawnedActor,
 		RangeSpawnLocation,
-		SpawnConfig);
+		SpawnConfig->HitTargetVfx);
 
 	InitializeRangeActor(DeferredSpawnedActor, SpawnConfig, EffectInstigator, ContextHandle, HitTargetCueParameters);
 	DeferredSpawnedActor->FinishSpawning(SpawnTransform);
@@ -129,20 +131,20 @@ void USummonRangeBaseGEC::ExecuteGameplayCues(const FGameplayEffectSpec& GESpec,
 
 	FScopedPredictionWindow ForcedWindow(InstigatorASC, FPredictionKey(), false);
 
-	if (Config->SummonerSpawnVfx.CueTag.IsValid())
+	if (IsValid(Config->SummonerSpawnVfx) && Config->SummonerSpawnVfx->CueTag.IsValid())
 	{
-		const FGameplayCueParameters SummonerCueParams = BuildNiagaraCueParameters(GESpec, Config->SummonerSpawnVfx.CueTag, ContextHandle, RangeActor, EffectInstigator->GetActorLocation(), Config);
-		InstigatorASC->ExecuteGameplayCue(Config->SummonerSpawnVfx.CueTag, SummonerCueParams);
+		const FGameplayCueParameters SummonerCueParams = BuildNiagaraCueParameters(GESpec, Config->SummonerSpawnVfx->CueTag, ContextHandle, RangeActor, EffectInstigator->GetActorLocation(), Config->SummonerSpawnVfx);
+		InstigatorASC->ExecuteGameplayCue(Config->SummonerSpawnVfx->CueTag, SummonerCueParams);
 	}
 
-	if (Config->RangeSpawnVfx.CueTag.IsValid())
+	if (IsValid(Config->RangeSpawnVfx) && Config->RangeSpawnVfx->CueTag.IsValid())
 	{
-		FGameplayCueParameters RangeCueParams = BuildNiagaraCueParameters(GESpec, Config->RangeSpawnVfx.CueTag, ContextHandle, RangeActor, SpawnTransform.GetLocation(), Config, SpawnTransform.GetRotation().GetForwardVector());
+		FGameplayCueParameters RangeCueParams = BuildNiagaraCueParameters(GESpec, Config->RangeSpawnVfx->CueTag, ContextHandle, RangeActor, SpawnTransform.GetLocation(), Config->RangeSpawnVfx, SpawnTransform.GetRotation().GetForwardVector());
 		if (IsValid(RangeActor))
 		{
 			RangeCueParams.TargetAttachComponent = RangeActor->GetRootComponent();
 		}
-		InstigatorASC->ExecuteGameplayCue(Config->RangeSpawnVfx.CueTag, RangeCueParams);
+		InstigatorASC->ExecuteGameplayCue(Config->RangeSpawnVfx->CueTag, RangeCueParams);
 	}
 }
 
