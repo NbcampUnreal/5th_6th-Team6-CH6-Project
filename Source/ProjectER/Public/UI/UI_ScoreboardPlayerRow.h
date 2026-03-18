@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "WidgetBlueprint.h"
-#include "UI_ScorePlayerRow.generated.h"
+#include "Blueprint/UserWidget.h"
+#include "UI_ScoreboardPlayerRow.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class PROJECTER_API UUI_ScorePlayerRow : public UWidgetBlueprint
+class PROJECTER_API UUI_ScoreboardPlayerRow : public UUserWidget
 {
 	GENERATED_BODY()
 	

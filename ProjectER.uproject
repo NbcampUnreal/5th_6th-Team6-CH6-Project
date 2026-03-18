@@ -13,8 +13,7 @@
 				"GameplayAbilities",
 				"UMG",
 				"StateTreeModule",
-				"CoreUObject",
-				"UMGEditor"
+				"CoreUObject"
 			]
 		}
 	],
