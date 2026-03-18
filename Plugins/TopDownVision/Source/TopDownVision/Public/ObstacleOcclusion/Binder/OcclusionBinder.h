@@ -27,12 +27,8 @@ public:
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     virtual void Tick(float DeltaTime) override;
 
-    // ── Editor setup ──────────────────────────────────────────────────────
-
     UFUNCTION(CallInEditor, BlueprintCallable, Category="Occlusion Binder")
     void SetupBoundActors();
-
-    // ── IOcclusionInterface ───────────────────────────────────────────────
 
     virtual void OnOcclusionEnter_Implementation(UObject* SourceTracer) override;
     virtual void OnOcclusionExit_Implementation(UObject* SourceTracer) override;
@@ -43,26 +39,28 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
     TArray<TObjectPtr<AActor>> BoundActors;
 
-    // Tag for normal visible meshes — fades OUT when occluded
+    // Fades OUT when occluded — same as physical comp NormalMeshTag
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
     FName NormalMeshTag = TEXT("OcclusionMesh");
 
-    // Tag for occluded visual meshes — fades IN when occluded
+    // Fades IN when occluded — same as physical comp OccludedMeshTag
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
     FName OccludedMeshTag = TEXT("OccludedVisual");
 
-    // Tag for meshes using RT-based material — gets ForceOccluded parameter
+    // RT material mesh — fades out AND receives ForceOccluded param
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
     FName RTMaterialTag = TEXT("RTOcclusionMesh");
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
     float FadeSpeed = 6.f;
 
+    // Shared alpha param name — same as both comps
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
     FName AlphaParameterName = TEXT("OcclusionAlpha");
 
+    // Force occlude param — only sent to RT material meshes
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
-    FName ForceOccludeParameterName = TEXT("ForceOccluded");
+    FName ForceOccludeParameterName = TEXT("FullOcclusionAlpha");
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Occlusion Binder")
     TEnumAsByte<ECollisionChannel> OcclusionTraceChannel = ECC_GameTraceChannel1;
@@ -82,11 +80,21 @@ private:
     void UpdateMaterialAlpha();
     void CleanupInvalidOverlaps();
 
+    //void UpdateMouseTraceCollision(bool bOccluded);// now the mouse collision will be only ignored when it is occluded
+
+    // ── Mesh arrays — same pattern as physical comp ───────────────────────
+
+    // NormalMeshTag + RTMaterialTag meshes — fade OUT when occluded
     UPROPERTY(VisibleAnywhere, Category="Occlusion Binder")
     TArray<TSoftObjectPtr<UMeshComponent>> NormalMeshes;
 
+    // OccludedMeshTag meshes — fade IN when occluded
     UPROPERTY(VisibleAnywhere, Category="Occlusion Binder")
     TArray<TSoftObjectPtr<UMeshComponent>> OccludedMeshes;
+
+    // RTMaterialTag meshes — subset of NormalMeshes, also receive ForceOccluded param
+    UPROPERTY(VisibleAnywhere, Category="Occlusion Binder")
+    TArray<TSoftObjectPtr<UMeshComponent>> RTMeshes;
 
     UPROPERTY(VisibleAnywhere, Category="Occlusion Binder|Shadow")
     TArray<TObjectPtr<UStaticMeshComponent>> StaticShadowProxies;
@@ -94,21 +102,35 @@ private:
     UPROPERTY(VisibleAnywhere, Category="Occlusion Binder|Shadow")
     TArray<TObjectPtr<USkeletalMeshComponent>> SkeletalShadowProxies;
 
-    // Parallel arrays — index matches NormalMeshes/OccludedMeshes per slot
-    UPROPERTY(Transient)
-    TArray<UMaterialInstanceDynamic*> NormalDynamicMaterials;
+    // ── MIDs — same pattern as physical comp ─────────────────────────────
 
     UPROPERTY(Transient)
-    TArray<UMaterialInstanceDynamic*> OccludedDynamicMaterials;
+    TArray<UMaterialInstanceDynamic*> NormalStaticMIDs;
 
-    // Tracks which MID indices belong to RT material meshes
-    TArray<bool> NormalIsRTMaterial;
-    TArray<bool> OccludedIsRTMaterial;
+    UPROPERTY(Transient)
+    TArray<UMaterialInstanceDynamic*> NormalSkeletalMIDs;
+
+    UPROPERTY(Transient)
+    TArray<UMaterialInstanceDynamic*> OccludedStaticMIDs;
+
+    UPROPERTY(Transient)
+    TArray<UMaterialInstanceDynamic*> OccludedSkeletalMIDs;
+
+    // RT material MIDs — also receive ForceOccluded param
+    UPROPERTY(Transient)
+    TArray<UMaterialInstanceDynamic*> RTStaticMIDs;
+
+    UPROPERTY(Transient)
+    TArray<UMaterialInstanceDynamic*> RTSkeletalMIDs;
 
     UPROPERTY(Transient)
     TSet<TWeakObjectPtr<UObject>> ActiveOverlaps;
 
+    // Same convention as physical comp — 1 = visible, 0 = occluded
     float CurrentAlpha      = 1.f;
-    bool  bShouldBeOccluded = false;
-    bool  bForceOccluded    = false;
+    // Same convention as material comp — 0 = not forced, 1 = forced
+    float CurrentForceAlpha = 0.f;
+
+    bool bShouldBeOccluded = false;
+    bool bForceOccluded    = false;
 };

@@ -1,0 +1,62 @@
+﻿#pragma once
+
+/**
+ * Path to include : /Project/PlatformMovement/PlatformMovement.ush
+
+
+ return CopyPlatformTransform_Full(
+	WorldPos,
+	PlatformPivot,
+	PlatformOffsetWS,
+	PlatformRotationQuat,
+	PlatformScale ) ; 
+
+
+ */
+
+#pragma once
+
+// Rotate vector by quaternion
+float3 RotateByQuat(float3 v, float4 q)
+{
+	float3 t = 2.0 * cross(q.xyz, v);
+	return v + q.w * t + cross(q.xyz, t);
+}
+
+// Full platform transform (pivot-relative)
+float3 CopyPlatformTransform_Full(
+	float3 WorldPos,
+	float3 PlatformPivot,
+	float3 PlatformOffsetWS,
+	float4 PlatformRotationQuat,
+	float3 PlatformScale
+)
+{
+	PlatformRotationQuat = normalize(PlatformRotationQuat);
+
+	// Move to pivot space
+	float3 local = WorldPos - PlatformPivot;
+
+	// Scale
+	local *= PlatformScale;
+
+	// Rotate
+	local = RotateByQuat(local, PlatformRotationQuat);
+
+	// Back to world
+	float3 finalPos = local + PlatformPivot + PlatformOffsetWS;
+
+	return finalPos - WorldPos;
+}
+
+float3 CopyPlatformNormal(
+	float3 WorldNormal,
+	float4 PlatformRotationQuat
+)
+{
+	PlatformRotationQuat = normalize(PlatformRotationQuat);
+	return RotateByQuat(WorldNormal, PlatformRotationQuat);
+
+	/*PlatformRotationQuat = normalize(PlatformRotationQuat);
+	return -RotateByQuat(WorldNormal, PlatformRotationQuat);*/
+}

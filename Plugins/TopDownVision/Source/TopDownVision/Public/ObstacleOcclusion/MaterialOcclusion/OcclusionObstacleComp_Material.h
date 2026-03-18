@@ -43,6 +43,7 @@ public:
     virtual void OnOcclusionExit_Implementation(UObject* SourceTracer) override;
     virtual void ForceOcclude_Implementation(bool bForce) override;
     
+    
 private:
 
     void DiscoverChildMeshes();
@@ -84,8 +85,8 @@ private:
     UPROPERTY(Transient)
     TSet<TWeakObjectPtr<UObject>> ActiveOverlaps;
 
-    float CurrentAlpha       =   0.f;
-    float CurrentForceAlpha  =   0.f;
+    float CurrentAlpha       =   1.f; // 1= visible 0 occluded
+    float CurrentForceAlpha  =   0.f; // 0 not fully hidden 1 all hidden
     bool  bShouldBeOccluded  = false;
 
     bool bForceOccluded      = false;
