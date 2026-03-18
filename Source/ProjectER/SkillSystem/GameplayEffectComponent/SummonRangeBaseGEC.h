@@ -5,7 +5,8 @@
 #include "CoreMinimal.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGEC.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGECConfig.h"
-#include "SkillSystem/SkillNiagaraSpawnSettings.h"
+#include "GameplayTagContainer.h"
+#include "UObject/Object.h"
 #include "SummonRangeBaseGEC.generated.h"
 
 /**
@@ -13,6 +14,9 @@
  */
 class ABaseRangeOverlapEffectActor;
 class USkillEffectDataAsset;
+class USkillNiagaraSpawnConfig;
+struct FGameplayTag;
+struct FGameplayEffectSpec;
 struct FGameplayCueParameters;
 struct FGameplayEffectContextHandle;
 
@@ -54,14 +58,14 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Effect")
 	bool bHitOncePerTarget = true;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
-	FSkillNiagaraSpawnSettings SummonerSpawnVfx;
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Summon Settings|Niagara")
+	TObjectPtr<USkillNiagaraSpawnConfig> SummonerSpawnVfx;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
-	FSkillNiagaraSpawnSettings RangeSpawnVfx;
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Summon Settings|Niagara")
+	TObjectPtr<USkillNiagaraSpawnConfig> RangeSpawnVfx;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
-	FSkillNiagaraSpawnSettings HitTargetVfx;
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Summon Settings|Niagara")
+	TObjectPtr<USkillNiagaraSpawnConfig> HitTargetVfx;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Effect")
 	TArray<TObjectPtr<USkillEffectDataAsset>> Applied;

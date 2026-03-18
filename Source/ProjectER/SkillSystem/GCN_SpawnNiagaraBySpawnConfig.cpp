@@ -1,9 +1,8 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "SkillSystem/GCN_SpawnNiagaraBySpawnConfig.h"
-#include "SkillSystem/GameplayEffectComponent/BaseGECConfig.h"
-#include "SkillSystem/GameplayEffectComponent/SummonRangeBaseGEC.h"
+#include "SkillSystem/SkillNiagaraSpawnConfig.h"
 #include "SkillSystem/SkillNiagaraSpawnHelper.h"
 
 #include "Engine/Blueprint.h"
@@ -12,67 +11,38 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemLog.h"
 #include "GameplayCueManager.h"
+#include "NiagaraComponent.h"
+#include "NiagaraSystem.h"
 
 //#include UE_INLINE_GENERATED_CPP_BY_NAME(GameplayCueNotify_Static)
 
 namespace
 {
-	enum class ENiagaraCueSettingType : uint8
+	/**
+	 * SourceObject에서 USkillNiagaraSpawnConfig를 직접 가져옵니다.
+	 * 기존 ResolveSettingsFromConfig를 완전히 대체합니다.
+	 */
+	const USkillNiagaraSpawnConfig* GetSpawnConfigFromParameters(const FGameplayCueParameters& Parameters)
 	{
-		None,
-		Summoner,
-		Range,
-		Hit
-	};
+		return Cast<USkillNiagaraSpawnConfig>(Parameters.SourceObject.Get());
+	}
 
-	ENiagaraCueSettingType ResolveSettingsFromConfig(const UBaseGECConfig* Config, const FGameplayTag& CueTag, FSkillNiagaraSpawnSettings& OutSettings)
+	/** 공통 서버 체크 */
+	bool ShouldSkipOnServer(const AActor* MyTarget)
 	{
-		if (!IsValid(Config) || !CueTag.IsValid())
+		if (!IsValid(MyTarget))
 		{
-			return ENiagaraCueSettingType::None;
+			return true;
 		}
-
-		const USummonRangeBaseConfig* const SummonConfig = Cast<USummonRangeBaseConfig>(Config);
-		if (!IsValid(SummonConfig))
-		{
-			return ENiagaraCueSettingType::None;
-		}
-
-		if (SummonConfig->SummonerSpawnVfx.CueTag == CueTag)
-		{
-			OutSettings = SummonConfig->SummonerSpawnVfx;
-			return ENiagaraCueSettingType::Summoner;
-		}
-
-		if (SummonConfig->RangeSpawnVfx.CueTag == CueTag)
-		{
-			OutSettings = SummonConfig->RangeSpawnVfx;
-			return ENiagaraCueSettingType::Range;
-		}
-
-		if (SummonConfig->HitTargetVfx.CueTag == CueTag)
-		{
-			OutSettings = SummonConfig->HitTargetVfx;
-			return ENiagaraCueSettingType::Hit;
-		}
-
-		return ENiagaraCueSettingType::None;
+		const ENetMode NetMode = MyTarget->GetNetMode();
+		return MyTarget->HasAuthority() && NetMode == NM_DedicatedServer;
 	}
 }
 
 bool UGCN_SpawnNiagaraBySpawnConfig::OnExecute_Implementation(AActor* MyTarget, const FGameplayCueParameters& Parameters) const
 {
-	if (!IsValid(MyTarget))
+	if (ShouldSkipOnServer(MyTarget))
 	{
-		//UE_LOG(LogTemp, Error, TEXT("GCN_SpawnNiagara: MyTarget is NULL!"));
-		return false;
-	}
-
-	ENetMode NetMode = (MyTarget) ? MyTarget->GetNetMode() : NM_Standalone;
-	if (MyTarget->HasAuthority() && NetMode == NM_DedicatedServer)
-	{
-		// 데디서버에서는 시각 효과를 스폰하지 않으므로 여기서 리턴되는 것이 정상입니다.
-		//UE_LOG(LogTemp, Log, TEXT("GCN_SpawnNiagara: Skipping Spawn on Dedicated Server."));
 		return false;
 	}
 
@@ -82,18 +52,15 @@ bool UGCN_SpawnNiagaraBySpawnConfig::OnExecute_Implementation(AActor* MyTarget, 
 		return false;
 	}
 
-	const UBaseGECConfig* const Config = Cast<UBaseGECConfig>(Parameters.SourceObject);
-	if (!IsValid(Config))
+	const USkillNiagaraSpawnConfig* const SpawnConfig = GetSpawnConfigFromParameters(Parameters);
+	if (!IsValid(SpawnConfig))
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("GCN_SpawnNiagara: SourceObject is Invalid!"));
 		return false;
 	}
 
-	FSkillNiagaraSpawnSettings SpawnSettings;
-	const ENiagaraCueSettingType SettingType = ResolveSettingsFromConfig(Config, GameplayCueTag, SpawnSettings);
-	if (SettingType == ENiagaraCueSettingType::None)
+	const FSkillNiagaraSpawnSettings SpawnSettings = SpawnConfig->ToSettings();
+	if (SpawnSettings.NiagaraSystem.IsNull())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("GCN_SpawnNiagara: SettingType is None! Tag Mismatch? (GCN Tag: %s)"), *GameplayCueTag.ToString());
 		return false;
 	}
 
@@ -103,15 +70,45 @@ bool UGCN_SpawnNiagaraBySpawnConfig::OnExecute_Implementation(AActor* MyTarget, 
 	FTransform SourceTransform = IsValid(SourceActor) ? SourceActor->GetActorTransform() : FTransform::Identity;
 	SourceTransform.SetLocation(Parameters.Location);
 
-	const FVector* OptionalLookAtTarget = nullptr;
-	FVector LookAtTargetLocation = FVector::ZeroVector;
+	SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(World, SpawnSettings, SourceTransform, SourceActor);
+	return true;
+}
 
-	if (SettingType == ENiagaraCueSettingType::Hit && IsValid(SourceActor))
+bool UGCN_SpawnNiagaraBySpawnConfig::OnActive_Implementation(AActor* MyTarget, const FGameplayCueParameters& Parameters) const
+{
+	// OnExecute와 동일한 스폰 로직 — MovingVfx 루핑 시작 시 호출
+	return OnExecute_Implementation(MyTarget, Parameters);
+}
+
+bool UGCN_SpawnNiagaraBySpawnConfig::OnRemove_Implementation(AActor* MyTarget, const FGameplayCueParameters& Parameters) const
+{
+	if (!IsValid(MyTarget))
 	{
-		LookAtTargetLocation = SourceActor->GetActorLocation();
-		OptionalLookAtTarget = &LookAtTargetLocation;
+		return false;
 	}
 
-	SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(World, SpawnSettings, SourceTransform, SourceActor, OptionalLookAtTarget);
+	const USkillNiagaraSpawnConfig* const SpawnConfig = GetSpawnConfigFromParameters(Parameters);
+	if (!IsValid(SpawnConfig) || SpawnConfig->NiagaraSystem.IsNull())
+	{
+		return false;
+	}
+
+	UNiagaraSystem* const LoadedSystem = SpawnConfig->NiagaraSystem.LoadSynchronous();
+	if (!IsValid(LoadedSystem))
+	{
+		return false;
+	}
+
+	// 캐릭터에서 동일한 NiagaraSystem을 가진 컴포넌트를 찾아 Deactivate
+	TArray<UNiagaraComponent*> NCs;
+	MyTarget->GetComponents<UNiagaraComponent>(NCs);
+	for (UNiagaraComponent* NC : NCs)
+	{
+		if (IsValid(NC) && NC->GetAsset() == LoadedSystem)
+		{
+			NC->Deactivate();
+		}
+	}
+
 	return true;
 }
