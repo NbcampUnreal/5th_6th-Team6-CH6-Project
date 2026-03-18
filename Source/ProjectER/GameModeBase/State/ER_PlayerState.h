@@ -1,4 +1,4 @@
-﻿
+
 #pragma once
 
 #include "CoreMinimal.h"
@@ -55,9 +55,17 @@ public:
 	UFUNCTION(BlueprintCallable)
 	int32 GetAssistCount() { return AssistCount; }
 
+	UFUNCTION(BlueprintCallable)
+	int32 GetStartPoint() const { return StartPoint; }
+
+	UFUNCTION(BlueprintCallable)
+	void SetStartPoint(int32 idx) { StartPoint = idx; }
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_SetStartPoint(int32 idx);
+
 	UFUNCTION(BlueprintCallable)// added for the state comp setting 2026/03/05
 	ETeamType GetTeamType() const {return TeamType;}
-
 
 	// Setter
 	UFUNCTION(BlueprintCallable)
@@ -106,6 +114,9 @@ public:
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	int32 AssistCount = 0;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	int32 StartPoint = 99;
 
 private:
 	UPROPERTY(VisibleAnywhere, Category = "GAS")
