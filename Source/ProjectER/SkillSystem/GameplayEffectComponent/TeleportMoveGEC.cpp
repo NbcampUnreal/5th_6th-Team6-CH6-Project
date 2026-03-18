@@ -59,7 +59,11 @@ void UTeleportMoveGEC::Execute(AActor* Instigator, const FVector& Direction, con
 	}
 
 	SnapToGround(Destination, TeleportConfig, Instigator);
-	Instigator->SetActorLocation(Destination, false, nullptr, ETeleportType::TeleportPhysics);
+
+	if (Instigator->HasAuthority())
+	{
+		Instigator->SetActorLocation(Destination, false, nullptr, ETeleportType::TeleportPhysics);
+	}
 
 	// 도착 지점 큐 실행 및 Moving 루핑 종료
 	ExecuteMoveCue(TeleportConfig->EndVfx, GESpec, Instigator, Destination);

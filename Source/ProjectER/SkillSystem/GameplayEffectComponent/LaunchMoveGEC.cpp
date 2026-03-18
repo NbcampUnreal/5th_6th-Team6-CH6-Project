@@ -100,8 +100,8 @@ void ULaunchMoveGEC::Execute(AActor* Instigator, const FVector& Direction, const
 						WeakThis->ExecuteMoveCue(LaunchConfig->EndVfx, GESpec, WeakChar.Get(), WeakChar->GetActorLocation());
 						WeakThis->RemoveMovingCue(LaunchConfig->MovingVfx, WeakChar.Get());
 
-						// 충돌 무시 복구
-						if (LaunchConfig->bIgnoreUnitCollision)
+						// 충돌 무시는 서버에서만 제어
+						if (LaunchConfig->bIgnoreUnitCollision && WeakChar->HasAuthority())
 						{
 							WeakThis->SetPawnCollisionIgnore(WeakChar.Get(), false);
 						}
@@ -131,14 +131,17 @@ void ULaunchMoveGEC::Execute(AActor* Instigator, const FVector& Direction, const
 			false);
 	}
 
-	// 캐릭터 상태 변경 (확실히 뜨게 함)
-	if (VerticalSpeed > 0.0f || LaunchConfig->bZOverride)
+	if (Character->HasAuthority())
 	{
-		if (UCharacterMovementComponent* CMC = Character->GetCharacterMovement())
+		// 캐릭터 상태 변경 (확실히 뜨게 함)
+		if (VerticalSpeed > 0.0f || LaunchConfig->bZOverride)
 		{
-			CMC->SetMovementMode(MOVE_Falling);
+			if (UCharacterMovementComponent* CMC = Character->GetCharacterMovement())
+			{
+				CMC->SetMovementMode(MOVE_Falling);
+			}
 		}
-	}
 
-	Character->LaunchCharacter(LaunchVelocity, LaunchConfig->bXYOverride, LaunchConfig->bZOverride);
+		Character->LaunchCharacter(LaunchVelocity, LaunchConfig->bXYOverride, LaunchConfig->bZOverride);
+	}
 }
