@@ -108,6 +108,10 @@ void UConstantForceMoveGEC::Execute(AActor* Instigator, const FVector& Direction
 				}
 			}
 
+			// 도착 지점 큐 실행 및 Moving 루핑 종료 (서버/클라이언트 공통)
+			WeakThis->ExecuteMoveCue(ConfigRef->EndVfx, GESpecCopy, WeakInstigator.Get(), WeakInstigator->GetActorLocation());
+			WeakThis->RemoveMovingCue(ConfigRef->MovingVfx, WeakInstigator.Get());
+
 			// SnapToGround 불필요 — CMC가 RootMotionSource 종료 후 자동으로 지면 추적 처리
 		},
 		Duration + 0.05f,
