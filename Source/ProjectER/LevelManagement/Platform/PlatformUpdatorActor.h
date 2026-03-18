@@ -30,7 +30,7 @@ public:
 	void PushTransformToMPC();
 
 	UFUNCTION(BlueprintCallable, Category="MPC")
-	void SetInitialLocation();
+	void SetInitialLocationAndRotQuat();
 
 protected:
 

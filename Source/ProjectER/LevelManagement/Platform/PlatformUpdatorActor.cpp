@@ -24,7 +24,7 @@ void APlatformUpdatorActor::Tick(float DeltaTime)
 	PushTransformToMPC();
 }
 
-void APlatformUpdatorActor::SetInitialLocation()
+void APlatformUpdatorActor::SetInitialLocationAndRotQuat()
 {
 	InitialLocation = GetActorLocation();
 	InitialRotation = GetActorQuat();
@@ -44,8 +44,9 @@ void APlatformUpdatorActor::PushTransformToMPC()
 	FVector    Loc = T.GetLocation();
 	FVector    Pivot = bUseSelfAsPivot ? InitialLocation : ManualPivot;
 
-	FQuat DeltaQuat = Q * InitialRotation.Inverse();
-
+	//FQuat DeltaQuat = Q * InitialRotation.Inverse();
+	FQuat DeltaQuat = InitialRotation.Inverse() * Q;
+	
 	MPCI->SetVectorParameterValue("PlatformPivot",
 		FLinearColor(Pivot.X, Pivot.Y, Pivot.Z, 0.f));
 
