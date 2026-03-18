@@ -1437,7 +1437,7 @@ void ABaseCharacter::HandleDeath()
 			// 플레이어 인벤토리에서 아이템 추출
 			if (UBaseInventoryComponent* InvComp = FindComponentByClass<UBaseInventoryComponent>())
 			{
-				for (int32 i = 0; i < InvComp->GetInventoryCount(); ++i)
+				for (int32 i = 0; i < InvComp->MaxSlots; ++i)
 				{
 					if (UBaseItemData* Item = InvComp->GetItemAt(i))
 					{
