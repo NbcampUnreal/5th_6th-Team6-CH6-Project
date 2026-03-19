@@ -12,6 +12,7 @@
 #include "ItemSystem/Data/BaseItemData.h"
 #include "ItemSystem/UI/InventoryDragDropOperation.h"
 #include "ItemSystem/UI/W_InventoryDragVisual.h"
+#include "CharacterSystem/Player/BasePlayerController.h"
 
 UW_InventorySlot::UW_InventorySlot(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -163,6 +164,7 @@ void UW_InventorySlot::NativeOnDragDetected(const FGeometry& InGeometry, const F
 	}
 
 	DragOp->SourceSlotIndex = SlotIndex;
+	DragOp->SourcePlayerController = Cast<ABasePlayerController>(GetOwningPlayer());
 	DragOp->Pivot = EDragPivot::MouseDown;
 
 	UW_InventoryDragVisual* DragVisual = CreateWidget<UW_InventoryDragVisual>(GetOwningPlayer(), UW_InventoryDragVisual::StaticClass());
