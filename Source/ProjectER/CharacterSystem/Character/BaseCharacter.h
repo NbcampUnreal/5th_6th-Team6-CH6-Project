@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -178,6 +178,9 @@ public:
 	// 전민성 추가
 	UPROPERTY(EditAnywhere, Category = "GAS")
 	TSubclassOf<class UGameplayAbility> OpenAbilityClass;
+
+	UPROPERTY(EditAnywhere, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> TeleportAbilityClass;
 	
 protected:
 	// Anim Montage 하드 참조 캐싱 맵

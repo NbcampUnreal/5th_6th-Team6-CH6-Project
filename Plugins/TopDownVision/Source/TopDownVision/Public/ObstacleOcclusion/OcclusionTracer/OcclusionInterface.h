@@ -21,4 +21,8 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OnOcclusionExit(UObject* SourceTracer);
+
+	// for locking the occluded state
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void ForceOcclude(bool bForce);
 };

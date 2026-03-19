@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "ItemSystem/Interface/I_ItemInteractable.h" // [김현수 추가분]
 
@@ -30,6 +30,9 @@ class ABaseCharacter;
 class UTopDownCameraComp; //Camera Added
 
 class UUI_MainHUD; // UI시스템 관리자
+class UUI_Scoreboard;
+
+class ABaseItemActor; // [김현수 추가분]
 
 struct FInputActionValue;
 
@@ -167,6 +170,14 @@ protected:
 	void ProcessMouseInteraction();
 
 public:
+	// UI 드래그 취소(월드로 드랍) 시 로컬에서 호출
+	void RequestDropInventoryItemFromUI(int32 SlotIndex, const FVector2D& ScreenSpacePosition);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DropInventoryItem(int32 SlotIndex, FVector_NetQuantize DropLocation);
+
+	UPROPERTY(EditDefaultsOnly, Category = "Item|Drop")
+	TSubclassOf<ABaseItemActor> DroppedItemActorClass;
 /// [김현수 추가분] - 끝
 
 //-----------------------------------------------------------
@@ -244,6 +255,19 @@ public:
 
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 	void Client_CloseLoadingUI();
+
+	// [텔레포트 관련]
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_OpenTeleportUI(AActor* TeleportActor);
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_CloseTeleportUI();
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_RequestTeleport(int32 RegionIndex);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_BeginTeleportInteract(class UER_TeleportComponent* TeleportComp);
 	// 박스 아이템 루팅 RPC 끝
 
 	//	mpyi 추가분 _ UI SYSTEM
@@ -269,7 +293,15 @@ public:
 private:
 	UPROPERTY()
 	UUI_MainHUD* MainHUD;
-
+	
+protected:
+	// 현황판 위젯
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TSubclassOf<UUI_Scoreboard> ScoreboardClass;
+	UPROPERTY()
+	UUI_Scoreboard* ScoreboardWidget;
+	void ShowScoreboard();
+	void HideScoreboard();
 	//
 
 private:
@@ -334,6 +366,17 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> LoadingUIClass;
+
+	// Teleport UI
+	UPROPERTY(EditDefaultsOnly, Category = "ProjectER|UI")
+	TSubclassOf<UUserWidget> TeleportUIClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> TeleportUIInstance;
+	
+	// 거리 측정을 위한 타겟 캐싱
+	UPROPERTY(Transient)
+	TWeakObjectPtr<AActor> CurrentTeleportActor;
 
 	// Currently bound loot component for automatic popup close
 	TWeakObjectPtr<class ULootableComponent> BoundLootComponent;

@@ -131,17 +131,14 @@ void ULaunchMoveGEC::Execute(AActor* Instigator, const FVector& Direction, const
 			false);
 	}
 
-	if (Character->HasAuthority())
-	{
-		// 캐릭터 상태 변경 (확실히 뜨게 함)
-		if (VerticalSpeed > 0.0f || LaunchConfig->bZOverride)
-		{
-			if (UCharacterMovementComponent* CMC = Character->GetCharacterMovement())
-			{
-				CMC->SetMovementMode(MOVE_Falling);
-			}
-		}
+    // 캐릭터 상태 변경 (확실히 뜨게 함)
+    if (VerticalSpeed > 0.0f || LaunchConfig->bZOverride)
+    {
+        if (UCharacterMovementComponent *CMC = Character->GetCharacterMovement())
+        {
+            CMC->SetMovementMode(MOVE_Falling);
+        }
+    }
 
-		Character->LaunchCharacter(LaunchVelocity, LaunchConfig->bXYOverride, LaunchConfig->bZOverride);
-	}
+    Character->LaunchCharacter(LaunchVelocity, LaunchConfig->bXYOverride, LaunchConfig->bZOverride);
 }

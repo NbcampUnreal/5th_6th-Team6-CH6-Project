@@ -38,6 +38,8 @@ public:
     virtual void OnOcclusionEnter_Implementation(UObject* SourceTracer) override;
     virtual void OnOcclusionExit_Implementation(UObject* SourceTracer) override;
 
+    virtual void ForceOcclude_Implementation(bool bForce) override;
+
 private:
 
     void GenerateShadowProxyMeshes();  // delegates to OcclusionMeshUtil
@@ -45,6 +47,8 @@ private:
     void UpdateMaterialAlpha();
     void CleanupInvalidOverlaps();
     void DiscoverChildMeshes();
+
+    //void UpdateMouseTraceCollision(bool bOccluded);
 
 protected:
 
@@ -80,6 +84,8 @@ private:
     float CurrentAlpha        = 0.f;
     bool  bShouldBeOccluded   = false;
     bool  bLastOcclusionState = false;
+
+    bool bForceOccluded = false;//occlusion state locked or not
 
     UPROPERTY(Transient)
     TArray<UMaterialInstanceDynamic*> NormalStaticMIDs;

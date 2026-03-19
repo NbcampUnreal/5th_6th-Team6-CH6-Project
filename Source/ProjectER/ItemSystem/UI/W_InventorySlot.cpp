@@ -12,6 +12,10 @@
 #include "ItemSystem/Data/BaseItemData.h"
 #include "ItemSystem/UI/InventoryDragDropOperation.h"
 #include "ItemSystem/UI/W_InventoryDragVisual.h"
+#include "CharacterSystem/Player/BasePlayerController.h"
+#include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
+#include "Components/TextBlock.h"
 
 UW_InventorySlot::UW_InventorySlot(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -56,10 +60,32 @@ void UW_InventorySlot::BuildWidgetTree()
 	SlotBorder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("SlotBorder"));
 	SlotBorder->SetPadding(FMargin(4.f));
 
+	RootOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("RootOverlay"));
+
 	ItemIconImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("ItemIconImage"));
 	ItemIconImage->SetVisibility(ESlateVisibility::HitTestInvisible);
 
-	SlotBorder->SetContent(ItemIconImage);
+	StackCountText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("StackCountText"));
+	StackCountText->SetVisibility(ESlateVisibility::Hidden);
+	StackCountText->SetText(FText::GetEmpty());
+	StackCountText->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+	StackCountText->SetShadowOffset(FVector2D(1.f, 1.f));
+	StackCountText->SetShadowColorAndOpacity(FLinearColor::Black);
+
+	if (UOverlaySlot* IconSlot = RootOverlay->AddChildToOverlay(ItemIconImage))
+	{
+		IconSlot->SetHorizontalAlignment(HAlign_Fill);
+		IconSlot->SetVerticalAlignment(VAlign_Fill);
+	}
+
+	if (UOverlaySlot* CountSlot = RootOverlay->AddChildToOverlay(StackCountText))
+	{
+		CountSlot->SetHorizontalAlignment(HAlign_Right);
+		CountSlot->SetVerticalAlignment(VAlign_Bottom);
+		CountSlot->SetPadding(FMargin(0.f, 0.f, 4.f, 2.f));
+	}
+
+	SlotBorder->SetContent(RootOverlay);
 	RootSizeBox->SetContent(SlotBorder);
 	WidgetTree->RootWidget = RootSizeBox;
 }
@@ -88,12 +114,32 @@ void UW_InventorySlot::RefreshVisual()
 		{
 			ItemIconImage->SetBrushFromTexture(IconTexture);
 			ItemIconImage->SetVisibility(ESlateVisibility::HitTestInvisible);
-			return;
+		}
+		else
+		{
+			ItemIconImage->SetBrush(FSlateBrush());
+			ItemIconImage->SetVisibility(ESlateVisibility::Hidden);
 		}
 	}
+	else
+	{
+		ItemIconImage->SetBrush(FSlateBrush());
+		ItemIconImage->SetVisibility(ESlateVisibility::Hidden);
+	}
 
-	ItemIconImage->SetBrush(FSlateBrush());
-	ItemIconImage->SetVisibility(ESlateVisibility::Hidden);
+	if (StackCountText)
+	{
+		if (CachedItemData && CachedStackCount > 1)
+		{
+			StackCountText->SetText(FText::FromString(FString::Printf(TEXT("*%d"), CachedStackCount)));
+			StackCountText->SetVisibility(ESlateVisibility::HitTestInvisible);
+		}
+		else
+		{
+			StackCountText->SetText(FText::GetEmpty());
+			StackCountText->SetVisibility(ESlateVisibility::Hidden);
+		}
+	}
 }
 
 void UW_InventorySlot::ApplyNormalStyle()
@@ -163,6 +209,7 @@ void UW_InventorySlot::NativeOnDragDetected(const FGeometry& InGeometry, const F
 	}
 
 	DragOp->SourceSlotIndex = SlotIndex;
+	DragOp->SourcePlayerController = Cast<ABasePlayerController>(GetOwningPlayer());
 	DragOp->Pivot = EDragPivot::MouseDown;
 
 	UW_InventoryDragVisual* DragVisual = CreateWidget<UW_InventoryDragVisual>(GetOwningPlayer(), UW_InventoryDragVisual::StaticClass());
@@ -223,4 +270,10 @@ bool UW_InventorySlot::NativeOnDrop(const FGeometry& InGeometry, const FDragDrop
 	}
 
 	return InventoryComp->SwapSlots(DragOp->SourceSlotIndex, SlotIndex);
+}
+
+void UW_InventorySlot::SetStackCount(int32 InStackCount)
+{
+	CachedStackCount = InStackCount;
+	RefreshVisual();
 }

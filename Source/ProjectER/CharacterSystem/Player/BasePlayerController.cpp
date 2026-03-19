@@ -1,4 +1,4 @@
-#include "CharacterSystem/Player/BasePlayerController.h"
+﻿#include "CharacterSystem/Player/BasePlayerController.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -24,6 +24,7 @@
 #include "ItemSystem/UI/W_LootingPopup.h"
 #include "ItemSystem/Component/BaseInventoryComponent.h"
 #include "ItemSystem/Component/LootableComponent.h"
+#include "ItemSystem/Component/ER_TeleportComponent.h"
 #include "UI/UI_MainHUD.h"
 #include "UI/UI_HUDController.h"
 
@@ -38,6 +39,7 @@
 
 // UI System
 #include "UI/UI_MainHUD.h"
+#include "UI/UI_Scoreboard.h"
 
 
 //Log
@@ -108,6 +110,17 @@ void ABasePlayerController::BeginPlay()
 	if (IsLocalController())
 	{
 		UGameplayStatics::SetBaseSoundMix(this, SoundMix);
+
+		// 게임 시작시 현황판 생성 후 collapse 처리
+		if (ScoreboardClass)
+		{
+			ScoreboardWidget = CreateWidget<UUI_Scoreboard>(this, ScoreboardClass);
+			if (ScoreboardWidget)
+			{
+				ScoreboardWidget->AddToViewport();
+				ScoreboardWidget->SetVisibility(ESlateVisibility::Collapsed);
+			}
+		}
 	}
 }
 
@@ -242,6 +255,13 @@ void ABasePlayerController::SetupInputComponent()
 		{
 			EnhancedInputComponent->BindAction(InputConfig->UseItem8, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 7);
 		}
+		// 현황판 바인딩
+		if (InputConfig->ScoreBoardKey)
+		{
+			// 'IA_Scoreboard'는 에디터에서 만든 Input Action
+			EnhancedInputComponent->BindAction(InputConfig->ScoreBoardKey, ETriggerEvent::Triggered, this, &ABasePlayerController::ShowScoreboard);
+			EnhancedInputComponent->BindAction(InputConfig->ScoreBoardKey, ETriggerEvent::Completed, this, &ABasePlayerController::HideScoreboard);
+		}
 	}
 }
 
@@ -271,6 +291,19 @@ void ABasePlayerController::PlayerTick(float DeltaTime)
 	if (bIsAttackInputMode && ControlledBaseChar && AttackRangeDecal->IsVisible())
 	{
 		AttackRangeDecal->SetWorldLocation(ControlledBaseChar->GetActorLocation());
+	}
+
+	// [텔레포트 UI 자동 닫기 처리]
+	if (IsValid(TeleportUIInstance) && CurrentTeleportActor.IsValid())
+	{
+		if (APawn* MyPawn = GetPawn())
+		{
+			const float Dist = FVector::Dist(MyPawn->GetActorLocation(), CurrentTeleportActor->GetActorLocation());
+			if (Dist > 300.f)
+			{
+				Client_CloseTeleportUI();
+			}
+		}
 	}
 }
 
@@ -416,6 +449,7 @@ void ABasePlayerController::OnMoveStarted()
 	}
 
 	Client_CloseLootUI();
+	Client_CloseTeleportUI();
 
 	bIsMousePressed = true;
 	MoveToMouseCursor();
@@ -540,6 +574,11 @@ void ABasePlayerController::MoveToMouseCursor()
 						FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
 					InteractionTarget = HitActor;
 				}
+				else if (HitActor->FindComponentByClass<UER_TeleportComponent>())
+				{
+					InteractionTargetDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
+					InteractionTarget = HitActor;
+				}
 				else if (HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
 				{
 					InteractionTargetDistance =
@@ -618,6 +657,11 @@ void ABasePlayerController::ProcessMouseInteraction()
 					InteractionTargetDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
 					InteractionTarget = HitActor;
 				}
+			}
+			else if (HitActor && HitActor->GetComponentByClass<UER_TeleportComponent>())
+			{
+				InteractionTargetDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
+				InteractionTarget = HitActor;
 			}
 			else if (HitActor && HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
 			{
@@ -731,6 +775,14 @@ void ABasePlayerController::CheckInteractionDistance()
 		return;
 	}
 
+	// 텔레포트 컴포넌트 처리
+	if (UER_TeleportComponent* TeleportComp = InteractionTarget->FindComponentByClass<UER_TeleportComponent>())
+	{
+		Server_BeginTeleportInteract(TeleportComp);
+		InteractionTarget = nullptr;
+		return;
+	}
+
 	InteractionTarget = nullptr;
 }
 
@@ -770,6 +822,9 @@ void ABasePlayerController::OnCanceled() {
 		//UE_LOG(LogTemp, Log, TEXT("OnCanceled"));
 		ASC->LocalInputCancel();
 	}
+
+	Client_CloseLootUI();
+	Client_CloseTeleportUI();
 }
 
 void ABasePlayerController::OnAttackModePressed()
@@ -1340,6 +1395,69 @@ void ABasePlayerController::Client_CloseLoadingUI_Implementation()
 	}
 }
 
+void ABasePlayerController::Server_BeginTeleportInteract_Implementation(UER_TeleportComponent* TeleportComp)
+{
+	if (!TeleportComp) return;
+	
+	ABaseCharacter* Char = Cast<ABaseCharacter>(GetPawn());
+	if (!Char) return;
+
+	float Dist = FVector::Dist(Char->GetActorLocation(), TeleportComp->GetOwner()->GetActorLocation());
+	if (Dist > 500.f) return;
+
+	Char->StopMove();
+	TeleportComp->Interact(this);
+}
+
+void ABasePlayerController::Client_OpenTeleportUI_Implementation(AActor* TeleportActor)
+{
+	if (!TeleportUIClass) return;
+
+	CurrentTeleportActor = TeleportActor;
+
+	if (IsValid(TeleportUIInstance))
+	{
+		TeleportUIInstance->RemoveFromParent();
+		TeleportUIInstance = nullptr;
+	}
+
+	TeleportUIInstance = CreateWidget<UUserWidget>(this, TeleportUIClass);
+
+	if (IsValid(TeleportUIInstance))
+	{
+		TeleportUIInstance->AddToViewport(15);
+	}
+}
+
+void ABasePlayerController::Client_CloseTeleportUI_Implementation()
+{
+	if (IsValid(TeleportUIInstance))
+	{
+		TeleportUIInstance->RemoveFromParent();
+		TeleportUIInstance = nullptr;
+	}
+	CurrentTeleportActor = nullptr;
+}
+
+void ABasePlayerController::Server_RequestTeleport_Implementation(int32 RegionIndex)
+{
+	Client_CloseTeleportUI();
+
+	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
+	ABaseCharacter* Char = Cast<ABaseCharacter>(GetPawn());
+	if (PS && Char)
+	{
+		FGameplayEventData Payload;
+		Payload.Instigator = Char;
+		Payload.Target = Char;
+		Payload.EventMagnitude = RegionIndex;
+
+		const FGameplayTag EventTag = ProjectER::Event::Interact::Teleport;
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(PS, EventTag, Payload);
+		UE_LOG(LogTemp, Log, TEXT("[Teleport] Server sent GameplayEvent %s with Magnitude %d"), *EventTag.ToString(), RegionIndex);
+	}
+}
+
 void ABasePlayerController::Server_BeginLootFromActor_Implementation(AActor* TargetActor)
 {
 	if (!TargetActor)
@@ -1446,6 +1564,24 @@ void ABasePlayerController::UI_AssistCountUpdate_Implementation(int32 AssistCoun
 	if (IsValid(MainHUD))
 	{
 		MainHUD->SetAssistCount(AssistCount);
+	}
+}
+
+void ABasePlayerController::ShowScoreboard()
+{
+	if (IsValid(ScoreboardWidget))
+	{
+		ScoreboardWidget->SetVisibility(ESlateVisibility::Visible);
+		// 실시간 데이터 갱신 함수 호출 추가? 해야 됨?
+		ScoreboardWidget->UpdateScoreboard();
+	}
+}
+
+void ABasePlayerController::HideScoreboard()
+{
+	if (IsValid(ScoreboardWidget))
+	{
+		ScoreboardWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
 
@@ -1599,3 +1735,62 @@ void ABasePlayerController::PawnLeavingGame()
 
 
 }
+
+// [김현수 추가분]
+void ABasePlayerController::RequestDropInventoryItemFromUI(int32 SlotIndex, const FVector2D& ScreenSpacePosition)
+{
+	APawn* PlayerPawn = GetPawn();
+	if (!PlayerPawn)
+	{
+		return;
+	}
+
+	FHitResult HitResult;
+	FVector DropLocation = PlayerPawn->GetActorLocation() + PlayerPawn->GetActorForwardVector() * 120.f;
+	DropLocation.Z = PlayerPawn->GetActorLocation().Z + 20.f;
+
+	// UI 드래그 끝난 마우스 좌표를 월드 히트로 변환
+	if (GetHitResultAtScreenPosition(ScreenSpacePosition, MouseTraceChannel, true, HitResult) && HitResult.bBlockingHit)
+	{
+		DropLocation = HitResult.Location + FVector(0.f, 0.f, 10.f);
+	}
+
+	Server_DropInventoryItem(SlotIndex, DropLocation);
+}
+
+void ABasePlayerController::Server_DropInventoryItem_Implementation(int32 SlotIndex, FVector_NetQuantize DropLocation)
+{
+	APawn* PlayerPawn = GetPawn();
+	if (!PlayerPawn)
+	{
+		return;
+	}
+
+	UBaseInventoryComponent* InventoryComp = PlayerPawn->FindComponentByClass<UBaseInventoryComponent>();
+	if (!InventoryComp)
+	{
+		return;
+	}
+
+	if (SlotIndex < 0 || SlotIndex >= InventoryComp->MaxSlots)
+	{
+		return;
+	}
+
+	// 서버에서 한번 더 안전 위치 보정
+	FVector SafeDropLocation = FVector(DropLocation);
+	const FVector PawnLocation = PlayerPawn->GetActorLocation();
+
+	FVector ToDrop = SafeDropLocation - PawnLocation;
+	ToDrop.Z = 0.f;
+
+	constexpr float MaxDropDistance = 250.f;
+	if (ToDrop.SizeSquared() > FMath::Square(MaxDropDistance))
+	{
+		SafeDropLocation = PawnLocation + ToDrop.GetSafeNormal() * 120.f;
+		SafeDropLocation.Z = PawnLocation.Z + 20.f;
+	}
+
+	InventoryComp->DropItemFromSlot(SlotIndex, SafeDropLocation, DroppedItemActorClass, PlayerPawn);
+}
+

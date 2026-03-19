@@ -7,6 +7,7 @@
 class UMeshComponent;
 class UStaticMeshComponent;
 class USkeletalMeshComponent;
+class USplineMeshComponent;
 class UMaterialInstanceDynamic;
 class UMaterialInterface;
 
@@ -19,7 +20,6 @@ class TOPDOWNVISION_API UOcclusionMeshUtil : public UObject
 
 public:
 
-	// Discovers both static and skeletal meshes using tags
 	static void DiscoverChildMeshes(
 		USceneComponent* Root,
 		FName NormalTag,
@@ -27,19 +27,14 @@ public:
 		TArray<TSoftObjectPtr<UMeshComponent>>& OutNormalMeshes,
 		TArray<TSoftObjectPtr<UMeshComponent>>& OutOccludedMeshes);
 
-	// Creates MIDs for static meshes only — all material slots per mesh
 	static void CreateDynamicMaterials_Static(
 		const TArray<TSoftObjectPtr<UMeshComponent>>& Meshes,
 		TArray<UMaterialInstanceDynamic*>& OutMIDs);
 
-	// Creates MIDs for skeletal meshes only — all material slots per mesh
 	static void CreateDynamicMaterials_Skeletal(
 		const TArray<TSoftObjectPtr<UMeshComponent>>& Meshes,
 		TArray<UMaterialInstanceDynamic*>& OutMIDs);
 
-	// Generates hidden shadow proxy meshes for a given source mesh array.
-	// Proxies are fully opaque (ShadowProxyMaterial), hidden in game, cast shadows only.
-	// Existing proxies are destroyed and replaced on each call.
 	static void GenerateShadowProxyMeshes(
 		AActor* Owner,
 		const TArray<TSoftObjectPtr<UMeshComponent>>& SourceMeshes,
