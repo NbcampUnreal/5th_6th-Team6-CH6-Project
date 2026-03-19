@@ -1433,8 +1433,9 @@ void ABaseCharacter::HandleDeath()
 		if (ULootableComponent* LootComp = FindComponentByClass<ULootableComponent>())
 		{
 			TArray<UBaseItemData*> LootItems;
-			
-			// 플레이어 인벤토리에서 아이템 추출
+			TArray<int32> LootCounts;
+
+			// 플레이어의 인벤토리에서 아이템 추출
 			if (UBaseInventoryComponent* InvComp = FindComponentByClass<UBaseInventoryComponent>())
 			{
 				for (int32 i = 0; i < InvComp->MaxSlots; ++i)
@@ -1442,9 +1443,12 @@ void ABaseCharacter::HandleDeath()
 					if (UBaseItemData* Item = InvComp->GetItemAt(i))
 					{
 						LootItems.Add(Item);
+						LootCounts.Add(InvComp->GetStackCountAt(i));
 					}
 				}
 			}
+
+			LootComp->InitializeWithItemStacks(LootItems, LootCounts);
 			
 			// LootableComponent에 아이템 초기화
 			LootComp->InitializeWithItems(LootItems);
