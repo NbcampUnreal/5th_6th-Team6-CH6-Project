@@ -1448,10 +1448,8 @@ void ABaseCharacter::HandleDeath()
 				}
 			}
 
-			LootComp->InitializeWithItemStacks(LootItems, LootCounts);
-			
 			// LootableComponent에 아이템 초기화
-			LootComp->InitializeWithItems(LootItems);
+			LootComp->InitializeWithItemStacks(LootItems, LootCounts);
 		}
 		
 		OnDeath.Broadcast();
