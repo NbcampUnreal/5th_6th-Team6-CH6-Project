@@ -2,6 +2,7 @@
 #include "Net/UnrealNetwork.h"
 #include "AbilitySystemComponent.h"
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
+#include "CharacterSystem/Data/CharacterData.h"
 
 AER_PlayerState::AER_PlayerState()
 {
@@ -33,6 +34,7 @@ void AER_PlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AER_PlayerState, DeathCount);
 	DOREPLIFETIME(AER_PlayerState, AssistCount);
 	DOREPLIFETIME(AER_PlayerState, StartPoint);
+	DOREPLIFETIME(AER_PlayerState, SelectedCharacterData);
 
 }
 
@@ -46,6 +48,8 @@ void AER_PlayerState::CopyProperties(APlayerState* PlayerState)
 		PS->PlayerStateName = PlayerStateName;
 		PS->TeamType = TeamType;
 		PS->StartPoint = StartPoint;
+		// Seamless Travel 시 캐릭터 선택 데이터 보존
+		PS->SelectedCharacterData = SelectedCharacterData;
 	}
 }
 
@@ -94,4 +98,10 @@ void AER_PlayerState::ResetDamageContrib()
 void AER_PlayerState::Server_SetStartPoint_Implementation(int32 idx)
 {
 	SetStartPoint(idx);
+}
+
+void AER_PlayerState::SetSelectedCharacterData(TSoftObjectPtr<UCharacterData> InData)
+{
+	// 서버에서 직접 세팅되거나 권한이 있을 때 데이터 할당
+	SelectedCharacterData = InData;
 }
