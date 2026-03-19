@@ -13,6 +13,7 @@
 #include "GameplayEffect.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
+#include "ItemSystem/Actor/BaseItemActor.h"
 
 UBaseInventoryComponent::UBaseInventoryComponent()
 {
@@ -595,4 +596,65 @@ bool UBaseInventoryComponent::Server_SwapSlots_Validate(int32 FromIndex, int32 T
 void UBaseInventoryComponent::Server_SwapSlots_Implementation(int32 FromIndex, int32 ToIndex)
 {
 	SwapSlots(FromIndex, ToIndex);
+}
+
+bool UBaseInventoryComponent::DropItemFromSlot(int32 SlotIndex, const FVector& SpawnLocation, TSubclassOf<ABaseItemActor> ItemActorClass, APawn* DropperPawn)
+{
+	AActor* const OwnerActor = GetOwner();
+	if (OwnerActor == nullptr || !OwnerActor->HasAuthority())
+	{
+		return false;
+	}
+
+	if (!InventoryContents.IsValidIndex(SlotIndex))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] DropItemFromSlot: Invalid SlotIndex %d"), SlotIndex);
+		return false;
+	}
+
+	UBaseItemData* ItemData = InventoryContents[SlotIndex];
+	if (ItemData == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] DropItemFromSlot: Slot %d is empty"), SlotIndex);
+		return false;
+	}
+
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return false;
+	}
+
+	TSubclassOf<ABaseItemActor> SpawnClass = ItemActorClass;
+	if (!SpawnClass)
+	{
+		SpawnClass = ABaseItemActor::StaticClass();
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = OwnerActor;
+	SpawnParams.Instigator = DropperPawn;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	ABaseItemActor* SpawnedItem = World->SpawnActor<ABaseItemActor>(
+		SpawnClass,
+		SpawnLocation,
+		FRotator::ZeroRotator,
+		SpawnParams);
+
+	if (!SpawnedItem)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] DropItemFromSlot: Failed to spawn dropped item actor"));
+		return false;
+	}
+
+	SpawnedItem->InitializeFromItemData(ItemData, DropperPawn);
+
+	InventoryContents[SlotIndex] = nullptr;
+	OnInventoryUpdated.Broadcast();
+
+	UE_LOG(LogTemp, Log, TEXT("[BaseInventoryComponent] Dropped item '%s' from slot %d"),
+		*ItemData->ItemName.ToString(), SlotIndex);
+
+	return true;
 }

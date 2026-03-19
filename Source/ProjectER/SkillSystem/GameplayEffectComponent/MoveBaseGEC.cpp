@@ -217,8 +217,11 @@ void UMoveBaseGEC::ExecuteMoveCue(const USkillNiagaraSpawnConfig* VfxConfig, con
 	Params.EffectCauser = Instigator;
 	Params.Location = Location;
 	Params.SourceObject = VfxConfig;
-
-	InstigatorASC->ExecuteGameplayCue(VfxConfig->CueTag, Params);
+	
+	{
+		FScopedPredictionWindow ForcedWindow(InstigatorASC, FPredictionKey(), false);
+		InstigatorASC->ExecuteGameplayCue(VfxConfig->CueTag, Params);
+	}
 }
 
 void UMoveBaseGEC::AddMovingCue(const USkillNiagaraSpawnConfig* VfxConfig, const FGameplayEffectSpec& GESpec, AActor* Instigator) const
@@ -242,7 +245,10 @@ void UMoveBaseGEC::AddMovingCue(const USkillNiagaraSpawnConfig* VfxConfig, const
 	Params.Location = Instigator->GetActorLocation();
 	Params.SourceObject = VfxConfig;
 
-	InstigatorASC->AddGameplayCue(VfxConfig->CueTag, Params);
+	{
+		FScopedPredictionWindow ForcedWindow(InstigatorASC, FPredictionKey(), false);
+		InstigatorASC->AddGameplayCue(VfxConfig->CueTag, Params);
+	}
 }
 
 void UMoveBaseGEC::RemoveMovingCue(const USkillNiagaraSpawnConfig* VfxConfig, AActor* Instigator) const
@@ -258,7 +264,10 @@ void UMoveBaseGEC::RemoveMovingCue(const USkillNiagaraSpawnConfig* VfxConfig, AA
 		return;
 	}
 
-	InstigatorASC->RemoveGameplayCue(VfxConfig->CueTag);
+	{
+		FScopedPredictionWindow ForcedWindow(InstigatorASC, FPredictionKey(), false);
+		InstigatorASC->RemoveGameplayCue(VfxConfig->CueTag);
+	}
 }
 
 void UMoveBaseGEC::AdjustActiveMontageRate(ACharacter* Character, float MoveDuration, const UMoveBaseConfig* Config) const
