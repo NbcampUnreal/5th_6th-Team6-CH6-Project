@@ -4,6 +4,7 @@
 #include "NiagaraSystem.h"
 #include "NiagaraComponent.h"
 #include "SkillSystem/SkillNiagaraSpawnSettings.h"
+#include "Engine/World.h"
 
 namespace
 {
