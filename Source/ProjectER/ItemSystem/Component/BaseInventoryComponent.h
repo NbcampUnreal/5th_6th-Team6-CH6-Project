@@ -10,6 +10,7 @@
 
 class UAbilitySystemComponent;
 class UBaseItemData;
+class ABaseItemActor;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryUpdatedSignature);
 
@@ -99,4 +100,7 @@ public:
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_SwapSlots(int32 FromIndex, int32 ToIndex);
+
+	// 슬롯 아이템을 월드에 떨어뜨리기
+	bool DropItemFromSlot(int32 SlotIndex, const FVector& SpawnLocation, TSubclassOf<ABaseItemActor> ItemActorClass, APawn* DropperPawn);
 };

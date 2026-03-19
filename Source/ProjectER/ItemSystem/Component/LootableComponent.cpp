@@ -35,8 +35,9 @@ void ULootableComponent::BeginPlay()
 void ULootableComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ULootableComponent, ItemPool);
 	DOREPLIFETIME(ULootableComponent, CurrentItemList);
-	DOREPLIFETIME(ULootableComponent, bDestroyOwnerWhenEmpty); // replicate config flag so clients see it
+	DOREPLIFETIME(ULootableComponent, bDestroyOwnerWhenEmpty);
 }
 
 void ULootableComponent::PickupItem()
@@ -183,40 +184,39 @@ void ULootableComponent::InitializeWithItems(const TArray<UBaseItemData*>& Items
 		return;
 	}
 
+	// 시체/루팅 대상 전용 런타임 풀 재구성
+	ItemPool.Empty();
 	CurrentItemList.Empty();
 	CurrentItemList.SetNum(MaxSlots);
 
-	int32 ItemCount = FMath::Min(Items.Num(), MaxSlots);
+	int32 WriteIndex = 0;
 
-	for (int32 i = 0; i < ItemCount; ++i)
+	for (UBaseItemData* Item : Items)
 	{
-		if (Items[i])
+		if (!Item || WriteIndex >= MaxSlots)
 		{
-			int32 PoolIndex = ItemPool.Find(Items[i]);
-			if (PoolIndex != INDEX_NONE)
-			{
-				CurrentItemList[i].ItemId = PoolIndex;
-				CurrentItemList[i].Count = 1;
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("[LootableComponent] InitializeWithItems: Item not found in ItemPool"));
-				CurrentItemList[i].ItemId = -1;
-			}
+			continue;
 		}
+
+		const int32 PoolIndex = ItemPool.Add(Item);
+
+		CurrentItemList[WriteIndex].ItemId = PoolIndex;
+		CurrentItemList[WriteIndex].Count = 1;
+		++WriteIndex;
 	}
 
-	// 나머지는 빈 슬롯
-	for (int32 i = ItemCount; i < MaxSlots; ++i)
+	// 나머지는 빈 슬롯 처리
+	for (int32 i = WriteIndex; i < MaxSlots; ++i)
 	{
 		CurrentItemList[i].ItemId = -1;
 		CurrentItemList[i].Count = 0;
 	}
 
 	OnLootChanged.Broadcast();
+	GetOwner()->ForceNetUpdate();
 
-	UE_LOG(LogTemp, Log, TEXT("[LootableComponent] InitializeWithItems: Created %d items for %s"),
-		ItemCount, *GetOwner()->GetName());
+	UE_LOG(LogTemp, Log, TEXT("[LootableComponent] InitializeWithItems: Created %d items for %s (ItemPool=%d)"),
+		WriteIndex, *GetOwner()->GetName(), ItemPool.Num());
 }
 
 void ULootableComponent::ClearLoot()
@@ -390,4 +390,15 @@ void ULootableComponent::OnRep_CurrentItemList()
 
 	UE_LOG(LogTemp, Log, TEXT("[LootableComponent] OnRep_CurrentItemList: Loot updated for %s"),
 		*GetOwner()->GetName());
+}
+
+void ULootableComponent::OnRep_ItemPool()
+{
+	if (OnLootChanged.IsBound())
+	{
+		OnLootChanged.Broadcast();
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[LootableComponent] OnRep_ItemPool: ItemPool updated for %s (%d items)"),
+		*GetOwner()->GetName(), ItemPool.Num());
 }

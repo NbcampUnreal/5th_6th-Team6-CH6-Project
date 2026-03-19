@@ -88,7 +88,8 @@ void ULOSObstacleDrawerComponent::CreateResources()
         ObstacleRenderTarget = NewObject<UTextureRenderTarget2D>(this, FName(*RTName));
         ObstacleRenderTarget->InitAutoFormat(PixelResolution, PixelResolution);
         ObstacleRenderTarget->ClearColor        = FLinearColor::Black;
-        ObstacleRenderTarget->RenderTargetFormat = RTF_R8;
+        //ObstacleRenderTarget->RenderTargetFormat = RTF_R8;
+        ObstacleRenderTarget->RenderTargetFormat = RTF_RGBA8;
         ObstacleRenderTarget->UpdateResourceImmediate();
 
         UE_LOG(LOSVision, Log,

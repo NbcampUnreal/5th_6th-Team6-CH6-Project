@@ -1599,3 +1599,62 @@ void ABasePlayerController::PawnLeavingGame()
 
 
 }
+
+// [김현수 추가분]
+void ABasePlayerController::RequestDropInventoryItemFromUI(int32 SlotIndex, const FVector2D& ScreenSpacePosition)
+{
+	APawn* PlayerPawn = GetPawn();
+	if (!PlayerPawn)
+	{
+		return;
+	}
+
+	FHitResult HitResult;
+	FVector DropLocation = PlayerPawn->GetActorLocation() + PlayerPawn->GetActorForwardVector() * 120.f;
+	DropLocation.Z = PlayerPawn->GetActorLocation().Z + 20.f;
+
+	// UI 드래그 끝난 마우스 좌표를 월드 히트로 변환
+	if (GetHitResultAtScreenPosition(ScreenSpacePosition, MouseTraceChannel, true, HitResult) && HitResult.bBlockingHit)
+	{
+		DropLocation = HitResult.Location + FVector(0.f, 0.f, 10.f);
+	}
+
+	Server_DropInventoryItem(SlotIndex, DropLocation);
+}
+
+void ABasePlayerController::Server_DropInventoryItem_Implementation(int32 SlotIndex, FVector_NetQuantize DropLocation)
+{
+	APawn* PlayerPawn = GetPawn();
+	if (!PlayerPawn)
+	{
+		return;
+	}
+
+	UBaseInventoryComponent* InventoryComp = PlayerPawn->FindComponentByClass<UBaseInventoryComponent>();
+	if (!InventoryComp)
+	{
+		return;
+	}
+
+	if (SlotIndex < 0 || SlotIndex >= InventoryComp->MaxSlots)
+	{
+		return;
+	}
+
+	// 서버에서 한번 더 안전 위치 보정
+	FVector SafeDropLocation = FVector(DropLocation);
+	const FVector PawnLocation = PlayerPawn->GetActorLocation();
+
+	FVector ToDrop = SafeDropLocation - PawnLocation;
+	ToDrop.Z = 0.f;
+
+	constexpr float MaxDropDistance = 250.f;
+	if (ToDrop.SizeSquared() > FMath::Square(MaxDropDistance))
+	{
+		SafeDropLocation = PawnLocation + ToDrop.GetSafeNormal() * 120.f;
+		SafeDropLocation.Z = PawnLocation.Z + 20.f;
+	}
+
+	InventoryComp->DropItemFromSlot(SlotIndex, SafeDropLocation, DroppedItemActorClass, PlayerPawn);
+}
+

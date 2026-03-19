@@ -133,13 +133,17 @@ protected:
 	UFUNCTION()
 	void OnRep_CurrentItemList();
 
+	UFUNCTION()
+	void OnRep_ItemPool();
+
+
 public:
 	// ========================================
 	// 설정 가능한 프로퍼티
 	// ========================================
 
 	/** 루팅 가능한 아이템 풀 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lootable|Setup")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, ReplicatedUsing = OnRep_ItemPool, Category = "Lootable|Setup")
 	TArray<TObjectPtr<UBaseItemData>> ItemPool;
 
 	/** 최대 슬롯 개수 (기본 10칸) */
