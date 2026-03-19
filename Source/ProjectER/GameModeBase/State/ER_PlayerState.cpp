@@ -1,4 +1,4 @@
-﻿#include "ER_PlayerState.h"
+#include "ER_PlayerState.h"
 #include "Net/UnrealNetwork.h"
 #include "AbilitySystemComponent.h"
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
@@ -32,6 +32,7 @@ void AER_PlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AER_PlayerState, KillCount);
 	DOREPLIFETIME(AER_PlayerState, DeathCount);
 	DOREPLIFETIME(AER_PlayerState, AssistCount);
+	DOREPLIFETIME(AER_PlayerState, StartPoint);
 
 }
 
@@ -44,7 +45,7 @@ void AER_PlayerState::CopyProperties(APlayerState* PlayerState)
 	{
 		PS->PlayerStateName = PlayerStateName;
 		PS->TeamType = TeamType;
-
+		PS->StartPoint = StartPoint;
 	}
 }
 
@@ -90,3 +91,7 @@ void AER_PlayerState::ResetDamageContrib()
 	DamageContribMap.Reset();
 }
 
+void AER_PlayerState::Server_SetStartPoint_Implementation(int32 idx)
+{
+	SetStartPoint(idx);
+}

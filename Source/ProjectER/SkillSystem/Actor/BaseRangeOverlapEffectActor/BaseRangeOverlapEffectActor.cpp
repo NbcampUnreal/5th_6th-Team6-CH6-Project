@@ -7,6 +7,7 @@
 #include "AbilitySystemComponent.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
 #include "SkillSystem/Component/AreaPeriodicEffectComponent.h"
+#include "UObject/Object.h"
 
 // Sets default values
 ABaseRangeOverlapEffectActor::ABaseRangeOverlapEffectActor()
@@ -81,15 +82,11 @@ void ABaseRangeOverlapEffectActor::OnShapeBeginOverlap(UPrimitiveComponent* Over
 		return;
 	}
 
-	if (ITargetableInterface* MyInstigatorTargetable = Cast<ITargetableInterface>(InstigatorActor))
-	{
-		if (ITargetableInterface* OtherTargetable = Cast<ITargetableInterface>(OtherActor))
-		{
-			if (MyInstigatorTargetable->GetTeamType() == OtherTargetable->GetTeamType())
-			{
-				return;
-			}
-		}
+	ITargetableInterface* MyInstigatorTargetable = Cast<ITargetableInterface>(InstigatorActor);
+	ITargetableInterface* OtherTargetable = Cast<ITargetableInterface>(OtherActor);
+	if(!MyInstigatorTargetable || !OtherTargetable) return;
+	if (MyInstigatorTargetable->GetTeamType() == OtherTargetable->GetTeamType()) {
+		return;
 	}
 
 	// 주기적 효과가 설정되어 있다면 컴포넌트에 타겟 추가
