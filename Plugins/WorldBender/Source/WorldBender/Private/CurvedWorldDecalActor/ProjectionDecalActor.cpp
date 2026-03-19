@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #include "CurvedWorldDecalActor/ProjectionDecalActor.h"
 
 #include "Components/StaticMeshComponent.h"
@@ -8,12 +6,12 @@
 
 AProjectionDecalActor::AProjectionDecalActor()
 {
-    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = false; // off by default, enabled via bUpdateOnTick
 
     BoxMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BoxMesh"));
     RootComponent = BoxMesh;
 
-    // Use engine cube
     static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMesh(TEXT("/Engine/BasicShapes/Cube.Cube"));
     if (CubeMesh.Succeeded())
     {
@@ -28,7 +26,18 @@ AProjectionDecalActor::AProjectionDecalActor()
 void AProjectionDecalActor::BeginPlay()
 {
     Super::BeginPlay();
+
     InitMID();
+    UpdateProjectionParams();
+
+    // Sync tick state with initial bUpdateOnTick value
+    SetActorTickEnabled(bUpdateOnTick);
+}
+
+void AProjectionDecalActor::Tick(float DeltaTime)
+{
+    Super::Tick(DeltaTime);
+
     UpdateProjectionParams();
 }
 
@@ -38,8 +47,7 @@ void AProjectionDecalActor::OnConstruction(const FTransform& Transform)
 
     InitMID();
 
-    // Match mesh scale to projection extent
-    FVector Scale = ProjectionExtent / 50.f; // Cube is 100 units
+    FVector Scale = ProjectionExtent / 50.f;
     BoxMesh->SetWorldScale3D(Scale);
 
     UpdateProjectionParams();
@@ -52,6 +60,12 @@ void AProjectionDecalActor::PostEditChangeProperty(FPropertyChangedEvent& Proper
     UpdateProjectionParams();
 }
 #endif
+
+void AProjectionDecalActor::SetUpdateOnTick(bool bEnable)
+{
+    bUpdateOnTick = bEnable;
+    SetActorTickEnabled(bEnable);
+}
 
 void AProjectionDecalActor::InitMID()
 {
@@ -76,9 +90,9 @@ void AProjectionDecalActor::UpdateProjectionParams()
     const FVector Up      = GetActorUpVector().GetSafeNormal();
 
     MID->SetVectorParameterValue(Param_ProjectionCenter, FLinearColor(Center));
-    MID->SetVectorParameterValue(Param_ProjectionRight, FLinearColor(Right));
-    MID->SetVectorParameterValue(Param_ProjectionForward, FLinearColor(Forward));
-    MID->SetVectorParameterValue(Param_ProjectionUp, FLinearColor(Up));
+    MID->SetVectorParameterValue(Param_ProjectionRight,  FLinearColor(Right));
+    MID->SetVectorParameterValue(Param_ProjectionForward,FLinearColor(Forward));
+    MID->SetVectorParameterValue(Param_ProjectionUp,     FLinearColor(Up));
 
     MID->SetVectorParameterValue(
         TEXT("ProjScale"),

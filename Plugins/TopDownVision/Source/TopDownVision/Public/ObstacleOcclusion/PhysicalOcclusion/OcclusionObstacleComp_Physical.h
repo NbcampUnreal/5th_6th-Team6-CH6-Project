@@ -48,6 +48,8 @@ private:
     void CleanupInvalidOverlaps();
     void DiscoverChildMeshes();
 
+    //void UpdateMouseTraceCollision(bool bOccluded);
+
 protected:
 
     UPROPERTY(EditAnywhere, Category="Occlusion")

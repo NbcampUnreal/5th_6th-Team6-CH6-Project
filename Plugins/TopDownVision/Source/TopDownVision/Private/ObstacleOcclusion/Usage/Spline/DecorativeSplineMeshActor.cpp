@@ -82,7 +82,7 @@ void ADecorativeSplineMeshActor::GenerateSegment(int32 SegmentIndex)
         this,
         USplineMeshComponent::StaticClass(),
         NAME_None,
-        RF_NoFlags);
+        RF_Transactional); // RF_Transactional instead of RF_NoFlags for editor persistence
 
     if (!Segment) return;
 
@@ -97,14 +97,16 @@ void ADecorativeSplineMeshActor::GenerateSegment(int32 SegmentIndex)
 
     Segment->SetStartAndEnd(StartLocation, StartTangent, EndLocation, EndTangent, false);
 
+    // Attach to root not spline component — spline component transform
+    // can cause double-transformation when actor moves
     Segment->AttachToComponent(
-        SplineComponent,
+        GetRootComponent(),
         FAttachmentTransformRules::KeepRelativeTransform);
 
     Segment->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    if (bApplyOcclusionTag && !OcclusionMeshTag.IsNone())
-        Segment->ComponentTags.AddUnique(OcclusionMeshTag);
+    if (!SegmentOcclusionTag.IsNone())
+        Segment->ComponentTags.AddUnique(SegmentOcclusionTag);
 
     Segment->RegisterComponent();
     AddInstanceComponent(Segment);

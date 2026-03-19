@@ -36,14 +36,11 @@ void UOcclusionObstacleComp_Physical::TickComponent(float DeltaTime, ELevelTick 
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    //Temp
     UE_LOG(Occlusion, Log,
         TEXT("UOcclusionObstacleComp_Physical::TickComponent>> %s | CurrentAlpha: %.3f | bShouldBeOccluded: %s"),
-        *GetOwner()->GetName(),
-        CurrentAlpha,
+        *GetOwner()->GetName(), CurrentAlpha,
         bShouldBeOccluded ? TEXT("true") : TEXT("false"));
 
-    
     const float TargetAlpha = bShouldBeOccluded ? 0.f : 1.f;
 
     if (bShouldBeOccluded != bLastOcclusionState)
@@ -61,6 +58,7 @@ void UOcclusionObstacleComp_Physical::TickComponent(float DeltaTime, ELevelTick 
     {
         CurrentAlpha = TargetAlpha;
         UpdateMaterialAlpha();
+        //UpdateMouseTraceCollision(bShouldBeOccluded);
         SetComponentTickEnabled(false);
     }
 }
@@ -209,6 +207,24 @@ void UOcclusionObstacleComp_Physical::DiscoverChildMeshes()
 
     Modify();
 }
+
+/*void UOcclusionObstacleComp_Physical::UpdateMouseTraceCollision(bool bOccluded)
+{
+    const ECollisionResponse Response = bOccluded ? ECR_Block : ECR_Ignore;
+
+    for (TSoftObjectPtr<UMeshComponent> MeshPtr : NormalMeshes)
+    {
+        UMeshComponent* Mesh = MeshPtr.Get();
+        if (!Mesh) continue;
+
+        if (UStaticMeshComponent* StaticMesh = Cast<UStaticMeshComponent>(Mesh))
+            StaticMesh->SetCollisionResponseToChannel(MouseTraceChannel, Response);
+    }
+
+    UE_LOG(Occlusion, Log,
+        TEXT("UOcclusionObstacleComp_Physical::UpdateMouseTraceCollision>> %s | %s"),
+        *GetOwner()->GetName(), bOccluded ? TEXT("Block") : TEXT("Ignore"));
+}*/
 
 void UOcclusionObstacleComp_Physical::CleanupInvalidOverlaps()
 {
