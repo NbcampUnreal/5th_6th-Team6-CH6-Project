@@ -92,7 +92,9 @@ void ULaunchHomingMissile::OnGameplayEffectApplied(
 	}
 
 	// --- 타겟 및 스폰 위치 계산 ---
-	AActor* const TargetActor = GetTargetActorFromContainer(ActiveGEContainer);
+	AActor* const TargetActor = ContextHandle.GetHitResult()->GetActor();
+	if (!IsValid(TargetActor)) return;
+	//AActor* const TargetActor = GetTargetActorFromContainer(ContextHandle);
 	const FTransform SpawnTransform = CalculateSpawnTransform(MissileConfig, Instigator, TargetActor);
 
 	// --- 미사일 액터 지연 생성 ---
