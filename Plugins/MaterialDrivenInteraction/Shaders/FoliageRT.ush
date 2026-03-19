@@ -1,0 +1,305 @@
+﻿// FoliageRT.ush
+// Place in: YourPlugin/Shaders/FoliageRT.ush
+//
+// Include in any Custom material node with:
+//   #include "/FoliageRT/FoliageRT.ush"
+//
+// Then call the function directly — the Custom node body is just a return statement.
+// Example:
+//   return FRT_WriteImpulseChannels(VelocityX, VelocityY, ImpactTime, Weight, Mask);
+//
+// Virtual path "/FoliageRT/" is registered in FFoliageRTModule::StartupModule().
+// ─────────────────────────────────────────────────────────────────────────────
+
+#pragma once
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FRT_WriteImpulseChannels
+//
+// Packs velocity + GameTime into an RGBA32f render target.
+// G channel carries raw GameTime as float32 — this must stay in a Custom
+// node. A scalar material parameter path truncates to fp16 on some stages.
+//
+// Returns float4:
+//   R = encoded vel X     G = GameTime (raw float)
+//   B = encoded vel Y     A = weight * mask
+// ─────────────────────────────────────────────────────────────────────────────
+float4 FRT_WriteImpulseChannels(
+    float VelocityX,    // encoded X velocity [0,1]  (0.5 = stationary)
+    float VelocityY,    // encoded Y velocity [0,1]
+    float ImpactTime,   // raw GameTime float — pass View.GameTime or ImpactTimeVec.r
+    float Weight,       // brush strength [0,1]
+    float Mask          // brush shape mask [0,1]  (1 inside footprint, 0 outside)
+)
+{
+    float4 Out;
+    Out.r = VelocityX;
+    Out.g = ImpactTime;     // foliage reads: TimeDelta = View.GameTime - Out.g
+    Out.b = VelocityY;
+    Out.a = Weight * Mask;
+    return Out;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FRT_WriteContinuousChannels
+//
+// Packs live velocity + weight into an RGBA8 render target.
+// G channel is intentionally left at 0 — reserved for the impulse timestamp.
+//
+// Returns float4:
+//   R = live encoded vel X     G = 0 (unused)
+//   B = live encoded vel Y     A = weight * mask
+// ─────────────────────────────────────────────────────────────────────────────
+float4 FRT_WriteContinuousChannels(
+    float VelocityX,    // encoded X velocity [0,1]
+    float VelocityY,    // encoded Y velocity [0,1]
+    float Weight,       // brush strength [0,1]
+    float Mask          // brush shape mask [0,1]
+)
+{
+    float4 Out;
+    Out.r = VelocityX;
+    Out.g = 0.0;
+    Out.b = VelocityY;
+    Out.a = Weight * Mask;
+    return Out;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FRT_DecodeVelocity
+//
+// Decodes a single velocity axis from [0,1] RT storage back to world units.
+//   0.0 = -MaxVelocity      0.5 = stationary      1.0 = +MaxVelocity
+//
+// Must match UFoliageRTInvokerComponent::EncodeVelocityAxis().
+// ─────────────────────────────────────────────────────────────────────────────
+float FRT_DecodeVelocity(
+    float EncodedValue,
+    float MaxVelocity
+)
+{
+    // EncodedValue == 0 means the RT was cleared to black (never painted).
+    // Decode would give -MaxVelocity which shifts foliage before any brush fires.
+    // Guard returns 0 for unpainted pixels.
+    // Note: a legitimately painted pixel can never be exactly 0.0 in RGBA8
+    // because the minimum encodable value is 1/255 ≈ 0.004.
+    if (EncodedValue <= 0.0)
+        return 0.0;
+
+    return (EncodedValue - 0.5) * 2.0 * MaxVelocity;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FRT_BrushMask
+//
+// Axis-aligned box brush mask in UV space.
+// Returns 1 inside the footprint, 0 outside.  No branching.
+//
+// Use as the Mask input to FRT_WriteImpulseChannels / FRT_WriteContinuousChannels.
+// For a softer edge, raise the result to a power (e.g. pow(mask, 2.0)).
+// For a circular brush, pass equal X and Y extents and use FRT_CircleMask instead.
+// ─────────────────────────────────────────────────────────────────────────────
+float FRT_BrushMask(
+    float2 TexCoord,    // TexCoord[0] from the material
+    float2 CentreUV,    // BrushCentreUV parameter (current frame)
+    float2 UVExtent     // BrushUVExtent parameter (half-extents in UV space)
+)
+{
+    float2 Delta    = abs(TexCoord - CentreUV);
+    float2 InBounds = step(Delta, UVExtent);   // 1 where Delta <= Extent
+    return InBounds.x * InBounds.y;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FRT_CircleMask
+//
+// Circular (radially symmetric) brush mask in UV space.
+// Smoother than the box mask, better for capsule characters.
+// Returns 1 at the centre, falling to 0 at the edge, hard cutoff at radius.
+// ─────────────────────────────────────────────────────────────────────────────
+float FRT_CircleMask(
+    float2 TexCoord,
+    float2 CentreUV,
+    float  Radius,      // in UV space: BrushExtent.x / CellSize  (use X extent)
+    float  Softness     // 0 = hard edge, 1 = fully soft (like a Gaussian)
+)
+{
+    float Dist      = length(TexCoord - CentreUV);
+    float HardEdge  = 1.0 - step(Radius, Dist);
+    float SoftEdge  = 1.0 - smoothstep(Radius * (1.0 - Softness), Radius, Dist);
+    return lerp(HardEdge, SoftEdge, saturate(Softness));
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FRT_SmearMask
+//
+// Capsule-shaped mask spanning PrevUV → CurrentUV.
+// Eliminates gaps when the invoker moves faster than one texel per frame.
+// Use this instead of FRT_BrushMask for the Continuous RT.
+//
+// Algorithm: SDF of a line segment between PrevUV and CentreUV,
+// thresholded at Radius.
+// ─────────────────────────────────────────────────────────────────────────────
+float FRT_SmearMask(
+    float2 TexCoord,
+    float2 PrevUV,      // BrushPrevUV parameter
+    float2 CentreUV,    // BrushCentreUV parameter (current frame)
+    float  Radius,      // UV-space radius (same as FRT_CircleMask Radius)
+    float  Softness
+)
+{
+    float2 Seg  = CentreUV - PrevUV;
+    float  Len2 = dot(Seg, Seg);
+
+    // Project TexCoord onto the segment, clamped to [0,1]
+    float  T    = (Len2 > 1e-8)
+                    ? saturate(dot(TexCoord - PrevUV, Seg) / Len2)
+                    : 0.0;
+
+    float2 Closest = PrevUV + T * Seg;
+    float  Dist    = length(TexCoord - Closest);
+
+    float HardEdge = 1.0 - step(Radius, Dist);
+    float SoftEdge = 1.0 - smoothstep(Radius * (1.0 - Softness), Radius, Dist);
+    return lerp(HardEdge, SoftEdge, saturate(Softness));
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FRT_DampedSine
+//
+// Critically-damped sine oscillation — the foliage spring-back model.
+//   f(t) = Amplitude * exp(-Damping * t) * sin(Frequency * t * 2PI)
+//
+// Returns a signed displacement scalar (world units).
+// Feed into FRT_ComputeWPO as WobbleAmount.
+//
+// Tuning presets:
+//   Short grass  : Amplitude=10, Frequency=4.0, Damping=2.0
+//   Long grass   : Amplitude=20, Frequency=2.0, Damping=0.8
+//   Shrub branch : Amplitude=12, Frequency=1.5, Damping=0.5
+//   Reed/cattail : Amplitude=30, Frequency=1.2, Damping=0.4
+// ─────────────────────────────────────────────────────────────────────────────
+/*float FRT_DampedSine(
+    float TimeDelta,
+    float Amplitude,
+    float Frequency,
+    float Damping,
+    float ImpWeight     // ImpulseRT.a — 0 means texel never stamped, skip entirely
+)
+{
+    // ImpWeight == 0 means this texel was never stamped (RT cleared to black).
+    // Guarding on ImpWeight is correct — guarding on TimeDelta <= 0 is wrong
+    // because a never-stamped texel has G=0, making TimeDelta = CurrentTime
+    // which is a large positive number, not <= 0.
+    if (ImpWeight <= 0.0)
+        return 0.0;
+
+    float Envelope    = exp(-Damping * TimeDelta);
+    float Oscillation = sin(Frequency * TimeDelta * 6.28318530718);
+    return Amplitude * Envelope * Oscillation;
+}*/
+
+float FRT_DampedSine(
+    float TimeDelta,
+    float Amplitude,
+    float Frequency,
+    float Damping,
+    float ImpWeight
+)
+{
+    if (ImpWeight <= 0.0)
+        return 0.0;
+
+    // Hard cutoff — once the envelope is below 1% of amplitude, return 0.
+    // Prevents imperceptible residual oscillation from masking new triggers.
+    float Envelope = exp(-Damping * TimeDelta);
+    if (Envelope < 0.01)
+        return 0.0;
+
+    return Amplitude * Envelope * sin(Frequency * TimeDelta * 6.28318530718);
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FRT_InCellMask
+//
+// Returns 1.0 if the world XY position falls inside the given pool slot's cell,
+// 0.0 otherwise.  Also gates on IsActive so free slots never contribute.
+//
+// SlotData is the float4 from MPC "FRT_SlotN_Data":
+//   .xy = CellOriginWS    .z = IsActive (1/0)    .w = slot index
+// ─────────────────────────────────────────────────────────────────────────────
+float FRT_InCellMask(
+    float2 WorldXY,
+    float4 SlotData,
+    float  CellSize
+)
+{
+    float2 CellOrigin = SlotData.xy;
+    float  IsActive   = SlotData.z;
+
+    float2 UV = (WorldXY - CellOrigin) / CellSize;
+
+    // Strict boolean — no step() fuzzy edges that bleed into adjacent cells.
+    bool InBounds = (UV.x >= 0.0 && UV.x <= 1.0 &&
+                     UV.y >= 0.0 && UV.y <= 1.0);
+
+    return (InBounds && IsActive > 0.5) ? 1.0 : 0.0;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FRT_ComputeWPO
+//
+// Combines static lean (ContinuousRT) and damped wobble (ImpulseRT) into
+// a final World Position Offset vector.
+//
+// DampedSine is computed internally — no separate Custom node needed.
+// TimeDelta, Amplitude, Frequency, Damping are passed directly.
+// ─────────────────────────────────────────────────────────────────────────────
+float3 FRT_ComputeWPO(
+    float  ContVelX,
+    float  ContVelY,
+    float  ContWeight,
+    float  TimeDelta,       // Time - ImpulseRT.G  (computed in material graph)
+    float  Amplitude,
+    float  Frequency,
+    float  Damping,
+    float  ImpVelX,
+    float  ImpVelY,
+    float  ImpWeight,       // ImpulseRT.a — gates wobble
+    float  HeightFraction,
+    float  InCellMask
+)
+{
+    // ── Static lean ───────────────────────────────────────────────────────────
+    float3 StaticLean = float3(ContVelX, ContVelY, 0.0)
+                      * ContWeight
+                      * HeightFraction;
+
+    // ── Damped wobble ─────────────────────────────────────────────────────────
+    float WobbleAmount = FRT_DampedSine(TimeDelta, Amplitude, Frequency, Damping, ImpWeight);
+
+    // Require at least 5% of MaxVelocity to establish a direction.
+    // ImpVelX/Y come from RGBA32f so precision is fine, but near-zero stamps
+    // (pawn barely moving) should produce no directional bias.
+    // 60 = 5% of default MaxVelocity=1200 — scale if you use a different max.
+    float2 RawDir    = float2(ImpVelX, ImpVelY);
+    float  DirLen    = length(RawDir);
+    float3 WobbleVec = DirLen > 60.0
+                       ? float3(normalize(RawDir), 0.0)
+                       : float3(0.0, 0.0, 0.0);
+
+    float3 DampedWobble = WobbleVec
+                        * WobbleAmount
+                        * HeightFraction;
+
+    // ── Combine and gate ──────────────────────────────────────────────────────
+    return (StaticLean + DampedWobble) * InCellMask;
+}
