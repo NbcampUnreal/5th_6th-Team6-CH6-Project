@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "ER_RespawnSubsystem.h"
@@ -288,12 +288,6 @@ FTransform UER_RespawnSubsystem::GetRespawnPointLocation(const int32 Index)
 {
 	UWorld* World = GetWorld();
 	if (World == nullptr || World->GetNetMode() == NM_Client)
-	{
-		return FTransform::Identity;
-	}
-
-	if (Index < static_cast<int32>(ERegionType::None) ||
-		Index > static_cast<int32>(ERegionType::ResearchCenter))
 	{
 		return FTransform::Identity;
 	}
