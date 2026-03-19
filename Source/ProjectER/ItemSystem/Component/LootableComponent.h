@@ -166,6 +166,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Lootable|Behavior")
 	bool bDestroyOwnerWhenEmpty = false;
 
+	UFUNCTION(BlueprintCallable, Category = "Lootable")
+	void InitializeWithItemStacks(const TArray<UBaseItemData*>& Items, const TArray<int32>& Counts);
+
 protected:
 	/** 현재 루트 슬롯 리스트 (리플리케이션) */
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentItemList, VisibleAnywhere, BlueprintReadOnly, Category = "Lootable|Runtime")

@@ -19,18 +19,14 @@ UBaseInventoryComponent::UBaseInventoryComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 	MaxSlots = 8;
+	MaxStackPerSlot = 5;
 	SetIsReplicatedByDefault(true);
 }
 
 void UBaseInventoryComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// Initialize inventory slots with nullptrs on the server only if not already initialized
-	if (GetOwner()->HasAuthority() && InventoryContents.Num() == 0)
-	{
-		InventoryContents.Init(nullptr, MaxSlots);
-	}
+	EnsureInventoryArraysValid();
 }
 
 void UBaseInventoryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -43,24 +39,27 @@ void UBaseInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(UBaseInventoryComponent, InventoryContents);
+	DOREPLIFETIME(UBaseInventoryComponent, InventoryStackCounts);
 }
 
 int32 UBaseInventoryComponent::GetInventoryCount() const
 {
 	int32 Count = 0;
-	for (UBaseItemData* Item : InventoryContents)
+
+	const int32 SlotCount = FMath::Min(InventoryContents.Num(), InventoryStackCounts.Num());
+	for (int32 i = 0; i < SlotCount; ++i)
 	{
-		if (Item != nullptr)
+		if (InventoryContents[i] != nullptr && InventoryStackCounts[i] > 0)
 		{
 			++Count;
 		}
 	}
+
 	return Count;
 }
 
 bool UBaseInventoryComponent::AddItem(UBaseItemData* Item)
 {
-	/*if (Item == nullptr || InventoryContents.Num() >= MaxSlots)*/
 	if (Item == nullptr)
 	{
 		return false;
@@ -78,18 +77,39 @@ bool UBaseInventoryComponent::AddItem(UBaseItemData* Item)
 		return true;
 	}
 
-	// 빈 슬롯 찾기
+	EnsureInventoryArraysValid();
+
+	const int32 SafeMaxStack = FMath::Max(1, MaxStackPerSlot);
+
+	// 1) 먼저 기존 스택에 합치기
+	for (int32 i = 0; i < InventoryContents.Num(); ++i)
+	{
+		if (InventoryContents[i] == Item &&
+			InventoryStackCounts.IsValidIndex(i) &&
+			InventoryStackCounts[i] > 0 &&
+			InventoryStackCounts[i] < SafeMaxStack)
+		{
+			++InventoryStackCounts[i];
+			OnInventoryUpdated.Broadcast();
+
+			UE_LOG(LogTemp, Log, TEXT("[BaseInventoryComponent] Stacked item '%s' in slot %d. Count=%d"),
+				*Item->ItemName.ToString(), i, InventoryStackCounts[i]);
+
+			return true;
+		}
+	}
+
+	// 2) 빈 슬롯 찾기
 	int32 EmptySlotIndex = INDEX_NONE;
 	for (int32 i = 0; i < InventoryContents.Num(); ++i)
 	{
-		if (InventoryContents[i] == nullptr)
+		if (InventoryContents[i] == nullptr || InventoryStackCounts[i] <= 0)
 		{
 			EmptySlotIndex = i;
 			break;
 		}
 	}
 
-	// 가방이 가득 찼으면 실패
 	if (EmptySlotIndex == INDEX_NONE)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] Inventory is full. Cannot add item: %s"), *Item->ItemName.ToString());
@@ -97,8 +117,13 @@ bool UBaseInventoryComponent::AddItem(UBaseItemData* Item)
 	}
 
 	InventoryContents[EmptySlotIndex] = Item;
+	InventoryStackCounts[EmptySlotIndex] = 1;
 
 	OnInventoryUpdated.Broadcast();
+
+	UE_LOG(LogTemp, Log, TEXT("[BaseInventoryComponent] Added new item '%s' to slot %d"),
+		*Item->ItemName.ToString(), EmptySlotIndex);
+
 	return true;
 }
 
@@ -114,12 +139,18 @@ void UBaseInventoryComponent::Server_AddItem_Implementation(UBaseItemData* InDat
 
 void UBaseInventoryComponent::OnRep_InventoryContents()
 {
+	EnsureInventoryArraysValid();
 	OnInventoryUpdated.Broadcast();
 }
 
 UBaseItemData* UBaseInventoryComponent::GetItemAt(const int32 SlotIndex) const
 {
-	if (!InventoryContents.IsValidIndex(SlotIndex))
+	if (!InventoryContents.IsValidIndex(SlotIndex) || !InventoryStackCounts.IsValidIndex(SlotIndex))
+	{
+		return nullptr;
+	}
+
+	if (InventoryStackCounts[SlotIndex] <= 0)
 	{
 		return nullptr;
 	}
@@ -181,7 +212,19 @@ void UBaseInventoryComponent::UseItem(const int32 SlotIndex)
 		return;
 	}
 
-	InventoryContents[SlotIndex] = nullptr;
+	if (InventoryStackCounts.IsValidIndex(SlotIndex) && InventoryStackCounts[SlotIndex] > 1)
+	{
+		--InventoryStackCounts[SlotIndex];
+	}
+	else
+	{
+		InventoryContents[SlotIndex] = nullptr;
+		if (InventoryStackCounts.IsValidIndex(SlotIndex))
+		{
+			InventoryStackCounts[SlotIndex] = 0;
+		}
+	}
+
 	OnInventoryUpdated.Broadcast();
 }
 
@@ -553,10 +596,11 @@ bool UBaseInventoryComponent::SwapSlots(int32 FromIndex, int32 ToIndex)
 
 	if (FromIndex == ToIndex)
 	{
-		return false;
+		return true;
 	}
 
-	if (!InventoryContents.IsValidIndex(FromIndex) || !InventoryContents.IsValidIndex(ToIndex))
+	if (!InventoryContents.IsValidIndex(FromIndex) || !InventoryContents.IsValidIndex(ToIndex) ||
+		!InventoryStackCounts.IsValidIndex(FromIndex) || !InventoryStackCounts.IsValidIndex(ToIndex))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] SwapSlots: Invalid index From=%d To=%d"), FromIndex, ToIndex);
 		return false;
@@ -570,15 +614,54 @@ bool UBaseInventoryComponent::SwapSlots(int32 FromIndex, int32 ToIndex)
 	}
 
 	// 빈 슬롯에서 드래그한 경우는 무시
-	if (InventoryContents[FromIndex] == nullptr)
+	if (InventoryContents[FromIndex] == nullptr || InventoryStackCounts[FromIndex] <= 0)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] SwapSlots: Source slot is empty. From=%d"), FromIndex);
 		return false;
 	}
 
-	UBaseItemData* Temp = InventoryContents[FromIndex];
+	UBaseItemData* SourceItem = InventoryContents[FromIndex];
+	UBaseItemData* TargetItem = InventoryContents[ToIndex];
+
+	int32& SourceCount = InventoryStackCounts[FromIndex];
+	int32& TargetCount = InventoryStackCounts[ToIndex];
+
+	// 1) 같은 아이템이면 먼저 스택 합치기 시도
+	if (SourceItem != nullptr &&
+		TargetItem != nullptr &&
+		SourceItem == TargetItem)
+	{
+		const int32 SafeMaxStack = FMath::Max(1, MaxStackPerSlot);
+		const int32 SpaceLeft = SafeMaxStack - TargetCount;
+
+		if (SpaceLeft <= 0)
+		{
+			return true;
+		}
+
+		const int32 MoveAmount = FMath::Min(SourceCount, SpaceLeft);
+
+		TargetCount += MoveAmount;
+		SourceCount -= MoveAmount;
+
+		if (SourceCount <= 0)
+		{
+			InventoryContents[FromIndex] = nullptr;
+			SourceCount = 0;
+		}
+
+		OnInventoryUpdated.Broadcast();
+		return true;
+	}
+
+	// 2) 같은 아이템이 아니면 기존처럼 위치 교환
+	UBaseItemData* TempItem = InventoryContents[FromIndex];
 	InventoryContents[FromIndex] = InventoryContents[ToIndex];
-	InventoryContents[ToIndex] = Temp;
+	InventoryContents[ToIndex] = TempItem;
+
+	int32 TempCount = InventoryStackCounts[FromIndex];
+	InventoryStackCounts[FromIndex] = InventoryStackCounts[ToIndex];
+	InventoryStackCounts[ToIndex] = TempCount;
 
 	OnInventoryUpdated.Broadcast();
 	return true;
@@ -650,11 +733,65 @@ bool UBaseInventoryComponent::DropItemFromSlot(int32 SlotIndex, const FVector& S
 
 	SpawnedItem->InitializeFromItemData(ItemData, DropperPawn);
 
-	InventoryContents[SlotIndex] = nullptr;
+	if (InventoryStackCounts[SlotIndex] > 1)
+	{
+		--InventoryStackCounts[SlotIndex];
+	}
+	else
+	{
+		InventoryContents[SlotIndex] = nullptr;
+		InventoryStackCounts[SlotIndex] = 0;
+	}
+
 	OnInventoryUpdated.Broadcast();
 
 	UE_LOG(LogTemp, Log, TEXT("[BaseInventoryComponent] Dropped item '%s' from slot %d"),
 		*ItemData->ItemName.ToString(), SlotIndex);
 
 	return true;
+}
+
+void UBaseInventoryComponent::EnsureInventoryArraysValid()
+{
+	if (InventoryContents.Num() < MaxSlots)
+	{
+		InventoryContents.AddDefaulted(MaxSlots - InventoryContents.Num());
+	}
+	else if (InventoryContents.Num() > MaxSlots)
+	{
+		InventoryContents.SetNum(MaxSlots);
+	}
+
+	if (InventoryStackCounts.Num() < MaxSlots)
+	{
+		InventoryStackCounts.AddZeroed(MaxSlots - InventoryStackCounts.Num());
+	}
+	else if (InventoryStackCounts.Num() > MaxSlots)
+	{
+		InventoryStackCounts.SetNum(MaxSlots);
+	}
+
+	for (int32 i = 0; i < MaxSlots; ++i)
+	{
+		if (InventoryContents[i] == nullptr || InventoryStackCounts[i] <= 0)
+		{
+			InventoryContents[i] = nullptr;
+			InventoryStackCounts[i] = 0;
+		}
+	}
+}
+
+int32 UBaseInventoryComponent::GetStackCountAt(int32 SlotIndex) const
+{
+	if (!InventoryContents.IsValidIndex(SlotIndex) || !InventoryStackCounts.IsValidIndex(SlotIndex))
+	{
+		return 0;
+	}
+
+	if (InventoryContents[SlotIndex] == nullptr)
+	{
+		return 0;
+	}
+
+	return FMath::Max(InventoryStackCounts[SlotIndex], 0);
 }
