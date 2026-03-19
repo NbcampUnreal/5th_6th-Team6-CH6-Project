@@ -1,4 +1,4 @@
-﻿#include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
@@ -457,6 +457,24 @@ void AER_InGameMode::DisConnectClient(APlayerController* PC)
 				WeakThis->GameSession->KickPlayer(WeakPC.Get(), FText::FromString(TEXT("Defeated")));
 			}
 		}, 0.2f, false);
+}
+
+void AER_InGameMode::RequestTeleportToRegion(ACharacter* TargetCharacter, int32 RegionIndex)
+{
+	if (!TargetCharacter || !HasAuthority())
+	{
+		return;
+	}
+
+	UER_RespawnSubsystem* RespawnSS = GetWorld()->GetSubsystem<UER_RespawnSubsystem>();
+	if (RespawnSS)
+	{
+		FTransform DestTransform = RespawnSS->GetRespawnPointLocation(RegionIndex);
+		
+		TargetCharacter->SetActorTransform(DestTransform, false, nullptr, ETeleportType::TeleportPhysics);
+
+		UE_LOG(LogTemp, Warning, TEXT("[GM] Teleported Character %s to Region %d"), *TargetCharacter->GetName(), RegionIndex);
+	}
 }
 
 void AER_InGameMode::StartGame()
