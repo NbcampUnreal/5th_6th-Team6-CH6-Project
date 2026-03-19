@@ -245,6 +245,18 @@ public:
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 	void Client_CloseLoadingUI();
 
+	// 클라이언트가 캐릭터 선택창 진입 요청
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_RequestCharacterSelection();
+
+	// 서버가 모든 클라이언트에게 캐릭터 선택 UI를 띄우라고 명령
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_ShowCharacterSelectionUI();
+
+	// HUD BP에서 UI를 스왑하기 위해 사용할 이벤트
+	UFUNCTION(BlueprintImplementableEvent, Category = "UI")
+	void OnShowCharacterSelectionUI();
+
 	// [텔레포트 관련]
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 	void Client_OpenTeleportUI(AActor* TeleportActor);

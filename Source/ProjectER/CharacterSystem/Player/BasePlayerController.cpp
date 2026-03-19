@@ -1695,6 +1695,19 @@ void ABasePlayerController::PawnLeavingGame()
 	    UE_LOG(LogTemp, Warning, TEXT("[PC] PawnLeavingGame After | PC=%s | Pawn=%s"),
         *GetNameSafe(this),
         *GetNameSafe(GetPawn()));
+}
 
+void ABasePlayerController::Server_RequestCharacterSelection_Implementation()
+{
+	if (AER_OutGameMode* OutGameMode = Cast<AER_OutGameMode>(GetWorld()->GetAuthGameMode()))
+	{
+		OutGameMode->ShowCharacterSelectionToAll();
+	}
+}
 
+void ABasePlayerController::Client_ShowCharacterSelectionUI_Implementation()
+{
+	UE_LOG(LogTemp, Log, TEXT("[PC] : Client_ShowCharacterSelectionUI"));
+	// 블루프린트로 이벤트 전달
+	OnShowCharacterSelectionUI();
 }
