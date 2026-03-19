@@ -254,6 +254,19 @@ public:
 
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 	void Client_CloseLoadingUI();
+
+	// [텔레포트 관련]
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_OpenTeleportUI(AActor* TeleportActor);
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_CloseTeleportUI();
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_RequestTeleport(int32 RegionIndex);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_BeginTeleportInteract(class UER_TeleportComponent* TeleportComp);
 	// 박스 아이템 루팅 RPC 끝
 
 	//	mpyi 추가분 _ UI SYSTEM
@@ -344,6 +357,17 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> LoadingUIClass;
+
+	// Teleport UI
+	UPROPERTY(EditDefaultsOnly, Category = "ProjectER|UI")
+	TSubclassOf<UUserWidget> TeleportUIClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> TeleportUIInstance;
+	
+	// 거리 측정을 위한 타겟 캐싱
+	UPROPERTY(Transient)
+	TWeakObjectPtr<AActor> CurrentTeleportActor;
 
 	// Currently bound loot component for automatic popup close
 	TWeakObjectPtr<class ULootableComponent> BoundLootComponent;
