@@ -22,6 +22,11 @@ void UOcclusionObstacleComp_Material::BeginPlay()
         *GetOwner()->GetName());
 
     InitializeMaterials();
+
+    // Start fully visible — both alphas at their visible state
+    CurrentAlpha      = 1.f;
+    CurrentForceAlpha = 0.f;
+    UpdateMaterialAlpha();
 }
 
 void UOcclusionObstacleComp_Material::TickComponent(
@@ -31,14 +36,21 @@ void UOcclusionObstacleComp_Material::TickComponent(
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    const float TargetAlpha = bShouldBeOccluded ? 1.f : 0.f;
+    const float TargetAlpha      = bShouldBeOccluded ? 0.f : 1.f;
+    const float TargetForceAlpha = bForceOccluded    ? 1.f : 0.f;
 
-    CurrentAlpha = FMath::FInterpTo(CurrentAlpha, TargetAlpha, DeltaTime, FadeSpeed);
+    CurrentAlpha      = FMath::FInterpTo(CurrentAlpha,      TargetAlpha,      DeltaTime, FadeSpeed);
+    CurrentForceAlpha = FMath::FInterpTo(CurrentForceAlpha, TargetForceAlpha, DeltaTime, FadeSpeed);
+
     UpdateMaterialAlpha();
 
-    if (FMath::IsNearlyEqual(CurrentAlpha, TargetAlpha, 0.001f))
+    const bool bAlphaDone      = FMath::IsNearlyEqual(CurrentAlpha,      TargetAlpha,      0.001f);
+    const bool bForceAlphaDone = FMath::IsNearlyEqual(CurrentForceAlpha, TargetForceAlpha, 0.001f);
+
+    if (bAlphaDone && bForceAlphaDone)
     {
-        CurrentAlpha = TargetAlpha;
+        CurrentAlpha      = TargetAlpha;
+        CurrentForceAlpha = TargetForceAlpha;
         UpdateMaterialAlpha();
         SetComponentTickEnabled(false);
     }
@@ -63,12 +75,26 @@ void UOcclusionObstacleComp_Material::OnOcclusionExit_Implementation(UObject* So
     if (!SourceTracer) return;
     ActiveOverlaps.Remove(SourceTracer);
     CleanupInvalidOverlaps();
-    bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+    
+    if (!bForceOccluded)
+        bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+
     SetComponentTickEnabled(true);
 
     UE_LOG(LogMaterialOcclusion, Verbose,
         TEXT("UOcclusionObstacleComp_Material::OnOcclusionExit>> %s | ActiveOverlaps: %d"),
         *GetOwner()->GetName(), ActiveOverlaps.Num());
+}
+
+void UOcclusionObstacleComp_Material::ForceOcclude_Implementation(bool bForce)
+{
+    bForceOccluded = bForce;
+    bShouldBeOccluded = bForce ? true : ActiveOverlaps.Num() > 0;
+    SetComponentTickEnabled(true);
+
+    UE_LOG(LogMaterialOcclusion, Log,
+        TEXT("UOcclusionObstacleComp_Material::ForceOcclude>> %s | bForce: %s"),
+        *GetOwner()->GetName(), bForce ? TEXT("true") : TEXT("false"));
 }
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
@@ -174,11 +200,21 @@ void UOcclusionObstacleComp_Material::InitializeMaterials()
 
 void UOcclusionObstacleComp_Material::UpdateMaterialAlpha()
 {
+    const float ParamAlpha = CurrentAlpha;
+
     for (UMaterialInstanceDynamic* MID : StaticMIDs)
-        if (MID) MID->SetScalarParameterValue(AlphaParameterName, CurrentAlpha);
+    {
+        if (!MID) continue;
+        MID->SetScalarParameterValue(AlphaParameterName, ParamAlpha);
+        MID->SetScalarParameterValue(ForceOccludeParameterName, CurrentForceAlpha);
+    }
 
     for (UMaterialInstanceDynamic* MID : SkeletalMIDs)
-        if (MID) MID->SetScalarParameterValue(AlphaParameterName, CurrentAlpha);
+    {
+        if (!MID) continue;
+        MID->SetScalarParameterValue(AlphaParameterName, ParamAlpha);
+        MID->SetScalarParameterValue(ForceOccludeParameterName, CurrentForceAlpha);
+    }
 }
 
 void UOcclusionObstacleComp_Material::CleanupInvalidOverlaps()

@@ -31,6 +31,8 @@ class UTopDownCameraComp; //Camera Added
 
 class UUI_MainHUD; // UI시스템 관리자
 
+class ABaseItemActor; // [김현수 추가분]
+
 struct FInputActionValue;
 
 
@@ -167,6 +169,14 @@ protected:
 	void ProcessMouseInteraction();
 
 public:
+	// UI 드래그 취소(월드로 드랍) 시 로컬에서 호출
+	void RequestDropInventoryItemFromUI(int32 SlotIndex, const FVector2D& ScreenSpacePosition);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DropInventoryItem(int32 SlotIndex, FVector_NetQuantize DropLocation);
+
+	UPROPERTY(EditDefaultsOnly, Category = "Item|Drop")
+	TSubclassOf<ABaseItemActor> DroppedItemActorClass;
 /// [김현수 추가분] - 끝
 
 //-----------------------------------------------------------

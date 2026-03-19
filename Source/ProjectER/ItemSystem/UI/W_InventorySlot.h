@@ -9,6 +9,8 @@ class UImage;
 class USizeBox;
 class UBaseItemData;
 class UBaseInventoryComponent;
+class UOverlay;
+class UTextBlock;
 
 UCLASS()
 class PROJECTER_API UW_InventorySlot : public UUserWidget
@@ -22,6 +24,8 @@ public:
 	int32 GetSlotIndex() const { return SlotIndex; }
 
 	void SetItemData(UBaseItemData* InItemData);
+
+	void SetStackCount(int32 InStackCount);
 
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
@@ -54,4 +58,12 @@ private:
 	TObjectPtr<UBaseItemData> CachedItemData = nullptr;
 
 	int32 SlotIndex = INDEX_NONE;
+
+	UPROPERTY()
+	TObjectPtr<UOverlay> RootOverlay = nullptr;
+
+	UPROPERTY()
+	TObjectPtr<UTextBlock> StackCountText = nullptr;
+
+	int32 CachedStackCount = 0;
 };
