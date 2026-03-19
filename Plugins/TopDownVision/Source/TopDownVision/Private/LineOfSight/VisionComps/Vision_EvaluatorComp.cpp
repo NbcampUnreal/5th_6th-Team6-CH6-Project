@@ -371,28 +371,28 @@ void UVision_EvaluatorComp::EvaluateTarget(AActor* Target, UVision_VisualComp* T
 bool UVision_EvaluatorComp::EvaluateWallObstacle(AActor* Target, UTopDown2DShapeComp* ShapeComp)
 {
     // temp — always visible
-    return true;
+   // return true;
 
-    /*return UWallVisibilityEvaluator2D::EvaluateVisibility(
+    return UWallVisibilityEvaluator2D::EvaluateVisibility(
         GetWorld(),
         GetOwner()->GetActorLocation(),
         Target->GetActorLocation(),
         ShapeComp,
-        WallTraceChannel);*/
+        WallTraceChannel);
 }
 
 bool UVision_EvaluatorComp::EvaluateVolumeObstacle(AActor* Target, UTopDown2DShapeComp* ShapeComp)
 {
     // temp — always visible
-    return true;
+    //return true;
     
-    /*return UVolumeVisibilityEvaluator2D::EvaluateVisibility(
+    return UVolumeVisibilityEvaluator2D::EvaluateVisibility(
         CachedVisualComp->GetObstacleDrawer()->GetObstacleRenderTarget(),
         CachedVisualComp->GetMaxVisibleRange(),
         GetOwner()->GetActorLocation(),
         Target->GetActorLocation(),
         ShapeComp,
-        OcclusionThreshold);*/
+        OcclusionThreshold);
 }
 
 // -------------------------------------------------------------------------- //
