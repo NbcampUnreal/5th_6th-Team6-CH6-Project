@@ -95,6 +95,8 @@ Content/Teammate/minimumTax/TestMap/PCG_RoadGenerationTestMap_REMOTE_2094.umap
 .vscode
 ProjectER.code-workspace
 .aiexclude
+.clangd
+.clang-format
 
 # IDE Search Ignore File
 .ignore
