@@ -215,36 +215,38 @@ void ULaunchHomingMissile::ExecuteVfx(
 		return;
 	}
 
-	FScopedPredictionWindow ForcedWindow(InstigatorASC, FPredictionKey(), false);
-
-	// Summoner VFX (시전자 위치에 재생)
-	if (IsValid(Config->SummonerVfx) && Config->SummonerVfx->CueTag.IsValid())
 	{
-		FGameplayCueParameters SummonerParams(GESpec);
-		SummonerParams.OriginalTag = Config->SummonerVfx->CueTag;
-		SummonerParams.Instigator = ContextHandle.GetInstigator();
-		SummonerParams.EffectCauser = MissileActor;
-		SummonerParams.Location = Instigator->GetActorLocation();
-		SummonerParams.SourceObject = Config->SummonerVfx;
-		SummonerParams.GameplayEffectLevel = GESpec.GetLevel();
-		InstigatorASC->ExecuteGameplayCue(Config->SummonerVfx->CueTag, SummonerParams);
-	}
+		FScopedPredictionWindow ForcedWindow(InstigatorASC, FPredictionKey(), false);
 
-	// Missile VFX (미사일 본체에 부착되어 이동하며 재생)
-	if (IsValid(Config->MissileVfx) && Config->MissileVfx->CueTag.IsValid())
-	{
-		FGameplayCueParameters MissileParams(GESpec);
-		MissileParams.OriginalTag = Config->MissileVfx->CueTag;
-		MissileParams.Instigator = ContextHandle.GetInstigator();
-		MissileParams.EffectCauser = MissileActor;
-		MissileParams.Location = MissileActor->GetActorLocation();
-		MissileParams.Normal = MissileActor->GetActorForwardVector();
-		MissileParams.SourceObject = Config->MissileVfx;
-		MissileParams.GameplayEffectLevel = GESpec.GetLevel();
-		if (IsValid(MissileActor))
+		// Summoner VFX (시전자 위치에 재생)
+		if (IsValid(Config->SummonerVfx) && Config->SummonerVfx->CueTag.IsValid())
 		{
-			MissileParams.TargetAttachComponent = MissileActor->GetRootComponent();
+			FGameplayCueParameters SummonerParams(GESpec);
+			SummonerParams.OriginalTag = Config->SummonerVfx->CueTag;
+			SummonerParams.Instigator = ContextHandle.GetInstigator();
+			SummonerParams.EffectCauser = MissileActor;
+			SummonerParams.Location = Instigator->GetActorLocation();
+			SummonerParams.SourceObject = Config->SummonerVfx;
+			SummonerParams.GameplayEffectLevel = GESpec.GetLevel();
+			InstigatorASC->ExecuteGameplayCue(Config->SummonerVfx->CueTag, SummonerParams);
 		}
-		InstigatorASC->ExecuteGameplayCue(Config->MissileVfx->CueTag, MissileParams);
+
+		// Missile VFX (미사일 본체에 부착되어 이동하며 재생)
+		if (IsValid(Config->MissileVfx) && Config->MissileVfx->CueTag.IsValid())
+		{
+			FGameplayCueParameters MissileParams(GESpec);
+			MissileParams.OriginalTag = Config->MissileVfx->CueTag;
+			MissileParams.Instigator = ContextHandle.GetInstigator();
+			MissileParams.EffectCauser = MissileActor;
+			MissileParams.Location = MissileActor->GetActorLocation();
+			MissileParams.Normal = MissileActor->GetActorForwardVector();
+			MissileParams.SourceObject = Config->MissileVfx;
+			MissileParams.GameplayEffectLevel = GESpec.GetLevel();
+			if (IsValid(MissileActor))
+			{
+				MissileParams.TargetAttachComponent = MissileActor->GetRootComponent();
+			}
+			InstigatorASC->ExecuteGameplayCue(Config->MissileVfx->CueTag, MissileParams);
+		}
 	}
 }
