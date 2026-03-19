@@ -1,0 +1,47 @@
+﻿#pragma once
+
+
+// IncludePath : /Plugin/WorldBender/ProjectionDecal.ush
+
+
+// Project a UV from world position using the projection box transform
+float2 GetProjectionUV(
+	float3 WorldPos,
+	float3 ProjectionCenter,
+	float3 ProjectionRight,
+	float3 ProjectionForward,
+	float3 ProjectionUp,
+	float3 ProjScale
+)
+{
+	// Vector from projection center to world position
+	float3 Delta = WorldPos - ProjectionCenter;
+
+	// Project onto local axes
+	float U = dot(Delta, ProjectionRight)   / ProjScale.x;
+	float V = dot(Delta, ProjectionForward) / ProjScale.y;
+
+	// Remap from [-1,1] to [0,1]
+	return float2(U, V) * 0.5 + 0.5;
+}
+
+// Returns 1 if inside box, 0 if outside — use this to clip
+float GetProjectionMask(
+	float3 WorldPos,
+	float3 ProjectionCenter,
+	float3 ProjectionRight,
+	float3 ProjectionForward,
+	float3 ProjectionUp,
+	float3 ProjScale
+)
+{
+	float3 Delta = WorldPos - ProjectionCenter;
+
+	float LocalX = dot(Delta, ProjectionRight)   / ProjScale.x;
+	float LocalY = dot(Delta, ProjectionForward) / ProjScale.y;
+	float LocalZ = dot(Delta, ProjectionUp)      / ProjScale.z;
+
+	// Inside box if all axes are within [-1, 1]
+	float3 Abs = abs(float3(LocalX, LocalY, LocalZ));
+	return (Abs.x <= 1.0 && Abs.y <= 1.0 && Abs.z <= 1.0) ? 1.0 : 0.0;
+}
