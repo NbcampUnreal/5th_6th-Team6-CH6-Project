@@ -13,6 +13,9 @@
 #include "GameplayCueManager.h"
 #include "NiagaraComponent.h"
 #include "NiagaraSystem.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/RootMotionSource.h"
 
 //#include UE_INLINE_GENERATED_CPP_BY_NAME(GameplayCueNotify_Static)
 
@@ -76,8 +79,31 @@ bool UGCN_SpawnNiagaraBySpawnConfig::OnExecute_Implementation(AActor* MyTarget, 
 
 bool UGCN_SpawnNiagaraBySpawnConfig::OnActive_Implementation(AActor* MyTarget, const FGameplayCueParameters& Parameters) const
 {
-	// OnExecute와 동일한 스폰 로직 — MovingVfx 루핑 시작 시 호출
-	return OnExecute_Implementation(MyTarget, Parameters);
+	// 1. 시각 효과 스폰
+	OnExecute_Implementation(MyTarget, Parameters);
+
+	// 2. 클라이언트-사이드 이동 동기화 (호스트가 아닌 경우에만 로컬 RootMotionSource 적용)
+	if (IsValid(MyTarget) && !MyTarget->HasAuthority())
+	{
+		ACharacter* const Character = Cast<ACharacter>(MyTarget);
+		UCharacterMovementComponent* const CMC = IsValid(Character) ? Character->GetCharacterMovement() : nullptr;
+
+		// 방향(Normal)과 속도(RawMagnitude)가 유효한 경우에만 실행
+		if (IsValid(CMC) && !Parameters.Normal.IsNearlyZero() && Parameters.RawMagnitude > 0.0f)
+		{
+			TSharedPtr<FRootMotionSource_ConstantForce> ConstantForce = MakeShared<FRootMotionSource_ConstantForce>();
+			ConstantForce->InstanceName = FName(TEXT("ConstantForceMoveGEC_Client"));
+			ConstantForce->AccumulateMode = ERootMotionAccumulateMode::Override;
+			ConstantForce->Priority = 5;
+			ConstantForce->Force = Parameters.Normal * Parameters.RawMagnitude;
+			ConstantForce->Duration = 5.0f; // GE가 제거될 때 OnRemove에서 함께 제거되므로 넉넉하게 설정
+			ConstantForce->FinishVelocityParams.Mode = ERootMotionFinishVelocityMode::MaintainLastRootMotionVelocity;
+
+			CMC->ApplyRootMotionSource(ConstantForce);
+		}
+	}
+
+	return true;
 }
 
 bool UGCN_SpawnNiagaraBySpawnConfig::OnRemove_Implementation(AActor* MyTarget, const FGameplayCueParameters& Parameters) const
@@ -107,6 +133,16 @@ bool UGCN_SpawnNiagaraBySpawnConfig::OnRemove_Implementation(AActor* MyTarget, c
 		if (IsValid(NC) && NC->GetAsset() == LoadedSystem)
 		{
 			NC->Deactivate();
+		}
+	}
+
+	// 2. 클라이언트-사이드 이동 종료
+	if (IsValid(MyTarget) && !MyTarget->HasAuthority())
+	{
+		ACharacter* const Character = Cast<ACharacter>(MyTarget);
+		if (UCharacterMovementComponent* const CMC = IsValid(Character) ? Character->GetCharacterMovement() : nullptr)
+		{
+			CMC->RemoveRootMotionSource(FName(TEXT("ConstantForceMoveGEC_Client")));
 		}
 	}
 
