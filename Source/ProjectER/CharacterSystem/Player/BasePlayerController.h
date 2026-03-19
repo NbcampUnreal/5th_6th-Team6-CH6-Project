@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "ItemSystem/Interface/I_ItemInteractable.h" // [김현수 추가분]
 
@@ -30,6 +30,7 @@ class ABaseCharacter;
 class UTopDownCameraComp; //Camera Added
 
 class UUI_MainHUD; // UI시스템 관리자
+class UUI_Scoreboard;
 
 struct FInputActionValue;
 
@@ -269,7 +270,15 @@ public:
 private:
 	UPROPERTY()
 	UUI_MainHUD* MainHUD;
-
+	
+protected:
+	// 현황판 위젯
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TSubclassOf<UUI_Scoreboard> ScoreboardClass;
+	UPROPERTY()
+	UUI_Scoreboard* ScoreboardWidget;
+	void ShowScoreboard();
+	void HideScoreboard();
 	//
 
 private:

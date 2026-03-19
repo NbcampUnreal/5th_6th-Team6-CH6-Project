@@ -1,4 +1,4 @@
-#include "CharacterSystem/Player/BasePlayerController.h"
+﻿#include "CharacterSystem/Player/BasePlayerController.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -38,6 +38,7 @@
 
 // UI System
 #include "UI/UI_MainHUD.h"
+#include "UI/UI_Scoreboard.h"
 
 
 //Log
@@ -108,6 +109,17 @@ void ABasePlayerController::BeginPlay()
 	if (IsLocalController())
 	{
 		UGameplayStatics::SetBaseSoundMix(this, SoundMix);
+	}
+
+	// 게임 시작시 현황판 생성 후 collapse 처리
+	if (ScoreboardClass)
+	{
+		ScoreboardWidget = CreateWidget<UUI_Scoreboard>(this, ScoreboardClass);
+		if (ScoreboardWidget)
+		{
+			ScoreboardWidget->AddToViewport();
+			ScoreboardWidget->SetVisibility(ESlateVisibility::Collapsed);
+		}
 	}
 }
 
@@ -241,6 +253,13 @@ void ABasePlayerController::SetupInputComponent()
 		if (InputConfig->UseItem8)
 		{
 			EnhancedInputComponent->BindAction(InputConfig->UseItem8, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 7);
+		}
+		// 현황판 바인딩
+		if (InputConfig->ScoreBoardKey)
+		{
+			// 'IA_Scoreboard'는 에디터에서 만든 Input Action
+			EnhancedInputComponent->BindAction(InputConfig->ScoreBoardKey, ETriggerEvent::Triggered, this, &ABasePlayerController::ShowScoreboard);
+			EnhancedInputComponent->BindAction(InputConfig->ScoreBoardKey, ETriggerEvent::Completed, this, &ABasePlayerController::HideScoreboard);
 		}
 	}
 }
@@ -1446,6 +1465,24 @@ void ABasePlayerController::UI_AssistCountUpdate_Implementation(int32 AssistCoun
 	if (IsValid(MainHUD))
 	{
 		MainHUD->SetAssistCount(AssistCount);
+	}
+}
+
+void ABasePlayerController::ShowScoreboard()
+{
+	if (IsValid(ScoreboardWidget))
+	{
+		ScoreboardWidget->SetVisibility(ESlateVisibility::Visible);
+		// 실시간 데이터 갱신 함수 호출 추가? 해야 됨?
+		ScoreboardWidget->UpdateScoreboard();
+	}
+}
+
+void ABasePlayerController::HideScoreboard()
+{
+	if (IsValid(ScoreboardWidget))
+	{
+		ScoreboardWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
 

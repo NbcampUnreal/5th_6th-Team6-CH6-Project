@@ -93,4 +93,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "item")
 	TObjectPtr<UInputAction> UseItem8;
 
+
+	// 현황판 온오프용
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	TObjectPtr<UInputAction> ScoreBoardKey;
+
 };
