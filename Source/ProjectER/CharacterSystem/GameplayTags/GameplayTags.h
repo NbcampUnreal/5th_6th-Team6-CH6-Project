@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "NativeGameplayTags.h"
@@ -150,6 +150,7 @@ namespace ProjectER
 		namespace Interact
 		{
 			UE_DECLARE_GAMEPLAY_TAG_EXTERN(OpenBox);    // 상자 오픈
+			UE_DECLARE_GAMEPLAY_TAG_EXTERN(Teleport);   // 텔레포트 상호작용
 		}
 	}
 

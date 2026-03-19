@@ -52,8 +52,8 @@ void UMoveBaseGEC::OnGameplayEffectApplied(FActiveGameplayEffectsContainer& Acti
 
 	// 시작 큐 실행
 	ExecuteMoveCue(Config->StartVfx, GESpec, Instigator, StartLoc);
-	// Moving 루핑 큐 (RemoveMovingCue는 이동 종료 페이즈에서 각 파생 클래스가 직접 호출)
-	AddMovingCue(Config->MovingVfx, GESpec, Instigator);
+	// Moving 루핑 큐 (방향과 속도를 전달하여 클라이언트 동기화 지원)
+	AddMovingCue(Config->MovingVfx, GESpec, Instigator, Direction, Config->MoveDistance / CalculateMoveDuration(Instigator, Direction, Config));
 
 	// 파생 클래스가 실제 이동 방식 구현 (EndVfx는 파생 클래스 종료 시점에 직접 실행)
 	Execute(Instigator, Direction, Config, GESpec);
@@ -224,7 +224,7 @@ void UMoveBaseGEC::ExecuteMoveCue(const USkillNiagaraSpawnConfig* VfxConfig, con
 	}
 }
 
-void UMoveBaseGEC::AddMovingCue(const USkillNiagaraSpawnConfig* VfxConfig, const FGameplayEffectSpec& GESpec, AActor* Instigator) const
+void UMoveBaseGEC::AddMovingCue(const USkillNiagaraSpawnConfig* VfxConfig, const FGameplayEffectSpec& GESpec, AActor* Instigator, const FVector& Direction, float Speed) const
 {
 	if (!IsValid(VfxConfig) || !VfxConfig->CueTag.IsValid() || !IsValid(Instigator))
 	{
@@ -243,6 +243,8 @@ void UMoveBaseGEC::AddMovingCue(const USkillNiagaraSpawnConfig* VfxConfig, const
 	Params.Instigator = ContextHandle.GetInstigator();
 	Params.EffectCauser = Instigator;
 	Params.Location = Instigator->GetActorLocation();
+	Params.Normal = Direction;      // 이동 방향 전달
+	Params.RawMagnitude = Speed;    // 이동 속도 전달
 	Params.SourceObject = VfxConfig;
 
 	{

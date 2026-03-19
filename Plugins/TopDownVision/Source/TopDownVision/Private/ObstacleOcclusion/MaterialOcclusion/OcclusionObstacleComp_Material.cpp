@@ -36,8 +36,8 @@ void UOcclusionObstacleComp_Material::TickComponent(
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    const float TargetAlpha = bShouldBeOccluded ? 0.f : 1.f;
-    const float TargetForceAlpha = bForceOccluded ? 1.f : 0.f;
+    const float TargetAlpha      = bShouldBeOccluded ? 0.f : 1.f;
+    const float TargetForceAlpha = bForceOccluded    ? 1.f : 0.f;
 
     CurrentAlpha      = FMath::FInterpTo(CurrentAlpha,      TargetAlpha,      DeltaTime, FadeSpeed);
     CurrentForceAlpha = FMath::FInterpTo(CurrentForceAlpha, TargetForceAlpha, DeltaTime, FadeSpeed);
@@ -200,7 +200,7 @@ void UOcclusionObstacleComp_Material::InitializeMaterials()
 
 void UOcclusionObstacleComp_Material::UpdateMaterialAlpha()
 {
-    const float ParamAlpha = 1.f - CurrentAlpha;
+    const float ParamAlpha = CurrentAlpha;
 
     for (UMaterialInstanceDynamic* MID : StaticMIDs)
     {
