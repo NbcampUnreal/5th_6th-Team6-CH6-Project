@@ -3,13 +3,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameFramework/Character.h"
+#include "Engine/EngineTypes.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGEC.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGECConfig.h"
-#include "MoveBaseGEC.generated.h"
 
 class USkillEffectDataAsset;
 class USkillNiagaraSpawnConfig;
 struct FGameplayEffectSpec;
+
+#include "MoveBaseGEC.generated.h"
 
 // 이동 방향 결정 방식
 UENUM(BlueprintType)
