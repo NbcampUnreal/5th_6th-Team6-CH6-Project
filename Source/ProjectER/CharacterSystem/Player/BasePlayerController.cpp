@@ -24,6 +24,7 @@
 #include "ItemSystem/UI/W_LootingPopup.h"
 #include "ItemSystem/Component/BaseInventoryComponent.h"
 #include "ItemSystem/Component/LootableComponent.h"
+#include "ItemSystem/Component/ER_TeleportComponent.h"
 #include "UI/UI_MainHUD.h"
 #include "UI/UI_HUDController.h"
 
@@ -272,6 +273,19 @@ void ABasePlayerController::PlayerTick(float DeltaTime)
 	{
 		AttackRangeDecal->SetWorldLocation(ControlledBaseChar->GetActorLocation());
 	}
+
+	// [텔레포트 UI 자동 닫기 처리]
+	if (IsValid(TeleportUIInstance) && CurrentTeleportActor.IsValid())
+	{
+		if (APawn* MyPawn = GetPawn())
+		{
+			const float Dist = FVector::Dist(MyPawn->GetActorLocation(), CurrentTeleportActor->GetActorLocation());
+			if (Dist > 300.f)
+			{
+				Client_CloseTeleportUI();
+			}
+		}
+	}
 }
 
 void ABasePlayerController::OnRep_Pawn()
@@ -416,6 +430,7 @@ void ABasePlayerController::OnMoveStarted()
 	}
 
 	Client_CloseLootUI();
+	Client_CloseTeleportUI();
 
 	bIsMousePressed = true;
 	MoveToMouseCursor();
@@ -540,6 +555,11 @@ void ABasePlayerController::MoveToMouseCursor()
 						FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
 					InteractionTarget = HitActor;
 				}
+				else if (HitActor->FindComponentByClass<UER_TeleportComponent>())
+				{
+					InteractionTargetDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
+					InteractionTarget = HitActor;
+				}
 				else if (HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
 				{
 					InteractionTargetDistance =
@@ -618,6 +638,11 @@ void ABasePlayerController::ProcessMouseInteraction()
 					InteractionTargetDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
 					InteractionTarget = HitActor;
 				}
+			}
+			else if (HitActor && HitActor->GetComponentByClass<UER_TeleportComponent>())
+			{
+				InteractionTargetDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
+				InteractionTarget = HitActor;
 			}
 			else if (HitActor && HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
 			{
@@ -731,6 +756,14 @@ void ABasePlayerController::CheckInteractionDistance()
 		return;
 	}
 
+	// 텔레포트 컴포넌트 처리
+	if (UER_TeleportComponent* TeleportComp = InteractionTarget->FindComponentByClass<UER_TeleportComponent>())
+	{
+		Server_BeginTeleportInteract(TeleportComp);
+		InteractionTarget = nullptr;
+		return;
+	}
+
 	InteractionTarget = nullptr;
 }
 
@@ -770,6 +803,9 @@ void ABasePlayerController::OnCanceled() {
 		//UE_LOG(LogTemp, Log, TEXT("OnCanceled"));
 		ASC->LocalInputCancel();
 	}
+
+	Client_CloseLootUI();
+	Client_CloseTeleportUI();
 }
 
 void ABasePlayerController::OnAttackModePressed()
@@ -1337,6 +1373,69 @@ void ABasePlayerController::Client_CloseLoadingUI_Implementation()
 		{
 			PSS->HideLoadingScreen();
 		}
+	}
+}
+
+void ABasePlayerController::Server_BeginTeleportInteract_Implementation(UER_TeleportComponent* TeleportComp)
+{
+	if (!TeleportComp) return;
+	
+	ABaseCharacter* Char = Cast<ABaseCharacter>(GetPawn());
+	if (!Char) return;
+
+	float Dist = FVector::Dist(Char->GetActorLocation(), TeleportComp->GetOwner()->GetActorLocation());
+	if (Dist > 500.f) return;
+
+	Char->StopMove();
+	TeleportComp->Interact(this);
+}
+
+void ABasePlayerController::Client_OpenTeleportUI_Implementation(AActor* TeleportActor)
+{
+	if (!TeleportUIClass) return;
+
+	CurrentTeleportActor = TeleportActor;
+
+	if (IsValid(TeleportUIInstance))
+	{
+		TeleportUIInstance->RemoveFromParent();
+		TeleportUIInstance = nullptr;
+	}
+
+	TeleportUIInstance = CreateWidget<UUserWidget>(this, TeleportUIClass);
+
+	if (IsValid(TeleportUIInstance))
+	{
+		TeleportUIInstance->AddToViewport(15);
+	}
+}
+
+void ABasePlayerController::Client_CloseTeleportUI_Implementation()
+{
+	if (IsValid(TeleportUIInstance))
+	{
+		TeleportUIInstance->RemoveFromParent();
+		TeleportUIInstance = nullptr;
+	}
+	CurrentTeleportActor = nullptr;
+}
+
+void ABasePlayerController::Server_RequestTeleport_Implementation(int32 RegionIndex)
+{
+	Client_CloseTeleportUI();
+
+	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
+	ABaseCharacter* Char = Cast<ABaseCharacter>(GetPawn());
+	if (PS && Char)
+	{
+		FGameplayEventData Payload;
+		Payload.Instigator = Char;
+		Payload.Target = Char;
+		Payload.EventMagnitude = RegionIndex;
+
+		const FGameplayTag EventTag = ProjectER::Event::Interact::Teleport;
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(PS, EventTag, Payload);
+		UE_LOG(LogTemp, Log, TEXT("[Teleport] Server sent GameplayEvent %s with Magnitude %d"), *EventTag.ToString(), RegionIndex);
 	}
 }
 

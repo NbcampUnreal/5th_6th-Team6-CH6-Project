@@ -18,6 +18,7 @@ public:
 protected:
 	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaTime) override;
 
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
@@ -36,22 +37,28 @@ public:
 	UPROPERTY(EditAnywhere, Category="Projection")
 	FVector ProjectionExtent = FVector(100.f, 100.f, 100.f);
 
+	// Enable when platform is animating, disable when static
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Projection")
+	bool bUpdateOnTick = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Projection")
-	FName Param_ProjectionCenter=TEXT("ProjectionCenter");
+	FName Param_ProjectionCenter = TEXT("ProjectionCenter");
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Projection")
-	FName Param_ProjectionRight=TEXT("ProjectionRight");
+	FName Param_ProjectionRight = TEXT("ProjectionRight");
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Projection")
-	FName Param_ProjectionForward=TEXT("ProjectionForward");
+	FName Param_ProjectionForward = TEXT("ProjectionForward");
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Projection")
-	FName Param_ProjectionUp=TEXT("ProjectionUp");
+	FName Param_ProjectionUp = TEXT("ProjectionUp");
 
-	
+	UFUNCTION(BlueprintCallable, Category="Projection")
+	void UpdateProjectionParams();
+
+	UFUNCTION(BlueprintCallable, Category="Projection")
+	void SetUpdateOnTick(bool bEnable);
 
 private:
 	UPROPERTY(Transient)
 	UMaterialInstanceDynamic* MID;
 
 	void InitMID();
-	void UpdateProjectionParams();
 };

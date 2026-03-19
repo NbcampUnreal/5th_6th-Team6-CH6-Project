@@ -3,13 +3,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameFramework/Character.h"
+#include "Engine/EngineTypes.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGEC.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGECConfig.h"
-#include "MoveBaseGEC.generated.h"
 
 class USkillEffectDataAsset;
 class USkillNiagaraSpawnConfig;
 struct FGameplayEffectSpec;
+
+#include "MoveBaseGEC.generated.h"
 
 // 이동 방향 결정 방식
 UENUM(BlueprintType)
@@ -118,8 +121,8 @@ protected:
 	// 개별 큐 실행 헬퍼
 	void ExecuteMoveCue(const USkillNiagaraSpawnConfig* VfxConfig, const FGameplayEffectSpec& GESpec, AActor* Instigator, const FVector& Location) const;
 
-	// Moving 루핑 큐 추가/제거
-	void AddMovingCue(const USkillNiagaraSpawnConfig* VfxConfig, const FGameplayEffectSpec& GESpec, AActor* Instigator) const;
+	// Moving 루핑 큐 추가/제거 (Direction과 Speed를 파라미터로 넘겨 클라이언트 동기화 지원)
+	void AddMovingCue(const USkillNiagaraSpawnConfig* VfxConfig, const FGameplayEffectSpec& GESpec, AActor* Instigator, const FVector& Direction = FVector::ZeroVector, float Speed = 0.0f) const;
 	void RemoveMovingCue(const USkillNiagaraSpawnConfig* VfxConfig, AActor* Instigator) const;
 
 	// 활성 몽타주 속도 조정

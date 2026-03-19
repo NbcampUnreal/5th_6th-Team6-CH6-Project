@@ -100,6 +100,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void DisConnectClient(APlayerController* PC);
 
+	UFUNCTION(BlueprintCallable, Category = "Teleport|Region")
+	void RequestTeleportToRegion(ACharacter* TargetCharacter, int32 RegionIndex);
+
 	void HandlePhaseTimeUp();
 
 	void HandleObjectNoticeTimeUp();

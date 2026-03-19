@@ -9,6 +9,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/RootMotionSource.h"
 #include "SkillSystem/SkillNiagaraSpawnConfig.h"
+#include "TimerManager.h"
 
 UConstantForceMoveGEC::UConstantForceMoveGEC()
 {
@@ -49,22 +50,19 @@ void UConstantForceMoveGEC::Execute(AActor* Instigator, const FVector& Direction
 		? (CFConfig->MoveDistance / CFConfig->MoveSpeed)
 		: 0.2f;
 
-	if (Character->HasAuthority())
+	TSharedPtr<FRootMotionSource_ConstantForce> ConstantForce = MakeShared<FRootMotionSource_ConstantForce>();
+	ConstantForce->InstanceName = FName(TEXT("ConstantForceMoveGEC"));
+	ConstantForce->AccumulateMode = ERootMotionAccumulateMode::Override;
+	ConstantForce->Priority = 5;
+	ConstantForce->Force = Direction * CFConfig->MoveSpeed;
+	ConstantForce->Duration = Duration;
+	ConstantForce->FinishVelocityParams.Mode = ERootMotionFinishVelocityMode::MaintainLastRootMotionVelocity;
+
+	CMC->ApplyRootMotionSource(ConstantForce);
+
+	if (CFConfig->bIgnoreUnitCollision)
 	{
-		TSharedPtr<FRootMotionSource_ConstantForce> ConstantForce = MakeShared<FRootMotionSource_ConstantForce>();
-		ConstantForce->InstanceName = FName(TEXT("ConstantForceMoveGEC"));
-		ConstantForce->AccumulateMode = ERootMotionAccumulateMode::Override;
-		ConstantForce->Priority = 5;
-		ConstantForce->Force = Direction * CFConfig->MoveSpeed;
-		ConstantForce->Duration = Duration;
-		ConstantForce->FinishVelocityParams.Mode = ERootMotionFinishVelocityMode::MaintainLastRootMotionVelocity;
-
-		CMC->ApplyRootMotionSource(ConstantForce);
-
-		if (CFConfig->bIgnoreUnitCollision)
-		{
-			SetPawnCollisionIgnore(Character, true);
-		}
+		SetPawnCollisionIgnore(Character, true);
 	}
 
 	const FVector StartLoc = Instigator->GetActorLocation();
@@ -75,41 +73,47 @@ void UConstantForceMoveGEC::Execute(AActor* Instigator, const FVector& Direction
 
 	FTimerHandle PostMoveTimer;
 	Instigator->GetWorld()->GetTimerManager().SetTimer(
-		PostMoveTimer,
-		[WeakThis, WeakInstigator, StartLoc, ExpectedEndLoc, ConfigRef = CFConfig, GESpecCopy = GESpec]()
-		{
-			if (!WeakThis.IsValid() || !WeakInstigator.IsValid() || !IsValid(ConfigRef))
-			{
-				return;
-			}
+    PostMoveTimer,
+    [WeakThis, WeakInstigator, StartLoc, ExpectedEndLoc, ConfigRef = CFConfig, GESpecCopy = GESpec]()
+    {
+        // 1. 유효성 검사 (가장 먼저 수행)
+        if (!WeakThis.IsValid() || !WeakInstigator.IsValid() || !IsValid(ConfigRef))
+        {
+            return;
+        }
 
-			if (WeakInstigator->HasAuthority())
-			{
-				if (ConfigRef->bDetectWallHit)
-				{
-					const FVector ActualEndLoc = WeakInstigator->GetActorLocation();
-					const float ExpectedDist = FVector::Dist(StartLoc, ExpectedEndLoc);
-					const float ActualDist = FVector::Dist(StartLoc, ActualEndLoc);
+        AActor* InstigatorPtr = WeakInstigator.Get();
+        const FVector ActualEndLoc = InstigatorPtr->GetActorLocation();
 
-					if (ExpectedDist > 0.0f && ActualDist < ExpectedDist * 0.85f)
-					{
-						FHitResult FakeHit;
-						FakeHit.Location = ActualEndLoc;
-						WeakThis->HandleWallHit(WeakInstigator.Get(), FakeHit, ConfigRef, GESpecCopy);
-					}
-				}
+        // 2. 벽 충돌 감지 로직
+        if (ConfigRef->bDetectWallHit)
+        {
+            const float ExpectedDist = FVector::Dist(StartLoc, ExpectedEndLoc);
+            const float ActualDist = FVector::Dist(StartLoc, ActualEndLoc);
 
-				if (ConfigRef->bIgnoreUnitCollision)
-				{
-					if (ACharacter* CharPtr = Cast<ACharacter>(WeakInstigator.Get()))
-					{
-						WeakThis->SetPawnCollisionIgnore(CharPtr, false);
-					}
-				}
-			}
+            // 예상 거리보다 현저히 적게 이동했다면 벽에 부딪힌 것으로 간주
+            if (ExpectedDist > 0.0f && ActualDist < ExpectedDist * 0.85f)
+            {
+                FHitResult FakeHit;
+                FakeHit.Location = ActualEndLoc;
+                FakeHit.ImpactPoint = ActualEndLoc; // ImpactPoint도 채워주는 것이 안전합니다.
+                
+                WeakThis->HandleWallHit(InstigatorPtr, FakeHit, ConfigRef, GESpecCopy);
+            }
+        }
 
-			// SnapToGround 불필요 — CMC가 RootMotionSource 종료 후 자동으로 지면 추적 처리
-		},
-		Duration + 0.05f,
-		false);
+        // 3. 충돌 무시 복구 로직
+        if (ConfigRef->bIgnoreUnitCollision)
+        {
+            if (ACharacter* CharPtr = Cast<ACharacter>(InstigatorPtr))
+            {
+                WeakThis->SetPawnCollisionIgnore(CharPtr, false);
+            }
+        }
+        WeakThis->ExecuteMoveCue(ConfigRef->EndVfx, GESpecCopy, InstigatorPtr, ActualEndLoc);
+        WeakThis->RemoveMovingCue(ConfigRef->MovingVfx, InstigatorPtr);
+
+    },
+    Duration + 0.05f,
+    false);
 }

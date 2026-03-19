@@ -1,4 +1,4 @@
-﻿#include "CharacterSystem/Character/BaseCharacter.h"
+#include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Player/BasePlayerState.h"
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -706,8 +706,17 @@ void ABaseCharacter::InitAbilitySystem()
 		}
 
 		// 전민성 추가
-		FGameplayAbilitySpec Spec(OpenAbilityClass, 1);
-		ASC->GiveAbility(Spec);
+		if (OpenAbilityClass)
+		{
+			FGameplayAbilitySpec Spec(OpenAbilityClass, 1);
+			ASC->GiveAbility(Spec);
+		}
+		
+		if (TeleportAbilityClass)
+		{
+			FGameplayAbilitySpec Spec(TeleportAbilityClass, 1);
+			ASC->GiveAbility(Spec);
+		}
 		
 		if (AliveStateEffectClass)
 		{

@@ -1,4 +1,4 @@
-﻿#include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
@@ -459,6 +459,24 @@ void AER_InGameMode::DisConnectClient(APlayerController* PC)
 		}, 0.2f, false);
 }
 
+void AER_InGameMode::RequestTeleportToRegion(ACharacter* TargetCharacter, int32 RegionIndex)
+{
+	if (!TargetCharacter || !HasAuthority())
+	{
+		return;
+	}
+
+	UER_RespawnSubsystem* RespawnSS = GetWorld()->GetSubsystem<UER_RespawnSubsystem>();
+	if (RespawnSS)
+	{
+		FTransform DestTransform = RespawnSS->GetRespawnPointLocation(RegionIndex);
+		
+		TargetCharacter->SetActorTransform(DestTransform, false, nullptr, ETeleportType::TeleportPhysics);
+
+		UE_LOG(LogTemp, Warning, TEXT("[GM] Teleported Character %s to Region %d"), *TargetCharacter->GetName(), RegionIndex);
+	}
+}
+
 void AER_InGameMode::StartGame()
 {
 	if (bIsGameStarted) 
@@ -492,8 +510,13 @@ void AER_InGameMode::StartGame()
 
 			if (RespawnSS)
 			{
-				// 초기라서 무작위 위치 지정 중 추후 수정 필요
-				const int32 Idx = FMath::RandRange(1, 4);
+				int32 Idx = 99;
+				if (AER_PlayerState* PS = PC->GetPlayerState<AER_PlayerState>())
+				{
+					Idx = PS->GetStartPoint();
+				}
+				UE_LOG(LogTemp, Log, TEXT("[GM] PS->StartPoint = %d"), Idx);
+
 				FTransform Location = RespawnSS->GetRespawnPointLocation(Idx);
 				PC->GetPawn()->SetActorTransform(Location);
 				UE_LOG(LogTemp, Log, TEXT("[GM] Success Get SpawnPoint %d"), Idx);
