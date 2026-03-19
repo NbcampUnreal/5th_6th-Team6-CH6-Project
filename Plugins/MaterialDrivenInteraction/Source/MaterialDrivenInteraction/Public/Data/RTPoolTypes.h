@@ -36,14 +36,18 @@ struct MATERIALDRIVENINTERACTION_API FRTPoolEntry
 	TObjectPtr<UTextureRenderTarget2D> ContinuousRT = nullptr;
 
 	// Which grid cell this slot is currently serving.
-	// FIntPoint(-1,-1) == free / unassigned.
+	// FIntPoint(INT32_MIN, INT32_MIN) == free / unassigned.
+	// INT32_MIN is used instead of (-1,-1) because (-1,-1) is a valid cell
+	// index for world positions in the negative quadrant (e.g. X=-500 with
+	// CellSize=2000 maps to cell -1). Using INT32_MIN guarantees no real
+	// world cell can ever collide with the free sentinel.
 	UPROPERTY(BlueprintReadOnly, Category = "Foliage RT")
-	FIntPoint AssignedCell = FIntPoint(-1, -1);
+	FIntPoint AssignedCell = FIntPoint(INT32_MIN, INT32_MIN);
 
 	// World-space origin of the assigned cell (bottom-left corner, Z ignored).
 	// Foliage materials use this to compute their 0–1 UV.
 	UPROPERTY(BlueprintReadOnly, Category = "Foliage RT")
-	FVector2D CellOriginWS = FVector2D::ZeroVector;
+	FVector2D CellOriginWS = FVector2D(-9999999.f, -9999999.f);
 
 	// GetWorld()->GetTimeSeconds() when the last invoker left this cell.
 	// -1 means an invoker is still present.
@@ -57,10 +61,10 @@ struct MATERIALDRIVENINTERACTION_API FRTPoolEntry
 
 	// ImpulseRT needs a lazy clear on next assignment (set at reclaim time).
 	// ContinuousRT is cleared eagerly when invokers reach 0 and never needs
-	// this flag — it is always black when AssignedCell == (-1,-1).
+	// this flag — it is always black when AssignedCell == (INT32_MIN, INT32_MIN).
 	bool bImpulseNeedsClear = false;
 
-	bool IsFree()     const { return AssignedCell == FIntPoint(-1, -1); }
+	bool IsFree()     const { return AssignedCell == FIntPoint(INT32_MIN, INT32_MIN); }
 	bool IsOccupied() const { return !IsFree(); }
 };
 

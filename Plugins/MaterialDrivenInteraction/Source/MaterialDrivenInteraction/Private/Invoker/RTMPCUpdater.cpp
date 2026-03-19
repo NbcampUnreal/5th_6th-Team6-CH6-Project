@@ -1,16 +1,16 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
+﻿
 #include "Invoker/RTMPCUpdater.h"
 
 #include "PoolManager/RTPoolManager.h"
 #include "Data/RTPoolTypes.h"
+#include "Debug/LogCategory.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "Materials/MaterialParameterCollectionInstance.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/KismetMaterialLibrary.h"
 #include "Engine/World.h"
+#include "GameFramework/Actor.h"
 
 // ── Static parameter name constants ──────────────────────────────────────────
 
@@ -22,9 +22,7 @@ const FName URTMPCUpdater::PN_ActiveSlotCount (TEXT("FRT_ActiveSlotCount"));
 URTMPCUpdater::URTMPCUpdater()
 {
 	PrimaryComponentTick.bCanEverTick = true;
-	// Tick last in the frame — after the invoker has registered/unregistered,
-	// after pool reclaim has run, so the MPC always reflects the settled state.
-	PrimaryComponentTick.TickGroup = TG_PostUpdateWork;
+	PrimaryComponentTick.TickGroup   = TG_PostUpdateWork;
 }
 
 // ── UActorComponent ───────────────────────────────────────────────────────────
@@ -33,27 +31,32 @@ void URTMPCUpdater::BeginPlay()
 {
 	Super::BeginPlay();
 
-	UWorld* World = GetWorld();
-	if (!World) { return; }
+	UWorld* World = GetOwner() ? GetOwner()->GetWorld() : nullptr;
+	if (!World)
+	{
+		UE_LOG(RTFoliageInvoker, Warning,
+			TEXT("URTMPCUpdater::BeginPlay >> World is null"));
+		return;
+	}
 
 	PoolManager = World->GetSubsystem<URTPoolManager>();
 	if (!PoolManager)
 	{
-		UE_LOG(LogTemp, Warning,
-			TEXT("[RTMPCUpdater] URTPoolManager subsystem not found — component disabled."));
+		UE_LOG(RTFoliageInvoker, Warning,
+			TEXT("URTMPCUpdater::BeginPlay >> URTPoolManager subsystem not found — component disabled"));
 		SetComponentTickEnabled(false);
 		return;
 	}
 
-	// Bind to pool events so we push textures reactively, not every frame.
 	PoolManager->OnCellAssigned.AddDynamic(this, &URTMPCUpdater::OnCellAssigned);
 	PoolManager->OnCellReclaimed.AddDynamic(this, &URTMPCUpdater::OnCellReclaimed);
 
-	// Pre-build parameter name arrays up to the actual pool size.
 	BuildParameterNames();
-
-	// Seed the MPC with zeroed slot data so materials don't read garbage on frame 1.
 	PushVectorDataToMPC();
+
+	UE_LOG(RTFoliageInvoker, Log,
+		TEXT("URTMPCUpdater::BeginPlay >> Initialised — PoolSize=%d CellSize=%.0f"),
+		PoolManager->PoolSize, PoolManager->CellSize);
 }
 
 void URTMPCUpdater::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -72,10 +75,13 @@ void URTMPCUpdater::TickComponent(float DeltaTime, ELevelTick TickType,
                                    FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// Cell origins can change every frame (slots get reassigned as actors move).
-	// Pushing vectors to the MPC is a simple memcpy — no GPU work, very cheap.
 	PushVectorDataToMPC();
+
+	// Mirror pool into DebugPool so Details panel shows RT thumbnails
+	if (PoolManager)
+	{
+		DebugPool = PoolManager->GetPool();
+	}
 }
 
 // ── Foliage MID registration ──────────────────────────────────────────────────
@@ -86,10 +92,11 @@ void URTMPCUpdater::RegisterFoliageMID(UMaterialInstanceDynamic* MID)
 	if (RegisteredMIDs.Contains(MID)) { return; }
 
 	RegisteredMIDs.Add(MID);
-
-	// Immediately populate the new MID with current slot state so it doesn't
-	// show a frame of stale textures.
 	PushAllTexturesToMID(MID);
+
+	UE_LOG(RTFoliageInvoker, Log,
+		TEXT("URTMPCUpdater::RegisterFoliageMID >> MID registered — total MIDs: %d"),
+		RegisteredMIDs.Num());
 }
 
 void URTMPCUpdater::UnregisterFoliageMID(UMaterialInstanceDynamic* MID)
@@ -107,8 +114,8 @@ void URTMPCUpdater::ForceRefreshMID(UMaterialInstanceDynamic* MID)
 
 UMaterialParameterCollectionInstance* URTMPCUpdater::GetMPCInstance() const
 {
-	if (!ParameterCollection || !GetWorld()) { return nullptr; }
-	return GetWorld()->GetParameterCollectionInstance(ParameterCollection);
+	if (!ParameterCollection || !GetOwner() || !GetOwner()->GetWorld()) { return nullptr; }
+	return GetOwner()->GetWorld()->GetParameterCollectionInstance(ParameterCollection);
 }
 
 // ── Internal ──────────────────────────────────────────────────────────────────
@@ -125,9 +132,9 @@ void URTMPCUpdater::BuildParameterNames()
 
 	for (int32 i = 0; i < SlotCount; ++i)
 	{
-		ParamName_SlotData[i]     = FName(*FString::Printf(TEXT("FRT_Slot%d_Data"),        i));
-		ParamName_ImpulseRT[i]    = FName(*FString::Printf(TEXT("FRT_Slot%d_ImpulseRT"),   i));
-		ParamName_ContinuousRT[i] = FName(*FString::Printf(TEXT("FRT_Slot%d_ContinuousRT"),i));
+		ParamName_SlotData[i]     = FName(*FString::Printf(TEXT("FRT_Slot%d_Data"),         i));
+		ParamName_ImpulseRT[i]    = FName(*FString::Printf(TEXT("FRT_Slot%d_ImpulseRT"),    i));
+		ParamName_ContinuousRT[i] = FName(*FString::Printf(TEXT("FRT_Slot%d_ContinuousRT"), i));
 	}
 }
 
@@ -135,8 +142,13 @@ void URTMPCUpdater::PushVectorDataToMPC()
 {
 	if (!ParameterCollection || !PoolManager) { return; }
 
-	UWorld* World = GetWorld();
-	if (!World) { return; }
+	UWorld* World = GetOwner() ? GetOwner()->GetWorld() : nullptr;
+	if (!World)
+	{
+		UE_LOG(RTFoliageInvoker, Warning,
+			TEXT("URTMPCUpdater::PushVectorDataToMPC >> World is null — MPC not updated"));
+		return;
+	}
 
 	const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
 	const int32 SlotCount = FMath::Min(Pool.Num(), ParamName_SlotData.Num());
@@ -148,14 +160,9 @@ void URTMPCUpdater::PushVectorDataToMPC()
 		const FRTPoolEntry& Slot = Pool[i];
 		const bool bActive = Slot.IsOccupied();
 
-		// Pack cell data into a single vector4:
-		//   X = CellOriginWS.X
-		//   Y = CellOriginWS.Y
-		//   Z = 1.0 (occupied) or 0.0 (free)  — material uses Z > 0.5 as the gate
-		//   W = slot index as float            — useful for debug material
 		const FLinearColor SlotData(
-			Slot.CellOriginWS.X,
-			Slot.CellOriginWS.Y,
+			bActive ? Slot.CellOriginWS.X : -9999999.f,
+			bActive ? Slot.CellOriginWS.Y : -9999999.f,
 			bActive ? 1.f : 0.f,
 			static_cast<float>(i)
 		);
@@ -166,7 +173,7 @@ void URTMPCUpdater::PushVectorDataToMPC()
 		if (bActive) { ++ActiveCount; }
 	}
 
-	// Zero out any slots beyond the current pool size (handles pool resize edge cases)
+	// Zero out slots beyond the current pool size
 	for (int32 i = SlotCount; i < ParamName_SlotData.Num(); ++i)
 	{
 		UKismetMaterialLibrary::SetVectorParameterValue(
@@ -180,6 +187,15 @@ void URTMPCUpdater::PushVectorDataToMPC()
 	UKismetMaterialLibrary::SetScalarParameterValue(
 		World, ParameterCollection, PN_ActiveSlotCount,
 		static_cast<float>(ActiveCount));
+
+	UE_LOG(RTFoliageInvoker, Log,
+		TEXT("URTMPCUpdater::PushVectorDataToMPC >> CellSize=%.1f ActiveSlots=%d Slot0=(%.0f,%.0f,Z=%.1f)"),
+		PoolManager->CellSize,
+		ActiveCount,
+		Pool.IsValidIndex(0) ? (Pool[0].IsOccupied() ? Pool[0].CellOriginWS.X : -9999999.f) : -1.f,
+		Pool.IsValidIndex(0) ? (Pool[0].IsOccupied() ? Pool[0].CellOriginWS.Y : -9999999.f) : -1.f,
+		Pool.IsValidIndex(0) ? (Pool[0].IsOccupied() ? 1.f : 0.f) : -1.f
+	);
 }
 
 void URTMPCUpdater::PushTexturesForSlot(int32 SlotIndex)
@@ -192,18 +208,11 @@ void URTMPCUpdater::PushTexturesForSlot(int32 SlotIndex)
 
 	const FRTPoolEntry& Slot = Pool[SlotIndex];
 
-	// When a slot is reclaimed, Slot.ImpulseRT / ContinuousRT are still valid
-	// objects (never destroyed — only reassigned).  Pushing them when the slot
-	// is free is harmless; the material gates on FRT_SlotN_Data.Z so it won't
-	// produce visible output for inactive slots.
 	for (UMaterialInstanceDynamic* MID : RegisteredMIDs)
 	{
 		if (!MID) { continue; }
-
-		MID->SetTextureParameterValue(ParamName_ImpulseRT[SlotIndex],
-			Slot.ImpulseRT);
-		MID->SetTextureParameterValue(ParamName_ContinuousRT[SlotIndex],
-			Slot.ContinuousRT);
+		MID->SetTextureParameterValue(ParamName_ImpulseRT[SlotIndex],    Slot.ImpulseRT);
+		MID->SetTextureParameterValue(ParamName_ContinuousRT[SlotIndex], Slot.ContinuousRT);
 	}
 }
 
@@ -217,7 +226,6 @@ void URTMPCUpdater::PushAllTexturesToMID(UMaterialInstanceDynamic* MID)
 	for (int32 i = 0; i < SlotCount; ++i)
 	{
 		const FRTPoolEntry& Slot = Pool[i];
-
 		MID->SetTextureParameterValue(ParamName_ImpulseRT[i],    Slot.ImpulseRT);
 		MID->SetTextureParameterValue(ParamName_ContinuousRT[i], Slot.ContinuousRT);
 	}
@@ -227,21 +235,16 @@ void URTMPCUpdater::PushAllTexturesToMID(UMaterialInstanceDynamic* MID)
 
 void URTMPCUpdater::OnCellAssigned(FIntPoint CellIndex, int32 SlotIndex)
 {
-	// A new cell was just assigned — push the fresh RT handles to all MIDs.
-	// The MPC vector for this slot will be updated on the next tick automatically.
 	PushTexturesForSlot(SlotIndex);
 
-	UE_LOG(LogTemp, Verbose,
-		TEXT("[RTMPCUpdater] Slot %d assigned to cell (%d,%d) — textures pushed to %d MIDs"),
+	UE_LOG(RTFoliageInvoker, Verbose,
+		TEXT("URTMPCUpdater::OnCellAssigned >> Slot %d assigned to cell (%d,%d) — textures pushed to %d MIDs"),
 		SlotIndex, CellIndex.X, CellIndex.Y, RegisteredMIDs.Num());
 }
 
 void URTMPCUpdater::OnCellReclaimed(FIntPoint CellIndex, int32 SlotIndex)
 {
-	// Slot returned to pool.  The RT objects are still valid (they'll be reused),
-	// so no texture push is needed — the material will gate on Z == 0 in the MPC
-	// vector for this slot, which PushVectorDataToMPC() will zero out next tick.
-	UE_LOG(LogTemp, Verbose,
-		TEXT("[RTMPCUpdater] Slot %d reclaimed from cell (%d,%d)"),
+	UE_LOG(RTFoliageInvoker, Verbose,
+		TEXT("URTMPCUpdater::OnCellReclaimed >> Slot %d reclaimed from cell (%d,%d)"),
 		SlotIndex, CellIndex.X, CellIndex.Y);
 }

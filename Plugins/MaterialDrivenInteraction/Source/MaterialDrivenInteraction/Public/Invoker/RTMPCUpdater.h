@@ -4,6 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "RTMPCUpdater.generated.h"
 
+struct FRTPoolEntry;
 class URTPoolManager;
 class UMaterialParameterCollection;
 class UMaterialParameterCollectionInstance;
@@ -157,4 +158,8 @@ private:
 	// MPC scalar parameter names (constant)
 	static const FName PN_CellSize;
 	static const FName PN_ActiveSlotCount;
+
+	// Debug — mirrors live pool so Details panel shows RT thumbnails during PIE
+	UPROPERTY(VisibleAnywhere, Category = "Foliage RT|Debug")
+	TArray<FRTPoolEntry> DebugPool;
 };

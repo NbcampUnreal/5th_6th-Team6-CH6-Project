@@ -147,6 +147,13 @@ private:
 	/** Assigns a free slot to CellIndex. Lazily clears ImpulseRT if flagged. */
 	int32 AssignFreeSlot(FIntPoint CellIndex);
 
+	/**
+	 * When the pool is exhausted, forcibly reclaims the slot that was released
+	 * longest ago (lowest active invoker risk). Returns the freed slot index,
+	 * or INDEX_NONE if all slots still have active invokers.
+	 */
+	int32 EvictOldestReleasedSlot();
+
 	/** Clears ImpulseRT to (0,0,0,0) — called lazily on next assignment. */
 	void ClearImpulseSlot(int32 SlotIndex);
 

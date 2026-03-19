@@ -185,4 +185,8 @@ private:
 
 	// True once BeginPlay has successfully registered with the pool.
 	bool bRegistered = false;
+
+	// Skips the very first tick so velocity and UV are seeded correctly before
+	// any stamp or draw call fires. Prevents a G=0 stamp on spawn.
+	bool bFirstTick = true;
 };

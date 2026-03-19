@@ -1,18 +1,15 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
+﻿
 #include "Invoker/FoliageRTInvokerComponent.h"
 
 #include "PoolManager/RTPoolManager.h"
+#include "Debug/LogCategory.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/KismetRenderingLibrary.h"
-#include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 
 // ── Parameter name constants ──────────────────────────────────────────────────
-// Centralised so they stay in sync with the material parameter names.
 
 static const FName PN_VelocityX  (TEXT("VelocityX"));
 static const FName PN_VelocityY  (TEXT("VelocityY"));
@@ -24,7 +21,6 @@ static const FName PN_ImpactTime (TEXT("ImpactTime"));
 UFoliageRTInvokerComponent::UFoliageRTInvokerComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
-	// Tick after the owning actor has moved so velocity delta is correct.
 	PrimaryComponentTick.TickGroup   = TG_PostUpdateWork;
 }
 
@@ -37,32 +33,44 @@ void UFoliageRTInvokerComponent::BeginPlay()
 	UWorld* World = GetWorld();
 	if (!World) { return; }
 
-	// Grab the subsystem — it is always valid in game worlds.
 	PoolManager = World->GetSubsystem<URTPoolManager>();
 	if (!PoolManager)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[FoliageRTInvoker] URTPoolManager subsystem not found."));
+		UE_LOG(RTFoliageInvoker, Warning,
+			TEXT("UFoliageRTInvokerComponent::BeginPlay >> URTPoolManager subsystem not found"));
 		return;
 	}
 
-	// Build MIDs so we can push per-frame scalar parameters cheaply.
 	if (BrushMaterial_Continuous)
 	{
 		MID_Continuous = UMaterialInstanceDynamic::Create(BrushMaterial_Continuous, this);
 	}
+	else
+	{
+		UE_LOG(RTFoliageInvoker, Warning,
+			TEXT("UFoliageRTInvokerComponent::BeginPlay >> BrushMaterial_Continuous is not assigned"));
+	}
+
 	if (BrushMaterial_Impulse)
 	{
 		MID_Impulse = UMaterialInstanceDynamic::Create(BrushMaterial_Impulse, this);
 	}
+	else
+	{
+		UE_LOG(RTFoliageInvoker, Warning,
+			TEXT("UFoliageRTInvokerComponent::BeginPlay >> BrushMaterial_Impulse is not assigned"));
+	}
 
-	// Seed previous location so the first tick doesn't produce a garbage velocity spike.
 	PrevWorldLocation = GetOwner()->GetActorLocation();
 
-	// Register with the pool for the starting cell.
 	const FVector StartLoc = GetOwner()->GetActorLocation();
 	ActiveSlotIndex = PoolManager->RegisterInvoker(StartLoc);
 	CurrentCell     = PoolManager->WorldToCell(StartLoc);
 	bRegistered     = (ActiveSlotIndex != INDEX_NONE);
+
+	UE_LOG(RTFoliageInvoker, Log,
+		TEXT("UFoliageRTInvokerComponent::BeginPlay >> Registered at cell (%d,%d) slot %d"),
+		CurrentCell.X, CurrentCell.Y, ActiveSlotIndex);
 }
 
 void UFoliageRTInvokerComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -71,6 +79,10 @@ void UFoliageRTInvokerComponent::EndPlay(const EEndPlayReason::Type EndPlayReaso
 	{
 		PoolManager->UnregisterInvoker(GetOwner()->GetActorLocation());
 		bRegistered = false;
+
+		UE_LOG(RTFoliageInvoker, Log,
+			TEXT("UFoliageRTInvokerComponent::EndPlay >> Unregistered from cell (%d,%d)"),
+			CurrentCell.X, CurrentCell.Y);
 	}
 
 	Super::EndPlay(EndPlayReason);
@@ -84,23 +96,56 @@ void UFoliageRTInvokerComponent::TickComponent(float DeltaTime,
 
 	if (!PoolManager) { return; }
 
-	// Drive pool reclaim logic — no separate actor needed.
 	PoolManager->Tick(DeltaTime);
 
 	const FVector WorldLoc = GetOwner()->GetActorLocation();
+
+	// ── 0. First tick — seed state only, do not draw ──────────────────────────
+	// Prevents a G=0 impulse stamp on spawn before the pawn has moved.
+	if (bFirstTick)
+	{
+		bFirstTick        = false;
+		PrevWorldLocation = WorldLoc;
+		HandleCellTransition(WorldLoc);
+
+		if (bRegistered && ActiveSlotIndex != INDEX_NONE)
+		{
+			UTextureRenderTarget2D* DummyImpulse    = nullptr;
+			UTextureRenderTarget2D* DummyContinuous = nullptr;
+			FVector2D SeedUV;
+
+			if (PoolManager->GetRTForWorldPosition(WorldLoc, DummyImpulse, DummyContinuous, SeedUV))
+			{
+				PrevCellUV = SeedUV;
+				const int32 RTRes = PoolManager->RTResolution;
+				PrevImpulseTexel  = FIntPoint(
+					FMath::Clamp(FMath::FloorToInt(SeedUV.X * RTRes), 0, RTRes - 1),
+					FMath::Clamp(FMath::FloorToInt(SeedUV.Y * RTRes), 0, RTRes - 1)
+				);
+			}
+
+			UE_LOG(RTFoliageInvoker, Verbose,
+				TEXT("UFoliageRTInvokerComponent::TickComponent >> First tick seeded — UV (%.3f,%.3f) texel (%d,%d)"),
+				PrevCellUV.X, PrevCellUV.Y, PrevImpulseTexel.X, PrevImpulseTexel.Y);
+		}
+		return;
+	}
 
 	// ── 1. Cell transition check ──────────────────────────────────────────────
 	HandleCellTransition(WorldLoc);
 
 	if (!bRegistered || ActiveSlotIndex == INDEX_NONE) { return; }
 
-	// ── 2. Fetch both RTs and UV for this frame ───────────────────────────────
+	// ── 2. Fetch RTs and UV ───────────────────────────────────────────────────
 	UTextureRenderTarget2D* ImpulseRT    = nullptr;
 	UTextureRenderTarget2D* ContinuousRT = nullptr;
 	FVector2D CellUV;
 
 	if (!PoolManager->GetRTForWorldPosition(WorldLoc, ImpulseRT, ContinuousRT, CellUV))
 	{
+		UE_LOG(RTFoliageInvoker, Verbose,
+			TEXT("UFoliageRTInvokerComponent::TickComponent >> GetRTForWorldPosition returned false at (%.0f,%.0f)"),
+			WorldLoc.X, WorldLoc.Y);
 		return;
 	}
 
@@ -118,7 +163,6 @@ void UFoliageRTInvokerComponent::TickComponent(float DeltaTime,
 	// ── 4. Continuous RT — smear quad every tick ──────────────────────────────
 	if (ContinuousRT && MID_Continuous)
 	{
-		// Use previous UV as smear start; fall back to current on the first tick.
 		const FVector2D SmearStart = (PrevCellUV.X >= 0.f) ? PrevCellUV : CellUV;
 
 		MID_Continuous->SetScalarParameterValue(PN_VelocityX, EncodedVelocity.X);
@@ -142,7 +186,6 @@ void UFoliageRTInvokerComponent::TickComponent(float DeltaTime,
 		DrawImpulseStamp(ImpulseRT, CellUV, UVExtent, GameTime);
 		OnImpulseStamp(ImpulseRT, CellUV, UVExtent);
 
-		// Record which texel we just stamped so we don't re-stamp next frame.
 		const FIntPoint RTSize(
 			ImpulseRT->SizeX > 0 ? ImpulseRT->SizeX : 512,
 			ImpulseRT->SizeY > 0 ? ImpulseRT->SizeY : 512
@@ -151,9 +194,13 @@ void UFoliageRTInvokerComponent::TickComponent(float DeltaTime,
 			FMath::Clamp(FMath::FloorToInt(CellUV.X * RTSize.X), 0, RTSize.X - 1),
 			FMath::Clamp(FMath::FloorToInt(CellUV.Y * RTSize.Y), 0, RTSize.Y - 1)
 		);
+
+		UE_LOG(RTFoliageInvoker, Verbose,
+			TEXT("UFoliageRTInvokerComponent::TickComponent >> Impulse stamped — UV (%.3f,%.3f) vel (%.1f,%.1f) t=%.2f"),
+			CellUV.X, CellUV.Y, RawVelocity.X, RawVelocity.Y, GameTime);
 	}
 
-	// ── 6. Advance previous-frame state ──────────────────────────────────────
+	// ── 6. Advance state ──────────────────────────────────────────────────────
 	PrevWorldLocation = WorldLoc;
 	PrevCellUV        = CellUV;
 }
@@ -173,15 +220,12 @@ FVector2D UFoliageRTInvokerComponent::ComputeVelocity(float DeltaTime) const
 
 float UFoliageRTInvokerComponent::EncodeVelocityAxis(float WorldVelAxis) const
 {
-	// Map [−MaxVelocity..+MaxVelocity] → [0..1].
-	// 0.5 = zero.  Clamped so overshoots don't wrap.
 	const float Normalized = WorldVelAxis / FMath::Max(MaxVelocity, 1.f);
 	return FMath::Clamp(Normalized * 0.5f + 0.5f, 0.f, 1.f);
 }
 
 FVector2D UFoliageRTInvokerComponent::BrushExtentToUV() const
 {
-	// BrushExtent is in world units; CellSize is in world units → ratio = UV extent.
 	const float CellSize = PoolManager ? PoolManager->CellSize : 2000.f;
 	return FVector2D(
 		BrushExtent.X / CellSize,
@@ -191,9 +235,6 @@ FVector2D UFoliageRTInvokerComponent::BrushExtentToUV() const
 
 bool UFoliageRTInvokerComponent::HasMovedToNewPixel(FVector2D CellUV) const
 {
-	// First-ever tick: PrevImpulseTexel is (-1,-1) — always stamp.
-	if (PrevImpulseTexel == FIntPoint(-1, -1)) { return true; }
-
 	const int32 RTRes = PoolManager ? PoolManager->RTResolution : 512;
 
 	const FIntPoint CurrentTexel(
@@ -209,17 +250,6 @@ void UFoliageRTInvokerComponent::DrawContinuousQuad(UTextureRenderTarget2D* RT,
                                                      FVector2D CurrentUV,
                                                      FVector2D UVExtent)
 {
-	// UKismetRenderingLibrary::DrawMaterialToRenderTarget paints the MID over the
-	// full RT.  The MID itself is responsible for masking to the correct UV region
-	// using the UVExtent and CentreUV scalar parameters.
-	//
-	// For more precise quad-only draws (e.g. via Canvas), override OnContinuousPaint
-	// in Blueprint and use DrawMaterial / DrawMaterialSimple on a UCanvas.
-	//
-	// This base implementation updates the MID centre to the smear midpoint and
-	// paints.  The smear is approximated by the material sampling both PrevUV and
-	// CurrentUV passed as parameters.
-
 	if (!MID_Continuous || !RT) { return; }
 
 	const FVector2D MidUV = (PrevUV + CurrentUV) * 0.5f;
@@ -245,9 +275,6 @@ void UFoliageRTInvokerComponent::DrawImpulseStamp(UTextureRenderTarget2D* RT,
 		FLinearColor(CurrentUV.X, CurrentUV.Y, 0.f, 0.f));
 	MID_Impulse->SetVectorParameterValue(FName("BrushUVExtent"),
 		FLinearColor(UVExtent.X, UVExtent.Y, 0.f, 0.f));
-
-	// ImpactTime is also set as a vector so the material can write it to G directly
-	// via a custom HLSL node without float precision loss through a scalar.
 	MID_Impulse->SetVectorParameterValue(FName("ImpactTimeVec"),
 		FLinearColor(GameTime, GameTime, GameTime, GameTime));
 
@@ -260,10 +287,8 @@ void UFoliageRTInvokerComponent::HandleCellTransition(const FVector& WorldLocati
 
 	if (NewCell == CurrentCell) { return; }
 
-	// Unregister from the old cell (starts its decay clock).
 	if (bRegistered)
 	{
-		// Pass a location guaranteed to be inside the old cell.
 		const FVector2D OldOrigin = PoolManager->CellToWorldOrigin(CurrentCell);
 		const FVector OldCellLoc(
 			OldOrigin.X + PoolManager->CellSize * 0.5f,
@@ -272,18 +297,21 @@ void UFoliageRTInvokerComponent::HandleCellTransition(const FVector& WorldLocati
 		);
 		PoolManager->UnregisterInvoker(OldCellLoc);
 		bRegistered = false;
+
+		UE_LOG(RTFoliageInvoker, Log,
+			TEXT("UFoliageRTInvokerComponent::HandleCellTransition >> Left cell (%d,%d)"),
+			CurrentCell.X, CurrentCell.Y);
 	}
 
-	// Register in the new cell.
 	ActiveSlotIndex = PoolManager->RegisterInvoker(WorldLocation);
 	CurrentCell     = NewCell;
 	bRegistered     = (ActiveSlotIndex != INDEX_NONE);
 
-	// Reset smear state — the previous UV is in a different cell's coordinate space.
+	// Reset smear state — previous UV belongs to the old cell's coordinate space
 	PrevCellUV       = FVector2D(-1.f, -1.f);
 	PrevImpulseTexel = FIntPoint(-1, -1);
 
-	UE_LOG(LogTemp, Verbose,
-		TEXT("[FoliageRTInvoker] Cell transition → (%d,%d)  slot %d"),
+	UE_LOG(RTFoliageInvoker, Log,
+		TEXT("UFoliageRTInvokerComponent::HandleCellTransition >> Entered cell (%d,%d) slot %d"),
 		NewCell.X, NewCell.Y, ActiveSlotIndex);
 }

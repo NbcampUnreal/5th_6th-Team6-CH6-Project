@@ -6,6 +6,7 @@
 #include "Misc/Paths.h"
 #include "ShaderCore.h"
 
+
 #define LOCTEXT_NAMESPACE "FMaterialDrivenInteractionModule"
 
 void FMaterialDrivenInteractionModule::StartupModule()
