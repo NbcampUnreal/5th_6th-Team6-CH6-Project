@@ -5,7 +5,8 @@
 #include "CoreMinimal.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGEC.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGECConfig.h"
-#include "SkillSystem/SkillNiagaraSpawnSettings.h"
+#include "GameplayTagContainer.h"
+#include "UObject/Object.h"
 #include "SummonRangeBaseGEC.generated.h"
 
 /**
@@ -13,6 +14,9 @@
  */
 class ABaseRangeOverlapEffectActor;
 class USkillEffectDataAsset;
+class USkillNiagaraSpawnConfig;
+struct FGameplayTag;
+struct FGameplayEffectSpec;
 struct FGameplayCueParameters;
 struct FGameplayEffectContextHandle;
 
@@ -37,9 +41,6 @@ public:
 	FVector LocationOffset = FVector::ZeroVector;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Rotation")
-	bool bSpawnZeroRotation = false;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Rotation", meta = (EditCondition = "!bSpawnZeroRotation"))
 	FRotator RotationOffset = FRotator::ZeroRotator;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Snap")
@@ -57,14 +58,14 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Effect")
 	bool bHitOncePerTarget = true;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
-	FSkillNiagaraSpawnSettings SummonerSpawnVfx;
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Summon Settings|Niagara")
+	TObjectPtr<USkillNiagaraSpawnConfig> SummonerSpawnVfx;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
-	FSkillNiagaraSpawnSettings RangeSpawnVfx;
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Summon Settings|Niagara")
+	TObjectPtr<USkillNiagaraSpawnConfig> RangeSpawnVfx;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Niagara")
-	FSkillNiagaraSpawnSettings HitTargetVfx;
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Summon Settings|Niagara")
+	TObjectPtr<USkillNiagaraSpawnConfig> HitTargetVfx;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Effect")
 	TArray<TObjectPtr<USkillEffectDataAsset>> Applied;
@@ -77,27 +78,15 @@ class PROJECTER_API USummonRangeBaseGEC : public UBaseGEC
 protected:
 	virtual void OnGameplayEffectApplied(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const override;
 	virtual const USummonRangeBaseConfig* GetSummonConfig(const FGameplayEffectSpec& GESpec) const;
-	virtual FTransform CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator) const;
+	virtual FTransform CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const AActor* TargetActor) const;
 	virtual bool ShouldProcessOnInstigator(const AActor* Instigator) const;
 
-	template <typename TConfig>
-	const TConfig* ResolveTypedConfigFromSpec(const FGameplayEffectSpec& GESpec) const;
+	virtual void ExecuteGameplayCues(const FGameplayEffectSpec& GESpec, const FGameplayEffectContextHandle& ContextHandle, AActor* EffectInstigator, ABaseRangeOverlapEffectActor* RangeActor, const FTransform& SpawnTransform, const USummonRangeBaseConfig* Config) const;
+	virtual AActor* GetTargetActorFromContainer(FActiveGameplayEffectsContainer& ActiveGEContainer) const;
 
-	const UBaseGECConfig* ResolveBaseConfigFromSpec(const FGameplayEffectSpec& GESpec) const;
 	FGameplayCueParameters BuildNiagaraCueParameters(const FGameplayEffectSpec& GESpec, const FGameplayTag& OriginalTag, const FGameplayEffectContextHandle& EffectContext, AActor* EffectCauser, const FVector& CueLocation, const UObject* SourceObject, const FVector& CueNormal = FVector::UpVector) const;
 	virtual void InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetCueParameters) const;
+	virtual void SnapLocationToGround(FVector& InOutLocation, const USummonRangeBaseConfig* Config, const AActor* Instigator) const;
+	virtual void ApplyCommonSpawnOptions(FVector& InOutLocation, FRotator& InOutRotation, const USummonRangeBaseConfig* Config, const AActor* Instigator) const;
 };
 
-template <typename TConfig>
-const TConfig* USummonRangeBaseGEC::ResolveTypedConfigFromSpec(const FGameplayEffectSpec& GESpec) const
-{
-	static_assert(TIsDerivedFrom<TConfig, UBaseGECConfig>::Value, "TConfig must derive from UBaseGECConfig");
-
-	const UBaseGECConfig* const BaseConfig = ResolveBaseConfigFromSpec(GESpec);
-	if (!IsValid(BaseConfig))
-	{
-		return nullptr;
-	}
-
-	return Cast<TConfig>(BaseConfig);
-}

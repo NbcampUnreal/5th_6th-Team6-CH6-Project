@@ -194,6 +194,9 @@ public:
 	TSubclassOf<UAnimInstance> Anim;
 
 
+	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|RangeSphere")
+	float RangeSphereRadius = 1000.f;
+
 
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Reward")
 	int Exp;
@@ -202,14 +205,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Reward")
 	int Gold;
 
-	// 이거는 죽었을 때 로드해서 ??
+	// 이거는 죽었을 때 로드해서
 	UPROPERTY(EditDefaultsOnly, Category = "MonsterData|Reward")
 	TArray<UBaseItemData*> ItemList;
 
-	//2D Shape SamplePoints for overlapping //--> this will be used if have chance
-	//TArray<>
-	
-	// Mesh + Material for MID generation
-	/*UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "MonsterData|Reward")
-	TMap<>*/
+
 };

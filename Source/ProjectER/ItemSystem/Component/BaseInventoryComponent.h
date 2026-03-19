@@ -10,6 +10,7 @@
 
 class UAbilitySystemComponent;
 class UBaseItemData;
+class ABaseItemActor;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryUpdatedSignature);
 
@@ -44,7 +45,7 @@ public:
 	UBaseItemData* GetItemAt(int32 SlotIndex) const;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory")
-	int32 MaxSlots = 20;
+	int32 MaxSlots = 8;
 
 protected:
 	// 멀티플레이어 동기화를 위해 Replicated 추가
@@ -92,4 +93,14 @@ public:
 	FOnInventoryUpdatedSignature OnInventoryUpdated;
 
 	void ClearFoodHealEffects();
+
+	// 슬롯 이동 / 교환
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	bool SwapSlots(int32 FromIndex, int32 ToIndex);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_SwapSlots(int32 FromIndex, int32 ToIndex);
+
+	// 슬롯 아이템을 월드에 떨어뜨리기
+	bool DropItemFromSlot(int32 SlotIndex, const FVector& SpawnLocation, TSubclassOf<ABaseItemActor> ItemActorClass, APawn* DropperPawn);
 };
