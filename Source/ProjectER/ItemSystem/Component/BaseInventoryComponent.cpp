@@ -596,10 +596,11 @@ bool UBaseInventoryComponent::SwapSlots(int32 FromIndex, int32 ToIndex)
 
 	if (FromIndex == ToIndex)
 	{
-		return false;
+		return true;
 	}
 
-	if (!InventoryContents.IsValidIndex(FromIndex) || !InventoryContents.IsValidIndex(ToIndex))
+	if (!InventoryContents.IsValidIndex(FromIndex) || !InventoryContents.IsValidIndex(ToIndex) ||
+		!InventoryStackCounts.IsValidIndex(FromIndex) || !InventoryStackCounts.IsValidIndex(ToIndex))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] SwapSlots: Invalid index From=%d To=%d"), FromIndex, ToIndex);
 		return false;
@@ -619,6 +620,41 @@ bool UBaseInventoryComponent::SwapSlots(int32 FromIndex, int32 ToIndex)
 		return false;
 	}
 
+	UBaseItemData* SourceItem = InventoryContents[FromIndex];
+	UBaseItemData* TargetItem = InventoryContents[ToIndex];
+
+	int32& SourceCount = InventoryStackCounts[FromIndex];
+	int32& TargetCount = InventoryStackCounts[ToIndex];
+
+	// 1) 같은 아이템이면 먼저 스택 합치기 시도
+	if (SourceItem != nullptr &&
+		TargetItem != nullptr &&
+		SourceItem == TargetItem)
+	{
+		const int32 SafeMaxStack = FMath::Max(1, MaxStackPerSlot);
+		const int32 SpaceLeft = SafeMaxStack - TargetCount;
+
+		if (SpaceLeft <= 0)
+		{
+			return true;
+		}
+
+		const int32 MoveAmount = FMath::Min(SourceCount, SpaceLeft);
+
+		TargetCount += MoveAmount;
+		SourceCount -= MoveAmount;
+
+		if (SourceCount <= 0)
+		{
+			InventoryContents[FromIndex] = nullptr;
+			SourceCount = 0;
+		}
+
+		OnInventoryUpdated.Broadcast();
+		return true;
+	}
+
+	// 2) 같은 아이템이 아니면 기존처럼 위치 교환
 	UBaseItemData* TempItem = InventoryContents[FromIndex];
 	InventoryContents[FromIndex] = InventoryContents[ToIndex];
 	InventoryContents[ToIndex] = TempItem;
