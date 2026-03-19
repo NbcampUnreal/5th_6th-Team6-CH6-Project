@@ -35,6 +35,10 @@ protected:
 	UProgressBar* PB_HP;
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* txtHP;
+	UPROPERTY(meta = (BindWidget))
+	UImage* Img_Icon;
+	UPROPERTY(meta = (BindWidget))
+	UImage* Img_BG;
 
 public:
 	UFUNCTION()
@@ -51,5 +55,9 @@ public:
 	void UpdatePlayerAssist(float PlayerAssist);
 	UFUNCTION()
 	void UpdatePlayerHP(float CurrentHP, float MaxHP);
+	UFUNCTION()
+	void UpdatePlayerIcon(UTexture2D* Icon);
+	UFUNCTION()
+	void UpdatePlayerBG(FLinearColor BGColor);
 	
 };

@@ -109,16 +109,16 @@ void ABasePlayerController::BeginPlay()
 	if (IsLocalController())
 	{
 		UGameplayStatics::SetBaseSoundMix(this, SoundMix);
-	}
 
-	// 게임 시작시 현황판 생성 후 collapse 처리
-	if (ScoreboardClass)
-	{
-		ScoreboardWidget = CreateWidget<UUI_Scoreboard>(this, ScoreboardClass);
-		if (ScoreboardWidget)
+		// 게임 시작시 현황판 생성 후 collapse 처리
+		if (ScoreboardClass)
 		{
-			ScoreboardWidget->AddToViewport();
-			ScoreboardWidget->SetVisibility(ESlateVisibility::Collapsed);
+			ScoreboardWidget = CreateWidget<UUI_Scoreboard>(this, ScoreboardClass);
+			if (ScoreboardWidget)
+			{
+				ScoreboardWidget->AddToViewport();
+				ScoreboardWidget->SetVisibility(ESlateVisibility::Collapsed);
+			}
 		}
 	}
 }

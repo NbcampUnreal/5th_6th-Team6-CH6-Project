@@ -27,6 +27,8 @@ class PROJECTER_API UUI_Scoreboard : public UUserWidget
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UScrollBox* SB_PlayerRow;
+	UPROPERTY(meta = (BindWidget))
+	UImage* TEX_FullMap;
 
 	UPROPERTY(EditAnywhere, Category = "UI")
 	TSubclassOf<UUI_ScoreboardPlayerRow> RowWidgetClass;
