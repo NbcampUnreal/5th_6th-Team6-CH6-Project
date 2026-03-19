@@ -36,6 +36,8 @@
 #include "Components/UniformGridPanel.h"
 #include "ItemSystem/Component/BaseInventoryComponent.h"
 #include "ItemSystem/Data/BaseItemData.h"
+#include "Components/UniformGridSlot.h"
+#include "ItemSystem/UI/W_InventorySlot.h"
 void UUI_MainHUD::Update_LV(float CurrentLV)
 {
     if(IsValid(stat_LV))
@@ -249,6 +251,10 @@ void UUI_MainHUD::NativeConstruct()
     {
         UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Grid_item already bound via BindWidget!"));
     }
+
+    EnsureInventorySlotWidgets();
+    RefreshInventoryGridLayout();
+    UpdateInventoryUI();
 
     // 툴팁 init
     if (IsValid(TooltipClass) && !TooltipInstance)
@@ -1161,146 +1167,122 @@ UWidgetAnimation* UUI_MainHUD::GetWidgetAnimationByName(FName AnimName) const
 // 인벤토리 UI 업데이트 함수
 void UUI_MainHUD::UpdateInventoryUI()
 {
-    UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] UpdateInventoryUI called!"));
     if (!Grid_item)
     {
-        // UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Grid_item is null!"));
         return;
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Grid_item found!"));
+    EnsureInventorySlotWidgets();
 
-    // 플레이어의 인벤토리 컴포넌트 가져오기
+    UBaseInventoryComponent* InventoryComp = ResolveInventoryComponent();
+    if (!InventoryComp)
+    {
+        return;
+    }
+
+    for (int32 i = 0; i < InventorySlotWidgets.Num(); ++i)
+    {
+        if (InventorySlotWidgets[i])
+        {
+            InventorySlotWidgets[i]->SetItemData(InventoryComp->GetItemAt(i));
+        }
+    }
+}
+
+// [김현수 추가분]
+UUI_MainHUD::UUI_MainHUD(const FObjectInitializer& ObjectInitializer)
+    : Super(ObjectInitializer)
+{
+    InventoryColumnCount = 4;
+    DefaultInventorySlotCount = 8;
+}
+
+UBaseInventoryComponent* UUI_MainHUD::ResolveInventoryComponent() const
+{
     APlayerController* PC = GetOwningPlayer();
     if (!PC)
     {
-        // UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] PlayerController is null!"));
-        return;
+        return nullptr;
     }
 
     APawn* Pawn = PC->GetPawn();
     if (!Pawn)
     {
-        // UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Pawn is null!"));
-        return;
+        return nullptr;
     }
 
-    UBaseInventoryComponent* InventoryComp = Pawn->FindComponentByClass<UBaseInventoryComponent>();
-    if (!InventoryComp)
+    return Pawn->FindComponentByClass<UBaseInventoryComponent>();
+}
+
+void UUI_MainHUD::EnsureInventorySlotWidgets()
+{
+    if (!Grid_item)
     {
-        // UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] InventoryComponent not found!"));
         return;
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] InventoryComponent found!"));
+    int32 DesiredSlotCount = DefaultInventorySlotCount;
 
-    // Grid의 모든 자식 위젯 가져오기 (Button들)
-    TArray<UWidget*> GridChildren = Grid_item->GetAllChildren();
-    UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Grid has %d children"), GridChildren.Num());
-
-    // 인벤토리 데이터는 private이므로 reflection 사용
-    UClass* InventoryClass = InventoryComp->GetClass();
-    FProperty* InventoryProperty = InventoryClass->FindPropertyByName(FName("InventoryContents"));
-
-    if (!InventoryProperty)
+    if (UBaseInventoryComponent* InventoryComp = ResolveInventoryComponent())
     {
-        UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Cannot find InventoryContents property!"));
-        return;
+        DesiredSlotCount = FMath::Max(InventoryComp->MaxSlots, 0);
     }
 
-    // TArray<UBaseItemData*> 가져오기
-    void* PropertyPtr = InventoryProperty->ContainerPtrToValuePtr<void>(InventoryComp);
-    FArrayProperty* ArrayProp = CastField<FArrayProperty>(InventoryProperty);
-    if (!ArrayProp)
+    if (InventorySlotWidgets.Num() == DesiredSlotCount &&
+        Grid_item->GetChildrenCount() == DesiredSlotCount)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] ArrayProp is null!"));
         return;
     }
 
-    FScriptArrayHelper ArrayHelper(ArrayProp, PropertyPtr);
-    // UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Inventory has %d items"), ArrayHelper.Num()); 패키징용 로그 주석
+    Grid_item->ClearChildren();
+    InventorySlotWidgets.Empty();
 
-    // Grid의 각 버튼에 아이템 아이콘 설정
+    APlayerController* PC = GetOwningPlayer();
+    if (!PC)
+    {
+        return;
+    }
+
+    for (int32 i = 0; i < DesiredSlotCount; ++i)
+    {
+        UW_InventorySlot* SlotWidget = CreateWidget<UW_InventorySlot>(PC, UW_InventorySlot::StaticClass());
+        if (!SlotWidget)
+        {
+            continue;
+        }
+
+        SlotWidget->SetSlotIndex(i);
+        InventorySlotWidgets.Add(SlotWidget);
+
+        if (UUniformGridSlot* GridSlot = Grid_item->AddChildToUniformGrid(SlotWidget, i / InventoryColumnCount, i % InventoryColumnCount))
+        {
+            GridSlot->SetHorizontalAlignment(HAlign_Fill);
+            GridSlot->SetVerticalAlignment(VAlign_Fill);
+        }
+    }
+}
+
+// [김현수 추가분]
+void UUI_MainHUD::RefreshInventoryGridLayout()
+{
+    if (!Grid_item)
+    {
+        return;
+    }
+
+    Grid_item->SetMinDesiredSlotWidth(64.f);
+    Grid_item->SetMinDesiredSlotHeight(64.f);
+
+    const TArray<UWidget*> GridChildren = Grid_item->GetAllChildren();
+
     for (int32 i = 0; i < GridChildren.Num(); ++i)
     {
-        UButton* ItemButton = Cast<UButton>(GridChildren[i]);
-        if (!ItemButton)
+        if (UUniformGridSlot* GridSlot = Cast<UUniformGridSlot>(GridChildren[i]->Slot))
         {
-            UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Child %d is not a Button, type: %s"),
-                i, *GridChildren[i]->GetClass()->GetName());
-            continue;
-        }
-
-        // UE_LOG(LogTemp, Log, TEXT("[UI_MainHUD] Processing Button %d: %s"), i, *ItemButton->GetName()); 패키징용 로그 주석
-
-        // 버튼의 자식 이미지 찾기
-        TArray<UWidget*> ButtonChildren = ItemButton->GetAllChildren();
-        // UE_LOG(LogTemp, Log, TEXT("[UI_MainHUD] Button %d has %d children"), i, ButtonChildren.Num()); 패키징용 로그 주석
-
-        UImage* IconImage = nullptr;
-        for (int32 j = 0; j < ButtonChildren.Num(); ++j)
-        {
-            UWidget* Child = ButtonChildren[j];
-            // UE_LOG(LogTemp, Log, TEXT("[UI_MainHUD] Button child %d type: %s, name: %s"), j, *Child->GetClass()->GetName(), *Child->GetName()); 패키징용 로그 주석
-
-            IconImage = Cast<UImage>(Child);
-            if (IconImage)
-            {
-                // UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Found Image in Button %d!"), i); 패키징용 로그 주석
-                break;
-            }
-        }
-
-        if (!IconImage)
-        {
-            UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Button %d has no Image child!"), i);
-            continue;
-        }
-
-        // 인벤토리에 아이템이 있으면 아이콘 설정
-        if (i < ArrayHelper.Num())
-        {
-            UBaseItemData** ItemDataPtr = reinterpret_cast<UBaseItemData**>(ArrayHelper.GetRawPtr(i));
-            if (ItemDataPtr && *ItemDataPtr)
-            {
-                UBaseItemData* ItemData = *ItemDataPtr;
-                UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Slot %d has item: %s"),
-                    i, *ItemData->ItemName.ToString());
-
-                // ItemIcon 로드 및 설정
-                if (!ItemData->ItemIcon.IsNull())
-                {
-                    UTexture2D* IconTexture = ItemData->ItemIcon.LoadSynchronous();
-                    if (IconTexture)
-                    {
-                        IconImage->SetBrushFromTexture(IconTexture);
-                        IconImage->SetVisibility(ESlateVisibility::Visible);
-                        UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Icon set for slot %d!"), i);
-                    }
-                    else
-                    {
-                        UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Failed to load icon for slot %d"), i);
-                    }
-                }
-                else
-                {
-                    UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] Item in slot %d has no icon"), i);
-                }
-            }
-            else
-            {
-                // 빈 슬롯
-                IconImage->SetVisibility(ESlateVisibility::Hidden);
-                UE_LOG(LogTemp, Log, TEXT("[UI_MainHUD] Slot %d is empty"), i);
-            }
-        }
-        else
-        {
-            // 인벤토리 범위 밖
-            IconImage->SetVisibility(ESlateVisibility::Hidden);
-            UE_LOG(LogTemp, Log, TEXT("[UI_MainHUD] Slot %d is out of inventory range"), i);
+            GridSlot->SetRow(i / InventoryColumnCount);
+            GridSlot->SetColumn(i % InventoryColumnCount);
+            GridSlot->SetHorizontalAlignment(HAlign_Center);
+            GridSlot->SetVerticalAlignment(VAlign_Center);
         }
     }
-
-    UE_LOG(LogTemp, Warning, TEXT("[UI_MainHUD] UpdateInventoryUI completed!"));
 }

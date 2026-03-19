@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "ER_RespawnSubsystem.h"
@@ -8,6 +8,7 @@
 #include "GameModeBase/Subsystem/Phase/ER_PhaseSubsystem.h"
 #include "CharacterSystem/Player/BasePlayerController.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
+#include "GameModeBase/PointActor/ER_PointActor.h"
 
 
 void UER_RespawnSubsystem::HandlePlayerDeath(AER_PlayerState& PS, AER_GameState& GS, AER_PlayerState* KillerPS, const TArray<APlayerState*>& Assists)
@@ -240,6 +241,133 @@ void UER_RespawnSubsystem::InitializeRespawnMap(AER_GameState& GS)
 
 		RespawnMap.FindOrAdd(player->GetPlayerId());
 	}
+}
+
+void UER_RespawnSubsystem::InitializeRespawnPoints()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+		return;
+
+	if (World->GetNetMode() == NM_Client)
+		return;
+
+	UE_LOG(LogTemp, Log, TEXT("[RSS] InitializeRespawnPoints Start Points Count : %d"), Points.Num());
+
+	const FName RespawnTag(TEXT("Respawn"));
+
+	RespawnPointsByRegion.Reset();
+
+	for (auto& Point : Points)
+	{
+		AActor* PointActor = Point.Get();
+
+		if (!IsValid(PointActor))
+		{
+			continue;
+		}
+
+		AER_PointActor* PA = Cast<AER_PointActor>(PointActor);
+		if (!PA)
+		{
+			continue;
+		}
+		RespawnPointsByRegion.FindOrAdd(PA->RegionType).Add(PointActor);
+			
+	}
+	UE_LOG(LogTemp, Log, TEXT("[RSS] InitializeRespawnPoints End. RespawnPoints Count : %d"), RespawnPointsByRegion.Num());
+}
+
+void UER_RespawnSubsystem::ResetAssignedSpawnPoints()
+{
+	AssignedSpawnIndices.Reset();
+	UE_LOG(LogTemp, Log, TEXT("[RSS] ResetAssignedSpawnPoints: Spawn tracking cleared."));
+}
+
+FTransform UER_RespawnSubsystem::GetRespawnPointLocation(const int32 Index)
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr || World->GetNetMode() == NM_Client)
+	{
+		return FTransform::Identity;
+	}
+
+	if (Index < static_cast<int32>(ERegionType::None) ||
+		Index > static_cast<int32>(ERegionType::ResearchCenter))
+	{
+		return FTransform::Identity;
+	}
+
+	const ERegionType RegionType = static_cast<ERegionType>(Index);
+	const TArray<TWeakObjectPtr<AActor>>* RespawnPoints = RespawnPointsByRegion.Find(RegionType);
+	if (RespawnPoints == nullptr || RespawnPoints->IsEmpty())
+	{
+		return FTransform::Identity;
+	}
+
+	int32 TotalPointsCount = RespawnPoints->Num();
+	TArray<int32>& AssignedIndicesForRegion = AssignedSpawnIndices.FindOrAdd(RegionType);
+
+	// 사용 가능한 인덱스들 찾기
+	TArray<int32> AvailableIndices;
+	for (int32 i = 0; i < TotalPointsCount; ++i)
+	{
+		if (!AssignedIndicesForRegion.Contains(i))
+		{
+			AvailableIndices.Add(i);
+		}
+	}
+
+	int32 ChosenIndex = -1;
+
+	// 여분 포인트가 있다면 그 중 하나를 무작위 할당
+	if (AvailableIndices.Num() > 0)
+	{
+		ChosenIndex = AvailableIndices[FMath::RandRange(0, AvailableIndices.Num() - 1)];
+		AssignedIndicesForRegion.Add(ChosenIndex);
+	}
+	else
+	{
+		// 이 지역의 모든 스폰 포인트가 할당되었다면, 무작위 포인트 하나를 다시 사용 (풀백)
+		ChosenIndex = FMath::RandRange(0, TotalPointsCount - 1);
+		UE_LOG(LogTemp, Warning, TEXT("[RSS] All spawn points in region %d assigned. Falling back to random reuse."), static_cast<int32>(RegionType));
+	}
+
+	const TWeakObjectPtr<AActor>& RespawnPoint = (*RespawnPoints)[ChosenIndex];
+	
+	if (RespawnPoint.IsValid() && RespawnPoint.Get() != nullptr)
+	{
+		FTransform SpawnTransform = RespawnPoint.Get()->ActorToWorld();
+		
+		// 스폰 포인트가 재사용되는 경우 (풀백), 겹침 현상을 방지하기 위해 랜덤 오프셋 추가
+		if (AvailableIndices.Num() == 0)
+		{
+			FVector Location = SpawnTransform.GetLocation();
+			// 반경 100~200 유닛 사이의 랜덤 오프셋 생성
+			float RandomRadius = FMath::RandRange(100.f, 200.f);
+			float RandomAngle = FMath::RandRange(0.f, 360.f);
+			
+			Location.X += RandomRadius * FMath::Cos(FMath::DegreesToRadians(RandomAngle));
+			Location.Y += RandomRadius * FMath::Sin(FMath::DegreesToRadians(RandomAngle));
+			
+			SpawnTransform.SetLocation(Location);
+		}
+
+		return SpawnTransform;
+	}
+
+	return FTransform::Identity;
+}
+
+void UER_RespawnSubsystem::RegisterPoint(AActor* Point)
+{
+	Points.AddUnique(Point);
+	UE_LOG(LogTemp, Log, TEXT("[RSS] RegisterPoint Count : %d"), Points.Num());
+}
+
+void UER_RespawnSubsystem::UnregisterPoint(AActor* Point)
+{
+	Points.Remove(Point);
 }
 
 

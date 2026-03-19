@@ -22,6 +22,7 @@ public:
 
 	void SetPlayerCount(int32 Amount);
 	int32 GetPlayerCount();
+	void SetOutSphereRadius(float Radius);
 
 	void InitMonsterGroup();
 

@@ -1,4 +1,4 @@
-﻿#include "Monster/MonsterRangeComponent.h"
+#include "Monster/MonsterRangeComponent.h"
 
 #include "Net/UnrealNetwork.h"
 #include "Components/SphereComponent.h"
@@ -63,6 +63,14 @@ void UMonsterRangeComponent::SetPlayerCount(int32 Amount)
 int32 UMonsterRangeComponent::GetPlayerCount()
 {
 	return PlayerCount;
+}
+
+void UMonsterRangeComponent::SetOutSphereRadius(float Radius)
+{
+	if (IsValid(OutSphere))
+	{
+		OutSphere->SetSphereRadius(Radius);
+	}
 }
 
 //이거 스폰하고  실행

@@ -333,6 +333,8 @@ void ABaseMonster::InitCollision()
 	GetCapsuleComponent()->SetCollisionProfileName("MonsterObjectCollision");
 	HitBoxComp->SetBoxExtent(MonsterData->HitBoxExtent);
 	HitBoxComp->SetCollisionProfileName("MonsterTraceCollision");
+
+	MonsterRangeComp->SetOutSphereRadius(MonsterData->RangeSphereRadius);
 }
 
 void ABaseMonster::InitStateTree()
