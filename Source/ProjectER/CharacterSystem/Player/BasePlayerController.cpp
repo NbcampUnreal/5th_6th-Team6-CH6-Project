@@ -400,6 +400,7 @@ void ABasePlayerController::CheckHoveredActor()
 			}
 			// 아이템, 상자 등 상호작용 가능한 물체일 경우 (흰색)
 			else if (HitActor->FindComponentByClass<ULootableComponent>() || 
+					 HitActor->FindComponentByClass<UER_TeleportComponent>() ||
 			         HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
 			{
 				if (UMeshComponent* MeshComp = HitActor->FindComponentByClass<UMeshComponent>())
