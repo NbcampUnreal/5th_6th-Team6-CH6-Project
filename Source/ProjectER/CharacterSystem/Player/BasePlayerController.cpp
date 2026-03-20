@@ -33,6 +33,7 @@
 #include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/Subsystem/Preload/ER_AssetPreloadSubsystem.h"
 #include "Blueprint/UserWidget.h"
+#include "CharacterSystem/Data/CharacterData.h"
 
 //Camera comp added
 #include "Camera/TopDownCameraComp.h"
@@ -1732,9 +1733,31 @@ void ABasePlayerController::PawnLeavingGame()
 	    UE_LOG(LogTemp, Warning, TEXT("[PC] PawnLeavingGame After | PC=%s | Pawn=%s"),
         *GetNameSafe(this),
         *GetNameSafe(GetPawn()));
-
-
 }
+
+void ABasePlayerController::Server_RequestCharacterSelection_Implementation()
+{
+	if (AER_OutGameMode* OutGameMode = Cast<AER_OutGameMode>(GetWorld()->GetAuthGameMode()))
+	{
+		OutGameMode->ShowCharacterSelectionToAll();
+	}
+}
+
+void ABasePlayerController::Server_SelectCharacter_Implementation(const TSoftObjectPtr<UCharacterData>& SelectedData)
+{
+	if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
+	{
+		ERPS->SetSelectedCharacterData(SelectedData);
+	}
+}
+
+void ABasePlayerController::Client_ShowCharacterSelectionUI_Implementation()
+{
+	UE_LOG(LogTemp, Log, TEXT("[PC] : Client_ShowCharacterSelectionUI"));
+	// 블루프린트로 이벤트 전달
+	OnShowCharacterSelectionUI();
+}
+
 
 // [김현수 추가분]
 void ABasePlayerController::RequestDropInventoryItemFromUI(int32 SlotIndex, const FVector2D& ScreenSpacePosition)

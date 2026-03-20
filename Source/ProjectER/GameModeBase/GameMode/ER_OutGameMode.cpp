@@ -1,9 +1,10 @@
-﻿#include "ER_OutGameMode.h"
+#include "ER_OutGameMode.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
 #include "CharacterSystem/Player/BasePlayerController.h"
+#include "GameModeBase/ER_OutGamePlayerController.h"
 
 AER_OutGameMode::AER_OutGameMode()
 {
@@ -159,6 +160,19 @@ void AER_OutGameMode::EndGame()
 		return;
 
 	GetWorld()->ServerTravel("/Game/Level/Level_Lobby", true);
+}
+
+void AER_OutGameMode::ShowCharacterSelectionToAll()
+{
+    UE_LOG(LogTemp, Log, TEXT("[GM] : ShowCharacterSelectionToAll"));
+
+    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+    {
+        if (ABasePlayerController* PC = Cast<ABasePlayerController>(It->Get()))
+        {
+            PC->Client_ShowCharacterSelectionUI();
+        }
+    }
 }
 
 void AER_OutGameMode::MoveTeam(APlayerController* Player, int32 TeamIdx)
