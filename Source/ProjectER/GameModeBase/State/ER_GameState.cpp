@@ -1,6 +1,7 @@
-﻿#include "ER_GameState.h"
+#include "ER_GameState.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "Net/UnrealNetwork.h"
+#include "CharacterSystem/Data/CharacterData.h"
 
 
 void AER_GameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -146,5 +147,10 @@ float AER_GameState::GetPhaseRemainingTime() const
 {
 	const float NowServer = GetServerWorldTimeSeconds();
 	return FMath::Max(0.f, (PhaseServerTime + PhaseDuration) - NowServer);
+}
+
+const TArray<TSoftObjectPtr<UCharacterData>>& AER_GameState::GetAvailableCharacterData() const
+{
+	return AvailableCharacterData;
 }
 

@@ -1,4 +1,4 @@
-﻿#include "CharacterSystem/GameplayTags/GameplayTags.h"
+#include "CharacterSystem/GameplayTags/GameplayTags.h"
 
 namespace ProjectER
 {
@@ -149,6 +149,7 @@ namespace ProjectER
 		namespace Interact
 		{
 			UE_DEFINE_GAMEPLAY_TAG_COMMENT(OpenBox, "Event.Interact.OpenBox", "");
+			UE_DEFINE_GAMEPLAY_TAG_COMMENT(Teleport, "Event.Interact.Teleport", "Teleport Interaction");
 		}
 	}
 

@@ -1185,6 +1185,7 @@ void UUI_MainHUD::UpdateInventoryUI()
         if (InventorySlotWidgets[i])
         {
             InventorySlotWidgets[i]->SetItemData(InventoryComp->GetItemAt(i));
+            InventorySlotWidgets[i]->SetStackCount(InventoryComp->GetStackCountAt(i));
         }
     }
 }

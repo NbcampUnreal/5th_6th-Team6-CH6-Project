@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "ItemSystem/Interface/I_ItemInteractable.h" // [김현수 추가분]
 
@@ -26,10 +26,12 @@ class UInputConfig;
 class UInputAction;
 class UDecalComponent;
 class ABaseCharacter;
+class UCharacterData; // [추가] 캐릭터 데이터 포워드 선언
 
 class UTopDownCameraComp; //Camera Added
 
 class UUI_MainHUD; // UI시스템 관리자
+class UUI_Scoreboard;
 
 class ABaseItemActor; // [김현수 추가분]
 
@@ -254,6 +256,35 @@ public:
 
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 	void Client_CloseLoadingUI();
+
+	// 클라이언트가 캐릭터 선택창 진입 요청
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_RequestCharacterSelection();
+
+	// 유저가 특정 캐릭터 버튼을 클릭했을 때 호출 (서버에 데이터 저장 요청)
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Character Selection")
+	void Server_SelectCharacter(const TSoftObjectPtr<UCharacterData>& SelectedData);
+
+	// 서버가 모든 클라이언트에게 캐릭터 선택 UI를 띄우라고 명령
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_ShowCharacterSelectionUI();
+
+	// HUD BP에서 UI를 스왑하기 위해 사용할 이벤트
+	UFUNCTION(BlueprintImplementableEvent, Category = "UI")
+	void OnShowCharacterSelectionUI();
+
+	// [텔레포트 관련]
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_OpenTeleportUI(AActor* TeleportActor);
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_CloseTeleportUI();
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_RequestTeleport(int32 RegionIndex);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_BeginTeleportInteract(class UER_TeleportComponent* TeleportComp);
 	// 박스 아이템 루팅 RPC 끝
 
 	//	mpyi 추가분 _ UI SYSTEM
@@ -279,7 +310,15 @@ public:
 private:
 	UPROPERTY()
 	UUI_MainHUD* MainHUD;
-
+	
+protected:
+	// 현황판 위젯
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TSubclassOf<UUI_Scoreboard> ScoreboardClass;
+	UPROPERTY()
+	UUI_Scoreboard* ScoreboardWidget;
+	void ShowScoreboard();
+	void HideScoreboard();
 	//
 
 private:
@@ -344,6 +383,17 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> LoadingUIClass;
+
+	// Teleport UI
+	UPROPERTY(EditDefaultsOnly, Category = "ProjectER|UI")
+	TSubclassOf<UUserWidget> TeleportUIClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> TeleportUIInstance;
+	
+	// 거리 측정을 위한 타겟 캐싱
+	UPROPERTY(Transient)
+	TWeakObjectPtr<AActor> CurrentTeleportActor;
 
 	// Currently bound loot component for automatic popup close
 	TWeakObjectPtr<class ULootableComponent> BoundLootComponent;

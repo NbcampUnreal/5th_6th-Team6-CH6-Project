@@ -19,13 +19,11 @@ public:
 
     virtual void BeginPlay() override;
 
-    // Call in BP construction script to rebuild segments
-    UFUNCTION(BlueprintCallable, Category="Spline Mesh")
+    UFUNCTION(CallInEditor, BlueprintCallable, Category="Spline Mesh")
     void BuildSplineMesh();
 
     // Returns all generated spline mesh segments — used by occlusion system
-    const TArray<TObjectPtr<USplineMeshComponent>>& GetSplineMeshComponents() const
-    { return SplineMeshComponents; }
+    const TArray<TObjectPtr<USplineMeshComponent>>& GetSplineMeshComponents() const { return SplineMeshComponents; }
 
 protected:
 
@@ -52,11 +50,7 @@ protected:
 
     // Tag applied to all generated segments — used by occlusion DiscoverChildMeshes
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spline Mesh|Occlusion")
-    FName OcclusionMeshTag = TEXT("OcclusionMesh");
-
-    // Whether to apply occlusion tag to generated segments
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spline Mesh|Occlusion")
-    bool bApplyOcclusionTag = true;
+    FName SegmentOcclusionTag = TEXT("OcclusionMesh");
 
 private:
 

@@ -402,3 +402,45 @@ void ULootableComponent::OnRep_ItemPool()
 	UE_LOG(LogTemp, Log, TEXT("[LootableComponent] OnRep_ItemPool: ItemPool updated for %s (%d items)"),
 		*GetOwner()->GetName(), ItemPool.Num());
 }
+
+void ULootableComponent::InitializeWithItemStacks(const TArray<UBaseItemData*>& Items, const TArray<int32>& Counts)
+{
+	if (!GetOwner()->HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[LootableComponent] InitializeWithItemStacks: Only call on server!"));
+		return;
+	}
+
+	ItemPool.Empty();
+	CurrentItemList.Empty();
+	CurrentItemList.SetNum(MaxSlots);
+
+	const int32 PairNum = FMath::Min(Items.Num(), Counts.Num());
+	int32 WriteIndex = 0;
+
+	for (int32 i = 0; i < PairNum && WriteIndex < MaxSlots; ++i)
+	{
+		UBaseItemData* Item = Items[i];
+		const int32 Count = Counts[i];
+
+		if (!Item || Count <= 0)
+		{
+			continue;
+		}
+
+		const int32 PoolIndex = ItemPool.Add(Item);
+
+		CurrentItemList[WriteIndex].ItemId = PoolIndex;
+		CurrentItemList[WriteIndex].Count = Count;
+		++WriteIndex;
+	}
+
+	for (int32 i = WriteIndex; i < MaxSlots; ++i)
+	{
+		CurrentItemList[i].ItemId = -1;
+		CurrentItemList[i].Count = 0;
+	}
+
+	OnLootChanged.Broadcast();
+	GetOwner()->ForceNetUpdate();
+}

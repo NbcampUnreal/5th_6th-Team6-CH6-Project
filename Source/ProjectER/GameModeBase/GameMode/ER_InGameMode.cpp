@@ -1,4 +1,4 @@
-﻿#include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
@@ -19,6 +19,7 @@
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "ItemSystem/Component/BaseInventoryComponent.h"
 #include "ItemSystem/Data/BaseItemData.h"
+#include "CharacterSystem/Data/CharacterData.h"
 
 void AER_InGameMode::BeginPlay()
 {
@@ -437,6 +438,42 @@ void AER_InGameMode::HandlePlayerLoadComplete(APlayerController* PC)
 	}
 }
 
+APawn* AER_InGameMode::SpawnDefaultPawnAtTransform_Implementation(AController* NewPlayer, const FTransform& SpawnTransform)
+{
+	UClass* PawnClass = GetDefaultPawnClassForController(NewPlayer);
+	if (!PawnClass)
+	{
+		return nullptr;
+	}
+
+	FActorSpawnParameters SpawnInfo;
+	SpawnInfo.Instigator = GetInstigator();
+	SpawnInfo.ObjectFlags |= RF_Transient;
+	SpawnInfo.bDeferConstruction = true; // 지연 스폰을 통해 BeginPlay 이전에 데이터 세팅
+
+	APawn* ResultPawn = GetWorld()->SpawnActor<APawn>(PawnClass, SpawnTransform, SpawnInfo);
+	if (ResultPawn)
+	{
+		if (ABaseCharacter* BaseChar = Cast<ABaseCharacter>(ResultPawn))
+		{
+			if (AER_PlayerState* ERPS = Cast<AER_PlayerState>(NewPlayer->PlayerState))
+			{
+				if (!ERPS->GetSelectedCharacterData().IsNull())
+				{
+					// 소프트 참조를 동기식으로 로드하여 HeroData에 주입
+					BaseChar->HeroData = ERPS->GetSelectedCharacterData().LoadSynchronous();
+					UE_LOG(LogTemp, Log, TEXT("[GM] Injected HeroData into spawned character"));
+				}
+			}
+		}
+
+		// 건설 및 BeginPlay 실행
+		UGameplayStatics::FinishSpawningActor(ResultPawn, SpawnTransform);
+	}
+
+	return ResultPawn;
+}
+
 void AER_InGameMode::DisConnectClient(APlayerController* PC)
 {
 	if (!PC) return;
@@ -457,6 +494,24 @@ void AER_InGameMode::DisConnectClient(APlayerController* PC)
 				WeakThis->GameSession->KickPlayer(WeakPC.Get(), FText::FromString(TEXT("Defeated")));
 			}
 		}, 0.2f, false);
+}
+
+void AER_InGameMode::RequestTeleportToRegion(ACharacter* TargetCharacter, int32 RegionIndex)
+{
+	if (!TargetCharacter || !HasAuthority())
+	{
+		return;
+	}
+
+	UER_RespawnSubsystem* RespawnSS = GetWorld()->GetSubsystem<UER_RespawnSubsystem>();
+	if (RespawnSS)
+	{
+		FTransform DestTransform = RespawnSS->GetRespawnPointLocation(RegionIndex);
+		
+		TargetCharacter->SetActorTransform(DestTransform, false, nullptr, ETeleportType::TeleportPhysics);
+
+		UE_LOG(LogTemp, Warning, TEXT("[GM] Teleported Character %s to Region %d"), *TargetCharacter->GetName(), RegionIndex);
+	}
 }
 
 void AER_InGameMode::StartGame()
@@ -492,8 +547,13 @@ void AER_InGameMode::StartGame()
 
 			if (RespawnSS)
 			{
-				// 초기라서 무작위 위치 지정 중 추후 수정 필요
-				const int32 Idx = FMath::RandRange(1, 4);
+				int32 Idx = 99;
+				if (AER_PlayerState* PS = PC->GetPlayerState<AER_PlayerState>())
+				{
+					Idx = PS->GetStartPoint();
+				}
+				UE_LOG(LogTemp, Log, TEXT("[GM] PS->StartPoint = %d"), Idx);
+
 				FTransform Location = RespawnSS->GetRespawnPointLocation(Idx);
 				PC->GetPawn()->SetActorTransform(Location);
 				UE_LOG(LogTemp, Log, TEXT("[GM] Success Get SpawnPoint %d"), Idx);

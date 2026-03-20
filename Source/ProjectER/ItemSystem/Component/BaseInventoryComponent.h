@@ -52,6 +52,9 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_InventoryContents, VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 	TArray<UBaseItemData*> InventoryContents;
 
+	UPROPERTY(ReplicatedUsing = OnRep_InventoryContents, VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+	TArray<int32> InventoryStackCounts;
+
 	UFUNCTION()
 	void OnRep_InventoryContents();
 
@@ -82,6 +85,7 @@ private:
 	void StartNextFoodHealEffect();
 	void StopFoodHealTimer();
 	void HandleFoodHealTick();
+	void EnsureInventoryArraysValid();
 
 	FTimerHandle FoodHealTickTimerHandle;
 	TArray<FPendingFoodHealEffect> PendingFoodHealQueue;
@@ -103,4 +107,10 @@ public:
 
 	// 슬롯 아이템을 월드에 떨어뜨리기
 	bool DropItemFromSlot(int32 SlotIndex, const FVector& SpawnLocation, TSubclassOf<ABaseItemActor> ItemActorClass, APawn* DropperPawn);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory")
+	int32 GetStackCountAt(int32 SlotIndex) const;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory|Stack")
+	int32 MaxStackPerSlot = 5;
 };

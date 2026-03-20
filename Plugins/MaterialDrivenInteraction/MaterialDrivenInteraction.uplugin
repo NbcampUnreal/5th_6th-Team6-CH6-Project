@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "MaterialDrivenInteraction",
+	"Description": "use encoded RT for interact with the material driven interactables like folaige and pivot painted assets",
+	"Category": "Other",
+	"CreatedBy": "NarpNarp",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "MaterialDrivenInteraction",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

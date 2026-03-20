@@ -76,6 +76,7 @@ public:
 	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 	virtual void Logout(AController* Exiting) override;
+	virtual APawn* SpawnDefaultPawnAtTransform_Implementation(AController* NewPlayer, const FTransform& SpawnTransform) override;
 
 	/** 신규 플레이어 입장 제어 (재접속 허용 / 신규 차단) */
 	virtual void PreLogin(const FString& InAddress, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
@@ -99,6 +100,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void DisConnectClient(APlayerController* PC);
+
+	UFUNCTION(BlueprintCallable, Category = "Teleport|Region")
+	void RequestTeleportToRegion(ACharacter* TargetCharacter, int32 RegionIndex);
 
 	void HandlePhaseTimeUp();
 
