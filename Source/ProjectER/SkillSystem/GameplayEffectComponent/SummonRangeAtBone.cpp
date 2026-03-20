@@ -28,16 +28,10 @@ bool USummonRangeAtBone::ShouldProcessOnInstigator(const AActor* Instigator) con
 	return Instigator->HasAuthority();
 }
 
-FTransform USummonRangeAtBone::CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const AActor* TargetActor) const
+FTransform USummonRangeAtBone::CalculateOriginTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const AActor* TargetActor) const
 {
 	const USummonRangeByBoneGECConfig* const BoneConfig = ResolveTypedConfigFromSpec<USummonRangeByBoneGECConfig>(GESpec);
 	if (!IsValid(BoneConfig) || !IsValid(Instigator))
-	{
-		return FTransform::Identity;
-	}
-
-	UWorld* const World = Instigator->GetWorld();
-	if (!IsValid(World))
 	{
 		return FTransform::Identity;
 	}
@@ -60,9 +54,5 @@ FTransform USummonRangeAtBone::CalculateSpawnTransform(const FGameplayEffectSpec
 		CombinedRotation = Instigator->GetActorRotation();
 	}
 
-	FVector TargetLocation = BaseLocation;
-	ApplyCommonSpawnOptions(TargetLocation, CombinedRotation, BoneConfig, Instigator);
-
-	//DrawDebugBox(World, TargetLocation, BoneConfig->CollisionRadius, CombinedRotation.Quaternion(), FColor::Red, false, 5.0f, 0, 2.0f);
-	return FTransform(CombinedRotation, TargetLocation);
+	return FTransform(CombinedRotation, BaseLocation);
 }

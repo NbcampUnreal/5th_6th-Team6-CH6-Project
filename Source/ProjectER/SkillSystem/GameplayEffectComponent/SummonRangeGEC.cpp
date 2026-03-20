@@ -17,7 +17,7 @@ TSubclassOf<UBaseGECConfig> USummonRangeGEC::GetRequiredConfigClass() const
 	return USummonRangeByWorldOriginGECConfig::StaticClass();
 }
 
-FTransform USummonRangeGEC::CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const AActor* TargetActor) const
+FTransform USummonRangeGEC::CalculateOriginTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const AActor* TargetActor) const
 {
 	const USummonRangeByWorldOriginGECConfig* const WorldConfig = ResolveTypedConfigFromSpec<USummonRangeByWorldOriginGECConfig>(GESpec);
 	if (!IsValid(WorldConfig))
@@ -28,9 +28,6 @@ FTransform USummonRangeGEC::CalculateSpawnTransform(const FGameplayEffectSpec& G
 	const FGameplayEffectContextHandle& EffectContext = GESpec.GetEffectContext();
 	const FGameplayEffectContext* const ContextData = EffectContext.Get();
 	if (ContextData == nullptr) return FTransform::Identity;
-
-	UWorld* const World = IsValid(Instigator) ? Instigator->GetWorld() : nullptr;
-	if (!IsValid(World)) return FTransform::Identity;
 
 	FVector TargetLocation = GetAnyLocation(EffectContext);
 	FRotator CombinedRotation = FRotator::ZeroRotator;
@@ -43,9 +40,6 @@ FTransform USummonRangeGEC::CalculateSpawnTransform(const FGameplayEffectSpec& G
 		CombinedRotation.Roll = 0.0f;
 	}
 
-	ApplyCommonSpawnOptions(TargetLocation, CombinedRotation, WorldConfig, Instigator);
-
-	//DrawDebugBox(World, TargetLocation, WorldConfig->CollisionRadius, CombinedRotation.Quaternion(), FColor::Green, false, 5.0f, 0, 2.0f);
 	return FTransform(CombinedRotation, TargetLocation);
 }
 

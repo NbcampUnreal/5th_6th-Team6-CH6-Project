@@ -19,7 +19,7 @@ TSubclassOf<UBaseGECConfig> USummonPeriodicPoolGEC::GetRequiredConfigClass() con
     return USummonPeriodicPoolConfig::StaticClass();
 }
 
-FTransform USummonPeriodicPoolGEC::CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const AActor* TargetActor) const
+FTransform USummonPeriodicPoolGEC::CalculateOriginTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const AActor* TargetActor) const
 {
     const USummonPeriodicPoolConfig* const PeriodicConfig = ResolveTypedConfigFromSpec<USummonPeriodicPoolConfig>(GESpec);
     if (!IsValid(PeriodicConfig) || !IsValid(Instigator))
@@ -27,7 +27,7 @@ FTransform USummonPeriodicPoolGEC::CalculateSpawnTransform(const FGameplayEffect
         return FTransform::Identity;
     }
 
-    FTransform SpawnTransform = FTransform::Identity;
+    FTransform OriginTransform = FTransform::Identity;
     if (PeriodicConfig->OriginType == ESummonOriginType::InstigatorBone)
     {
         // 시전자의 본 위치 사용
@@ -35,31 +35,25 @@ FTransform USummonPeriodicPoolGEC::CalculateSpawnTransform(const FGameplayEffect
         {
             if (Mesh->DoesSocketExist(PeriodicConfig->SummonBoneName))
             {
-                SpawnTransform.SetLocation(Mesh->GetSocketLocation(PeriodicConfig->SummonBoneName));
-                SpawnTransform.SetRotation(Mesh->GetSocketRotation(PeriodicConfig->SummonBoneName).Quaternion());
+                OriginTransform.SetLocation(Mesh->GetSocketLocation(PeriodicConfig->SummonBoneName));
+                OriginTransform.SetRotation(Mesh->GetSocketRotation(PeriodicConfig->SummonBoneName).Quaternion());
             }
         }
 
         // 본을 찾지 못했으면 액터 기본 트랜스폼 사용
-        if (SpawnTransform.GetLocation().IsZero())
+        if (OriginTransform.GetLocation().IsZero())
         {
-            SpawnTransform = Instigator->GetActorTransform();
+            OriginTransform = Instigator->GetActorTransform();
         }
     }
     
     // 만약 Context 타입이거나 위에서 위치를 찾지 못한 경우 부모의 방식(SummonRangeGEC) 사용
-    if (SpawnTransform.GetLocation().IsZero())
+    if (OriginTransform.GetLocation().IsZero())
     {
-        return Super::CalculateSpawnTransform(GESpec, Instigator, TargetActor);
+        return Super::CalculateOriginTransform(GESpec, Instigator, TargetActor);
     }
     
-    // 위치 기반인 경우 공통 옵션 적용
-    FVector TargetLocation = SpawnTransform.GetLocation();
-    FRotator CombinedRotation = SpawnTransform.Rotator();
-    
-    ApplyCommonSpawnOptions(TargetLocation, CombinedRotation, PeriodicConfig, Instigator);
-    
-    return FTransform(CombinedRotation, TargetLocation);
+    return OriginTransform;
 }
 
 void USummonPeriodicPoolGEC::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetCueParameters) const

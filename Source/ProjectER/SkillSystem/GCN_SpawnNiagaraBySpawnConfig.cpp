@@ -68,12 +68,31 @@ bool UGCN_SpawnNiagaraBySpawnConfig::OnExecute_Implementation(AActor* MyTarget, 
 	}
 
 	const AActor* const EffectCauser = Cast<AActor>(Parameters.EffectCauser.Get());
-	const AActor* const SourceActor = IsValid(EffectCauser) ? EffectCauser : MyTarget;
+	const AActor* const Instigator = Cast<AActor>(Parameters.Instigator.Get());
+
+	// CueTag를 기반으로 SourceActor(부착/기준 대상) 결정:
+	// - "Summoner" → 시전자(Instigator) 기준 부착
+	// - "HitTarget" → 피격 대상(MyTarget) 기준 부착
+	// - 그 외(Range 등) → EffectCauser(범위 액터 등) 기준 부착
+	const FString TagStr = Parameters.OriginalTag.ToString();
+	const AActor* SourceActor = nullptr;
+	if (TagStr.Contains(TEXT("Summoner")))
+	{
+		SourceActor = IsValid(Instigator) ? Instigator : MyTarget;
+	}
+	else if (TagStr.Contains(TEXT("HitTarget")))
+	{
+		SourceActor = MyTarget;
+	}
+	else
+	{
+		SourceActor = IsValid(EffectCauser) ? EffectCauser : MyTarget;
+	}
 
 	FTransform SourceTransform = IsValid(SourceActor) ? SourceActor->GetActorTransform() : FTransform::Identity;
 	SourceTransform.SetLocation(Parameters.Location);
 
-	SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(World, SpawnSettings, SourceTransform, SourceActor);
+	SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(World, SpawnSettings, SourceTransform, SourceActor, nullptr, Parameters.TargetAttachComponent.Get());
 	return true;
 }
 
@@ -96,7 +115,7 @@ bool UGCN_SpawnNiagaraBySpawnConfig::OnActive_Implementation(AActor* MyTarget, c
 			ConstantForce->AccumulateMode = ERootMotionAccumulateMode::Override;
 			ConstantForce->Priority = 5;
 			ConstantForce->Force = Parameters.Normal * Parameters.RawMagnitude;
-			ConstantForce->Duration = 5.0f; // GE가 제거될 때 OnRemove에서 함께 제거되므로 넉넉하게 설정
+			ConstantForce->Duration = (Parameters.NormalizedMagnitude > 0.0f) ? Parameters.NormalizedMagnitude : 5.0f;
 			ConstantForce->FinishVelocityParams.Mode = ERootMotionFinishVelocityMode::MaintainLastRootMotionVelocity;
 
 			CMC->ApplyRootMotionSource(ConstantForce);

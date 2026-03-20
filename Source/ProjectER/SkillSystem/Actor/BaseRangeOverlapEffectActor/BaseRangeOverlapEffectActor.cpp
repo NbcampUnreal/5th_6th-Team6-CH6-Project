@@ -101,7 +101,7 @@ void ABaseRangeOverlapEffectActor::OnShapeBeginOverlap(UPrimitiveComponent* Over
 		return;
 	}
 
-	ApplyEffectsToTarget(OtherActor);
+	ApplyEffectsToTarget(OtherActor);	
 
 	if (bHitOncePerTarget)
 	{
@@ -166,7 +166,7 @@ void ABaseRangeOverlapEffectActor::ApplyEffectsToTarget(AActor* TargetActor)
 		FGameplayCueParameters CueParameters = HitTargetCueParameters;
 		CueParameters.Location = TargetActor->GetActorLocation();
 		CueParameters.EffectCauser = this;
-		CueParameters.SourceObject = HitTargetCueSourceObject;
+		CueParameters.TargetAttachComponent = TargetActor->GetRootComponent();
 		{
 			FScopedPredictionWindow ForcedWindow(InstigatorASC, FPredictionKey(), false);
 			InstigatorASC->ExecuteGameplayCue(CueParameters.OriginalTag, CueParameters);
