@@ -2,6 +2,10 @@
 #include "StateTreeLinker.h"
 #include "StateTreeExecutionContext.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
+#include "AbilitySystemComponent.h"
+#include "Monster/BaseMonster.h"
+
 FSTT_ActivateTargetSkill::FSTT_ActivateTargetSkill()
 {
 	bShouldCallTick = false;
@@ -10,7 +14,7 @@ FSTT_ActivateTargetSkill::FSTT_ActivateTargetSkill()
 bool FSTT_ActivateTargetSkill::Link(FStateTreeLinker& Linker)
 {
 	Linker.LinkExternalData(ActorHandle);
-	return false;
+	return true;
 }
 
 const UStruct* FSTT_ActivateTargetSkill::GetInstanceDataType() const
@@ -20,6 +24,38 @@ const UStruct* FSTT_ActivateTargetSkill::GetInstanceDataType() const
 
 EStateTreeRunStatus FSTT_ActivateTargetSkill::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
+	AActor& Actor = Context.GetExternalData(ActorHandle);
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+
+	UAbilitySystemComponent* ASC = 
+		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(&Actor);
+
+	for (FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
+	{
+		if (Spec.DynamicAbilityTags.HasTagExact(InstanceData.AbilityTag))
+		{
+			if (ASC->TryActivateAbility(Spec.Handle))
+			{
+				FGameplayEventData Payload;
+				Payload.Instigator = &Actor;
+				if (ABaseMonster* Monster = Cast<ABaseMonster>(&Actor))
+				{
+					Payload.Target = Monster->GetTargetPlayer();
+				}
+
+				UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(&Actor, InstanceData.EventTag, Payload);
+			
+				return EStateTreeRunStatus::Running;
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Try Activate Skill Fail"));
+
+				return EStateTreeRunStatus::Failed;
+			}
+			break;
+		}
+	}
 
 	return EStateTreeRunStatus::Failed;
 }

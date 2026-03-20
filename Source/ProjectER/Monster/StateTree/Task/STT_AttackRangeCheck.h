@@ -1,29 +1,29 @@
-﻿#pragma once
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
 
 #include "CoreMinimal.h"
 #include "StateTreeTaskBase.h"
-#include "STT_ActivateTargetSkill.generated.h"
+#include "STT_AttackRangeCheck.generated.h"
 
 USTRUCT()
-struct FActivateTargetSkillData
+struct FAttackRangeCheckData
 {
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, Category = "Tag")
-	FGameplayTag AbilityTag;
-
-	UPROPERTY(EditAnywhere, Category = "Tag")
-	FGameplayTag EventTag;
+	float AttackRange;
 };
 
+
 USTRUCT()
-struct PROJECTER_API FSTT_ActivateTargetSkill : public FStateTreeTaskCommonBase
+struct PROJECTER_API FSTT_AttackRangeCheck : public FStateTreeTaskCommonBase
 {
 	GENERATED_BODY()
+public:
+	FSTT_AttackRangeCheck();
 
-	FSTT_ActivateTargetSkill();
-
-	using FInstanceDataType = FActivateTargetSkillData;
+	using FInstanceDataType = FAttackRangeCheckData;
 
 	virtual bool Link(FStateTreeLinker& Linker) override;
 
