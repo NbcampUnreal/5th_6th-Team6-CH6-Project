@@ -322,6 +322,32 @@ void UUI_MainHUD::NativeConstruct()
         skill_04->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
         skill_04->OnClicked.AddDynamic(this, &UUI_MainHUD::OnSkillClicked_R);
     }
+
+    if (skill_up_01)
+    {
+        skill_up_01->OnHovered.AddDynamic(this, &UUI_MainHUD::OnSkillLevelUp01Hovered);
+        skill_up_01->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
+        skill_up_01->OnClicked.AddDynamic(this, &UUI_MainHUD::OnSkillLevelUpClicked_Q);
+
+    }
+    if (skill_up_02)
+    {
+        skill_up_02->OnHovered.AddDynamic(this, &UUI_MainHUD::OnSkillLevelUp02Hovered);
+        skill_up_02->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
+        skill_up_02->OnClicked.AddDynamic(this, &UUI_MainHUD::OnSkillLevelUpClicked_W);
+    }
+    if (skill_03)
+    {
+        skill_up_03->OnHovered.AddDynamic(this, &UUI_MainHUD::OnSkillLevelUp03Hovered);
+        skill_up_03->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
+        skill_up_03->OnClicked.AddDynamic(this, &UUI_MainHUD::OnSkillLevelUpClicked_E);
+    }
+    if (skill_04)
+    {
+        skill_up_04->OnHovered.AddDynamic(this, &UUI_MainHUD::OnSkillLevelUp04Hovered);
+        skill_up_04->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
+        skill_up_04->OnClicked.AddDynamic(this, &UUI_MainHUD::OnSkillLevelUpClicked_R);
+    }
     // skil
 
     // cool
@@ -356,7 +382,7 @@ void UUI_MainHUD::NativeConstruct()
     TeamLevel_01->SetVisibility(ESlateVisibility::Collapsed);
     TeamLevel_02->SetVisibility(ESlateVisibility::Collapsed);
 
-    // 디버그용
+    //// 디버그용
     //SetKillCount(0);
     //SetDeathCount(41);
     //SetAssistCount(411);
@@ -460,6 +486,22 @@ void UUI_MainHUD::OnSkill04Hovered()
             ShowTooltip(skill_04, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
         }
     }
+}
+
+void UUI_MainHUD::OnSkillLevelUp01Hovered()
+{
+}
+
+void UUI_MainHUD::OnSkillLevelUp02Hovered()
+{
+}
+
+void UUI_MainHUD::OnSkillLevelUp03Hovered()
+{
+}
+
+void UUI_MainHUD::OnSkillLevelUp04Hovered()
+{
 }
 
 void UUI_MainHUD::ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, FText CostDesc, bool showUpper)
@@ -741,6 +783,66 @@ void UUI_MainHUD::SkillFireReleased(ESkillKey _Index)
     {
         UE_LOG(LogTemp, Warning, TEXT("Invalid SkillDataAsset or index out of range"));
     }
+}
+
+void UUI_MainHUD::OnSkillLevelUpClicked_Q()
+{
+    AER_PlayerState* PS = Cast<AER_PlayerState>(GetOwningPlayerState());
+    if (PS)
+    {
+        UBaseAttributeSet* AS = nullptr;
+        AS = PS->GetAttributeSet();
+        AS->SetSkillPoint(AS->GetSkillPoint() - 1.0f);
+    }
+}
+
+void UUI_MainHUD::OnSkillLevelUpReleased_Q()
+{
+}
+
+void UUI_MainHUD::OnSkillLevelUpClicked_W()
+{
+    AER_PlayerState* PS = Cast<AER_PlayerState>(GetOwningPlayerState());
+    if (PS)
+    {
+        UBaseAttributeSet* AS = nullptr;
+        AS = PS->GetAttributeSet();
+        AS->SetSkillPoint(AS->GetSkillPoint() - 1.0f);
+    }
+}
+
+void UUI_MainHUD::OnSkillLevelUpReleased_W()
+{
+}
+
+void UUI_MainHUD::OnSkillLevelUpClicked_E()
+{
+    AER_PlayerState* PS = Cast<AER_PlayerState>(GetOwningPlayerState());
+    if (PS)
+    {
+        UBaseAttributeSet* AS = nullptr;
+        AS = PS->GetAttributeSet();
+        AS->SetSkillPoint(AS->GetSkillPoint() - 1.0f);
+    }
+}
+
+void UUI_MainHUD::OnSkillLevelUpReleased_E()
+{
+}
+
+void UUI_MainHUD::OnSkillLevelUpClicked_R()
+{
+    AER_PlayerState* PS = Cast<AER_PlayerState>(GetOwningPlayerState());
+    if (PS)
+    {
+        UBaseAttributeSet* AS = nullptr;
+        AS = PS->GetAttributeSet();
+        AS->SetSkillPoint(AS->GetSkillPoint() - 1.0f);
+    }
+}
+
+void UUI_MainHUD::OnSkillLevelUpReleased_R()
+{
 }
 
 void UUI_MainHUD::OnAbilityActivated(UGameplayAbility* ActivatedAbility)
@@ -1084,6 +1186,14 @@ void UUI_MainHUD::AddKillPerSecond()
 	AER_PlayerState* PS = Cast<AER_PlayerState>(GetOwningPlayerState());
     float a = PS->RespawnTime;
 	// UE_LOG(LogTemp, Error, TEXT("RespawnTime : %f"), a);
+
+    if (test)
+    {
+        test = false;
+        UBaseAttributeSet* AS = nullptr;
+        AS = PS->GetAttributeSet();
+        AS->SetSkillPoint(AS->GetSkillPoint() + 1.0f);
+    }
 }
 
 void UUI_MainHUD::UpdateTeamHP(int32 TeamIndex, float CurrentHP, float MaxHP)

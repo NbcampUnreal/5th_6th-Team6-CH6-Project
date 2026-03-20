@@ -114,6 +114,11 @@ protected:
 	UFUNCTION() void OnSkill02Hovered();
 	UFUNCTION() void OnSkill03Hovered();
 	UFUNCTION() void OnSkill04Hovered();
+
+	UFUNCTION() void OnSkillLevelUp01Hovered();
+	UFUNCTION() void OnSkillLevelUp02Hovered();
+	UFUNCTION() void OnSkillLevelUp03Hovered();
+	UFUNCTION() void OnSkillLevelUp04Hovered();
 	// .............
 
 	// void ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, bool showUpper);
@@ -317,6 +322,23 @@ protected:
 	void SkillFireReleased(ESkillKey index);
 
 	UFUNCTION()
+	void OnSkillLevelUpClicked_Q();
+	UFUNCTION()
+	void OnSkillLevelUpReleased_Q();
+
+	UFUNCTION()
+	void OnSkillLevelUpClicked_W();
+	UFUNCTION()
+	void OnSkillLevelUpReleased_W();
+	UFUNCTION()
+	void OnSkillLevelUpClicked_E();
+	UFUNCTION()
+	void OnSkillLevelUpReleased_E();
+	UFUNCTION()
+	void OnSkillLevelUpClicked_R();
+	UFUNCTION()
+	void OnSkillLevelUpReleased_R();
+	UFUNCTION()
 	void OnAbilityActivated(class UGameplayAbility* ActivatedAbility);
 
 	UFUNCTION()
@@ -404,5 +426,8 @@ protected:
 
 private:
 	void RefreshInventoryGridLayout(); // [김현수 추가분]
+
+
+	bool test = true;
 };
 
