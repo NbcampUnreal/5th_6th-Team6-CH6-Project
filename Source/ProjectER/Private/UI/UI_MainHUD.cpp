@@ -15,6 +15,8 @@
 #include "UI/UI_ToolTip.h" // 툴팁용
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 
+#include "CharacterSystem/Character/BaseCharacter.h"
+
 #include "SkillSystem/SkillDataAsset.h" // 스킬용
 #include "AbilitySystemComponent.h" // 스킬용
 #include "CharacterSystem/Data/CharacterData.h" // 스킬용
@@ -221,7 +223,7 @@ void UUI_MainHUD::UpdateSkillPoint(float _nowSP)
     {
         ShowSkillUp(true);
     }
-	UE_LOG(LogTemp, Error, TEXT("UpdateSkillPoint called with SP: %f"), _nowSP);
+	// UE_LOG(LogTemp, Error, TEXT("UpdateSkillPoint called with SP: %f"), _nowSP);
 }
 
 void UUI_MainHUD::InitMinimapCompo(USceneCaptureComponent2D* SceneCapture2D)
@@ -355,6 +357,11 @@ void UUI_MainHUD::NativeConstruct()
     SkillCoolTexts[1] = skill_cool_02;
     SkillCoolTexts[2] = skill_cool_03;
     SkillCoolTexts[3] = skill_cool_04;
+
+    skill_cool_01->SetVisibility(ESlateVisibility::HitTestInvisible);
+    skill_cool_02->SetVisibility(ESlateVisibility::HitTestInvisible);
+    skill_cool_03->SetVisibility(ESlateVisibility::HitTestInvisible);
+    skill_cool_04->SetVisibility(ESlateVisibility::HitTestInvisible);
     
     // 남은 시간 초기화
     for (int32 i = 0; i < 4; i++)
@@ -429,7 +436,7 @@ void UUI_MainHUD::OnSkill01Hovered()
 
     if (IsValid(SkillDataAssets[0]))
     {
-        FSkillTooltipData nowSkill = SkillDataAssets[0]->GetSkillTooltipData(1.0f);
+        FSkillTooltipData nowSkill = SkillDataAssets[0]->GetSkillTooltipData(getSkillLevel(Q_SkillTag, false));
         ShowTooltip(skill_01, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
     }
 
@@ -455,7 +462,7 @@ void UUI_MainHUD::OnSkill02Hovered()
 
     if (IsValid(SkillDataAssets[1]))
     {
-        FSkillTooltipData nowSkill = SkillDataAssets[1]->GetSkillTooltipData(1.0f);
+        FSkillTooltipData nowSkill = SkillDataAssets[1]->GetSkillTooltipData(getSkillLevel(Q_SkillTag, false));
         ShowTooltip(skill_02, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
     }
 }
@@ -466,7 +473,7 @@ void UUI_MainHUD::OnSkill03Hovered()
 
     if (IsValid(SkillDataAssets[2]))
     {
-        FSkillTooltipData nowSkill = SkillDataAssets[2]->GetSkillTooltipData(1.0f);
+        FSkillTooltipData nowSkill = SkillDataAssets[2]->GetSkillTooltipData(getSkillLevel(Q_SkillTag, false));
         ShowTooltip(skill_03, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
     }
 }
@@ -479,10 +486,7 @@ void UUI_MainHUD::OnSkill04Hovered()
     {
         if (ASC)
         {
-            // 스킬레벨 어딨지...
-            // float nowSkillLevel = ASC->GetNumericAttribute(UBaseAttributeSet::GetHealthAttribute());
-
-            FSkillTooltipData nowSkill = SkillDataAssets[3]->GetSkillTooltipData(1.0f);
+            FSkillTooltipData nowSkill = SkillDataAssets[3]->GetSkillTooltipData(getSkillLevel(Q_SkillTag, false));
             ShowTooltip(skill_04, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
         }
     }
@@ -593,10 +597,10 @@ void UUI_MainHUD::initSkillDataAssets()
         {
             FName TagName = SkillAsset->SkillConfig->Data.InputKeyTag.GetTagName();
 
-            if (TagName == "Ability.Input.Skill.Q") SkillDataAssets[0] = SkillAsset.Get();
-            else if (TagName == "Ability.Input.Skill.W") SkillDataAssets[1] = SkillAsset.Get();
-            else if (TagName == "Ability.Input.Skill.E") SkillDataAssets[2] = SkillAsset.Get();
-            else if (TagName == "Ability.Input.Skill.R") SkillDataAssets[3] = SkillAsset.Get();
+            if (TagName == Q_SkillTag.ToString()) SkillDataAssets[0] = SkillAsset.Get();
+            else if (TagName == W_SkillTag.ToString()) SkillDataAssets[1] = SkillAsset.Get();
+            else if (TagName == E_SkillTag.ToString()) SkillDataAssets[2] = SkillAsset.Get();
+            else if (TagName == R_SkillTag.ToString()) SkillDataAssets[3] = SkillAsset.Get();
         }
     }
 }
@@ -722,7 +726,8 @@ void UUI_MainHUD::SkillFirePressed(ESkillKey _Index)
             if (IsValid(PC))
             {
                 PC->AbilityInputTagPressed(InputTag);
-                float CoolTime = SkillDataAssets[EnumIndex]->SkillConfig->Data.BaseCoolTime.GetValueAtLevel(1);
+
+                float CoolTime = SkillDataAssets[EnumIndex]->SkillConfig->Data.BaseCoolTime.GetValueAtLevel(getSkillLevel(InputTag, false));
             }
         }
     }
@@ -787,13 +792,14 @@ void UUI_MainHUD::SkillFireReleased(ESkillKey _Index)
 
 void UUI_MainHUD::OnSkillLevelUpClicked_Q()
 {
-    AER_PlayerState* PS = Cast<AER_PlayerState>(GetOwningPlayerState());
-    if (PS)
-    {
-        UBaseAttributeSet* AS = nullptr;
-        AS = PS->GetAttributeSet();
-        AS->SetSkillPoint(AS->GetSkillPoint() - 1.0f);
-    }
+    //AER_PlayerState* PS = Cast<AER_PlayerState>(GetOwningPlayerState());
+    //if (PS)
+    //{
+    //    UBaseAttributeSet* AS = nullptr;
+    //    AS = PS->GetAttributeSet();
+    //    AS->SetSkillPoint(AS->GetSkillPoint() - 1.0f);
+    //} 스킬포인트 소모 처리는 서버에서
+    getSkillLevel(Q_SkillTag, true);
 }
 
 void UUI_MainHUD::OnSkillLevelUpReleased_Q()
@@ -802,13 +808,7 @@ void UUI_MainHUD::OnSkillLevelUpReleased_Q()
 
 void UUI_MainHUD::OnSkillLevelUpClicked_W()
 {
-    AER_PlayerState* PS = Cast<AER_PlayerState>(GetOwningPlayerState());
-    if (PS)
-    {
-        UBaseAttributeSet* AS = nullptr;
-        AS = PS->GetAttributeSet();
-        AS->SetSkillPoint(AS->GetSkillPoint() - 1.0f);
-    }
+    getSkillLevel(W_SkillTag, true);
 }
 
 void UUI_MainHUD::OnSkillLevelUpReleased_W()
@@ -817,13 +817,7 @@ void UUI_MainHUD::OnSkillLevelUpReleased_W()
 
 void UUI_MainHUD::OnSkillLevelUpClicked_E()
 {
-    AER_PlayerState* PS = Cast<AER_PlayerState>(GetOwningPlayerState());
-    if (PS)
-    {
-        UBaseAttributeSet* AS = nullptr;
-        AS = PS->GetAttributeSet();
-        AS->SetSkillPoint(AS->GetSkillPoint() - 1.0f);
-    }
+    getSkillLevel(E_SkillTag, true);
 }
 
 void UUI_MainHUD::OnSkillLevelUpReleased_E()
@@ -832,13 +826,7 @@ void UUI_MainHUD::OnSkillLevelUpReleased_E()
 
 void UUI_MainHUD::OnSkillLevelUpClicked_R()
 {
-    AER_PlayerState* PS = Cast<AER_PlayerState>(GetOwningPlayerState());
-    if (PS)
-    {
-        UBaseAttributeSet* AS = nullptr;
-        AS = PS->GetAttributeSet();
-        AS->SetSkillPoint(AS->GetSkillPoint() - 1.0f);
-    }
+    getSkillLevel(R_SkillTag, true);
 }
 
 void UUI_MainHUD::OnSkillLevelUpReleased_R()
@@ -858,19 +846,19 @@ void UUI_MainHUD::OnAbilityActivated(UGameplayAbility* ActivatedAbility)
             // UE_LOG(LogTemp, Error, TEXT("Spec 보유 태그: %s"), *Tag.ToString());
             
             // 좀 더 스마트한 방법이 없을지 더 찾아보자...
-            if (Tag.ToString() == "Ability.Input.Skill.Q")
+            if (Tag == Q_SkillTag)
             {
                 OnActivateSkillCoolTime(ESkillKey::Q);
             }
-            else if (Tag.ToString() == "Ability.Input.Skill.W")
+            else if (Tag == W_SkillTag)
             {
                 OnActivateSkillCoolTime(ESkillKey::W);
             }
-            else if (Tag.ToString() == "Ability.Input.Skill.E")
+            else if (Tag == E_SkillTag)
             {
                 OnActivateSkillCoolTime(ESkillKey::E);
             }
-            else if (Tag.ToString() == "Ability.Input.Skill.R")
+            else if (Tag == R_SkillTag)
             {
                 OnActivateSkillCoolTime(ESkillKey::R);
             }
@@ -1422,4 +1410,63 @@ void UUI_MainHUD::RefreshInventoryGridLayout()
             GridSlot->SetVerticalAlignment(VAlign_Center);
         }
     }
+}
+
+float UUI_MainHUD::getSkillLevel(FGameplayTag SkillTag, bool levelUp)
+{
+    if (levelUp)
+    {
+
+        ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
+        if (!IsValid(PC))
+        {
+            return -1;
+        }
+        APawn* Pawn = PC->GetPawn();
+        if (!IsValid(Pawn))
+        {
+            return -1;
+        }
+        ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(Pawn);
+        if (!IsValid(BaseCharacter))
+        {
+            return -1;
+        }
+        BaseCharacter->Server_UpgradeSkill(SkillTag);
+        return -1;
+    }
+    // else일 때는 단순히 스킬 레벨이 몇인지 반환한다
+    else
+    {
+        if (!IsValid(ASC))
+        {
+            return -1;
+        }
+        UBaseAttributeSet* AS = nullptr;
+        AER_PlayerState* PS = Cast<AER_PlayerState>(GetOwningPlayerState());
+        {
+            AS = PS->GetAttributeSet();
+        }
+        if (!AS)
+        {
+            return -1;
+        }
+
+        FGameplayAbilitySpec* TargetSpec = nullptr;
+        for (FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
+        {
+            // SkillTag를 알아내야해
+            if (!Spec.Ability) continue;
+
+            if (Spec.GetDynamicSpecSourceTags().HasTagExact(SkillTag) ||
+                Spec.Ability->GetAssetTags().HasTagExact(SkillTag))
+            {
+                TargetSpec = &Spec;
+                break;
+            }
+        }
+        
+        return TargetSpec->Level;
+    }
+    return -1;
 }

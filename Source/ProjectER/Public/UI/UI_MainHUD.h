@@ -92,6 +92,15 @@ public:
 
 	UUI_MainHUD(const FObjectInitializer& ObjectInitializer);
 
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Tags")
+	FGameplayTag Q_SkillTag;
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Tags")
+	FGameplayTag W_SkillTag;
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Tags")
+	FGameplayTag E_SkillTag;
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Tags")
+	FGameplayTag R_SkillTag;
+
 protected:
 	// 마우스 우클릭 확인용
 	virtual void NativeConstruct() override; // 생성자
@@ -429,5 +438,6 @@ private:
 
 
 	bool test = true;
+	float getSkillLevel(FGameplayTag SkillTag, bool levelUp);
 };
 
