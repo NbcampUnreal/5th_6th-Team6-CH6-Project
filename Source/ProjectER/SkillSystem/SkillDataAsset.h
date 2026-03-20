@@ -58,7 +58,7 @@ public:
     FGameplayAbilitySpec MakeSpec();
 
     UFUNCTION(BlueprintPure, Category = "Skill|UI")
-    FSkillTooltipData GetSkillTooltipData(float InLevel = 1.0f) const;
+    FSkillTooltipData GetSkillTooltipData(int32 InLevel = 1) const;
 private:
     
 public:

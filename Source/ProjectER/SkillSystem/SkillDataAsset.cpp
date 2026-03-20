@@ -22,7 +22,7 @@ FGameplayAbilitySpec USkillDataAsset::MakeSpec()
     return Spec;
 }
 
-FSkillTooltipData USkillDataAsset::GetSkillTooltipData(float InLevel) const
+FSkillTooltipData USkillDataAsset::GetSkillTooltipData(int32 InLevel) const
 {
 	FSkillTooltipData Result;
 
