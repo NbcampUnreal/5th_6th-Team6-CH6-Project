@@ -92,11 +92,34 @@ private:
 	FPendingFoodHealEffect CurrentFoodHealEffect;
 	bool bIsFoodHealEffectActive = false;
 
+	struct FPendingDrinkManaEffect
+	{
+		FString ItemName;
+		float TotalManaAmount = 0.0f;
+		float TotalDurationSeconds = 0.0f;
+		float RemainingManaAmount = 0.0f;
+		float ManaPerTick = 0.0f;
+		int32 RemainingTicks = 0;
+		float TickInterval = 1.0f;
+	};
+
+	FTimerHandle DrinkManaTickTimerHandle;
+	TArray<FPendingDrinkManaEffect> PendingDrinkManaQueue;
+	FPendingDrinkManaEffect CurrentDrinkManaEffect;
+	bool bIsDrinkManaEffectActive = false;
+
+	bool EnqueueDrinkMana(UUsableItemData* ItemData);
+	bool ApplyDrinkManaAmount(const float ManaAmount);
+	void StartNextDrinkManaEffect();
+	void StopDrinkManaTimer();
+	void HandleDrinkManaTick();
+
 public:
 	UPROPERTY(BlueprintAssignable, Category = "Inventory")
 	FOnInventoryUpdatedSignature OnInventoryUpdated;
 
 	void ClearFoodHealEffects();
+	void ClearDrinkManaEffects();
 
 	// 슬롯 이동 / 교환
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
