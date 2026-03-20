@@ -1,4 +1,4 @@
-﻿#include "Monster/StateTree/Task/STT_ActivateDirectionSkill.h"
+﻿#include "Monster/StateTree/Task/STT_ActivateGroundSkill.h"
 #include "StateTreeLinker.h"
 #include "StateTreeExecutionContext.h"
 
@@ -6,28 +6,28 @@
 #include "AbilitySystemComponent.h"
 #include "Monster/BaseMonster.h"
 
-FSTT_ActivateDirectionSkill::FSTT_ActivateDirectionSkill()
+FSTT_ActivateGroundSkill::FSTT_ActivateGroundSkill()
 {
 	bShouldCallTick = false;
 }
 
-bool FSTT_ActivateDirectionSkill::Link(FStateTreeLinker& Linker)
+bool FSTT_ActivateGroundSkill::Link(FStateTreeLinker& Linker)
 {
 	Linker.LinkExternalData(ActorHandle);
 	return true;
 }
 
-const UStruct* FSTT_ActivateDirectionSkill::GetInstanceDataType() const
+const UStruct* FSTT_ActivateGroundSkill::GetInstanceDataType() const
 {
 	return FInstanceDataType::StaticStruct();
 }
 
-EStateTreeRunStatus FSTT_ActivateDirectionSkill::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+EStateTreeRunStatus FSTT_ActivateGroundSkill::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
 	AActor& Actor = Context.GetExternalData(ActorHandle);
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 
-	UAbilitySystemComponent* ASC =
+	UAbilitySystemComponent* ASC = 
 		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(&Actor);
 
 	for (FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
@@ -45,13 +45,9 @@ EStateTreeRunStatus FSTT_ActivateDirectionSkill::EnterState(FStateTreeExecutionC
 					{
 						Payload.Target = TargetActor;
 
-						FVector StartLocation = Actor.GetActorLocation();
 						FVector TargetLocation = TargetActor->GetActorLocation();
-						FVector Direction = (TargetLocation - StartLocation).GetSafeNormal();
-						FVector AimPoint = StartLocation + Direction;
-						
 						FHitResult HitResult;
-						HitResult.Location = AimPoint;
+						HitResult.Location = TargetLocation;
 
 						Payload.TargetData = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromHitResult(HitResult);
 
@@ -73,6 +69,6 @@ EStateTreeRunStatus FSTT_ActivateDirectionSkill::EnterState(FStateTreeExecutionC
 	return EStateTreeRunStatus::Failed;
 }
 
-void FSTT_ActivateDirectionSkill::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+void FSTT_ActivateGroundSkill::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
 }

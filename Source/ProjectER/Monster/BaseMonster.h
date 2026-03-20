@@ -113,6 +113,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level);
 	
+	UFUNCTION(NetMulticast, BlueprintCallable, Reliable)
+	void Multicast_SetCollisionProfileName(FName ProfileName);
+
 private:
 	// 초기화 
 	void InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float Level);
@@ -143,9 +146,6 @@ private:
 
 	UFUNCTION(BlueprintCallable)
 	bool HasASCTag(FGameplayTag Tag);
-
-	UFUNCTION(NetMulticast, BlueprintCallable, Reliable)
-	void Multicast_SetCollisionProfileName(FName ProfileName);
 
 	UFUNCTION(BlueprintCallable)
 	void GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGameplayEffect> GE, FGameplayTag Tag, float Amount);
