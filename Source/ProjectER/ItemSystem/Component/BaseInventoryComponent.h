@@ -52,6 +52,9 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_InventoryContents, VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 	TArray<UBaseItemData*> InventoryContents;
 
+	UPROPERTY(ReplicatedUsing = OnRep_InventoryContents, VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+	TArray<int32> InventoryStackCounts;
+
 	UFUNCTION()
 	void OnRep_InventoryContents();
 
@@ -82,17 +85,41 @@ private:
 	void StartNextFoodHealEffect();
 	void StopFoodHealTimer();
 	void HandleFoodHealTick();
+	void EnsureInventoryArraysValid();
 
 	FTimerHandle FoodHealTickTimerHandle;
 	TArray<FPendingFoodHealEffect> PendingFoodHealQueue;
 	FPendingFoodHealEffect CurrentFoodHealEffect;
 	bool bIsFoodHealEffectActive = false;
 
+	struct FPendingDrinkManaEffect
+	{
+		FString ItemName;
+		float TotalManaAmount = 0.0f;
+		float TotalDurationSeconds = 0.0f;
+		float RemainingManaAmount = 0.0f;
+		float ManaPerTick = 0.0f;
+		int32 RemainingTicks = 0;
+		float TickInterval = 1.0f;
+	};
+
+	FTimerHandle DrinkManaTickTimerHandle;
+	TArray<FPendingDrinkManaEffect> PendingDrinkManaQueue;
+	FPendingDrinkManaEffect CurrentDrinkManaEffect;
+	bool bIsDrinkManaEffectActive = false;
+
+	bool EnqueueDrinkMana(UUsableItemData* ItemData);
+	bool ApplyDrinkManaAmount(const float ManaAmount);
+	void StartNextDrinkManaEffect();
+	void StopDrinkManaTimer();
+	void HandleDrinkManaTick();
+
 public:
 	UPROPERTY(BlueprintAssignable, Category = "Inventory")
 	FOnInventoryUpdatedSignature OnInventoryUpdated;
 
 	void ClearFoodHealEffects();
+	void ClearDrinkManaEffects();
 
 	// 슬롯 이동 / 교환
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
@@ -103,4 +130,10 @@ public:
 
 	// 슬롯 아이템을 월드에 떨어뜨리기
 	bool DropItemFromSlot(int32 SlotIndex, const FVector& SpawnLocation, TSubclassOf<ABaseItemActor> ItemActorClass, APawn* DropperPawn);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory")
+	int32 GetStackCountAt(int32 SlotIndex) const;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory|Stack")
+	int32 MaxStackPerSlot = 5;
 };

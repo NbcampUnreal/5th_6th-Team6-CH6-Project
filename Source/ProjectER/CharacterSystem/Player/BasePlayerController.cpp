@@ -33,12 +33,14 @@
 #include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/Subsystem/Preload/ER_AssetPreloadSubsystem.h"
 #include "Blueprint/UserWidget.h"
+#include "CharacterSystem/Data/CharacterData.h"
 
 //Camera comp added
 #include "Camera/TopDownCameraComp.h"
 
 // UI System
 #include "UI/UI_MainHUD.h"
+#include "UI/UI_Scoreboard.h"
 
 
 //Log
@@ -109,6 +111,17 @@ void ABasePlayerController::BeginPlay()
 	if (IsLocalController())
 	{
 		UGameplayStatics::SetBaseSoundMix(this, SoundMix);
+
+		// 게임 시작시 현황판 생성 후 collapse 처리
+		if (ScoreboardClass)
+		{
+			ScoreboardWidget = CreateWidget<UUI_Scoreboard>(this, ScoreboardClass);
+			if (ScoreboardWidget)
+			{
+				ScoreboardWidget->AddToViewport();
+				ScoreboardWidget->SetVisibility(ESlateVisibility::Collapsed);
+			}
+		}
 	}
 }
 
@@ -242,6 +255,13 @@ void ABasePlayerController::SetupInputComponent()
 		if (InputConfig->UseItem8)
 		{
 			EnhancedInputComponent->BindAction(InputConfig->UseItem8, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 7);
+		}
+		// 현황판 바인딩
+		if (InputConfig->ScoreBoardKey)
+		{
+			// 'IA_Scoreboard'는 에디터에서 만든 Input Action
+			EnhancedInputComponent->BindAction(InputConfig->ScoreBoardKey, ETriggerEvent::Triggered, this, &ABasePlayerController::ShowScoreboard);
+			EnhancedInputComponent->BindAction(InputConfig->ScoreBoardKey, ETriggerEvent::Completed, this, &ABasePlayerController::HideScoreboard);
 		}
 	}
 }
@@ -380,6 +400,7 @@ void ABasePlayerController::CheckHoveredActor()
 			}
 			// 아이템, 상자 등 상호작용 가능한 물체일 경우 (흰색)
 			else if (HitActor->FindComponentByClass<ULootableComponent>() || 
+					 HitActor->FindComponentByClass<UER_TeleportComponent>() ||
 			         HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
 			{
 				if (UMeshComponent* MeshComp = HitActor->FindComponentByClass<UMeshComponent>())
@@ -1548,6 +1569,24 @@ void ABasePlayerController::UI_AssistCountUpdate_Implementation(int32 AssistCoun
 	}
 }
 
+void ABasePlayerController::ShowScoreboard()
+{
+	if (IsValid(ScoreboardWidget))
+	{
+		ScoreboardWidget->SetVisibility(ESlateVisibility::Visible);
+		// 실시간 데이터 갱신 함수 호출 추가? 해야 됨?
+		ScoreboardWidget->UpdateScoreboard();
+	}
+}
+
+void ABasePlayerController::HideScoreboard()
+{
+	if (IsValid(ScoreboardWidget))
+	{
+		ScoreboardWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
 void ABasePlayerController::ShowWinUI()
 {
 	if (!WinUIClass)
@@ -1695,9 +1734,40 @@ void ABasePlayerController::PawnLeavingGame()
 	    UE_LOG(LogTemp, Warning, TEXT("[PC] PawnLeavingGame After | PC=%s | Pawn=%s"),
         *GetNameSafe(this),
         *GetNameSafe(GetPawn()));
-
-
 }
+
+void ABasePlayerController::Server_RequestCharacterSelection_Implementation()
+{
+	if (AER_OutGameMode* OutGameMode = Cast<AER_OutGameMode>(GetWorld()->GetAuthGameMode()))
+	{
+		OutGameMode->ShowCharacterSelectionToAll();
+	}
+}
+
+void ABasePlayerController::Server_ToggleReadyState_Implementation()
+{
+	if (AER_PlayerState* ER_PS = GetPlayerState<AER_PlayerState>())
+	{
+		// 현재 상태를 반전시켜 줌 (레디 -> 취소, 취소 -> 레디)
+		ER_PS->SetReadyState(!ER_PS->bIsReady);
+	}
+}
+
+void ABasePlayerController::Server_SelectCharacter_Implementation(const TSoftObjectPtr<UCharacterData>& SelectedData)
+{
+	if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
+	{
+		ERPS->SetSelectedCharacterData(SelectedData);
+	}
+}
+
+void ABasePlayerController::Client_ShowCharacterSelectionUI_Implementation()
+{
+	UE_LOG(LogTemp, Log, TEXT("[PC] : Client_ShowCharacterSelectionUI"));
+	// 블루프린트로 이벤트 전달
+	OnShowCharacterSelectionUI();
+}
+
 
 // [김현수 추가분]
 void ABasePlayerController::RequestDropInventoryItemFromUI(int32 SlotIndex, const FVector2D& ScreenSpacePosition)

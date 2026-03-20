@@ -9,9 +9,8 @@
 #include "Components/Button.h"
 #include "CharacterSystem/Player/BasePlayerController.h"
 #include "UI/UI_MainHUD.h"	//	툴팁용
-
-// LootableComponent 지원
 #include "ItemSystem/Component/LootableComponent.h"
+#include "Components/TextBlock.h"
 
 void UW_LootingPopup::InitPopup(const AActor* Box)
 {
@@ -139,6 +138,7 @@ void UW_LootingPopup::UpdateLootingSlots(const AActor* Box)
 
 			UImage* TargetImage = Cast<UImage>(NewSlot->GetWidgetFromName(TEXT("ItemIconImage")));
 			UButton* SlotButton = Cast<UButton>(NewSlot->GetWidgetFromName(TEXT("SlotButton")));
+			UTextBlock* StackCountText = Cast<UTextBlock>(NewSlot->GetWidgetFromName(TEXT("StackCountText")));
 
 			if (TargetImage)
 			{
@@ -151,6 +151,22 @@ void UW_LootingPopup::UpdateLootingSlots(const AActor* Box)
 				{
 					// 아이템이 없으면 이미지만 숨김 (슬롯 배경은 남음)
 					TargetImage->SetVisibility(ESlateVisibility::Collapsed);
+				}
+			}
+
+			if (StackCountText)
+			{
+				const int32 ItemCount = (i < Items.Num()) ? Items[i].Count : 0;
+
+				if (bHasItem && CurrentItem && ItemCount > 1)
+				{
+					StackCountText->SetText(FText::FromString(FString::Printf(TEXT("*%d"), ItemCount)));
+					StackCountText->SetVisibility(ESlateVisibility::HitTestInvisible);
+				}
+				else
+				{
+					StackCountText->SetText(FText::GetEmpty());
+					StackCountText->SetVisibility(ESlateVisibility::Collapsed);
 				}
 			}
 

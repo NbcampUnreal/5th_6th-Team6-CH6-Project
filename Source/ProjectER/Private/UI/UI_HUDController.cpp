@@ -132,6 +132,13 @@ void UUI_HUDController::BindCallbacksToDependencies()
 				BroadcastARChanges(Data.NewValue);
             }
         );
+    // 스킬 포인트 변경 감지 람다
+    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+        BaseAS->GetSkillPointAttribute()).AddLambda([this](const FOnAttributeChangeData& Data)
+            {
+                BroadcastSkillPointChanges(Data.NewValue);
+            }
+        );
     // 차후 위 람다식을 모든 스탯에 대해 반복 해야함~
 }
 
@@ -273,6 +280,18 @@ void UUI_HUDController::BroadcastCooldownReduction(float Cooldown)
     if (IsValid(MainHUDWidget))
     {
         MainHUDWidget->setStat(ECharacterStat::COOL, Cooldown);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Broadcast] 실패: MainHUDWidget이 유효하지 않음!"));
+    }
+}
+
+void UUI_HUDController::BroadcastSkillPointChanges(float _SkillPoint)
+{
+    if (IsValid(MainHUDWidget))
+    {
+        MainHUDWidget->UpdateSkillPoint(_SkillPoint);
     }
     else
     {

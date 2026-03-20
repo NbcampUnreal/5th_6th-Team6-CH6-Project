@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
@@ -6,6 +6,7 @@
 
 
 class AER_PlayerState;
+class UCharacterData;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPhaseChangedBP, int32, NewPhase);
 
@@ -37,6 +38,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SetCurrentPhase(int32 input) { CurrentPhase = input; }
 
+	// 사용 가능한 캐릭터 데이터 목록 반환
+	UFUNCTION(BlueprintPure, Category = "Character Selection")
+	const TArray<TSoftObjectPtr<UCharacterData>>& GetAvailableCharacterData() const;
+
 
 public:
 	UPROPERTY(BlueprintReadOnly)
@@ -50,6 +55,10 @@ public:
 
 	UPROPERTY(BlueprintAssignable)
 	FOnPhaseChangedBP OnPhaseChanged;
+
+protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Selection")
+	TArray<TSoftObjectPtr<UCharacterData>> AvailableCharacterData;
 
 private:
 	TArray<TArray<TWeakObjectPtr<AER_PlayerState>>> TeamCache;
