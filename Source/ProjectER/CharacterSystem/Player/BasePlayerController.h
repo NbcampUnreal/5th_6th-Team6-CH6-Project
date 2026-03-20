@@ -26,6 +26,7 @@ class UInputConfig;
 class UInputAction;
 class UDecalComponent;
 class ABaseCharacter;
+class UCharacterData; // [추가] 캐릭터 데이터 포워드 선언
 
 class UTopDownCameraComp; //Camera Added
 
@@ -258,6 +259,10 @@ public:
 	// 클라이언트가 캐릭터 선택창 진입 요청
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_RequestCharacterSelection();
+
+	// 유저가 특정 캐릭터 버튼을 클릭했을 때 호출 (서버에 데이터 저장 요청)
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Character Selection")
+	void Server_SelectCharacter(const TSoftObjectPtr<UCharacterData>& SelectedData);
 
 	// 서버가 모든 클라이언트에게 캐릭터 선택 UI를 띄우라고 명령
 	UFUNCTION(BlueprintCallable, Client, Reliable)

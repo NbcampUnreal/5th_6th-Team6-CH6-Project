@@ -1,4 +1,4 @@
-#include "CharacterSystem/Player/BasePlayerController.h"
+﻿#include "CharacterSystem/Player/BasePlayerController.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -33,6 +33,7 @@
 #include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/Subsystem/Preload/ER_AssetPreloadSubsystem.h"
 #include "Blueprint/UserWidget.h"
+#include "CharacterSystem/Data/CharacterData.h"
 
 //Camera comp added
 #include "Camera/TopDownCameraComp.h"
@@ -1702,6 +1703,14 @@ void ABasePlayerController::Server_RequestCharacterSelection_Implementation()
 	if (AER_OutGameMode* OutGameMode = Cast<AER_OutGameMode>(GetWorld()->GetAuthGameMode()))
 	{
 		OutGameMode->ShowCharacterSelectionToAll();
+	}
+}
+
+void ABasePlayerController::Server_SelectCharacter_Implementation(const TSoftObjectPtr<UCharacterData>& SelectedData)
+{
+	if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
+	{
+		ERPS->SetSelectedCharacterData(SelectedData);
 	}
 }
 
