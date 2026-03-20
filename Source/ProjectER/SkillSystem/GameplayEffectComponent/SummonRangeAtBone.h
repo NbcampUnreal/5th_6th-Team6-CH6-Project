@@ -37,5 +37,5 @@ public:
 
 protected:
 	virtual bool ShouldProcessOnInstigator(const AActor* Instigator) const override;
-	virtual FTransform CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const AActor* TargetActor) const override;
+	virtual FTransform CalculateOriginTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const AActor* TargetActor) const override;
 };

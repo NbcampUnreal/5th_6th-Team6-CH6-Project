@@ -83,7 +83,7 @@ namespace
 	}
 }
 
-void SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(UWorld* World, const FSkillNiagaraSpawnSettings& Settings, const FTransform& SourceTransform, const AActor* SourceActor, const FVector* OptionalLookAtTarget)
+void SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(UWorld* World, const FSkillNiagaraSpawnSettings& Settings, const FTransform& SourceTransform, const AActor* SourceActor, const FVector* OptionalLookAtTarget, USceneComponent* AttachTarget)
 {
 	UNiagaraComponent* ResultNC = nullptr;
 
@@ -98,17 +98,17 @@ void SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(UWorld* World, const FSkill
 		return;
 	}
 
-	if (Settings.bAttachToSource && IsValid(SourceActor))
+	if (Settings.bAttachToSource && (IsValid(SourceActor) || IsValid(AttachTarget)))
 	{
-		USceneComponent* AttachComponent = ResolveAttachComponent(SourceActor, Settings);
-		if (!IsValid(AttachComponent))
+		USceneComponent* FinalAttachComponent = IsValid(AttachTarget) ? AttachTarget : ResolveAttachComponent(SourceActor, Settings);
+		if (!IsValid(FinalAttachComponent))
 		{
 			return;
 		}
 
-		const FTransform ParentTransform = AttachComponent->GetSocketTransform(Settings.SocketOrBoneName);
+		const FTransform ParentTransform = FinalAttachComponent->GetSocketTransform(Settings.SocketOrBoneName);
 		const FRotator RelativeAttachRotation = CalculateRelativeRotation(Settings, ParentTransform, OptionalLookAtTarget);
-		ResultNC = UNiagaraFunctionLibrary::SpawnSystemAttached(LoadedNiagaraSystem, AttachComponent, Settings.SocketOrBoneName, Settings.LocationOffset, RelativeAttachRotation, Settings.Scale, EAttachLocation::KeepRelativeOffset, true, ENCPoolMethod::None, false, false);
+		ResultNC = UNiagaraFunctionLibrary::SpawnSystemAttached(LoadedNiagaraSystem, FinalAttachComponent, Settings.SocketOrBoneName, Settings.LocationOffset, RelativeAttachRotation, Settings.Scale, EAttachLocation::KeepRelativeOffset, true, ENCPoolMethod::None, false, false);
 	}
 	else {
 		const FVector SourceLocation = SourceTransform.GetLocation();
