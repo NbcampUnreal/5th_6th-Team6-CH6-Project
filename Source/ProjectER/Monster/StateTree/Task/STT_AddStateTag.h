@@ -4,9 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "StateTreeTaskBase.h"
-#include "GameFramework/Pawn.h"
-#include "AddStateTagTask.generated.h"
+#include "ActiveGameplayEffectHandle.h"
+#include "STT_AddStateTag.generated.h"
 
+class UGameplayEffect;
 
 USTRUCT()
 struct FAddStateTagData
@@ -14,18 +15,24 @@ struct FAddStateTagData
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, Category = "Tag")
+	TSubclassOf<UGameplayEffect> TagEffect;
+
+	UPROPERTY(EditAnywhere, Category = "Tag")
 	FGameplayTag StateTag;
+
+	UPROPERTY()
+	FActiveGameplayEffectHandle ActiveEffectHandle;
 };
 
 
 USTRUCT()
-struct PROJECTER_API FAddStateTagTask : public FStateTreeTaskCommonBase
+struct PROJECTER_API FSTT_AddStateTag : public FStateTreeTaskCommonBase
 {
 	GENERATED_BODY()
 public:
-	FAddStateTagTask();
+	FSTT_AddStateTag();
 	
-	//using FAddStateTagDataType = FAddStateTagTask;
+	using FInstanceDataType = FAddStateTagData;
 
 	virtual bool Link(FStateTreeLinker& Linker) override;
 
@@ -42,6 +49,5 @@ public:
 		const FStateTreeTransitionResult& Transition
 	) const override;
 
-
-	TStateTreeExternalDataHandle <APawn> ActorHandle;
+	TStateTreeExternalDataHandle<AActor> ActorHandle;
 };
