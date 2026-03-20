@@ -40,6 +40,7 @@ public class MaterialDrivenInteraction : ModuleRules
 			{
 				"RenderCore",   // ETextureRenderTargetFormat
 				"RHI",          // FRHICommandListImmediate 
+				"Settings",     // required for ISettingsModule
 			}
 			);
 		

@@ -1,31 +1,22 @@
-﻿
-#include "Invoker/RTMPCUpdater.h"
+﻿#include "Invoker/RTMPCUpdater.h"
 
 #include "PoolManager/RTPoolManager.h"
 #include "Data/RTPoolTypes.h"
 #include "Debug/LogCategory.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "Materials/MaterialParameterCollectionInstance.h"
-#include "Materials/MaterialInstanceDynamic.h"
-#include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/KismetMaterialLibrary.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 
-// ── Static parameter name constants ──────────────────────────────────────────
-
 const FName URTMPCUpdater::PN_CellSize        (TEXT("FRT_CellSize"));
 const FName URTMPCUpdater::PN_ActiveSlotCount (TEXT("FRT_ActiveSlotCount"));
-
-// ── Constructor ───────────────────────────────────────────────────────────────
 
 URTMPCUpdater::URTMPCUpdater()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.TickGroup   = TG_PostUpdateWork;
 }
-
-// ── UActorComponent ───────────────────────────────────────────────────────────
 
 void URTMPCUpdater::BeginPlay()
 {
@@ -35,7 +26,7 @@ void URTMPCUpdater::BeginPlay()
 	if (!World)
 	{
 		UE_LOG(RTFoliageInvoker, Warning,
-			TEXT("URTMPCUpdater::BeginPlay >> World is null"));
+			TEXT("URTMPCUpdater::BeginPlay >> World is null — component disabled"));
 		return;
 	}
 
@@ -54,9 +45,12 @@ void URTMPCUpdater::BeginPlay()
 	BuildParameterNames();
 	PushVectorDataToMPC();
 
+	const FVector OwnerLoc = GetOwner()->GetActorLocation();
 	UE_LOG(RTFoliageInvoker, Log,
-		TEXT("URTMPCUpdater::BeginPlay >> Initialised — PoolSize=%d CellSize=%.0f"),
-		PoolManager->PoolSize, PoolManager->CellSize);
+		TEXT("URTMPCUpdater::BeginPlay >> Initialised — PoolSize=%d CellSize=%.0f MPC=%s  OwnerLoc(%.0f,%.0f,%.0f)"),
+		PoolManager->PoolSize, PoolManager->CellSize,
+		ParameterCollection ? *ParameterCollection->GetName() : TEXT("none"),
+		OwnerLoc.X, OwnerLoc.Y, OwnerLoc.Z);
 }
 
 void URTMPCUpdater::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -67,7 +61,11 @@ void URTMPCUpdater::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		PoolManager->OnCellReclaimed.RemoveDynamic(this, &URTMPCUpdater::OnCellReclaimed);
 	}
 
-	RegisteredMIDs.Empty();
+	const FVector OwnerLoc = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
+	UE_LOG(RTFoliageInvoker, Log,
+		TEXT("URTMPCUpdater::EndPlay >> Delegates unbound  OwnerLoc(%.0f,%.0f,%.0f)"),
+		OwnerLoc.X, OwnerLoc.Y, OwnerLoc.Z);
+
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -77,40 +75,11 @@ void URTMPCUpdater::TickComponent(float DeltaTime, ELevelTick TickType,
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	PushVectorDataToMPC();
 
-	// Mirror pool into DebugPool so Details panel shows RT thumbnails
-	if (PoolManager)
+	/*if (PoolManager)
 	{
 		DebugPool = PoolManager->GetPool();
-	}
+	}*/
 }
-
-// ── Foliage MID registration ──────────────────────────────────────────────────
-
-void URTMPCUpdater::RegisterFoliageMID(UMaterialInstanceDynamic* MID)
-{
-	if (!MID) { return; }
-	if (RegisteredMIDs.Contains(MID)) { return; }
-
-	RegisteredMIDs.Add(MID);
-	PushAllTexturesToMID(MID);
-
-	UE_LOG(RTFoliageInvoker, Log,
-		TEXT("URTMPCUpdater::RegisterFoliageMID >> MID registered — total MIDs: %d"),
-		RegisteredMIDs.Num());
-}
-
-void URTMPCUpdater::UnregisterFoliageMID(UMaterialInstanceDynamic* MID)
-{
-	RegisteredMIDs.Remove(MID);
-}
-
-void URTMPCUpdater::ForceRefreshMID(UMaterialInstanceDynamic* MID)
-{
-	if (!MID) { return; }
-	PushAllTexturesToMID(MID);
-}
-
-// ── Utility ───────────────────────────────────────────────────────────────────
 
 UMaterialParameterCollectionInstance* URTMPCUpdater::GetMPCInstance() const
 {
@@ -118,24 +87,26 @@ UMaterialParameterCollectionInstance* URTMPCUpdater::GetMPCInstance() const
 	return GetOwner()->GetWorld()->GetParameterCollectionInstance(ParameterCollection);
 }
 
-// ── Internal ──────────────────────────────────────────────────────────────────
-
 void URTMPCUpdater::BuildParameterNames()
 {
-	const int32 SlotCount = PoolManager
-		? FMath::Min(PoolManager->PoolSize, FRT_MAX_POOL_SLOTS)
-		: FRT_MAX_POOL_SLOTS;
+	ParamName_SlotData.SetNum(FRT_MAX_POOL_SLOTS);
+	ParamName_ImpulseRT.SetNum(FRT_MAX_POOL_SLOTS);
+	ParamName_ContinuousRT.SetNum(FRT_MAX_POOL_SLOTS);
 
-	ParamName_SlotData.SetNum(SlotCount);
-	ParamName_ImpulseRT.SetNum(SlotCount);
-	ParamName_ContinuousRT.SetNum(SlotCount);
-
-	for (int32 i = 0; i < SlotCount; ++i)
+	for (int32 i = 0; i < FRT_MAX_POOL_SLOTS; ++i)
 	{
 		ParamName_SlotData[i]     = FName(*FString::Printf(TEXT("FRT_Slot%d_Data"),         i));
 		ParamName_ImpulseRT[i]    = FName(*FString::Printf(TEXT("FRT_Slot%d_ImpulseRT"),    i));
 		ParamName_ContinuousRT[i] = FName(*FString::Printf(TEXT("FRT_Slot%d_ContinuousRT"), i));
 	}
+
+	const int32 ActiveSlotCount = PoolManager
+		? FMath::Min(PoolManager->PoolSize, FRT_MAX_POOL_SLOTS)
+		: 0;
+
+	UE_LOG(RTFoliageInvoker, Log,
+		TEXT("URTMPCUpdater::BuildParameterNames >> Built %d entries (PoolSize=%d FRT_MAX_POOL_SLOTS=%d)"),
+		FRT_MAX_POOL_SLOTS, ActiveSlotCount, FRT_MAX_POOL_SLOTS);
 }
 
 void URTMPCUpdater::PushVectorDataToMPC()
@@ -151,29 +122,26 @@ void URTMPCUpdater::PushVectorDataToMPC()
 	}
 
 	const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
-	const int32 SlotCount = FMath::Min(Pool.Num(), ParamName_SlotData.Num());
-
+	const int32 SlotCount = FMath::Min(Pool.Num(), FRT_MAX_POOL_SLOTS);
 	int32 ActiveCount = 0;
 
 	for (int32 i = 0; i < SlotCount; ++i)
 	{
-		const FRTPoolEntry& Slot = Pool[i];
-		const bool bActive = Slot.IsOccupied();
-
-		const FLinearColor SlotData(
-			bActive ? Slot.CellOriginWS.X : -9999999.f,
-			bActive ? Slot.CellOriginWS.Y : -9999999.f,
-			bActive ? 1.f : 0.f,
-			static_cast<float>(i)
-		);
+		const FRTPoolEntry& Slot   = Pool[i];
+		const bool          bActive = Slot.IsOccupied();
 
 		UKismetMaterialLibrary::SetVectorParameterValue(
-			World, ParameterCollection, ParamName_SlotData[i], SlotData);
+			World, ParameterCollection, ParamName_SlotData[i],
+			FLinearColor(
+				bActive ? Slot.CellOriginWS.X : -9999999.f,
+				bActive ? Slot.CellOriginWS.Y : -9999999.f,
+				bActive ? 1.f : 0.f,
+				static_cast<float>(i)
+			));
 
 		if (bActive) { ++ActiveCount; }
 	}
 
-	// Zero out slots beyond the current pool size
 	for (int32 i = SlotCount; i < ParamName_SlotData.Num(); ++i)
 	{
 		UKismetMaterialLibrary::SetVectorParameterValue(
@@ -181,70 +149,35 @@ void URTMPCUpdater::PushVectorDataToMPC()
 	}
 
 	UKismetMaterialLibrary::SetScalarParameterValue(
-		World, ParameterCollection, PN_CellSize,
-		PoolManager->CellSize);
+		World, ParameterCollection, PN_CellSize, PoolManager->CellSize);
 
 	UKismetMaterialLibrary::SetScalarParameterValue(
-		World, ParameterCollection, PN_ActiveSlotCount,
-		static_cast<float>(ActiveCount));
+		World, ParameterCollection, PN_ActiveSlotCount, static_cast<float>(ActiveCount));
 
-	UE_LOG(RTFoliageInvoker, Log,
-		TEXT("URTMPCUpdater::PushVectorDataToMPC >> CellSize=%.1f ActiveSlots=%d Slot0=(%.0f,%.0f,Z=%.1f)"),
-		PoolManager->CellSize,
-		ActiveCount,
+	const FVector OwnerLoc = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
+	UE_LOG(RTFoliageInvoker, Verbose,
+		TEXT("URTMPCUpdater::PushVectorDataToMPC >> CellSize=%.0f ActiveSlots=%d/%d Slot0=(%.0f,%.0f,Z=%.1f)  OwnerLoc(%.0f,%.0f,%.0f)"),
+		PoolManager->CellSize, ActiveCount, SlotCount,
 		Pool.IsValidIndex(0) ? (Pool[0].IsOccupied() ? Pool[0].CellOriginWS.X : -9999999.f) : -1.f,
 		Pool.IsValidIndex(0) ? (Pool[0].IsOccupied() ? Pool[0].CellOriginWS.Y : -9999999.f) : -1.f,
-		Pool.IsValidIndex(0) ? (Pool[0].IsOccupied() ? 1.f : 0.f) : -1.f
-	);
+		Pool.IsValidIndex(0) ? (Pool[0].IsOccupied() ? 1.f : 0.f) : -1.f,
+		OwnerLoc.X, OwnerLoc.Y, OwnerLoc.Z);
 }
-
-void URTMPCUpdater::PushTexturesForSlot(int32 SlotIndex)
-{
-	if (!PoolManager) { return; }
-	if (!ParamName_ImpulseRT.IsValidIndex(SlotIndex)) { return; }
-
-	const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
-	if (!Pool.IsValidIndex(SlotIndex)) { return; }
-
-	const FRTPoolEntry& Slot = Pool[SlotIndex];
-
-	for (UMaterialInstanceDynamic* MID : RegisteredMIDs)
-	{
-		if (!MID) { continue; }
-		MID->SetTextureParameterValue(ParamName_ImpulseRT[SlotIndex],    Slot.ImpulseRT);
-		MID->SetTextureParameterValue(ParamName_ContinuousRT[SlotIndex], Slot.ContinuousRT);
-	}
-}
-
-void URTMPCUpdater::PushAllTexturesToMID(UMaterialInstanceDynamic* MID)
-{
-	if (!MID || !PoolManager) { return; }
-
-	const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
-	const int32 SlotCount = FMath::Min(Pool.Num(), ParamName_ImpulseRT.Num());
-
-	for (int32 i = 0; i < SlotCount; ++i)
-	{
-		const FRTPoolEntry& Slot = Pool[i];
-		MID->SetTextureParameterValue(ParamName_ImpulseRT[i],    Slot.ImpulseRT);
-		MID->SetTextureParameterValue(ParamName_ContinuousRT[i], Slot.ContinuousRT);
-	}
-}
-
-// ── Pool delegate handlers ────────────────────────────────────────────────────
 
 void URTMPCUpdater::OnCellAssigned(FIntPoint CellIndex, int32 SlotIndex)
 {
-	PushTexturesForSlot(SlotIndex);
-
+	const FVector OwnerLoc = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
 	UE_LOG(RTFoliageInvoker, Verbose,
-		TEXT("URTMPCUpdater::OnCellAssigned >> Slot %d assigned to cell (%d,%d) — textures pushed to %d MIDs"),
-		SlotIndex, CellIndex.X, CellIndex.Y, RegisteredMIDs.Num());
+		TEXT("URTMPCUpdater::OnCellAssigned >> Slot %d → Cell (%d,%d)  OwnerLoc(%.0f,%.0f,%.0f)"),
+		SlotIndex, CellIndex.X, CellIndex.Y,
+		OwnerLoc.X, OwnerLoc.Y, OwnerLoc.Z);
 }
 
 void URTMPCUpdater::OnCellReclaimed(FIntPoint CellIndex, int32 SlotIndex)
 {
+	const FVector OwnerLoc = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
 	UE_LOG(RTFoliageInvoker, Verbose,
-		TEXT("URTMPCUpdater::OnCellReclaimed >> Slot %d reclaimed from cell (%d,%d)"),
-		SlotIndex, CellIndex.X, CellIndex.Y);
+		TEXT("URTMPCUpdater::OnCellReclaimed >> Slot %d reclaimed from Cell (%d,%d)  OwnerLoc(%.0f,%.0f,%.0f)"),
+		SlotIndex, CellIndex.X, CellIndex.Y,
+		OwnerLoc.X, OwnerLoc.Y, OwnerLoc.Z);
 }

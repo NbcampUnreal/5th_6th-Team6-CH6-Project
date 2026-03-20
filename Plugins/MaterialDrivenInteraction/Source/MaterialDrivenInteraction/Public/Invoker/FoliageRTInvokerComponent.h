@@ -9,19 +9,6 @@ class UTextureRenderTarget2D;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
 
-// ──────────────────────────────────────────────────────────────────────────────
-// UFoliageRTInvokerComponent
-//
-// Attach to any Pawn or NPC.  Each tick it:
-//   1. Resolves / registers the pool slot for the actor's current cell.
-//   2. Paints ContinuousRT with a live-velocity smear quad every frame.
-//   3. Stamps ImpulseRT only when the brush footprint has moved into a new
-//      pixel — encoding GameTime in G and the velocity snapshot in R/B.
-//   4. Drives URTPoolManager::Tick so slots reclaim without a separate actor.
-//
-// Cell boundary crossing is handled automatically — the component unregisters
-// from the old cell and registers in the new one in a single frame.
-// ──────────────────────────────────────────────────────────────────────────────
 UCLASS(ClassGroup = "Foliage RT", meta = (BlueprintSpawnableComponent))
 class MATERIALDRIVENINTERACTION_API UFoliageRTInvokerComponent : public UActorComponent
 {
@@ -31,8 +18,6 @@ public:
 
 	UFoliageRTInvokerComponent();
 
-	// ── UActorComponent ───────────────────────────────────────────────────────
-
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
@@ -41,39 +26,29 @@ public:
 	// ── Brush assets ──────────────────────────────────────────────────────────
 
 	/**
-	 * Material drawn into ContinuousRT every tick while the invoker is present.
-	 * Receives scalar parameters each frame:
-	 *   "VelocityX"  — X velocity remapped to [0,1]  (0.5 = stationary)
-	 *   "VelocityY"  — Y velocity remapped to [0,1]
-	 *   "Weight"     — brush strength [0,1]
+	 * Material drawn into ContinuousRT every tick.
+	 * Receives: BrushCentreUV, BrushUVExtent, BrushRotation, Weight.
+	 * Computes per-texel outward push direction from brush shape internally.
+	 * C++ only passes position, rotation and weight.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage RT|Brush")
 	TObjectPtr<UMaterialInterface> BrushMaterial_Continuous;
 
 	/**
-	 * Material drawn into ImpulseRT when the brush enters a new pixel.
-	 * Receives scalar parameters at stamp time:
-	 *   "VelocityX"  — X velocity at impact remapped to [0,1]
-	 *   "VelocityY"  — Y velocity at impact
-	 *   "ImpactTime" — raw GameTime float  (foliage reads: TimeDelta = Now - G)
-	 *   "Weight"     — brush strength [0,1]
+	 * Material drawn into ImpulseRT on new pixel entry.
+	 * Receives: VelocityX, VelocityY, Weight, ImpactTime, BrushCentreUV, BrushUVExtent, ImpactTimeVec.
+	 * Stamps GameTime into G — foliage reads TimeDelta = View.GameTime - G to drive FRT_DampedSine.
+	 * Re-triggers automatically whenever the invoker moves out of and back into a texel.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage RT|Brush")
 	TObjectPtr<UMaterialInterface> BrushMaterial_Impulse;
 
-	/**
-	 * World-space half-extents of the brush footprint.
-	 * Capsule character  → (CapsuleRadius, CapsuleRadius)
-	 * Vehicle / long box → (HalfLength, HalfWidth)
-	 */
+	/** World-space half-extents of the brush footprint. Also determines which cells are registered. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage RT|Brush",
 		meta = (ClampMin = 1.f))
 	FVector2D BrushExtent = FVector2D(60.f, 60.f);
 
-	/**
-	 * World-space velocity magnitude that maps to 1.0 in the normalized range.
-	 * Set to slightly above your actor's top speed.
-	 */
+	/** Velocity magnitude that maps to 1.0 in the normalized range. Must match FRT_MaxVelocity in material. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage RT|Brush",
 		meta = (ClampMin = 1.f))
 	float MaxVelocity = 1200.f;
@@ -85,36 +60,22 @@ public:
 
 	// ── Runtime read-outs ─────────────────────────────────────────────────────
 
-	/** Pool slot currently serving this invoker. INDEX_NONE if pool is full. */
 	UPROPERTY(BlueprintReadOnly, Category = "Foliage RT|State")
-	int32 ActiveSlotIndex = INDEX_NONE;
+	TArray<int32> ActiveSlotIndices;
 
-	/** UV of the brush centre within the current cell [0,1]. */
 	UPROPERTY(BlueprintReadOnly, Category = "Foliage RT|State")
 	FVector2D CurrentCellUV = FVector2D::ZeroVector;
 
-	/**
-	 * Velocity encoded for the RT: each axis remapped
-	 * [−MaxVelocity..+MaxVelocity] → [0..1].  0.5 on both axes = stationary.
-	 */
 	UPROPERTY(BlueprintReadOnly, Category = "Foliage RT|State")
 	FVector2D EncodedVelocity = FVector2D(0.5f, 0.5f);
 
 	// ── Blueprint extension points ────────────────────────────────────────────
 
-	/**
-	 * Fired after the continuous paint each tick.
-	 * Use to draw secondary brushes (limbs, wheels, etc.) into the same RT.
-	 */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Foliage RT|Events")
 	void OnContinuousPaint(UTextureRenderTarget2D* ContinuousRT,
 	                       FVector2D               CellUV,
 	                       FVector2D               BrushUVExtent);
 
-	/**
-	 * Fired after every ImpulseRT stamp.
-	 * Use to trigger audio, VFX, or additional impulse layers.
-	 */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Foliage RT|Events")
 	void OnImpulseStamp(UTextureRenderTarget2D* ImpulseRT,
 	                    FVector2D               CellUV,
@@ -122,41 +83,22 @@ public:
 
 private:
 
-	// ── Internal helpers ──────────────────────────────────────────────────────
+	TArray<FIntPoint> GetOverlappingCells(const FVector& WorldLocation) const;
+	void              UpdateCellRegistrations(const FVector& WorldLocation);
 
-	/** Compute world-space XY velocity from this frame's position delta. */
 	FVector2D ComputeVelocity(float DeltaTime) const;
-
-	/**
-	 * Encode a signed velocity component into the [0,1] range stored in the RT.
-	 * 0.5 = zero.  Material decode: WorldVel = (RTValue - 0.5) * 2.0 * MaxVelocity
-	 */
-	float EncodeVelocityAxis(float WorldVelAxis) const;
-
-	/** Convert world-space brush half-extents to UV-space half-extents. */
+	float     EncodeVelocityAxis(float WorldVelAxis) const;
 	FVector2D BrushExtentToUV() const;
+	bool      HasMovedToNewPixel(FVector2D CellUV, const FIntPoint& PrevTexel) const;
 
-	/**
-	 * Returns true when the brush centre has crossed into a new ImpulseRT texel.
-	 * True on the very first tick (PrevImpulseTexel == (-1,-1)).
-	 */
-	bool HasMovedToNewPixel(FVector2D CellUV) const;
-
-	/** Draw a smear quad spanning PrevUV → CurrentUV into ContinuousRT. */
 	void DrawContinuousQuad(UTextureRenderTarget2D* RT,
-	                        FVector2D PrevUV, FVector2D CurrentUV,
-	                        FVector2D UVExtent);
+	                        FVector2D CurrentUV,
+	                        FVector2D UVExtent,
+	                        float OwnerYaw);
 
-	/** Stamp a single oriented quad at CurrentUV into ImpulseRT. */
 	void DrawImpulseStamp(UTextureRenderTarget2D* RT,
 	                      FVector2D CurrentUV, FVector2D UVExtent,
 	                      float GameTime);
-
-	/**
-	 * Detect and handle cell-boundary crossings.
-	 * Unregisters from the previous cell, registers in the new one.
-	 */
-	void HandleCellTransition(const FVector& WorldLocation);
 
 	// ── Cached references ─────────────────────────────────────────────────────
 
@@ -171,22 +113,10 @@ private:
 
 	// ── Per-frame state ───────────────────────────────────────────────────────
 
-	// World position at the end of the previous tick — used for velocity and smear.
-	FVector   PrevWorldLocation  = FVector::ZeroVector;
+	FVector PrevWorldLocation = FVector::ZeroVector;
 
-	// Cell UV at the end of the previous tick — used as the smear quad start point.
-	FVector2D PrevCellUV         = FVector2D(-1.f, -1.f);  // -1 forces first-frame stamp
+	TArray<FIntPoint>          CurrentCells;
+	TMap<FIntPoint, FIntPoint> PrevImpulseTexelMap;
 
-	// Last ImpulseRT texel the brush occupied — changes trigger a new stamp.
-	FIntPoint PrevImpulseTexel   = FIntPoint(-1, -1);
-
-	// Cell the invoker was in last tick — changes trigger HandleCellTransition.
-	FIntPoint CurrentCell        = FIntPoint(INT32_MIN, INT32_MIN);
-
-	// True once BeginPlay has successfully registered with the pool.
-	bool bRegistered = false;
-
-	// Skips the very first tick so velocity and UV are seeded correctly before
-	// any stamp or draw call fires. Prevents a G=0 stamp on spawn.
 	bool bFirstTick = true;
 };

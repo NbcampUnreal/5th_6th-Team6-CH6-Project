@@ -1,9 +1,25 @@
 ﻿#include "PoolManager/RTPoolManager.h"
 
 #include "Data/RTPoolTypes.h"
+#include "Debug/LogCategory.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/KismetRenderingLibrary.h"
 #include "Engine/World.h"
+
+static const TCHAR* RTFormatName(ETextureRenderTargetFormat Fmt)
+{
+	switch (Fmt)
+	{
+		case RTF_R8:      return TEXT("RTF_R8");
+		case RTF_RGBA8:   return TEXT("RTF_RGBA8");
+		case RTF_RGBA16f: return TEXT("RTF_RGBA16f");
+		case RTF_RGBA32f: return TEXT("RTF_RGBA32f");
+		default:          return TEXT("RTF_Unknown");
+	}
+}
+
+// Neutral clear for ContinuousRT — used in multiple places, defined once.
+static const FLinearColor GContinuousNeutral(0.5f, 0.5f, 0.f, 0.f);
 
 bool URTPoolManager::ShouldCreateSubsystem(UObject* Outer) const
 {
@@ -28,26 +44,50 @@ void URTPoolManager::Initialize(FSubsystemCollectionBase& Collection)
 	for (int32 i = 0; i < PoolSize; ++i)
 	{
 		FRTPoolEntry Entry;
-		Entry.ImpulseRT    = CreateImpulseRT(FName(*FString::Printf(TEXT("FoliageRT_Impulse_%02d"), i)));
-		Entry.ContinuousRT = CreateContinuousRT(FName(*FString::Printf(TEXT("FoliageRT_Continuous_%02d"), i)));
+		Entry.ImpulseRT    = LoadImpulseRT(i);
+		Entry.ContinuousRT = LoadContinuousRT(i);
 		Pool.Add(Entry);
 	}
 
-	UE_LOG(LogTemp, Log,
-		TEXT("[FoliageRT] Pool initialised — %d slots, %.0f-unit cells, %dx%d RT, %.1fs decay"),
+	UE_LOG(RTFoliageInvoker, Log,
+		TEXT("URTPoolManager::Initialize >> Pool ready — %d slots, %.0f-unit cells, %dx%d RT, %.1fs decay"),
 		PoolSize, CellSize, RTResolution, RTResolution, DecayDuration);
 }
 
 void URTPoolManager::Deinitialize()
 {
+	UE_LOG(RTFoliageInvoker, Log,
+		TEXT("URTPoolManager::Deinitialize >> Releasing %d pool slots"),
+		Pool.Num());
+
 	Pool.Empty();
 	Super::Deinitialize();
 }
 
 void URTPoolManager::Tick(float DeltaTime)
 {
+	// Frame guard — Tick is called by every invoker component each frame.
+	// Only execute once per frame regardless of how many invokers exist.
+	const uint64 CurrentFrame = GFrameCounter;
+	if (CurrentFrame == LastTickFrame) { return; }
+	LastTickFrame = CurrentFrame;
+
+	// Clear all occupied ContinuousRTs once at the start of each frame.
+	// This must happen before any invoker draws so all invoker brushes
+	// accumulate additively into a fresh RT — no trails, no cross-invoker bleed.
+	for (int32 i = 0; i < Pool.Num(); ++i)
+	{
+		if (Pool[i].IsOccupied() && Pool[i].ContinuousRT)
+		{
+			UKismetRenderingLibrary::ClearRenderTarget2D(
+				GetWorld(), Pool[i].ContinuousRT, GContinuousNeutral);
+		}
+	}
+
 	ReclaimExpiredSlots();
 }
+
+// ── Invoker API ───────────────────────────────────────────────────────────────
 
 int32 URTPoolManager::RegisterInvoker(FVector WorldLocation)
 {
@@ -69,13 +109,20 @@ int32 URTPoolManager::RegisterInvoker(FVector WorldLocation)
 
 		if (SlotIdx == INDEX_NONE)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[FoliageRT] Pool fully exhausted — all slots have active invokers. Increase PoolSize."));
+			UE_LOG(RTFoliageInvoker, Warning,
+				TEXT("URTPoolManager::RegisterInvoker >> Pool exhausted — all %d slots have active invokers. Increase PoolSize."),
+				PoolSize);
 			return INDEX_NONE;
 		}
 	}
 
 	Pool[SlotIdx].ActiveInvokerCount++;
 	Pool[SlotIdx].LastReleaseTime = -1.f;
+
+	UE_LOG(RTFoliageInvoker, Verbose,
+		TEXT("URTPoolManager::RegisterInvoker >> Cell (%d,%d) → Slot %d (invokers: %d)"),
+		Cell.X, Cell.Y, SlotIdx, Pool[SlotIdx].ActiveInvokerCount);
+
 	return SlotIdx;
 }
 
@@ -90,11 +137,23 @@ void URTPoolManager::UnregisterInvoker(FVector WorldLocation)
 
 	if (Slot.ActiveInvokerCount == 0)
 	{
+		// Eagerly clear ContinuousRT when last invoker leaves — no brush present.
 		ClearContinuousSlot(SlotIdx);
 		Slot.LastReleaseTime = GetWorld()->GetTimeSeconds();
-		UE_LOG(LogTemp, Verbose, TEXT("[FoliageRT] Cell (%d,%d) released. Decay clock started — reclaim in %.1fs."), Cell.X, Cell.Y, DecayDuration);
+
+		UE_LOG(RTFoliageInvoker, Verbose,
+			TEXT("URTPoolManager::UnregisterInvoker >> Cell (%d,%d) released — decay clock started, reclaim in %.1fs"),
+			Cell.X, Cell.Y, DecayDuration);
+	}
+	else
+	{
+		UE_LOG(RTFoliageInvoker, Verbose,
+			TEXT("URTPoolManager::UnregisterInvoker >> Cell (%d,%d) Slot %d — invokers remaining: %d"),
+			Cell.X, Cell.Y, SlotIdx, Slot.ActiveInvokerCount);
 	}
 }
+
+// ── Query API ─────────────────────────────────────────────────────────────────
 
 bool URTPoolManager::GetRTForWorldPosition(FVector WorldLocation,
 	UTextureRenderTarget2D*& OutImpulseRT, UTextureRenderTarget2D*& OutContinuousRT, FVector2D& OutUV) const
@@ -132,6 +191,8 @@ bool URTPoolManager::GetSlotData(int32 SlotIndex,
 	return Slot.IsOccupied();
 }
 
+// ── Utility ───────────────────────────────────────────────────────────────────
+
 FIntPoint URTPoolManager::WorldToCell(FVector WorldLocation) const
 {
 	return FIntPoint(
@@ -152,36 +213,135 @@ int32 URTPoolManager::GetActiveSlotCount() const
 	return Count;
 }
 
-UTextureRenderTarget2D* URTPoolManager::CreateImpulseRT(const FName& Name) const
+FString URTPoolManager::GetPoolDebugString() const
 {
-	UTextureRenderTarget2D* RT = NewObject<UTextureRenderTarget2D>(GetTransientPackage(), Name);
-	RT->RenderTargetFormat = RTF_RGBA32f;
-	RT->InitAutoFormat(RTResolution, RTResolution);
-	RT->ClearColor = FLinearColor(0.f, 0.f, 0.f, 0.f);
-	RT->bAutoGenerateMips = false;
-	RT->UpdateResource();
-	if (UWorld* World = GetWorld()) { UKismetRenderingLibrary::ClearRenderTarget2D(World, RT, FLinearColor::Black); }
-	return RT;
+	FString Out;
+	Out.Reserve(512);
+
+	Out += FString::Printf(
+		TEXT("=== RTPoolManager | Slots:%d CellSize:%.0f DecayDuration:%.1fs ===\n"),
+		PoolSize, CellSize, DecayDuration);
+
+	for (int32 i = 0; i < Pool.Num(); ++i)
+	{
+		const FRTPoolEntry& Slot = Pool[i];
+
+		if (Slot.IsFree())
+		{
+			Out += FString::Printf(TEXT("[Slot %02d] FREE\n"), i);
+			continue;
+		}
+
+		const FString LocationStr = FString::Printf(
+			TEXT("Cell(%d,%d)  Origin(%.0f, %.0f)"),
+			Slot.AssignedCell.X, Slot.AssignedCell.Y,
+			Slot.CellOriginWS.X, Slot.CellOriginWS.Y);
+
+		FString DecayStr;
+		if (Slot.ActiveInvokerCount > 0)
+		{
+			DecayStr = FString::Printf(TEXT("Invokers:%d  [ACTIVE]"), Slot.ActiveInvokerCount);
+		}
+		else
+		{
+			const float Elapsed = (GetWorld() && Slot.LastReleaseTime >= 0.f)
+				? GetWorld()->GetTimeSeconds() - Slot.LastReleaseTime : 0.f;
+			DecayStr = FString::Printf(
+				TEXT("Invokers:0  [DECAYING]  Elapsed:%.1fs  Remaining:%.1fs"),
+				Elapsed, FMath::Max(0.f, DecayDuration - Elapsed));
+		}
+
+		const FString ImpStr = Slot.ImpulseRT
+			? FString::Printf(TEXT("ImpulseRT:   '%s'  %dx%d  %s  NeedsClear:%s"),
+				*Slot.ImpulseRT->GetName(),
+				Slot.ImpulseRT->SizeX, Slot.ImpulseRT->SizeY,
+				RTFormatName(Slot.ImpulseRT->RenderTargetFormat),
+				Slot.bImpulseNeedsClear ? TEXT("YES") : TEXT("no"))
+			: TEXT("ImpulseRT:   NULL");
+
+		const FString ContStr = Slot.ContinuousRT
+			? FString::Printf(TEXT("ContinuousRT:'%s'  %dx%d  %s"),
+				*Slot.ContinuousRT->GetName(),
+				Slot.ContinuousRT->SizeX, Slot.ContinuousRT->SizeY,
+				RTFormatName(Slot.ContinuousRT->RenderTargetFormat))
+			: TEXT("ContinuousRT:NULL");
+
+		Out += FString::Printf(
+			TEXT("[Slot %02d] %s  |  %s\n")
+			TEXT("          %s\n")
+			TEXT("          %s\n"),
+			i, *LocationStr, *DecayStr, *ImpStr, *ContStr);
+	}
+
+	return Out;
 }
 
-UTextureRenderTarget2D* URTPoolManager::CreateContinuousRT(const FName& Name) const
-{
-	UTextureRenderTarget2D* RT = NewObject<UTextureRenderTarget2D>(GetTransientPackage(), Name);
-	RT->RenderTargetFormat = RTF_RGBA8;
-	RT->InitAutoFormat(RTResolution, RTResolution);
+// ── Private helpers ───────────────────────────────────────────────────────────
 
-	// R=0.5, B=0.5 encodes zero velocity in both axes.
-	// A=0 encodes zero weight — foliage ContWeight gate returns 0.
-	// Clearing to black (R=0) would decode as -MaxVelocity and shift foliage
-	// the moment any cell becomes active, even before a brush stroke is drawn.
-	RT->ClearColor        = FLinearColor(0.5f, 0.f, 0.5f, 0.f);
-	RT->bAutoGenerateMips = false;
-	RT->UpdateResource();
+UTextureRenderTarget2D* URTPoolManager::LoadImpulseRT(int32 SlotIndex) const
+{
+	const URTPoolSettings* Settings = GetDefault<URTPoolSettings>();
+	if (!Settings || !Settings->ImpulseRTs.IsValidIndex(SlotIndex))
+	{
+		UE_LOG(RTFoliageInvoker, Error,
+			TEXT("URTPoolManager::LoadImpulseRT >> No ImpulseRT asset assigned for Slot %d — assign in Project Settings → Foliage RT Pool"),
+			SlotIndex);
+		return nullptr;
+	}
+
+	UTextureRenderTarget2D* RT = Settings->ImpulseRTs[SlotIndex].LoadSynchronous();
+	if (!RT)
+	{
+		UE_LOG(RTFoliageInvoker, Error,
+			TEXT("URTPoolManager::LoadImpulseRT >> Failed to load ImpulseRT asset for Slot %d"),
+			SlotIndex);
+		return nullptr;
+	}
 
 	if (UWorld* World = GetWorld())
 	{
-		UKismetRenderingLibrary::ClearRenderTarget2D(World, RT, FLinearColor(0.5f, 0.f, 0.5f, 0.f));
+		// Black clear — A=0 ensures FRT_DampedSine guard fires immediately,
+		// preventing phantom wobble before any invoker stamps.
+		UKismetRenderingLibrary::ClearRenderTarget2D(World, RT, FLinearColor::Black);
 	}
+
+	UE_LOG(RTFoliageInvoker, Log,
+		TEXT("URTPoolManager::LoadImpulseRT >> Loaded '%s' for Slot %d"),
+		*RT->GetName(), SlotIndex);
+
+	return RT;
+}
+
+UTextureRenderTarget2D* URTPoolManager::LoadContinuousRT(int32 SlotIndex) const
+{
+	const URTPoolSettings* Settings = GetDefault<URTPoolSettings>();
+	if (!Settings || !Settings->ContinuousRTs.IsValidIndex(SlotIndex))
+	{
+		UE_LOG(RTFoliageInvoker, Error,
+			TEXT("URTPoolManager::LoadContinuousRT >> No ContinuousRT asset assigned for Slot %d — assign in Project Settings → Foliage RT Pool"),
+			SlotIndex);
+		return nullptr;
+	}
+
+	UTextureRenderTarget2D* RT = Settings->ContinuousRTs[SlotIndex].LoadSynchronous();
+	if (!RT)
+	{
+		UE_LOG(RTFoliageInvoker, Error,
+			TEXT("URTPoolManager::LoadContinuousRT >> Failed to load ContinuousRT asset for Slot %d"),
+			SlotIndex);
+		return nullptr;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		// (0.5, 0.5, 0, 0) — neutral direction, height unused, no weight.
+		UKismetRenderingLibrary::ClearRenderTarget2D(World, RT, GContinuousNeutral);
+	}
+
+	UE_LOG(RTFoliageInvoker, Log,
+		TEXT("URTPoolManager::LoadContinuousRT >> Loaded '%s' for Slot %d"),
+		*RT->GetName(), SlotIndex);
+
 	return RT;
 }
 
@@ -203,12 +363,20 @@ int32 URTPoolManager::AssignFreeSlot(FIntPoint CellIndex)
 			Slot.CellOriginWS       = CellToWorldOrigin(CellIndex);
 			Slot.ActiveInvokerCount = 0;
 			Slot.LastReleaseTime    = -1.f;
-			UE_LOG(LogTemp, Verbose, TEXT("[FoliageRT] Slot %d → Cell (%d,%d)  origin (%.0f, %.0f)"),
+
+			UE_LOG(RTFoliageInvoker, Verbose,
+				TEXT("URTPoolManager::AssignFreeSlot >> Slot %d → Cell (%d,%d) origin (%.0f,%.0f)"),
 				i, CellIndex.X, CellIndex.Y, Slot.CellOriginWS.X, Slot.CellOriginWS.Y);
+
 			OnCellAssigned.Broadcast(CellIndex, i);
 			return i;
 		}
 	}
+
+	UE_LOG(RTFoliageInvoker, Verbose,
+		TEXT("URTPoolManager::AssignFreeSlot >> No free slot available for Cell (%d,%d)"),
+		CellIndex.X, CellIndex.Y);
+
 	return INDEX_NONE;
 }
 
@@ -226,15 +394,21 @@ int32 URTPoolManager::EvictOldestReleasedSlot()
 		if (Age > OldestAge) { OldestAge = Age; OldestIdx = i; }
 	}
 
-	if (OldestIdx == INDEX_NONE) { return INDEX_NONE; }
+	if (OldestIdx == INDEX_NONE)
+	{
+		UE_LOG(RTFoliageInvoker, Warning,
+			TEXT("URTPoolManager::EvictOldestReleasedSlot >> No evictable slot found — all slots have active invokers"));
+		return INDEX_NONE;
+	}
 
-	const FIntPoint ReclaimedCell       = Pool[OldestIdx].AssignedCell;
-	Pool[OldestIdx].bImpulseNeedsClear  = true;
-	Pool[OldestIdx].AssignedCell        = FIntPoint(INT32_MIN, INT32_MIN);
-	Pool[OldestIdx].CellOriginWS        = FVector2D(-9999999.f, -9999999.f);
-	Pool[OldestIdx].LastReleaseTime     = -1.f;
+	const FIntPoint ReclaimedCell      = Pool[OldestIdx].AssignedCell;
+	Pool[OldestIdx].bImpulseNeedsClear = true;
+	Pool[OldestIdx].AssignedCell       = FIntPoint(INT32_MIN, INT32_MIN);
+	Pool[OldestIdx].CellOriginWS       = FVector2D(-9999999.f, -9999999.f);
+	Pool[OldestIdx].LastReleaseTime    = -1.f;
 
-	UE_LOG(LogTemp, Verbose, TEXT("[FoliageRT] Slot %d force-evicted from Cell (%d,%d) — age %.1fs"),
+	UE_LOG(RTFoliageInvoker, Log,
+		TEXT("URTPoolManager::EvictOldestReleasedSlot >> Slot %d force-evicted from Cell (%d,%d) — age %.1fs"),
 		OldestIdx, ReclaimedCell.X, ReclaimedCell.Y, OldestAge);
 
 	OnCellReclaimed.Broadcast(ReclaimedCell, OldestIdx);
@@ -245,19 +419,22 @@ void URTPoolManager::ClearImpulseSlot(int32 SlotIndex)
 {
 	if (!Pool.IsValidIndex(SlotIndex) || !Pool[SlotIndex].ImpulseRT) { return; }
 	UKismetRenderingLibrary::ClearRenderTarget2D(GetWorld(), Pool[SlotIndex].ImpulseRT, FLinearColor::Black);
+
+	UE_LOG(RTFoliageInvoker, Verbose,
+		TEXT("URTPoolManager::ClearImpulseSlot >> Slot %d ImpulseRT cleared to black"),
+		SlotIndex);
 }
 
 void URTPoolManager::ClearContinuousSlot(int32 SlotIndex)
 {
 	if (!Pool.IsValidIndex(SlotIndex) || !Pool[SlotIndex].ContinuousRT) { return; }
 
-	// Must clear to neutral velocity (0.5, 0, 0.5, 0) not black.
-	// Black decodes as -MaxVelocity and shifts foliage immediately on next sample.
 	UKismetRenderingLibrary::ClearRenderTarget2D(
-		GetWorld(),
-		Pool[SlotIndex].ContinuousRT,
-		FLinearColor(0.5f, 0.f, 0.5f, 0.f)
-	);
+		GetWorld(), Pool[SlotIndex].ContinuousRT, GContinuousNeutral);
+
+	UE_LOG(RTFoliageInvoker, Verbose,
+		TEXT("URTPoolManager::ClearContinuousSlot >> Slot %d ContinuousRT cleared to neutral"),
+		SlotIndex);
 }
 
 void URTPoolManager::ReclaimExpiredSlots()
@@ -276,7 +453,8 @@ void URTPoolManager::ReclaimExpiredSlots()
 		Slot.CellOriginWS       = FVector2D(-9999999.f, -9999999.f);
 		Slot.LastReleaseTime    = -1.f;
 
-		UE_LOG(LogTemp, Verbose, TEXT("[FoliageRT] Slot %d reclaimed from Cell (%d,%d)"),
+		UE_LOG(RTFoliageInvoker, Verbose,
+			TEXT("URTPoolManager::ReclaimExpiredSlots >> Slot %d reclaimed from Cell (%d,%d)"),
 			i, ReclaimedCell.X, ReclaimedCell.Y);
 
 		OnCellReclaimed.Broadcast(ReclaimedCell, i);
