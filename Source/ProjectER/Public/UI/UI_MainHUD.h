@@ -18,6 +18,7 @@ class UImage;
 class UUI_ToolTip;
 class UCharacterData;
 class UAbilitySystemComponent;
+class USkillDataAsset;
 
 // [김현수 추가분]
 class UUniformGridPanel;
@@ -68,7 +69,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
 	void setStat(ECharacterStat stat, int32 Value);
-	
+
+	UFUNCTION()
+	void UpdateSkillPoint(float _nowSP);
 	UFUNCTION()
 	void InitMinimapCompo(USceneCaptureComponent2D* SceneCapture2D);
 	UFUNCTION()
@@ -111,12 +114,22 @@ protected:
 	UFUNCTION() void OnSkill02Hovered();
 	UFUNCTION() void OnSkill03Hovered();
 	UFUNCTION() void OnSkill04Hovered();
+
+	UFUNCTION() void OnSkillLevelUp01Hovered();
+	UFUNCTION() void OnSkillLevelUp02Hovered();
+	UFUNCTION() void OnSkillLevelUp03Hovered();
+	UFUNCTION() void OnSkillLevelUp04Hovered();
 	// .............
 
 	// void ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, bool showUpper);
 	void ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, FText CostDesc, bool showUpper);
 	UFUNCTION()
 	void HideTooltip();
+	void initSkillDataAssets(); // 스킬 데이터 애셋 초기화 (툴팁용)
+
+private:
+	// 툴팁용 스킬 데이터 애셋 저장해 둘 곳(매번 for문 돌리면 손해라서 램을 좀 더 쓰기로 함)
+	TArray<USkillDataAsset*> SkillDataAssets;
 
 private:
 	void HandleMinimapClicked(const FPointerEvent& InMouseEvent);
@@ -284,6 +297,9 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* NowRespawnTime;
 
+	UPROPERTY(meta = (BindWidget))
+	UImage* UI_BACKGROUND_LevelUp;
+
 	UFUNCTION()
 	void OnSkillClicked_Q();
 	UFUNCTION()
@@ -305,6 +321,23 @@ protected:
 	UFUNCTION()
 	void SkillFireReleased(ESkillKey index);
 
+	UFUNCTION()
+	void OnSkillLevelUpClicked_Q();
+	UFUNCTION()
+	void OnSkillLevelUpReleased_Q();
+
+	UFUNCTION()
+	void OnSkillLevelUpClicked_W();
+	UFUNCTION()
+	void OnSkillLevelUpReleased_W();
+	UFUNCTION()
+	void OnSkillLevelUpClicked_E();
+	UFUNCTION()
+	void OnSkillLevelUpReleased_E();
+	UFUNCTION()
+	void OnSkillLevelUpClicked_R();
+	UFUNCTION()
+	void OnSkillLevelUpReleased_R();
 	UFUNCTION()
 	void OnAbilityActivated(class UGameplayAbility* ActivatedAbility);
 
@@ -393,5 +426,8 @@ protected:
 
 private:
 	void RefreshInventoryGridLayout(); // [김현수 추가분]
+
+
+	bool test = true;
 };
 

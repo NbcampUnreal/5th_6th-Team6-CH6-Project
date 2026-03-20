@@ -51,6 +51,8 @@ public:
     void BroadcastDEFChanges(float CurrentDEF);
     void BroadcastSpeedChanges(float CurrentSpeed);
     void BroadcastCooldownReduction(float Cooldown);
+    void BroadcastSkillPointChanges(float CurrentAR); // 스킬 포인트
+
 
 
 
