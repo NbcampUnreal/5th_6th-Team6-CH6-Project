@@ -1,4 +1,4 @@
-﻿#include "CharacterSystem/Player/BasePlayerController.h"
+#include "CharacterSystem/Player/BasePlayerController.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -400,6 +400,7 @@ void ABasePlayerController::CheckHoveredActor()
 			}
 			// 아이템, 상자 등 상호작용 가능한 물체일 경우 (흰색)
 			else if (HitActor->FindComponentByClass<ULootableComponent>() || 
+					 HitActor->FindComponentByClass<UER_TeleportComponent>() ||
 			         HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
 			{
 				if (UMeshComponent* MeshComp = HitActor->FindComponentByClass<UMeshComponent>())
@@ -1740,6 +1741,15 @@ void ABasePlayerController::Server_RequestCharacterSelection_Implementation()
 	if (AER_OutGameMode* OutGameMode = Cast<AER_OutGameMode>(GetWorld()->GetAuthGameMode()))
 	{
 		OutGameMode->ShowCharacterSelectionToAll();
+	}
+}
+
+void ABasePlayerController::Server_ToggleReadyState_Implementation()
+{
+	if (AER_PlayerState* ER_PS = GetPlayerState<AER_PlayerState>())
+	{
+		// 현재 상태를 반전시켜 줌 (레디 -> 취소, 취소 -> 레디)
+		ER_PS->SetReadyState(!ER_PS->bIsReady);
 	}
 }
 
