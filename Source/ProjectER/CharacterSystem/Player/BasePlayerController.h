@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "ItemSystem/Interface/I_ItemInteractable.h" // [김현수 추가분]
 
@@ -260,6 +260,10 @@ public:
 	// 클라이언트가 캐릭터 선택창 진입 요청
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_RequestCharacterSelection();
+
+	// 유저가 준비 버튼을 클릭했을 때 호출 (자신의 레디 상태 토글)
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Lobby")
+	void Server_ToggleReadyState();
 
 	// 유저가 특정 캐릭터 버튼을 클릭했을 때 호출 (서버에 데이터 저장 요청)
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Character Selection")
