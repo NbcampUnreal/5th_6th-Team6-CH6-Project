@@ -1,4 +1,4 @@
-﻿#include "Monster/StateTree/Task/STT_ActivateTargetSkill.h"
+﻿#include "Monster/StateTree/Task/STT_ActivateDirectionSkill.h"
 #include "StateTreeLinker.h"
 #include "StateTreeExecutionContext.h"
 
@@ -6,28 +6,28 @@
 #include "AbilitySystemComponent.h"
 #include "Monster/BaseMonster.h"
 
-FSTT_ActivateTargetSkill::FSTT_ActivateTargetSkill()
+FSTT_ActivateDirectionSkill::FSTT_ActivateDirectionSkill()
 {
 	bShouldCallTick = false;
 }
 
-bool FSTT_ActivateTargetSkill::Link(FStateTreeLinker& Linker)
+bool FSTT_ActivateDirectionSkill::Link(FStateTreeLinker& Linker)
 {
 	Linker.LinkExternalData(ActorHandle);
 	return true;
 }
 
-const UStruct* FSTT_ActivateTargetSkill::GetInstanceDataType() const
+const UStruct* FSTT_ActivateDirectionSkill::GetInstanceDataType() const
 {
 	return FInstanceDataType::StaticStruct();
 }
 
-EStateTreeRunStatus FSTT_ActivateTargetSkill::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+EStateTreeRunStatus FSTT_ActivateDirectionSkill::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
 	AActor& Actor = Context.GetExternalData(ActorHandle);
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 
-	UAbilitySystemComponent* ASC = 
+	UAbilitySystemComponent* ASC =
 		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(&Actor);
 
 	for (FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
@@ -40,16 +40,25 @@ EStateTreeRunStatus FSTT_ActivateTargetSkill::EnterState(FStateTreeExecutionCont
 				Payload.Instigator = &Actor;
 				if (ABaseMonster* Monster = Cast<ABaseMonster>(&Actor))
 				{
-					Payload.Target = Monster->GetTargetPlayer();
+					AActor* TargetActor = Monster->GetTargetPlayer();
+					if (IsValid(TargetActor))
+					{
+						Payload.Target = TargetActor;
 
-					FGameplayAbilityTargetDataHandle TargetDataHandle = 
-						UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(Monster->GetTargetPlayer());
-					Payload.TargetData = TargetDataHandle;
+						FVector StartLocation = Actor.GetActorLocation();
+						FVector TargetLocation = TargetActor->GetActorLocation();
+						FVector Direction = (TargetLocation - StartLocation).GetSafeNormal();
+						FVector AimPoint = StartLocation + Direction;
 						
+						FHitResult HitResult;
+						HitResult.Location = AimPoint;
+
+						Payload.TargetData = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromHitResult(HitResult);
+					}
 				}
 
 				UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(&Actor, InstanceData.EventTag, Payload);
-			
+
 				return EStateTreeRunStatus::Running;
 			}
 			else
@@ -65,6 +74,6 @@ EStateTreeRunStatus FSTT_ActivateTargetSkill::EnterState(FStateTreeExecutionCont
 	return EStateTreeRunStatus::Failed;
 }
 
-void FSTT_ActivateTargetSkill::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+void FSTT_ActivateDirectionSkill::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
 }
