@@ -96,7 +96,7 @@ bool UGCN_SpawnNiagaraBySpawnConfig::OnActive_Implementation(AActor* MyTarget, c
 			ConstantForce->AccumulateMode = ERootMotionAccumulateMode::Override;
 			ConstantForce->Priority = 5;
 			ConstantForce->Force = Parameters.Normal * Parameters.RawMagnitude;
-			ConstantForce->Duration = 5.0f; // GE가 제거될 때 OnRemove에서 함께 제거되므로 넉넉하게 설정
+			ConstantForce->Duration = (Parameters.NormalizedMagnitude > 0.0f) ? Parameters.NormalizedMagnitude : 5.0f;
 			ConstantForce->FinishVelocityParams.Mode = ERootMotionFinishVelocityMode::MaintainLastRootMotionVelocity;
 
 			CMC->ApplyRootMotionSource(ConstantForce);
