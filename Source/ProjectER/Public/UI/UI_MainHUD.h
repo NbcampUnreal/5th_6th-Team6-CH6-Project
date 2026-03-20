@@ -18,6 +18,7 @@ class UImage;
 class UUI_ToolTip;
 class UCharacterData;
 class UAbilitySystemComponent;
+class USkillDataAsset;
 
 // [김현수 추가분]
 class UUniformGridPanel;
@@ -68,7 +69,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
 	void setStat(ECharacterStat stat, int32 Value);
-	
+
+	UFUNCTION()
+	void UpdateSkillPoint(float _nowSP);
 	UFUNCTION()
 	void InitMinimapCompo(USceneCaptureComponent2D* SceneCapture2D);
 	UFUNCTION()
@@ -117,6 +120,11 @@ protected:
 	void ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, FText CostDesc, bool showUpper);
 	UFUNCTION()
 	void HideTooltip();
+	void initSkillDataAssets(); // 스킬 데이터 애셋 초기화 (툴팁용)
+
+private:
+	// 툴팁용 스킬 데이터 애셋 저장해 둘 곳(매번 for문 돌리면 손해라서 램을 좀 더 쓰기로 함)
+	TArray<USkillDataAsset*> SkillDataAssets;
 
 private:
 	void HandleMinimapClicked(const FPointerEvent& InMouseEvent);
@@ -283,6 +291,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* NowRespawnTime;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* UI_BACKGROUND_LevelUp;
 
 	UFUNCTION()
 	void OnSkillClicked_Q();

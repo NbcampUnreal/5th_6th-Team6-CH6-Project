@@ -13,6 +13,8 @@
 #include "Blueprint/SlateBlueprintLibrary.h" // 툴팁용
 #include "Blueprint/WidgetLayoutLibrary.h" // 툴팁용
 #include "UI/UI_ToolTip.h" // 툴팁용
+#include "SkillSystem/SkillConfig/BaseSkillConfig.h"
+
 #include "SkillSystem/SkillDataAsset.h" // 스킬용
 #include "AbilitySystemComponent.h" // 스킬용
 #include "CharacterSystem/Data/CharacterData.h" // 스킬용
@@ -124,6 +126,11 @@ void UUI_MainHUD::UPdate_MP(float CurrentMP, float MaxMP)
 
 void UUI_MainHUD::ShowSkillUp(bool show)
 {
+    if (UI_BACKGROUND_LevelUp)
+    {
+        UI_BACKGROUND_LevelUp->SetVisibility(show ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+    }
+
     if (IsValid(skill_up_01))
     {
         skill_up_01->SetVisibility(show ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
@@ -203,6 +210,20 @@ void UUI_MainHUD::setStat(ECharacterStat stat, int32 value)
     }
 }
 
+void UUI_MainHUD::UpdateSkillPoint(float _nowSP)
+{
+    if (_nowSP < 1)
+    {
+		ShowSkillUp(false);
+
+    }
+    else
+    {
+        ShowSkillUp(true);
+    }
+	UE_LOG(LogTemp, Error, TEXT("UpdateSkillPoint called with SP: %f"), _nowSP);
+}
+
 void UUI_MainHUD::InitMinimapCompo(USceneCaptureComponent2D* SceneCapture2D)
 {
     MinimapCaptureComponent = SceneCapture2D;
@@ -211,6 +232,7 @@ void UUI_MainHUD::InitMinimapCompo(USceneCaptureComponent2D* SceneCapture2D)
 void UUI_MainHUD::InitHeroDataHUD(UCharacterData* _HeroData)
 {
     HeroData = _HeroData;
+    initSkillDataAssets();
 }
 
 void UUI_MainHUD::InitASCHud(UAbilitySystemComponent* _ASC)
@@ -255,6 +277,11 @@ void UUI_MainHUD::NativeConstruct()
     EnsureInventorySlotWidgets();
     RefreshInventoryGridLayout();
     UpdateInventoryUI();
+
+    if (UI_BACKGROUND_LevelUp)
+    {
+        UI_BACKGROUND_LevelUp->SetVisibility(ESlateVisibility::Collapsed);
+    }
 
     // 툴팁 init
     if (IsValid(TooltipClass) && !TooltipInstance)
@@ -372,72 +399,67 @@ FReply UUI_MainHUD::NativeOnMouseButtonDown(const FGeometry& InGeometry, const F
 
 void UUI_MainHUD::OnSkill01Hovered()
 {
-    // 차후 스킬 데이터 애셋에서 정보를 읽어올 수 있도록 개선해야 함
+    if (SkillDataAssets.Num() < 1) return;
 
-    int32 Index = 0;
-    if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
+    if (IsValid(SkillDataAssets[0]))
     {
-        USkillDataAsset* SkillAsset = HeroData->SkillDataAsset[Index].LoadSynchronous();
-        if (IsValid(SkillAsset))
-        {
-            FSkillTooltipData nowSkill = SkillAsset->GetSkillTooltipData(1.0f);
-            
-            ShowTooltip(skill_01, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
-        }
+        FSkillTooltipData nowSkill = SkillDataAssets[0]->GetSkillTooltipData(1.0f);
+        ShowTooltip(skill_01, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
     }
+
+
+    //int32 Index = 0;
+    //if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
+    //{
+    //    USkillDataAsset* SkillAsset = HeroData->SkillDataAsset[Index].LoadSynchronous();
+    //    if (IsValid(SkillAsset))
+    //    {
+    //        FSkillTooltipData nowSkill = SkillAsset->GetSkillTooltipData(1.0f);
+    //        
+    //        ShowTooltip(skill_01, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
+    //    }
+    //}
 
     // ShowTooltip(skill_01, TEX_TempIcon, FText::FromString(TEXT("파이어볼")), FText::FromString(TEXT("화염 구체를 발사합니다.")), FText::FromString(TEXT("대미지: 100\n마나 소모: 50")), true);
 }
 
 void UUI_MainHUD::OnSkill02Hovered()
 {
-    int32 Index = 1;
-    if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
+    if (SkillDataAssets.Num() < 2) return;
+
+    if (IsValid(SkillDataAssets[1]))
     {
-        USkillDataAsset* SkillAsset = HeroData->SkillDataAsset[Index].LoadSynchronous();
-        if (IsValid(SkillAsset))
-        {
-            FSkillTooltipData nowSkill = SkillAsset->GetSkillTooltipData(1.0f);
-
-            ShowTooltip(skill_01, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
-        }
+        FSkillTooltipData nowSkill = SkillDataAssets[1]->GetSkillTooltipData(1.0f);
+        ShowTooltip(skill_02, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
     }
-
-    // ShowTooltip(skill_02, TEX_TempIcon, FText::FromString(TEXT("파이어볼파이어볼파이어볼파이어볼")), FText::FromString(TEXT("기분 좋은 해피 슈퍼 사연발 파이어볼을 해피하게 슈퍼메가 해피합니다. 울트라 해피.")), FText::FromString(TEXT("대미지: 100\n마나 소모: 50")), false);
 }
 
 void UUI_MainHUD::OnSkill03Hovered()
 {
-    int32 Index = 2;
-    if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
+    if (SkillDataAssets.Num() < 3) return;
+
+    if (IsValid(SkillDataAssets[2]))
     {
-        USkillDataAsset* SkillAsset = HeroData->SkillDataAsset[Index].LoadSynchronous();
-        if (IsValid(SkillAsset))
-        {
-            FSkillTooltipData nowSkill = SkillAsset->GetSkillTooltipData(1.0f);
-
-            ShowTooltip(skill_01, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
-        }
+        FSkillTooltipData nowSkill = SkillDataAssets[2]->GetSkillTooltipData(1.0f);
+        ShowTooltip(skill_03, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
     }
-
-    // ShowTooltip(skill_03, TEX_TempIcon, FText::FromString(TEXT("파이어볼 파이어볼")), FText::FromString(TEXT("화염 구체를 발사합니다.화염 구체를 발사합니다.화염 구체를 발사합니다.화염 구체를 발사합니다.화염 구체를 발사합니다.화염 구체를 발사합니다.")), FText::FromString(TEXT("대미지: 100\n마나 소모: 50")), true);
 }
 
 void UUI_MainHUD::OnSkill04Hovered()
 {
-    int32 Index = 3;
-    if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
+    if (SkillDataAssets.Num() < 4) return;
+    
+    if (IsValid(SkillDataAssets[3]))
     {
-        USkillDataAsset* SkillAsset = HeroData->SkillDataAsset[Index].LoadSynchronous();
-        if (IsValid(SkillAsset))
+        if (ASC)
         {
-            FSkillTooltipData nowSkill = SkillAsset->GetSkillTooltipData(1.0f);
+            // 스킬레벨 어딨지...
+            // float nowSkillLevel = ASC->GetNumericAttribute(UBaseAttributeSet::GetHealthAttribute());
 
-            ShowTooltip(skill_01, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
+            FSkillTooltipData nowSkill = SkillDataAssets[3]->GetSkillTooltipData(1.0f);
+            ShowTooltip(skill_04, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
         }
     }
-
-    // ShowTooltip(skill_04, TEX_TempIcon, FText::FromString(TEXT("파이어볼 파이어볼")), FText::FromString(TEXT("화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.\n화염 구체를 발사합니다.")), FText::FromString(TEXT("대미지: 100\n마나 소모: 50")), true);
 }
 
 void UUI_MainHUD::ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, FText CostDesc, bool showUpper)
@@ -516,6 +538,25 @@ void UUI_MainHUD::HideTooltip()
 {
     if (IsValid(TooltipInstance))
         TooltipInstance->SetVisibility(ESlateVisibility::Collapsed);
+}
+
+void UUI_MainHUD::initSkillDataAssets()
+{
+    SkillDataAssets.Empty();
+    SkillDataAssets.Init(nullptr, 4);
+
+    for (const auto& SkillAsset : HeroData->SkillDataAsset)
+    {
+        if (SkillAsset.IsValid() && SkillAsset->SkillConfig)
+        {
+            FName TagName = SkillAsset->SkillConfig->Data.InputKeyTag.GetTagName();
+
+            if (TagName == "Ability.Input.Skill.Q") SkillDataAssets[0] = SkillAsset.Get();
+            else if (TagName == "Ability.Input.Skill.W") SkillDataAssets[1] = SkillAsset.Get();
+            else if (TagName == "Ability.Input.Skill.E") SkillDataAssets[2] = SkillAsset.Get();
+            else if (TagName == "Ability.Input.Skill.R") SkillDataAssets[3] = SkillAsset.Get();
+        }
+    }
 }
 
 void UUI_MainHUD::HandleMinimapClicked(const FPointerEvent& InMouseEvent)
@@ -623,76 +664,61 @@ void UUI_MainHUD::OnSkillReleased_R()
 }
 
 void UUI_MainHUD::SkillFirePressed(ESkillKey _Index)
-{
+{   
     if (!ASC) return;
+	int32 EnumIndex = static_cast<int32>(_Index);
 
-    int32 Index = static_cast<int32>(_Index);
-	// UE_LOG(LogTemp, Warning, TEXT("SkillFirePressed called with index: %d"), Index);
+    if (SkillDataAssets.Num() < EnumIndex+1) return;
 
-    if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
+    if (IsValid(SkillDataAssets[EnumIndex]))
     {
-        USkillDataAsset* SkillAsset = HeroData->SkillDataAsset[Index].LoadSynchronous();
-		// UE_LOG(LogTemp, Warning, TEXT("Loaded SkillDataAsset for index %d: %s"), Index, *GetNameSafe(SkillAsset));
-        if (SkillAsset && SkillAsset->SkillConfig)
+        if (SkillDataAssets[EnumIndex]->SkillConfig)
         {
-			// UE_LOG(LogTemp, Warning, TEXT("SkillConfig found for index %d: %s"), Index, *GetNameSafe(SkillAsset->SkillConfig));
-            FGameplayTag InputTag = SkillAsset->SkillConfig->Data.InputKeyTag;
+            FGameplayTag InputTag = SkillDataAssets[EnumIndex]->SkillConfig->Data.InputKeyTag;
             ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
 
             if (IsValid(PC))
             {
-				PC->AbilityInputTagPressed(InputTag);
-				float CoolTime = SkillAsset->SkillConfig->Data.BaseCoolTime.GetValueAtLevel(1);
-				// UE_LOG(LogTemp, Warning, TEXT("%d_Skill, TAG : %s, CoolTime : %f"), 0, *InputTag.ToString(), CoolTime);
-
+                PC->AbilityInputTagPressed(InputTag);
+                float CoolTime = SkillDataAssets[EnumIndex]->SkillConfig->Data.BaseCoolTime.GetValueAtLevel(1);
             }
-
-
-
-            //// ASC를 통한 스킬 실행?? <- 자체제작, PC에서 가져오는걸로 퉁치는게 조을것같음.
-            //if (ASC)
-            //{
-            //    FGameplayTagContainer TagContainer;
-            //    TagContainer.AddTag(InputTag);
-            //    ASC->TryActivateAbilitiesByTag(TagContainer);
-            //    UE_LOG(LogTemp, Error, TEXT("%d_Skill, TAG : %s)"), 0, *InputTag.ToString());
-            //}
-
-            //////////      for (FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
-            //////////      {
-            //////////          if (Spec.DynamicAbilityTags.HasTagExact(InputTag))
-            //////////          {
-            //////////              if (Spec.IsActive())
-            //////////              {
-            //////////                  // [방법 2 핵심] 태그를 담은 이벤트를 어빌리티에 직접 쏩니다.
-            //////////                  FGameplayEventData Payload;
-            //////////                  Payload.EventTag = InputTag; // 전달할 태그
-            ////////                  //ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
-            //////////                  Payload.Instigator = PC;
-
-            //////////                  // 활성화된 어빌리티에게 이벤트를 전달합니다.
-            //////////                  ASC->HandleGameplayEvent(InputTag, &Payload);
-            //////////                  UE_LOG(LogTemp, Log, TEXT("Gameplay Event Sent: %s"), *InputTag.ToString());
-            //////////              }
-            //////////              else
-            //////////              {
-            //////////                  ASC->TryActivateAbility(Spec.Handle);
-            //////////              }
-            //////////          }
-            //////////      }
         }
     }
-    else
-    {
-		UE_LOG(LogTemp, Warning, TEXT("Invalid SkillDataAsset or index out of range"));
-    }
+
+
+ //   int32 Index = static_cast<int32>(_Index);
+	//// UE_LOG(LogTemp, Warning, TEXT("SkillFirePressed called with index: %d"), Index);
+
+ //   if (HeroData && HeroData->SkillDataAsset.IsValidIndex(Index))
+ //   {
+ //       USkillDataAsset* SkillAsset = HeroData->SkillDataAsset[Index].LoadSynchronous();
+	//	// UE_LOG(LogTemp, Warning, TEXT("Loaded SkillDataAsset for index %d: %s"), Index, *GetNameSafe(SkillAsset));
+ //       if (SkillAsset && SkillAsset->SkillConfig)
+ //       {
+	//		// UE_LOG(LogTemp, Warning, TEXT("SkillConfig found for index %d: %s"), Index, *GetNameSafe(SkillAsset->SkillConfig));
+ //           FGameplayTag InputTag = SkillAsset->SkillConfig->Data.InputKeyTag;
+ //           ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
+
+ //           if (IsValid(PC))
+ //           {
+	//			PC->AbilityInputTagPressed(InputTag);
+	//			float CoolTime = SkillAsset->SkillConfig->Data.BaseCoolTime.GetValueAtLevel(1);
+	//			// UE_LOG(LogTemp, Warning, TEXT("%d_Skill, TAG : %s, CoolTime : %f"), 0, *InputTag.ToString(), CoolTime);
+
+ //           }
+ //       }
+ //   }
+ //   else
+ //   {
+	//	UE_LOG(LogTemp, Warning, TEXT("Invalid SkillDataAsset or index out of range"));
+ //   }
 
     ///
 }
 
 void UUI_MainHUD::SkillFireReleased(ESkillKey _Index)
 {
-    if (!ASC) return;
+    // if (!ASC) return;
 
     int32 Index = static_cast<int32>(_Index);
 
