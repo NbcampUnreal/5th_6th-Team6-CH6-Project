@@ -10,6 +10,7 @@
 
 class UAbilitySystemComponent;
 class UBaseAttributeSet;
+class UCharacterData;
 
 
 USTRUCT()
@@ -60,6 +61,12 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void SetStartPoint(int32 idx) { StartPoint = idx; }
+
+	UFUNCTION(BlueprintCallable, Category = "Character Selection")
+	TSoftObjectPtr<UCharacterData> GetSelectedCharacterData() const { return SelectedCharacterData; }
+
+	UFUNCTION(BlueprintCallable, Category = "Character Selection")
+	void SetSelectedCharacterData(TSoftObjectPtr<UCharacterData> InData);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_SetStartPoint(int32 idx);
@@ -117,6 +124,9 @@ public:
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	int32 StartPoint = 99;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Character Selection")
+	TSoftObjectPtr<UCharacterData> SelectedCharacterData;
 
 private:
 	UPROPERTY(VisibleAnywhere, Category = "GAS")
