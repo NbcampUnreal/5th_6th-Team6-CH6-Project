@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
@@ -19,7 +19,7 @@ USkillEffectDataAsset::USkillEffectDataAsset()
 	IndexTag = FGameplayTag::RequestGameplayTag(FName("Skill.Data.EffectIndex"));
 }
 
-TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySystemComponent* InstigatorASC, USkillBase* InstigatorSkill, AActor* InEffectCauser, const FGameplayEffectContextHandle InEffectContextHandle) const
+TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySystemComponent* InstigatorASC, UGameplayAbility* InstigatorSkill, AActor* InEffectCauser, const FGameplayEffectContextHandle InEffectContextHandle) const
 {
     TArray<FGameplayEffectSpecHandle> OutSpecs;
 
