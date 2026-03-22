@@ -14,6 +14,9 @@ struct FActivateGroundSkillData
 
 	UPROPERTY(EditAnywhere, Category = "Tag")
 	FGameplayTag EventTag;
+
+	UPROPERTY(EditAnywhere, Category = "Decal")
+	FGameplayTag GameplayCueTag;
 };
 
 USTRUCT()

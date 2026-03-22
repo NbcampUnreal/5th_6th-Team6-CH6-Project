@@ -52,6 +52,12 @@ EStateTreeRunStatus FSTT_ActivateGroundSkill::EnterState(FStateTreeExecutionCont
 						Payload.TargetData = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromHitResult(HitResult);
 
 						UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(&Actor, InstanceData.EventTag, Payload);
+
+						FGameplayCueParameters Params;
+						Params.Instigator = &Actor;
+						Params.Location = TargetLocation;
+						ASC->AddGameplayCue(InstanceData.GameplayCueTag, Params);
+						
 						return EStateTreeRunStatus::Running;
 					}
 				}
@@ -71,4 +77,14 @@ EStateTreeRunStatus FSTT_ActivateGroundSkill::EnterState(FStateTreeExecutionCont
 
 void FSTT_ActivateGroundSkill::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
+	AActor& Actor = Context.GetExternalData(ActorHandle);
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+
+	UAbilitySystemComponent* ASC =
+		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(&Actor);
+
+	if (ASC && InstanceData.GameplayCueTag.IsValid())
+	{
+		ASC->RemoveGameplayCue(InstanceData.GameplayCueTag);
+	}
 }

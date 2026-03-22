@@ -56,6 +56,12 @@ EStateTreeRunStatus FSTT_ActivateDirectionSkill::EnterState(FStateTreeExecutionC
 						Payload.TargetData = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromHitResult(HitResult);
 
 						UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(&Actor, InstanceData.EventTag, Payload);
+						
+						FGameplayCueParameters Params;
+						Params.Instigator = &Actor;
+						Params.Location = AimPoint;
+						ASC->AddGameplayCue(InstanceData.GameplayCueTag, Params);
+						
 						return EStateTreeRunStatus::Running;
 					}
 				}
@@ -75,4 +81,14 @@ EStateTreeRunStatus FSTT_ActivateDirectionSkill::EnterState(FStateTreeExecutionC
 
 void FSTT_ActivateDirectionSkill::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
+	AActor& Actor = Context.GetExternalData(ActorHandle);
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+
+	UAbilitySystemComponent* ASC =
+		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(&Actor);
+
+	if (ASC && InstanceData.GameplayCueTag.IsValid())
+	{
+		ASC->RemoveGameplayCue(InstanceData.GameplayCueTag);
+	}
 }
