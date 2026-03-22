@@ -68,12 +68,14 @@ ABaseMonster::ABaseMonster()
 	// 주변 플레이어 감지용 컴포넌트
 	MonsterRangeComp = CreateDefaultSubobject<UMonsterRangeComponent>(TEXT("MonsterRangeComponent"));	
 	MonsterRangeComp->SetIsReplicated(true);
+	MonsterRangeComp->SetComponentTickEnabled(false);
 
 	//UI Component
 	HPBarWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComponent"));
 	HPBarWidgetComp->SetupAttachment(GetMesh());
 	HPBarWidgetComp->SetWidgetSpace(EWidgetSpace::Screen); // 체력바 크기가 일정할거같으니까?
 	HPBarWidgetComp->SetVisibility(false);
+	HPBarWidgetComp->SetComponentTickEnabled(false);
 
 	SoundComp = CreateDefaultSubobject<UAudioComponent>(TEXT("AudioComponent"));
 	SoundComp->SetupAttachment(RootComponent);
