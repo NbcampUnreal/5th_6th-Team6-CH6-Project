@@ -1,31 +1,29 @@
-﻿#pragma once
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
 
 #include "CoreMinimal.h"
 #include "StateTreeConditionBase.h"
-#include "STC_HasTag.generated.h"
+#include "STC_IsCombat.generated.h"
 
 USTRUCT()
-struct FHasTagData
+struct FIsCombatData
 {
 	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, Category = "Tag")
-	FGameplayTag CheckTag = FGameplayTag::EmptyTag;
 
 	UPROPERTY(EditAnywhere, Category = "Invert")
 	bool Invert = false;
 };
 
-
 USTRUCT()
-struct PROJECTER_API FSTC_HasTag : public FStateTreeConditionCommonBase
+struct PROJECTER_API FSTC_IsCombat : public FStateTreeConditionCommonBase
 {
 	GENERATED_BODY()
+public:
+	FSTC_IsCombat();
 
-	FSTC_HasTag();
+	using FInstanceDataType = FIsCombatData;
 
-	using FInstanceDataType = FHasTagData;
-	
 	virtual bool Link(FStateTreeLinker& Linker) override;
 
 	virtual const UStruct* GetInstanceDataType() const override;

@@ -2,30 +2,26 @@
 
 #include "CoreMinimal.h"
 #include "StateTreeConditionBase.h"
-#include "STC_HasTag.generated.h"
+#include "STC_IsDead.generated.h"
 
 USTRUCT()
-struct FHasTagData
+struct FIsDeadData
 {
 	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, Category = "Tag")
-	FGameplayTag CheckTag = FGameplayTag::EmptyTag;
 
 	UPROPERTY(EditAnywhere, Category = "Invert")
 	bool Invert = false;
 };
 
-
 USTRUCT()
-struct PROJECTER_API FSTC_HasTag : public FStateTreeConditionCommonBase
+struct PROJECTER_API FSTC_IsDead : public FStateTreeConditionCommonBase
 {
 	GENERATED_BODY()
+public:
+	FSTC_IsDead();
 
-	FSTC_HasTag();
+	using FInstanceDataType = FIsDeadData;
 
-	using FInstanceDataType = FHasTagData;
-	
 	virtual bool Link(FStateTreeLinker& Linker) override;
 
 	virtual const UStruct* GetInstanceDataType() const override;
