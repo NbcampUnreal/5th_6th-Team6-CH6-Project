@@ -3,6 +3,8 @@
 #include "StateTreeExecutionContext.h"
 
 #include "Monster/BaseMonster.h"
+#include "AbilitySystemComponent.h"
+#include "Monster/GAS/AttributeSet/BaseMonsterAttributeSet.h"
 
 
 FSTT_AttackRangeCheck::FSTT_AttackRangeCheck()
@@ -31,8 +33,10 @@ EStateTreeRunStatus FSTT_AttackRangeCheck::EnterState(FStateTreeExecutionContext
 		AActor* Target = Monster->GetTargetPlayer();
 		if (IsValid(Target))
 		{
+			float AttackRange = 0.f;
+			AttackRange = Monster->GetAttributeSet()->GetAttackRange();
 			const float DistanceSq = FVector::DistSquared(Target->GetActorLocation(), Actor.GetActorLocation());
-			const float RangeSq = InstanceData.AttackRange * InstanceData.AttackRange;
+			const float RangeSq = AttackRange * AttackRange;
 
 			if (DistanceSq <= RangeSq)
 			{

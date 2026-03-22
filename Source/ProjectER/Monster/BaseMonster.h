@@ -49,6 +49,7 @@ public:
 	UMonsterRangeComponent* GetMonsterRangeComp() { return MonsterRangeComp; };
 	FMonsterTags& GetMonsterTags() { return MonsterTags; };
 	FPrimaryAssetId GetMonsterId() const { return MonsterId; }
+	UBaseMonsterAttributeSet* GetAttributeSet() { return AttributeSet; }
 	
 protected:
 

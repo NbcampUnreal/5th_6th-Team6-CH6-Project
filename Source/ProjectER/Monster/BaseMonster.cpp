@@ -324,6 +324,7 @@ void ABaseMonster::InitVisuals()
 		return;
 	}
 	GetMesh()->SetAnimInstanceClass(MonsterData->Anim.Get());
+	AttributeSet->GetAttackRange();
 }
 
 void ABaseMonster::InitCollision()
