@@ -136,4 +136,12 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory|Stack")
 	int32 MaxStackPerSlot = 5;
+
+	// 아이템 조합용: 특정 슬롯의 아이템 1개 소모
+	UFUNCTION(BlueprintCallable, Category = "Inventory|Crafting")
+	bool ConsumeItemAtSlot(int32 SlotIndex);
+
+	// 아이템 조합용: 특정 슬롯에 아이템 추가
+	UFUNCTION(BlueprintCallable, Category = "Inventory|Crafting")
+	bool AddItemToSlot(int32 SlotIndex, UBaseItemData* Item);
 };
