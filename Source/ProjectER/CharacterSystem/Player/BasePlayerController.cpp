@@ -1860,7 +1860,19 @@ void ABasePlayerController::TryStartCrafting()
 		return;
 	}
 
-	// 조합 가능한 레시피 찾기
+	// Down/Death 상태 체크
+	APawn* const MyPawn = GetPawn();
+	if (MyPawn)
+	{
+		UBaseInventoryComponent* const InvComp = MyPawn->FindComponentByClass<UBaseInventoryComponent>();
+		if (InvComp && !InvComp->CanUseItemsInCurrentLifeState())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Crafting] Cannot craft while Down/Death"));
+			return;
+		}
+	}
+
+	// 조합 가능한 레시피 찾기 (우선순위 높은 순)
 	FItemRecipeRow* BestRecipe = FindBestAvailableRecipe();
 	if (BestRecipe == nullptr)
 	{
@@ -1966,16 +1978,62 @@ bool ABasePlayerController::HasMaterialsInInventory(const FItemRecipeRow* Recipe
 
 void ABasePlayerController::StartCrafting(FItemRecipeRow* Recipe)
 {
-	if (Recipe == nullptr) return;
+	if (Recipe == nullptr)
+	{
+		return;
+	}
 
 	APawn* const MyPawn = GetPawn();
-	if (MyPawn == nullptr) return;
-
-	// 인벤토리 꽉 차있으면 조합 불가
-	const int32 EmptySlot = FindFirstEmptySlot();
-	if (EmptySlot == -1)
+	if (MyPawn == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Crafting] Inventory full"));
+		return;
+	}
+
+	UBaseInventoryComponent* const InvComp = MyPawn->FindComponentByClass<UBaseInventoryComponent>();
+	if (InvComp == nullptr)
+	{
+		return;
+	}
+
+	// 결과 아이템이 스택 가능한지 확인
+	UBaseItemData* const ResultItem = Recipe->ResultItem.LoadSynchronous();
+	if (ResultItem == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Crafting] Result item is null"));
+		return;
+	}
+
+	// 스택 가능한 슬롯이 있는지 OR 빈 슬롯이 있는지 확인
+	bool bCanAddResult = false;
+
+	// 1) 기존 스택에 추가 가능한지 확인
+	for (int32 i = 0; i < InvComp->MaxSlots; ++i)
+	{
+		UBaseItemData* const SlotItem = InvComp->GetItemAt(i);
+		if (SlotItem == ResultItem)
+		{
+			const int32 StackCount = InvComp->GetStackCountAt(i);
+			if (StackCount > 0 && StackCount < InvComp->MaxStackPerSlot)
+			{
+				bCanAddResult = true;
+				break;
+			}
+		}
+	}
+
+	// 2) 빈 슬롯이 있는지 확인
+	if (!bCanAddResult)
+	{
+		const int32 EmptySlot = FindFirstEmptySlot();
+		if (EmptySlot != -1)
+		{
+			bCanAddResult = true;
+		}
+	}
+
+	if (!bCanAddResult)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Crafting] No space for result item"));
 		return;
 	}
 
@@ -1993,7 +2051,13 @@ void ABasePlayerController::StartCrafting(FItemRecipeRow* Recipe)
 	USoundBase* const CraftSound = Recipe->CraftSound.LoadSynchronous();
 	if (CraftSound)
 	{
-		CraftingSoundComponent = UGameplayStatics::SpawnSound2D(this, CraftSound, 1.0f);
+		CraftingSoundComponent = UGameplayStatics::SpawnSound2D(
+			this,
+			CraftSound,
+			1.0f,
+			1.0f,
+			0.0f
+		);
 	}
 
 	// 타이머 설정
@@ -2005,7 +2069,7 @@ void ABasePlayerController::StartCrafting(FItemRecipeRow* Recipe)
 		false
 	);
 
-	UE_LOG(LogTemp, Log, TEXT("[Crafting] Started, duration: %.2f"), Recipe->CraftTime);
+	UE_LOG(LogTemp, Log, TEXT("[Crafting] Started crafting, duration: %.2f sec"), Recipe->CraftTime);
 }
 
 void ABasePlayerController::CompleteCrafting()
@@ -2029,20 +2093,19 @@ void ABasePlayerController::CompleteCrafting()
 		return;
 	}
 
+	// Down/Death 상태 체크
+	if (!InvComp->CanUseItemsInCurrentLifeState())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Crafting] Cannot complete craft while Down/Death"));
+		CancelCrafting();
+		return;
+	}
+
 	// 재료 확인 (혹시 조합 중 재료가 사라졌을 수도)
 	int32 Mat1Index, Mat2Index;
 	if (!HasMaterialsInInventory(CurrentCraftingRecipe, Mat1Index, Mat2Index))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[Crafting] Materials missing during craft"));
-		CancelCrafting();
-		return;
-	}
-
-	// 빈 슬롯 확인
-	const int32 EmptySlot = FindFirstEmptySlot();
-	if (EmptySlot == -1)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Crafting] No empty slot for result"));
 		CancelCrafting();
 		return;
 	}
@@ -2056,15 +2119,20 @@ void ABasePlayerController::CompleteCrafting()
 		// 재료 2 소모
 		InvComp->ConsumeItemAtSlot(Mat2Index);
 
-		// 결과 아이템 생성
+		// 결과 아이템 생성 (AddItem 사용 - 자동 스택)
 		UBaseItemData* const ResultItem = CurrentCraftingRecipe->ResultItem.LoadSynchronous();
 		if (ResultItem)
 		{
-			InvComp->AddItemToSlot(EmptySlot, ResultItem);
-			UE_LOG(LogTemp, Log, TEXT("[Crafting] Crafted '%s'"), *ResultItem->ItemName.ToString());
+			const bool bAdded = InvComp->AddItem(ResultItem);
+			if (bAdded)
+			{
+				UE_LOG(LogTemp, Log, TEXT("[Crafting] Crafted '%s'"), *ResultItem->ItemName.ToString());
+			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("[Crafting] Failed to add result item"));
+			}
 		}
-
-		// UI 업데이트는 ConsumeItemAtSlot과 AddItemToSlot에서 자동으로 호출됨
 	}
 
 	// 사운드 정지
