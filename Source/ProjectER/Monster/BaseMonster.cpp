@@ -68,12 +68,14 @@ ABaseMonster::ABaseMonster()
 	// 주변 플레이어 감지용 컴포넌트
 	MonsterRangeComp = CreateDefaultSubobject<UMonsterRangeComponent>(TEXT("MonsterRangeComponent"));	
 	MonsterRangeComp->SetIsReplicated(true);
+	MonsterRangeComp->SetComponentTickEnabled(false);
 
 	//UI Component
 	HPBarWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComponent"));
 	HPBarWidgetComp->SetupAttachment(GetMesh());
 	HPBarWidgetComp->SetWidgetSpace(EWidgetSpace::Screen); // 체력바 크기가 일정할거같으니까?
 	HPBarWidgetComp->SetVisibility(false);
+	HPBarWidgetComp->SetComponentTickEnabled(false);
 
 	SoundComp = CreateDefaultSubobject<UAudioComponent>(TEXT("AudioComponent"));
 	SoundComp->SetupAttachment(RootComponent);
@@ -324,6 +326,7 @@ void ABaseMonster::InitVisuals()
 		return;
 	}
 	GetMesh()->SetAnimInstanceClass(MonsterData->Anim.Get());
+	AttributeSet->GetAttackRange();
 }
 
 void ABaseMonster::InitCollision()
@@ -436,6 +439,16 @@ void ABaseMonster::OnMonterHitHandle(AActor* Target)
 			}
 			SetTargetPlayer(Target);
 		}
+		else
+		{
+			if (ABaseCharacter* BC = Cast<ABaseCharacter>(TargetPlayer))
+			{
+				if (!BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+				{
+					BC->OnDeath.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
+				}
+			}
+		}
 	}
 	else if (!IsValid(TargetPlayer))
 	{
@@ -446,14 +459,6 @@ void ABaseMonster::OnMonterHitHandle(AActor* Target)
 	{
 		bIsPhaseTrigger = true;
 		SendStateTreeEvent(MonsterTags.Phase2EventTag);
-	}
-
-	if (ABaseCharacter* BC = Cast<ABaseCharacter>(TargetPlayer))
-	{
-		if (!BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
-		{
-			BC->OnDeath.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
-		}
 	}
 	
 	if (IsValid(StateTreeComp) == false)
@@ -606,13 +611,17 @@ void ABaseMonster::RemoveCooldownTag(FGameplayTag CooldownTag)
 
 void ABaseMonster::OnTargetLostHandle()
 {
-	if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(TargetPlayer))
+	if (IsValid(TargetPlayer))
 	{
-		if (TargetChar->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+		if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(TargetPlayer))
 		{
-			TargetChar->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+			if (TargetChar->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+			{
+				TargetChar->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+			}
 		}
 	}
+	
 	SendStateTreeEvent(MonsterTags.TargetOffEventTag);
 	TargetPlayer = nullptr;
 }

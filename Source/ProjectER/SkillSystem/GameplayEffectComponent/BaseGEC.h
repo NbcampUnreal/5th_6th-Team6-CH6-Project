@@ -12,6 +12,11 @@
  */
 
 class UBaseGECConfig;
+class UAbilitySystemComponent;
+class UGameplayAbility;
+struct FGameplayEffectContextHandle;
+struct FGameplayEffectSpecHandle;
+struct FGameplayEffectSpec;
 
 UCLASS()
 class PROJECTER_API UBaseGEC : public UGameplayEffectComponent
@@ -28,12 +33,13 @@ public:
 protected:
 	virtual void OnGameplayEffectExecuted(FActiveGameplayEffectsContainer& ActiveGEContainer, FGameplayEffectSpec& GESpec, FPredictionKey& PredictionKey) const override;
 
-	// Config 해석 유틸리티 (파생 클래스에서 공용 사용)
-	const UBaseGECConfig* ResolveBaseConfigFromSpec(const FGameplayEffectSpec& GESpec) const;
+	// Config 해석 유틸리티 (파생 클래스 및 헬퍼에서 공용 사용)
+	static const UBaseGECConfig* ResolveBaseConfigFromSpec(const FGameplayEffectSpec& GESpec);
 
 	template <typename TConfig>
-	const TConfig* ResolveTypedConfigFromSpec(const FGameplayEffectSpec& GESpec) const;
+	static const TConfig* ResolveTypedConfigFromSpec(const FGameplayEffectSpec& GESpec);
 
+	static void GetSkillProcEffects(UAbilitySystemComponent* InstigatorASC, UGameplayAbility* InstigatorSkill,  AActor* InEffectCauser,  const FGameplayEffectContextHandle& CurrentContext,  TArray<FGameplayEffectSpecHandle>& OutSpecs, bool bDefaultConsume = true);
 private:
 
 public:
@@ -49,7 +55,7 @@ private:
 };
 
 template <typename TConfig>
-const TConfig* UBaseGEC::ResolveTypedConfigFromSpec(const FGameplayEffectSpec& GESpec) const
+const TConfig* UBaseGEC::ResolveTypedConfigFromSpec(const FGameplayEffectSpec& GESpec)
 {
 	static_assert(TIsDerivedFrom<TConfig, UBaseGECConfig>::Value, "TConfig must derive from UBaseGECConfig");
 

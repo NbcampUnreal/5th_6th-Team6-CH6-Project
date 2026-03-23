@@ -33,8 +33,7 @@ public:
 	USummonRangeGEC();
 
 	virtual TSubclassOf<UBaseGECConfig> GetRequiredConfigClass() const override;
-
 protected:
-	virtual FTransform CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const AActor* TargetActor) const override;
+	virtual FTransform CalculateOriginTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const AActor* TargetActor) const override;
 	FVector GetAnyLocation(const FGameplayEffectContextHandle& ContextHandle) const;
 };

@@ -13,6 +13,7 @@
 #include "SkillSystem/GameAbility/SkillBase.h"
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 #include "SkillSystem/SkillNiagaraSpawnConfig.h"
+#include "SkillSystem/GameplayEffectComponent/SummonRangeAtBone.h"
 
 FText USummonRangeBaseConfig::BuildTooltipDescription(float InLevel) const
 {
@@ -79,7 +80,8 @@ void USummonRangeBaseGEC::OnGameplayEffectApplied(FActiveGameplayEffectsContaine
 
 	// 1. 타겟 식별 및 위치 계산
 	AActor* const TargetActor = GetTargetActorFromContainer(ActiveGEContainer);
-	const FTransform SpawnTransform = CalculateSpawnTransform(GESpec, EffectInstigator, TargetActor);
+	const FTransform OriginTransform = CalculateOriginTransform(GESpec, EffectInstigator, TargetActor);
+	const FTransform SpawnTransform = ApplyCommonSpawnOptionsToTransform(OriginTransform, SpawnConfig, EffectInstigator);
 	const FVector RangeSpawnLocation = SpawnTransform.GetLocation();
 
 	// 2. 액터 소환 (지연 생성)
@@ -108,7 +110,7 @@ void USummonRangeBaseGEC::OnGameplayEffectApplied(FActiveGameplayEffectsContaine
 	DeferredSpawnedActor->FinishSpawning(SpawnTransform);
 
 	// 4. 시각 효과 실행
-	ExecuteGameplayCues(GESpec, ContextHandle, EffectInstigator, DeferredSpawnedActor, SpawnTransform, SpawnConfig);
+	ExecuteGameplayCues(GESpec, ContextHandle, EffectInstigator, DeferredSpawnedActor, SpawnTransform, OriginTransform, SpawnConfig);
 }
 
 const USummonRangeBaseConfig* USummonRangeBaseGEC::GetSummonConfig(const FGameplayEffectSpec& GESpec) const
@@ -118,10 +120,17 @@ const USummonRangeBaseConfig* USummonRangeBaseGEC::GetSummonConfig(const FGamepl
 
 FTransform USummonRangeBaseGEC::CalculateSpawnTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const AActor* TargetActor) const
 {
-	return FTransform();
+	const FTransform OriginTransform = CalculateOriginTransform(GESpec, Instigator, TargetActor);
+	const USummonRangeBaseConfig* const SpawnConfig = ResolveTypedConfigFromSpec<USummonRangeBaseConfig>(GESpec);
+	return ApplyCommonSpawnOptionsToTransform(OriginTransform, SpawnConfig, Instigator);
 }
 
-void USummonRangeBaseGEC::ExecuteGameplayCues(const FGameplayEffectSpec& GESpec, const FGameplayEffectContextHandle& ContextHandle, AActor* EffectInstigator, ABaseRangeOverlapEffectActor* RangeActor, const FTransform& SpawnTransform, const USummonRangeBaseConfig* Config) const
+FTransform USummonRangeBaseGEC::CalculateOriginTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const AActor* TargetActor) const
+{
+	return FTransform::Identity;
+}
+
+void USummonRangeBaseGEC::ExecuteGameplayCues(const FGameplayEffectSpec& GESpec, const FGameplayEffectContextHandle& ContextHandle, AActor* EffectInstigator, ABaseRangeOverlapEffectActor* RangeActor, const FTransform& SpawnTransform, const FTransform& OriginTransform, const USummonRangeBaseConfig* Config) const
 {
 	UAbilitySystemComponent* const InstigatorASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(EffectInstigator);
 	if (!IsValid(InstigatorASC) || !IsValid(Config))
@@ -133,13 +142,15 @@ void USummonRangeBaseGEC::ExecuteGameplayCues(const FGameplayEffectSpec& GESpec,
 
 	if (IsValid(Config->SummonerSpawnVfx) && Config->SummonerSpawnVfx->CueTag.IsValid())
 	{
-		const FGameplayCueParameters SummonerCueParams = BuildNiagaraCueParameters(GESpec, Config->SummonerSpawnVfx->CueTag, ContextHandle, RangeActor, EffectInstigator->GetActorLocation(), Config->SummonerSpawnVfx);
+		// 시전자 나이아가라: 원점 좌표(OriginTransform) 사용, EffectCauser = RangeActor (기본 동작)
+		const FGameplayCueParameters SummonerCueParams = BuildNiagaraCueParameters(GESpec, Config->SummonerSpawnVfx->CueTag, ContextHandle, RangeActor, OriginTransform.GetLocation(), Config->SummonerSpawnVfx);
 		InstigatorASC->ExecuteGameplayCue(Config->SummonerSpawnVfx->CueTag, SummonerCueParams);
 	}
 
 	if (IsValid(Config->RangeSpawnVfx) && Config->RangeSpawnVfx->CueTag.IsValid())
 	{
-		FGameplayCueParameters RangeCueParams = BuildNiagaraCueParameters(GESpec, Config->RangeSpawnVfx->CueTag, ContextHandle, RangeActor, SpawnTransform.GetLocation(), Config->RangeSpawnVfx, SpawnTransform.GetRotation().GetForwardVector());
+		// 범위 나이아가라: 원점 좌표(OriginTransform) 사용, EffectCauser = RangeActor (기본 동작)
+		FGameplayCueParameters RangeCueParams = BuildNiagaraCueParameters(GESpec, Config->RangeSpawnVfx->CueTag, ContextHandle, RangeActor, OriginTransform.GetLocation(), Config->RangeSpawnVfx, OriginTransform.GetRotation().GetForwardVector());
 		if (IsValid(RangeActor))
 		{
 			RangeCueParams.TargetAttachComponent = RangeActor->GetRootComponent();
@@ -157,8 +168,6 @@ bool USummonRangeBaseGEC::ShouldProcessOnInstigator(const AActor* Instigator) co
 {
 	return IsValid(Instigator);
 }
-
-
 
 FGameplayCueParameters USummonRangeBaseGEC::BuildNiagaraCueParameters(const FGameplayEffectSpec& GESpec, const FGameplayTag& OriginalTag, const FGameplayEffectContextHandle& EffectContext, AActor* EffectCauser, const FVector& CueLocation, const UObject* SourceObject, const FVector& CueNormal) const
 {
@@ -202,6 +211,9 @@ void USummonRangeBaseGEC::InitializeRangeActor(ABaseRangeOverlapEffectActor* Ran
 
 		InitGEHandles.Append(SkillEffectDataAsset->MakeSpecs(CauserASC, NonConstSkill, RangeActor, Context));
 	}
+
+	// 강화 효과(SkillProc) 확인 및 전이
+	UBaseGEC::GetSkillProcEffects(CauserASC, NonConstSkill, RangeActor, Context, InitGEHandles);
 
 	RangeActor->InitializeEffectData(InitGEHandles, Instigator, Config->CollisionRadius, Config->bHitOncePerTarget, Config, HitTargetCueParameters);
 	RangeActor->SetLifeSpan(Config->LifeSpan);
@@ -260,4 +272,14 @@ void USummonRangeBaseGEC::ApplyCommonSpawnOptions(FVector& InOutLocation, FRotat
 
 	// 3. 지면 스냅
 	SnapLocationToGround(InOutLocation, Config, Instigator);
+}
+
+FTransform USummonRangeBaseGEC::ApplyCommonSpawnOptionsToTransform(const FTransform& InOriginTransform, const USummonRangeBaseConfig* Config, const AActor* Instigator) const
+{
+	FVector TargetLocation = InOriginTransform.GetLocation();
+	FRotator CombinedRotation = InOriginTransform.Rotator();
+
+	ApplyCommonSpawnOptions(TargetLocation, CombinedRotation, Config, Instigator);
+
+	return FTransform(CombinedRotation, TargetLocation);
 }

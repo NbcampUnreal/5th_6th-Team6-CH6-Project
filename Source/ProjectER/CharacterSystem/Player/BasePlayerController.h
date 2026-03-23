@@ -1,6 +1,7 @@
-#pragma once
+﻿#pragma once
 
 #include "ItemSystem/Interface/I_ItemInteractable.h" // [김현수 추가분]
+#include "ItemSystem/Data/ItemRecipeRow.h" // [김현수 추가분]
 
 //Curved World Subsystem added //2026/02/10
 #include "CurvedWorldSubsystem.h"
@@ -34,9 +35,9 @@ class UUI_MainHUD; // UI시스템 관리자
 class UUI_Scoreboard;
 
 class ABaseItemActor; // [김현수 추가분]
+class UAudioComponent; // [김현수 추가분]
 
 struct FInputActionValue;
-
 
 //Log
 DECLARE_LOG_CATEGORY_EXTERN(Controller_Camera, Log, All);
@@ -170,6 +171,42 @@ protected:
 	// 기존 Move 함수를 확장하여 상호작용 판정 포함
 	void ProcessMouseInteraction();
 
+private:
+	// 조합식 DataTable
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crafting", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UDataTable> ItemRecipeTable;
+
+	// 현재 조합 중인 레시피
+	FItemRecipeRow* CurrentCraftingRecipe = nullptr;
+
+	// 조합 타이머
+	FTimerHandle CraftingTimerHandle;
+
+	// 조합 사운드 컴포넌트
+	UPROPERTY()
+	TObjectPtr<UAudioComponent> CraftingSoundComponent;
+
+	// 조합 중인지 여부
+	bool bIsCrafting = false;
+
+	// Z키 입력: 조합 시도
+	void TryStartCrafting();
+
+	// 조합 가능한 레시피 찾기 (우선순위 높은 순)
+	FItemRecipeRow* FindBestAvailableRecipe();
+
+	// 조합 시작
+	void StartCrafting(FItemRecipeRow* Recipe);
+
+	// 조합 채널링 완료
+	void CompleteCrafting();
+
+	// 재료가 인벤토리에 있는지 확인
+	bool HasMaterialsInInventory(const FItemRecipeRow* Recipe, int32& OutMat1Index, int32& OutMat2Index);
+
+	// 결과 아이템을 넣을 빈 슬롯 찾기
+	int32 FindFirstEmptySlot();
+
 public:
 	// UI 드래그 취소(월드로 드랍) 시 로컬에서 호출
 	void RequestDropInventoryItemFromUI(int32 SlotIndex, const FVector2D& ScreenSpacePosition);
@@ -179,6 +216,13 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Item|Drop")
 	TSubclassOf<ABaseItemActor> DroppedItemActorClass;
+
+	// 조합 취소
+	void CancelCrafting();
+
+	// 조합 중 여부
+	UFUNCTION(BlueprintPure, Category = "Crafting")
+	bool IsCrafting() const { return bIsCrafting; }
 /// [김현수 추가분] - 끝
 
 //-----------------------------------------------------------
@@ -283,6 +327,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 	void Client_CloseTeleportUI();
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_OpenRespawnTeleportUI();
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_CloseRespawnTeleportUI();
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_RequestTeleport(int32 RegionIndex);
@@ -394,6 +444,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UUserWidget> TeleportUIInstance;
+
+	UPROPERTY(EditDefaultsOnly, Category = "ProjectER|UI")
+	TSubclassOf<UUserWidget> RespawnTeleportUIClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> RespawnTeleportUIInstance;
 	
 	// 거리 측정을 위한 타겟 캐싱
 	UPROPERTY(Transient)

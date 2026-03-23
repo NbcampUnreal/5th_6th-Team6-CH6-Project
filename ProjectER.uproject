@@ -44,6 +44,14 @@
 		{
 			"Name": "PCG",
 			"Enabled": true
+		},
+		{
+			"Name": "ChaosClothAssetEditor",
+			"Enabled": true
+		},
+		{
+			"Name": "ChaosClothAsset",
+			"Enabled": true
 		}
 	]
 }

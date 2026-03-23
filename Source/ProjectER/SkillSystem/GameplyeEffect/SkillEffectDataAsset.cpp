@@ -19,7 +19,7 @@ USkillEffectDataAsset::USkillEffectDataAsset()
 	IndexTag = FGameplayTag::RequestGameplayTag(FName("Skill.Data.EffectIndex"));
 }
 
-TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySystemComponent* InstigatorASC, USkillBase* InstigatorSkill, AActor* InEffectCauser, const FGameplayEffectContextHandle InEffectContextHandle) const
+TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySystemComponent* InstigatorASC, UGameplayAbility* InstigatorSkill, AActor* InEffectCauser, const FGameplayEffectContextHandle InEffectContextHandle) const
 {
     TArray<FGameplayEffectSpecHandle> OutSpecs;
 
@@ -31,7 +31,7 @@ TArray<FGameplayEffectSpecHandle> USkillEffectDataAsset::MakeSpecs(UAbilitySyste
 
     if (InEffectContextHandle.IsValid())
     {
-        SharedContextHandle = InEffectContextHandle;
+        SharedContextHandle = InEffectContextHandle.Duplicate();
     }
     else
     {

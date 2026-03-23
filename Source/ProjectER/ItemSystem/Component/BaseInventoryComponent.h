@@ -21,6 +21,7 @@ class PROJECTER_API UBaseInventoryComponent : public UActorComponent
 
 public:
 	UBaseInventoryComponent();
+	bool CanUseItemsInCurrentLifeState() const;
 
 	// 아이템 추가 (서버에서만 실행되도록 내부 로직 수정)
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
@@ -75,7 +76,6 @@ private:
 	};
 
 	UAbilitySystemComponent* ResolveOwnerAbilitySystemComponent() const;
-	bool CanUseItemsInCurrentLifeState() const;
 	FGameplayTag GetSetByCallerTagFromStatType(EItemStatType StatType) const;
 
 	bool ApplyItemEffect(UUsableItemData* ItemData);
@@ -136,4 +136,12 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory|Stack")
 	int32 MaxStackPerSlot = 5;
+
+	// 아이템 조합용: 특정 슬롯의 아이템 1개 소모
+	UFUNCTION(BlueprintCallable, Category = "Inventory|Crafting")
+	bool ConsumeItemAtSlot(int32 SlotIndex);
+
+	// 아이템 조합용: 특정 슬롯에 아이템 추가
+	UFUNCTION(BlueprintCallable, Category = "Inventory|Crafting")
+	bool AddItemToSlot(int32 SlotIndex, UBaseItemData* Item);
 };
