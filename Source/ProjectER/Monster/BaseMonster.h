@@ -47,6 +47,7 @@ public:
 	void SetbIsDead(bool Target);
 	bool GetbIsDead();
 	UMonsterRangeComponent* GetMonsterRangeComp() { return MonsterRangeComp; };
+	FMonsterTags& GetMonsterTags() { return MonsterTags; };
 	FPrimaryAssetId GetMonsterId() const { return MonsterId; }
 	
 protected:

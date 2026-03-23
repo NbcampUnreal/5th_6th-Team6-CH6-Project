@@ -117,7 +117,7 @@ public:
 	TSoftObjectPtr<UCurveTable> StatCurveTable;
 	
 	// 커브 테이블 행 이름   (Curve Table Row Name)
-	UPROPERTY(EditDefaultsOnly, Category = "Stats")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stats")
 	FName StatusRowName;
 	
 	// 캐릭터 얼굴 아이콘

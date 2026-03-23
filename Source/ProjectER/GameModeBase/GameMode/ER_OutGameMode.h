@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
@@ -20,6 +20,10 @@ public:
 	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 	void StartGame();
 	void EndGame();
+
+	// 캐릭터 선택창으로 일제히 전환하도록 클라이언트들에 명령
+	UFUNCTION(BlueprintCallable)
+	void ShowCharacterSelectionToAll();
 
 	UFUNCTION(BlueprintCallable)
 	void MoveTeam(APlayerController* Player, int32 TeamIdx);

@@ -150,5 +150,6 @@ void ABaseMissileActor::ExecuteHitVfx()
 	FGameplayCueParameters Params = HitCueParameters;
 	Params.Location = GetActorLocation();
 	Params.EffectCauser = this;
+	Params.TargetAttachComponent = HomingTargetActor->GetRootComponent();
 	InstigatorASC->ExecuteGameplayCue(HitCueParameters.OriginalTag, Params);
 }

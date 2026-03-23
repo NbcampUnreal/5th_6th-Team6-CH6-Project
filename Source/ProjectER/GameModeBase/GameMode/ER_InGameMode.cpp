@@ -19,6 +19,7 @@
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "ItemSystem/Component/BaseInventoryComponent.h"
 #include "ItemSystem/Data/BaseItemData.h"
+#include "CharacterSystem/Data/CharacterData.h"
 
 void AER_InGameMode::BeginPlay()
 {
@@ -435,6 +436,42 @@ void AER_InGameMode::HandlePlayerLoadComplete(APlayerController* PC)
 		GetWorld()->GetTimerManager().ClearTimer(LoadingTimeoutHandle);
 		StartGame();
 	}
+}
+
+APawn* AER_InGameMode::SpawnDefaultPawnAtTransform_Implementation(AController* NewPlayer, const FTransform& SpawnTransform)
+{
+	UClass* PawnClass = GetDefaultPawnClassForController(NewPlayer);
+	if (!PawnClass)
+	{
+		return nullptr;
+	}
+
+	FActorSpawnParameters SpawnInfo;
+	SpawnInfo.Instigator = GetInstigator();
+	SpawnInfo.ObjectFlags |= RF_Transient;
+	SpawnInfo.bDeferConstruction = true; // 지연 스폰을 통해 BeginPlay 이전에 데이터 세팅
+
+	APawn* ResultPawn = GetWorld()->SpawnActor<APawn>(PawnClass, SpawnTransform, SpawnInfo);
+	if (ResultPawn)
+	{
+		if (ABaseCharacter* BaseChar = Cast<ABaseCharacter>(ResultPawn))
+		{
+			if (AER_PlayerState* ERPS = Cast<AER_PlayerState>(NewPlayer->PlayerState))
+			{
+				if (!ERPS->GetSelectedCharacterData().IsNull())
+				{
+					// 소프트 참조를 동기식으로 로드하여 HeroData에 주입
+					BaseChar->HeroData = ERPS->GetSelectedCharacterData().LoadSynchronous();
+					UE_LOG(LogTemp, Log, TEXT("[GM] Injected HeroData into spawned character"));
+				}
+			}
+		}
+
+		// 건설 및 BeginPlay 실행
+		UGameplayStatics::FinishSpawningActor(ResultPawn, SpawnTransform);
+	}
+
+	return ResultPawn;
 }
 
 void AER_InGameMode::DisConnectClient(APlayerController* PC)

@@ -32,6 +32,7 @@ void UBaseInventoryComponent::BeginPlay()
 void UBaseInventoryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	ClearFoodHealEffects();
+	ClearDrinkManaEffects();
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -334,6 +335,8 @@ bool UBaseInventoryComponent::ApplyItemEffect(UUsableItemData* ItemData)
 		return ApplyStatIncrease(ASC, ItemData);
 	case EItemEffectType::HealOverTime:
 		return EnqueueFoodHeal(ItemData);
+	case EItemEffectType::ManaOverTime:
+		return EnqueueDrinkMana(ItemData);
 	default:
 		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] ApplyItemEffect: Unknown effect type"));
 		return false;
@@ -794,4 +797,192 @@ int32 UBaseInventoryComponent::GetStackCountAt(int32 SlotIndex) const
 	}
 
 	return FMath::Max(InventoryStackCounts[SlotIndex], 0);
+}
+
+bool UBaseInventoryComponent::EnqueueDrinkMana(UUsableItemData* ItemData)
+{
+	if (ItemData == nullptr)
+	{
+		return false;
+	}
+
+	if (!CanUseItemsInCurrentLifeState())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BaseInventoryComponent] EnqueueDrinkMana: blocked while Down/Death"));
+		return false;
+	}
+
+	if (ItemData->TotalManaAmount <= 0.0f)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[BaseInventoryComponent] EnqueueDrinkMana: Invalid TotalManaAmount %.2f"), ItemData->TotalManaAmount);
+		return false;
+	}
+
+	if (ItemData->ManaDurationSeconds <= 0.0f || ItemData->ManaTickInterval <= 0.0f)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[BaseInventoryComponent] EnqueueDrinkMana: Invalid duration %.2f or tick %.2f"), ItemData->ManaDurationSeconds, ItemData->ManaTickInterval);
+		return false;
+	}
+
+	const int32 TotalTicks = FMath::Max(1, FMath::RoundToInt(ItemData->ManaDurationSeconds / ItemData->ManaTickInterval));
+	const float ManaPerTick = ItemData->TotalManaAmount / static_cast<float>(TotalTicks);
+
+	FPendingDrinkManaEffect NewEffect;
+	NewEffect.ItemName = ItemData->ItemName.ToString();
+	NewEffect.TotalManaAmount = ItemData->TotalManaAmount;
+	NewEffect.TotalDurationSeconds = ItemData->ManaDurationSeconds;
+	NewEffect.RemainingManaAmount = ItemData->TotalManaAmount;
+	NewEffect.ManaPerTick = ManaPerTick;
+	NewEffect.RemainingTicks = TotalTicks;
+	NewEffect.TickInterval = ItemData->ManaTickInterval;
+
+	PendingDrinkManaQueue.Add(NewEffect);
+	StartNextDrinkManaEffect();
+
+	UE_LOG(LogTemp, Log, TEXT("[BaseInventoryComponent] EnqueueDrinkMana: Total=%.2f, Duration=%.2f, Tick=%.2f, Queue=%d"),
+		ItemData->TotalManaAmount,
+		ItemData->ManaDurationSeconds,
+		ItemData->ManaTickInterval,
+		PendingDrinkManaQueue.Num());
+
+	return true;
+}
+
+bool UBaseInventoryComponent::ApplyDrinkManaAmount(const float ManaAmount)
+{
+	if (ManaAmount <= 0.0f)
+	{
+		return false;
+	}
+
+	if (!CanUseItemsInCurrentLifeState())
+	{
+		return false;
+	}
+
+	UAbilitySystemComponent* const ASC = ResolveOwnerAbilitySystemComponent();
+	if (ASC == nullptr)
+	{
+		return false;
+	}
+
+	ASC->ApplyModToAttribute(UBaseAttributeSet::GetStaminaAttribute(), EGameplayModOp::Additive, ManaAmount);
+	return true;
+}
+
+void UBaseInventoryComponent::StartNextDrinkManaEffect()
+{
+	if (bIsDrinkManaEffectActive)
+	{
+		return;
+	}
+
+	if (PendingDrinkManaQueue.IsEmpty())
+	{
+		return;
+	}
+
+	AActor* const OwnerActor = GetOwner();
+	if (OwnerActor == nullptr)
+	{
+		return;
+	}
+
+	UWorld* const World = OwnerActor->GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	CurrentDrinkManaEffect = PendingDrinkManaQueue[0];
+	PendingDrinkManaQueue.RemoveAt(0);
+	bIsDrinkManaEffectActive = true;
+
+	World->GetTimerManager().SetTimer(
+		DrinkManaTickTimerHandle,
+		this,
+		&UBaseInventoryComponent::HandleDrinkManaTick,
+		CurrentDrinkManaEffect.TickInterval,
+		true);
+}
+
+void UBaseInventoryComponent::StopDrinkManaTimer()
+{
+	AActor* const OwnerActor = GetOwner();
+	if (OwnerActor == nullptr)
+	{
+		return;
+	}
+
+	UWorld* const World = OwnerActor->GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	World->GetTimerManager().ClearTimer(DrinkManaTickTimerHandle);
+}
+
+void UBaseInventoryComponent::HandleDrinkManaTick()
+{
+	if (!bIsDrinkManaEffectActive)
+	{
+		StopDrinkManaTimer();
+		return;
+	}
+
+	if (!CanUseItemsInCurrentLifeState())
+	{
+		UE_LOG(LogTemp, Log, TEXT("[BaseInventoryComponent] HandleDrinkManaTick: owner became Down/Death, clear mana effects"));
+		ClearDrinkManaEffects();
+		return;
+	}
+
+	if (CurrentDrinkManaEffect.RemainingTicks <= 0 || CurrentDrinkManaEffect.RemainingManaAmount <= 0.0f)
+	{
+		StopDrinkManaTimer();
+		bIsDrinkManaEffectActive = false;
+		StartNextDrinkManaEffect();
+		return;
+	}
+
+	const float TickManaAmount = FMath::Min(CurrentDrinkManaEffect.ManaPerTick, CurrentDrinkManaEffect.RemainingManaAmount);
+	const int32 RemainingTicksAfterThisTick = FMath::Max(CurrentDrinkManaEffect.RemainingTicks - 1, 0);
+	const float RemainingDurationSeconds = static_cast<float>(RemainingTicksAfterThisTick) * CurrentDrinkManaEffect.TickInterval;
+
+	UE_LOG(LogTemp, Log, TEXT("[DrinkManaTick] Item=%s, TotalMana=%.2f, TickMana=%.2f, RemainingDuration=%.2f sec"),
+		*CurrentDrinkManaEffect.ItemName,
+		CurrentDrinkManaEffect.TotalManaAmount,
+		TickManaAmount,
+		RemainingDurationSeconds);
+
+	const bool bRestored = ApplyDrinkManaAmount(TickManaAmount);
+	if (!bRestored)
+	{
+		StopDrinkManaTimer();
+		bIsDrinkManaEffectActive = false;
+		return;
+	}
+
+	CurrentDrinkManaEffect.RemainingManaAmount -= TickManaAmount;
+	CurrentDrinkManaEffect.RemainingTicks -= 1;
+
+	if (CurrentDrinkManaEffect.RemainingTicks > 0 && CurrentDrinkManaEffect.RemainingManaAmount > 0.0f)
+	{
+		return;
+	}
+
+	StopDrinkManaTimer();
+	bIsDrinkManaEffectActive = false;
+	StartNextDrinkManaEffect();
+}
+
+void UBaseInventoryComponent::ClearDrinkManaEffects()
+{
+	UE_LOG(LogTemp, Log, TEXT("[BaseInventoryComponent] ClearDrinkManaEffects"));
+
+	StopDrinkManaTimer();
+	bIsDrinkManaEffectActive = false;
+	PendingDrinkManaQueue.Empty();
+	CurrentDrinkManaEffect = FPendingDrinkManaEffect();
 }

@@ -436,6 +436,16 @@ void ABaseMonster::OnMonterHitHandle(AActor* Target)
 			}
 			SetTargetPlayer(Target);
 		}
+		else
+		{
+			if (ABaseCharacter* BC = Cast<ABaseCharacter>(TargetPlayer))
+			{
+				if (!BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+				{
+					BC->OnDeath.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
+				}
+			}
+		}
 	}
 	else if (!IsValid(TargetPlayer))
 	{
@@ -446,14 +456,6 @@ void ABaseMonster::OnMonterHitHandle(AActor* Target)
 	{
 		bIsPhaseTrigger = true;
 		SendStateTreeEvent(MonsterTags.Phase2EventTag);
-	}
-
-	if (ABaseCharacter* BC = Cast<ABaseCharacter>(TargetPlayer))
-	{
-		if (!BC->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
-		{
-			BC->OnDeath.AddDynamic(this, &ABaseMonster::OnTargetLostHandle);
-		}
 	}
 	
 	if (IsValid(StateTreeComp) == false)
@@ -606,13 +608,17 @@ void ABaseMonster::RemoveCooldownTag(FGameplayTag CooldownTag)
 
 void ABaseMonster::OnTargetLostHandle()
 {
-	if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(TargetPlayer))
+	if (IsValid(TargetPlayer))
 	{
-		if (TargetChar->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+		if (ABaseCharacter* TargetChar = Cast<ABaseCharacter>(TargetPlayer))
 		{
-			TargetChar->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+			if (TargetChar->OnDeath.IsAlreadyBound(this, &ABaseMonster::OnTargetLostHandle))
+			{
+				TargetChar->OnDeath.RemoveDynamic(this, &ABaseMonster::OnTargetLostHandle);
+			}
 		}
 	}
+	
 	SendStateTreeEvent(MonsterTags.TargetOffEventTag);
 	TargetPlayer = nullptr;
 }
