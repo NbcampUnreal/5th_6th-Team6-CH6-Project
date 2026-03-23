@@ -1,5 +1,3 @@
-// File: 5th_6th-Team6-CH6-Project/Source/ProjectER/ItemSystem/Component/BaseInventoryComponent.cpp
-
 #include "ItemSystem/Component/BaseInventoryComponent.h"
 #include "ItemSystem/Data/BaseItemData.h"
 
@@ -985,4 +983,79 @@ void UBaseInventoryComponent::ClearDrinkManaEffects()
 	bIsDrinkManaEffectActive = false;
 	PendingDrinkManaQueue.Empty();
 	CurrentDrinkManaEffect = FPendingDrinkManaEffect();
+}
+
+bool UBaseInventoryComponent::ConsumeItemAtSlot(int32 SlotIndex)
+{
+	AActor* const OwnerActor = GetOwner();
+	if (OwnerActor == nullptr)
+	{
+		return false;
+	}
+
+	if (!OwnerActor->HasAuthority())
+	{
+		return false;
+	}
+
+	if (!InventoryContents.IsValidIndex(SlotIndex) || !InventoryStackCounts.IsValidIndex(SlotIndex))
+	{
+		return false;
+	}
+
+	if (InventoryContents[SlotIndex] == nullptr)
+	{
+		return false;
+	}
+
+	// 스택 카운트 감소
+	if (InventoryStackCounts[SlotIndex] > 1)
+	{
+		InventoryStackCounts[SlotIndex]--;
+	}
+	else
+	{
+		// 마지막 아이템이면 슬롯 비우기
+		InventoryContents[SlotIndex] = nullptr;
+		InventoryStackCounts[SlotIndex] = 0;
+	}
+
+	OnInventoryUpdated.Broadcast();
+	return true;
+}
+
+bool UBaseInventoryComponent::AddItemToSlot(int32 SlotIndex, UBaseItemData* Item)
+{
+	AActor* const OwnerActor = GetOwner();
+	if (OwnerActor == nullptr)
+	{
+		return false;
+	}
+
+	if (!OwnerActor->HasAuthority())
+	{
+		return false;
+	}
+
+	if (Item == nullptr)
+	{
+		return false;
+	}
+
+	if (!InventoryContents.IsValidIndex(SlotIndex) || !InventoryStackCounts.IsValidIndex(SlotIndex))
+	{
+		return false;
+	}
+
+	// 슬롯이 비어있어야 함
+	if (InventoryContents[SlotIndex] != nullptr)
+	{
+		return false;
+	}
+
+	InventoryContents[SlotIndex] = Item;
+	InventoryStackCounts[SlotIndex] = 1;
+
+	OnInventoryUpdated.Broadcast();
+	return true;
 }

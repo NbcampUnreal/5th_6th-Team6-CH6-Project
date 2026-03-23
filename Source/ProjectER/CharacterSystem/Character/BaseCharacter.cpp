@@ -914,6 +914,18 @@ void ABaseCharacter::Server_StopMove_Implementation()
 
 void ABaseCharacter::MoveToLocation(FVector TargetLocation)
 {
+	if (AbilitySystemComponent.IsValid())
+	{
+		static const FGameplayTag CastingTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Casting"));
+		static const FGameplayTag ActiveTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Active"));
+
+		if (AbilitySystemComponent->HasMatchingGameplayTag(CastingTag) || 
+			AbilitySystemComponent->HasMatchingGameplayTag(ActiveTag))
+		{
+			return; // 아무것도 하지 않고 함수 종료 (이동, 회전 차단)
+		}
+	}
+	
 	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
 	if (!NavSys) return;
 
@@ -1208,23 +1220,20 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 	float Tolerance = 20.0f; // 사거리 보정 값 유사 시 사용
 	float CheckRange = HasAuthority() ? (AttackRange + Tolerance) : (AttackRange - Tolerance); // 보정된 사거리
 	
-	// [디버깅용 로그 추가] 현재 거리와 사거리 비교
-#if WITH_EDITOR
-	if (bShowDebug)
-	{
-		static float LogTimer = 0.0f;
-		LogTimer += DeltaTime;
-		if (LogTimer > 0.5f)
-		{
-			LogTimer = 0.0f;
-			/*UE_LOG(LogTemp, Warning, TEXT("[%s] Dist: %.2f / Range: %.2f"), 
-				*GetName(), Distance, GetAttackRange());*/
-		}
-	}
-#endif
-	
 	if (Distance <= AttackRange) // 사거리 내 진입 시
 	{
+		if (AbilitySystemComponent.IsValid())
+		{
+			static const FGameplayTag CastingTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Casting"));
+			static const FGameplayTag ActiveTag = FGameplayTag::RequestGameplayTag(FName("Skill.Animation.Active"));
+			
+			if (AbilitySystemComponent->HasMatchingGameplayTag(CastingTag) || 
+				AbilitySystemComponent->HasMatchingGameplayTag(ActiveTag))
+			{
+				return; 
+			}
+		}
+		
 		// 이동 정지
 		StopPathFollowing();
 		GetCharacterMovement()->StopMovementImmediately();

@@ -1,4 +1,4 @@
-#include "CharacterSystem/Player/BasePlayerController.h"
+﻿#include "CharacterSystem/Player/BasePlayerController.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -27,6 +27,9 @@
 #include "ItemSystem/Component/ER_TeleportComponent.h"
 #include "UI/UI_MainHUD.h"
 #include "UI/UI_HUDController.h"
+#include "Components/AudioComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "ItemSystem/Data/ItemRecipeRow.h"
 
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/GameMode/ER_OutGameMode.h"
@@ -256,6 +259,11 @@ void ABasePlayerController::SetupInputComponent()
 		{
 			EnhancedInputComponent->BindAction(InputConfig->UseItem8, ETriggerEvent::Started, this, &ABasePlayerController::UseInventorySlot, 7);
 		}
+		// 아이템 조합
+		if (InputConfig->InputCraft)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->InputCraft, ETriggerEvent::Started, this, &ABasePlayerController::TryStartCrafting);
+		}
 		// 현황판 바인딩
 		if (InputConfig->ScoreBoardKey)
 		{
@@ -452,6 +460,12 @@ void ABasePlayerController::OnMoveStarted()
 
 	Client_CloseLootUI();
 	Client_CloseTeleportUI();
+
+	// 조합 중이면 취소
+	if (bIsCrafting)
+	{
+		CancelCrafting();
+	}
 
 	bIsMousePressed = true;
 	MoveToMouseCursor();
@@ -1441,9 +1455,37 @@ void ABasePlayerController::Client_CloseTeleportUI_Implementation()
 	CurrentTeleportActor = nullptr;
 }
 
+void ABasePlayerController::Client_OpenRespawnTeleportUI_Implementation()
+{
+	if (!RespawnTeleportUIClass) return;
+
+	if (IsValid(RespawnTeleportUIInstance))
+	{
+		RespawnTeleportUIInstance->RemoveFromParent();
+		RespawnTeleportUIInstance = nullptr;
+	}
+
+	RespawnTeleportUIInstance = CreateWidget<UUserWidget>(this, RespawnTeleportUIClass);
+
+	if (IsValid(RespawnTeleportUIInstance))
+	{
+		RespawnTeleportUIInstance->AddToViewport(15);
+	}
+}
+
+void ABasePlayerController::Client_CloseRespawnTeleportUI_Implementation()
+{
+	if (IsValid(RespawnTeleportUIInstance))
+	{
+		RespawnTeleportUIInstance->RemoveFromParent();
+		RespawnTeleportUIInstance = nullptr;
+	}
+}
+
 void ABasePlayerController::Server_RequestTeleport_Implementation(int32 RegionIndex)
 {
 	Client_CloseTeleportUI();
+	Client_CloseRespawnTeleportUI();
 
 	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
 	ABaseCharacter* Char = Cast<ABaseCharacter>(GetPawn());
@@ -1827,3 +1869,350 @@ void ABasePlayerController::Server_DropInventoryItem_Implementation(int32 SlotIn
 	InventoryComp->DropItemFromSlot(SlotIndex, SafeDropLocation, DroppedItemActorClass, PlayerPawn);
 }
 
+
+
+
+
+
+
+
+
+// ===== 아이템 조합 시스템 =====
+
+void ABasePlayerController::TryStartCrafting()
+{
+	// 이미 조합 중이면 무시
+	if (bIsCrafting)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Crafting] Already crafting"));
+		return;
+	}
+
+	// Down/Death 상태 체크
+	APawn* const MyPawn = GetPawn();
+	if (MyPawn)
+	{
+		UBaseInventoryComponent* const InvComp = MyPawn->FindComponentByClass<UBaseInventoryComponent>();
+		if (InvComp && !InvComp->CanUseItemsInCurrentLifeState())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Crafting] Cannot craft while Down/Death"));
+			return;
+		}
+	}
+
+	// 조합 가능한 레시피 찾기 (우선순위 높은 순)
+	FItemRecipeRow* BestRecipe = FindBestAvailableRecipe();
+	if (BestRecipe == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Crafting] No available recipes"));
+		return;
+	}
+
+	// 조합 시작
+	StartCrafting(BestRecipe);
+}
+
+FItemRecipeRow* ABasePlayerController::FindBestAvailableRecipe()
+{
+	if (ItemRecipeTable == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Crafting] ItemRecipeTable is null"));
+		return nullptr;
+	}
+
+	APawn* const MyPawn = GetPawn();
+	if (MyPawn == nullptr) return nullptr;
+
+	UBaseInventoryComponent* const InvComp = MyPawn->FindComponentByClass<UBaseInventoryComponent>();
+	if (InvComp == nullptr) return nullptr;
+
+	// 모든 레시피 가져오기
+	TArray<FItemRecipeRow*> AllRecipes;
+	ItemRecipeTable->GetAllRows<FItemRecipeRow>(TEXT("FindBestAvailableRecipe"), AllRecipes);
+
+	// 조합 가능한 레시피 필터링
+	FItemRecipeRow* BestRecipe = nullptr;
+	int32 HighestPriority = TNumericLimits<int32>::Min();
+
+	for (FItemRecipeRow* Recipe : AllRecipes)
+	{
+		if (Recipe == nullptr) continue;
+
+		// 재료 확인
+		int32 Mat1Index, Mat2Index;
+		if (!HasMaterialsInInventory(Recipe, Mat1Index, Mat2Index))
+		{
+			continue;
+		}
+
+		// 우선순위 비교
+		if (Recipe->Priority > HighestPriority)
+		{
+			HighestPriority = Recipe->Priority;
+			BestRecipe = Recipe;
+		}
+	}
+
+	return BestRecipe;
+}
+
+bool ABasePlayerController::HasMaterialsInInventory(const FItemRecipeRow* Recipe, int32& OutMat1Index, int32& OutMat2Index)
+{
+	if (Recipe == nullptr) return false;
+
+	APawn* const MyPawn = GetPawn();
+	if (MyPawn == nullptr) return false;
+
+	UBaseInventoryComponent* const InvComp = MyPawn->FindComponentByClass<UBaseInventoryComponent>();
+	if (InvComp == nullptr) return false;
+
+	// 재료 로드
+	UBaseItemData* const Mat1 = Recipe->Material1.LoadSynchronous();
+	UBaseItemData* const Mat2 = Recipe->Material2.LoadSynchronous();
+	if (Mat1 == nullptr || Mat2 == nullptr) return false;
+
+	OutMat1Index = -1;
+	OutMat2Index = -1;
+
+	// 인벤토리 순회
+	for (int32 i = 0; i < InvComp->MaxSlots; ++i)
+	{
+		UBaseItemData* const SlotItem = InvComp->GetItemAt(i);
+		if (SlotItem == nullptr) continue;
+
+		// 재료 1 매칭
+		if (OutMat1Index == -1 && SlotItem == Mat1)
+		{
+			OutMat1Index = i;
+			continue;
+		}
+
+		// 재료 2 매칭
+		if (OutMat2Index == -1 && SlotItem == Mat2)
+		{
+			OutMat2Index = i;
+			continue;
+		}
+
+		// 둘 다 찾으면 종료
+		if (OutMat1Index != -1 && OutMat2Index != -1)
+		{
+			break;
+		}
+	}
+
+	return (OutMat1Index != -1 && OutMat2Index != -1);
+}
+
+void ABasePlayerController::StartCrafting(FItemRecipeRow* Recipe)
+{
+	if (Recipe == nullptr)
+	{
+		return;
+	}
+
+	APawn* const MyPawn = GetPawn();
+	if (MyPawn == nullptr)
+	{
+		return;
+	}
+
+	UBaseInventoryComponent* const InvComp = MyPawn->FindComponentByClass<UBaseInventoryComponent>();
+	if (InvComp == nullptr)
+	{
+		return;
+	}
+
+	// 결과 아이템이 스택 가능한지 확인
+	UBaseItemData* const ResultItem = Recipe->ResultItem.LoadSynchronous();
+	if (ResultItem == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Crafting] Result item is null"));
+		return;
+	}
+
+	// 스택 가능한 슬롯이 있는지 OR 빈 슬롯이 있는지 확인
+	bool bCanAddResult = false;
+
+	// 1) 기존 스택에 추가 가능한지 확인
+	for (int32 i = 0; i < InvComp->MaxSlots; ++i)
+	{
+		UBaseItemData* const SlotItem = InvComp->GetItemAt(i);
+		if (SlotItem == ResultItem)
+		{
+			const int32 StackCount = InvComp->GetStackCountAt(i);
+			if (StackCount > 0 && StackCount < InvComp->MaxStackPerSlot)
+			{
+				bCanAddResult = true;
+				break;
+			}
+		}
+	}
+
+	// 2) 빈 슬롯이 있는지 확인
+	if (!bCanAddResult)
+	{
+		const int32 EmptySlot = FindFirstEmptySlot();
+		if (EmptySlot != -1)
+		{
+			bCanAddResult = true;
+		}
+	}
+
+	if (!bCanAddResult)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Crafting] No space for result item"));
+		return;
+	}
+
+	// 조합 상태 설정
+	bIsCrafting = true;
+	CurrentCraftingRecipe = Recipe;
+
+	// 움직임 정지
+	if (ABaseCharacter* const BaseChar = Cast<ABaseCharacter>(MyPawn))
+	{
+		BaseChar->StopMove();
+	}
+
+	// 조합 사운드 재생
+	USoundBase* const CraftSound = Recipe->CraftSound.LoadSynchronous();
+	if (CraftSound)
+	{
+		CraftingSoundComponent = UGameplayStatics::SpawnSound2D(
+			this,
+			CraftSound,
+			1.0f,
+			1.0f,
+			0.0f
+		);
+	}
+
+	// 타이머 설정
+	GetWorld()->GetTimerManager().SetTimer(
+		CraftingTimerHandle,
+		this,
+		&ABasePlayerController::CompleteCrafting,
+		Recipe->CraftTime,
+		false
+	);
+
+	UE_LOG(LogTemp, Log, TEXT("[Crafting] Started crafting, duration: %.2f sec"), Recipe->CraftTime);
+}
+
+void ABasePlayerController::CompleteCrafting()
+{
+	if (!bIsCrafting || CurrentCraftingRecipe == nullptr)
+	{
+		return;
+	}
+
+	APawn* const MyPawn = GetPawn();
+	if (MyPawn == nullptr)
+	{
+		CancelCrafting();
+		return;
+	}
+
+	UBaseInventoryComponent* const InvComp = MyPawn->FindComponentByClass<UBaseInventoryComponent>();
+	if (InvComp == nullptr)
+	{
+		CancelCrafting();
+		return;
+	}
+
+	// Down/Death 상태 체크
+	if (!InvComp->CanUseItemsInCurrentLifeState())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Crafting] Cannot complete craft while Down/Death"));
+		CancelCrafting();
+		return;
+	}
+
+	// 재료 확인 (혹시 조합 중 재료가 사라졌을 수도)
+	int32 Mat1Index, Mat2Index;
+	if (!HasMaterialsInInventory(CurrentCraftingRecipe, Mat1Index, Mat2Index))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Crafting] Materials missing during craft"));
+		CancelCrafting();
+		return;
+	}
+
+	// 재료 소모 (서버 권위) - public 함수 사용
+	if (MyPawn->HasAuthority())
+	{
+		// 재료 1 소모
+		InvComp->ConsumeItemAtSlot(Mat1Index);
+
+		// 재료 2 소모
+		InvComp->ConsumeItemAtSlot(Mat2Index);
+
+		// 결과 아이템 생성 (AddItem 사용 - 자동 스택)
+		UBaseItemData* const ResultItem = CurrentCraftingRecipe->ResultItem.LoadSynchronous();
+		if (ResultItem)
+		{
+			const bool bAdded = InvComp->AddItem(ResultItem);
+			if (bAdded)
+			{
+				UE_LOG(LogTemp, Log, TEXT("[Crafting] Crafted '%s'"), *ResultItem->ItemName.ToString());
+			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("[Crafting] Failed to add result item"));
+			}
+		}
+	}
+
+	// 사운드 정지
+	if (CraftingSoundComponent)
+	{
+		CraftingSoundComponent->Stop();
+		CraftingSoundComponent = nullptr;
+	}
+
+	// 조합 상태 종료
+	bIsCrafting = false;
+	CurrentCraftingRecipe = nullptr;
+
+	UE_LOG(LogTemp, Log, TEXT("[Crafting] Crafting completed!"));
+}
+
+void ABasePlayerController::CancelCrafting()
+{
+	if (!bIsCrafting) return;
+
+	UE_LOG(LogTemp, Log, TEXT("[Crafting] Cancelled"));
+
+	// 타이머 취소
+	GetWorld()->GetTimerManager().ClearTimer(CraftingTimerHandle);
+
+	// 사운드 정지
+	if (CraftingSoundComponent)
+	{
+		CraftingSoundComponent->Stop();
+		CraftingSoundComponent = nullptr;
+	}
+
+	// 조합 상태 종료
+	bIsCrafting = false;
+	CurrentCraftingRecipe = nullptr;
+}
+
+int32 ABasePlayerController::FindFirstEmptySlot()
+{
+	APawn* const MyPawn = GetPawn();
+	if (MyPawn == nullptr) return -1;
+
+	UBaseInventoryComponent* const InvComp = MyPawn->FindComponentByClass<UBaseInventoryComponent>();
+	if (InvComp == nullptr) return -1;
+
+	for (int32 i = 0; i < InvComp->MaxSlots; ++i)
+	{
+		if (InvComp->GetItemAt(i) == nullptr)
+		{
+			return i;
+		}
+	}
+
+	return -1;
+}

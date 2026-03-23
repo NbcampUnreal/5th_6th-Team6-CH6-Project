@@ -93,6 +93,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "item")
 	TObjectPtr<UInputAction> UseItem8;
 
+	// 아이템 조합키 (Z)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Crafting")
+	TObjectPtr<UInputAction> InputCraft;
 
 	// 현황판 온오프용
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
