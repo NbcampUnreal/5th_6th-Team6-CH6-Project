@@ -1,24 +1,20 @@
 #include "GA_Teleport.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
+#include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_WaitDelay.h"
 #include "Engine/World.h"
-
 UGA_Teleport::UGA_Teleport()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
-	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerInitiated;
+	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
 }
 
 void UGA_Teleport::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 	UE_LOG(LogTemp, Log, TEXT("[GA_Teleport] ActivateAbility"));
-	if (!HasAuthority(&ActivationInfo))
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
-		return;
-	}
 
 	if (TriggerEventData && ActorInfo->AvatarActor.IsValid())
 	{
@@ -50,12 +46,39 @@ void UGA_Teleport::OnDelayFinish()
 		ABaseCharacter* Char = Cast<ABaseCharacter>(GetAvatarActorFromActorInfo());
 		if (Char)
 		{
-			if (AER_InGameMode* GM = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode()))
+			if (IsCharacterDead())
 			{
-				GM->RequestTeleportToRegion(Char, TargetRegionIndex);
+				// 사망 상태일 경우 -> 리스폰(부활 이동) 로직
+				UER_RespawnSubsystem* RespawnSS = GetWorld()->GetSubsystem<UER_RespawnSubsystem>();
+				if (RespawnSS)
+				{
+					FTransform DestTransform = RespawnSS->GetRespawnPointLocation(TargetRegionIndex);
+					FVector RespawnLocation = DestTransform.GetLocation();
+					Char->Server_Revive(RespawnLocation);
+				}
+			}
+			else
+			{
+				// 생존 상태일 경우 -> 일반 텔레포트 이동 로직
+				if (AER_InGameMode* GM = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode()))
+				{
+					GM->RequestTeleportToRegion(Char, TargetRegionIndex);
+				}
 			}
 		}
 
 		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 	}
+}
+
+bool UGA_Teleport::IsCharacterDead() const
+{
+	if (ABaseCharacter* Char = Cast<ABaseCharacter>(GetAvatarActorFromActorInfo()))
+	{
+		if (UAbilitySystemComponent* ASC = Char->GetAbilitySystemComponent())
+		{
+			return ASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("State.Life.Death")));
+		}
+	}
+	return false;
 }
