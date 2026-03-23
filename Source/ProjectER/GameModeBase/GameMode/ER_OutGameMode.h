@@ -37,5 +37,11 @@ protected:
 	void OnPlayerTeamDecided(ETeamType TeamID);
 
 public:
+	// Set these in the editor — drag your .umap assets here
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Level Config")
+	TSoftObjectPtr<UWorld> BattleMap;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Level Config")
+	TSoftObjectPtr<UWorld> LobbyMap;
 
 };

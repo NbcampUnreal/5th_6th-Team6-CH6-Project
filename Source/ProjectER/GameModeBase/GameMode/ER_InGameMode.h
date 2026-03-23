@@ -108,12 +108,19 @@ public:
 
 	void HandleObjectNoticeTimeUp();
 
+	UFUNCTION(BlueprintImplementableEvent, Category="Phase")
+	void OnPhaseTimeUp(int32 CurrentPhase);
+
 
 	UFUNCTION(BlueprintCallable)
 	void TEMP_SpawnNeutrals();
 
 	UFUNCTION(BlueprintCallable)
 	void TEMP_DespawnNeutrals();
+
+	// Called from Blueprint when a level instance finishes loading
+	UFUNCTION(BlueprintImplementableEvent, Category="LevelArea")
+	void OnLevelInstanceLoaded();
 
 
 private:

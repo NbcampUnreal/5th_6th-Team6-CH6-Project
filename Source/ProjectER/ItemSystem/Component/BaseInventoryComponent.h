@@ -21,6 +21,7 @@ class PROJECTER_API UBaseInventoryComponent : public UActorComponent
 
 public:
 	UBaseInventoryComponent();
+	bool CanUseItemsInCurrentLifeState() const;
 
 	// 아이템 추가 (서버에서만 실행되도록 내부 로직 수정)
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
@@ -75,7 +76,6 @@ private:
 	};
 
 	UAbilitySystemComponent* ResolveOwnerAbilitySystemComponent() const;
-	bool CanUseItemsInCurrentLifeState() const;
 	FGameplayTag GetSetByCallerTagFromStatType(EItemStatType StatType) const;
 
 	bool ApplyItemEffect(UUsableItemData* ItemData);

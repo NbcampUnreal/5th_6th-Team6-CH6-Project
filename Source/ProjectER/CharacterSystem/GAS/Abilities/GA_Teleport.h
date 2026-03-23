@@ -22,6 +22,9 @@ protected:
 	UFUNCTION()
 	void OnDelayFinish();
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Teleport|State")
+	bool IsCharacterDead() const;
+
 	// 텔레포트 시전 대기 시간
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Teleport")
 	float TeleportDelayTime = 1.0f;

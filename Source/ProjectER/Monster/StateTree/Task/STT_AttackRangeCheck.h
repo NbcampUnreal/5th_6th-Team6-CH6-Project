@@ -10,9 +10,6 @@ USTRUCT()
 struct FAttackRangeCheckData
 {
 	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, Category = "Tag")
-	float AttackRange;
 };
 
 

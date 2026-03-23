@@ -176,10 +176,14 @@ void UER_RespawnSubsystem::StartRespawnTimer(AER_PlayerState& PS, AER_GameState&
 				{
 					if (APawn* Pawn = C->GetPawn())
 					{
-						if (ABaseCharacter* Char = Cast<ABaseCharacter>(Pawn))
+						if (ABasePlayerController* PC = Cast<ABasePlayerController>(Pawn->GetController()))
+						{
+							PC->Client_OpenRespawnTeleportUI();
+						}
+						/*if (ABaseCharacter* Char = Cast<ABaseCharacter>(Pawn))
 						{
 							Char->Server_Revive(Char->GetActorLocation());
-						}
+						}*/
 					}
 				}
 

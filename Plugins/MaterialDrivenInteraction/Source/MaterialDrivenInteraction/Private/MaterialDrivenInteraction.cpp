@@ -5,7 +5,11 @@
 #include "Interfaces/IPluginManager.h"
 #include "Misc/Paths.h"
 #include "ShaderCore.h"
+#include "Data/RTPoolTypes.h"
 
+#if WITH_EDITOR
+#include "ISettingsModule.h" // for rt settings
+#endif
 
 #define LOCTEXT_NAMESPACE "FMaterialDrivenInteractionModule"
 
@@ -23,11 +27,39 @@ void FMaterialDrivenInteractionModule::StartupModule()
 			FPaths::Combine(Plugin->GetBaseDir(), TEXT("Shaders"));
 
 		AddShaderSourceDirectoryMapping(TEXT("/FoliageRT"), ShaderDir);
+		AddShaderSourceDirectoryMapping(TEXT("/TargetBrush"), ShaderDir);
 	}
+
+
+#if WITH_EDITOR
+	// Register URTPoolSettings in Project Settings → Plugins → Foliage RT Pool
+	if (ISettingsModule* SettingsModule = FModuleManager::GetModulePtr<ISettingsModule>("Settings"))
+	{
+		SettingsModule->RegisterSettings(
+			"Project",
+			"Plugins",
+			"FoliageRTPool",
+			LOCTEXT("FoliageRTPoolSettingsName", "Foliage RT Pool"),
+			LOCTEXT("FoliageRTPoolSettingsDesc", "Configure render target pool size, cell size, decay duration, and RT asset assignments."),
+			GetMutableDefault<URTPoolSettings>()
+		);
+	}
+#endif
 }
 
 void FMaterialDrivenInteractionModule::ShutdownModule()
 {
+	
+#if WITH_EDITOR
+	if (ISettingsModule* SettingsModule = FModuleManager::GetModulePtr<ISettingsModule>("Settings"))
+	{
+		SettingsModule->UnregisterSettings(
+			"Project",
+			"Plugins",
+			"FoliageRTPool");
+	}
+#endif
+	
 }
 
 #undef LOCTEXT_NAMESPACE

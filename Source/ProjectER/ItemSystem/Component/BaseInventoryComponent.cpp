@@ -1,5 +1,3 @@
-// File: 5th_6th-Team6-CH6-Project/Source/ProjectER/ItemSystem/Component/BaseInventoryComponent.cpp
-
 #include "ItemSystem/Component/BaseInventoryComponent.h"
 #include "ItemSystem/Data/BaseItemData.h"
 
