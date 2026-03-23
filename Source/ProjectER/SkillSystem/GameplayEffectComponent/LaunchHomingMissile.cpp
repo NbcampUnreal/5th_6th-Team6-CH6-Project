@@ -124,8 +124,11 @@ void ULaunchHomingMissile::OnGameplayEffectApplied(
 				EffectSpecs.Append(EffectData->MakeSpecs(CauserASC, Skill, MissileActor, ContextHandle));
 			}
 		}
-	}
 
+		// 강화 효과(SkillProc) 확인 및 전이
+		UBaseGEC::GetSkillProcEffects(CauserASC, Skill, MissileActor, ContextHandle, EffectSpecs);
+	}
+	
 	// --- 적중 VFX 큐 파라미터 구성 ---
 	FGameplayCueParameters HitCueParams(GESpec);
 	if (IsValid(MissileConfig->ImpactVfx) && MissileConfig->ImpactVfx->CueTag.IsValid())

@@ -1,0 +1,149 @@
+// TargetBrush.ush
+// Place in: YourPlugin/Shaders/TargetBrush.ush
+// Include in any Custom node: #include "/TargetBrush/TargetBrush.ush"
+
+#pragma once
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TB_SelectUseWrap
+// Decides whether wrapped or raw delta is closer (toroidal space)
+// Shared by ALL logic → fixes diagonal ambiguity
+// ─────────────────────────────────────────────────────────────────────────────
+float TB_SelectUseWrap(float2 deltaRaw, float2 deltaWrap)
+{
+    float distRaw  = dot(deltaRaw,  deltaRaw);
+    float distWrap = dot(deltaWrap, deltaWrap);
+
+    float epsilon = 1e-6;
+
+    return (distWrap < distRaw - epsilon) ? 1.0 : 0.0;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TB_IsPixelOwned
+// Determines if this tile is responsible for this pixel
+// 1 = draw, 0 = discard
+// FIXED: now uses global distance instead of axis-based logic
+// ─────────────────────────────────────────────────────────────────────────────
+float TB_IsPixelOwned(
+    float2 TexCoord,
+    float2 CentreUV,
+    float  TileType
+)
+{
+    float2 deltaRaw  = TexCoord - CentreUV;
+    float2 deltaWrap = deltaRaw - sign(deltaRaw);
+
+    float useWrap = TB_SelectUseWrap(deltaRaw, deltaWrap);
+
+    if (TileType < 0.5) // ORIGINAL
+    {
+        return (useWrap > 0.5) ? 0.0 : 1.0;
+    }
+    else // WRAPPED
+    {
+        return (useWrap > 0.5) ? 1.0 : 0.0;
+    }
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TB_GetWrappedDelta
+// Returns shortest toroidal delta (correct for diagonals)
+// ─────────────────────────────────────────────────────────────────────────────
+float2 TB_GetWrappedDelta(
+    float2 TexCoord,
+    float2 CentreUV
+)
+{
+    float2 deltaRaw  = TexCoord - CentreUV;
+    float2 deltaWrap = deltaRaw - sign(deltaRaw);
+
+    float useWrap = TB_SelectUseWrap(deltaRaw, deltaWrap);
+
+    return (useWrap > 0.5) ? deltaWrap : deltaRaw;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TB_RadialNormal
+// Radial outward push encoded in RG
+// ─────────────────────────────────────────────────────────────────────────────
+float4 TB_RadialNormal(
+    float2 TexCoord,
+    float2 CentreUV,
+    float2 UVExtent,
+    float  Weight,
+    float  Softness,
+    float  TileType
+)
+{
+    float ownership = TB_IsPixelOwned(TexCoord, CentreUV, TileType);
+    if (ownership < 0.5)
+        return float4(0.5, 0.5, 0.0, 0.0);
+
+    float2 Delta = TB_GetWrappedDelta(TexCoord, CentreUV);
+
+    float Dist   = length(Delta);
+    float Radius = UVExtent.x;
+
+    float HardEdge = 1.0 - step(Radius, Dist);
+    float SoftEdge = 1.0 - smoothstep(Radius * (1.0 - Softness), Radius, Dist);
+    float Mask     = lerp(HardEdge, SoftEdge, saturate(Softness));
+
+    if (Mask <= 0.0001)
+        return float4(0.5, 0.5, 0.0, 0.0);
+
+    float2 Dir     = (Dist > 0.0001) ? normalize(Delta) : float2(0.0, 0.0);
+    float2 Encoded = Dir * 0.5 + 0.5;
+
+    float4 Out;
+    Out.r = lerp(0.5, Encoded.x, Mask);
+    Out.g = lerp(0.5, Encoded.y, Mask);
+    Out.b = 0.0;
+    Out.a = Weight * Mask;
+
+    return Out;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TB_RotateNormal
+// Rotates an input RG normal map
+// ─────────────────────────────────────────────────────────────────────────────
+float4 TB_RotateNormal(
+    float2 TexCoord,
+    float2 CentreUV,
+    float2 EncodedNormal,
+    float  Mask,
+    float  BrushRotation,
+    float  Weight,
+    float  TileType
+)
+{
+    float ownership = TB_IsPixelOwned(TexCoord, CentreUV, TileType);
+    if (ownership < 0.5)
+        return float4(0.5, 0.5, 0.0, 0.0);
+
+    float2 Normal = EncodedNormal * 2.0 - 1.0;
+
+    float Angle = BrushRotation * 0.01745329;
+    float CosA  = cos(Angle);
+    float SinA  = sin(Angle);
+
+    float2 Rotated;
+    Rotated.x = Normal.x * CosA - Normal.y * SinA;
+    Rotated.y = Normal.x * SinA + Normal.y * CosA;
+
+    float2 Encoded = Rotated * 0.5 + 0.5;
+
+    float4 Out;
+    Out.r = lerp(0.5, Encoded.x, Mask);
+    Out.g = lerp(0.5, Encoded.y, Mask);
+    Out.b = 0.0;
+    Out.a = Weight * Mask;
+
+    return Out;
+}

@@ -94,6 +94,7 @@ public:
     bool IsActorVisibleToTeam(AActor* Target, EVisionChannel Team) const;
 
 
+    UFUNCTION(BlueprintCallable, Category="Vision")
     EVisionChannel GetLocalPlayerTeamChannel() const;
     
 

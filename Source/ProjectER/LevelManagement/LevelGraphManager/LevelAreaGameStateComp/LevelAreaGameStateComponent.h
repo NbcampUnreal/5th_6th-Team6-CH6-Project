@@ -6,6 +6,8 @@
 #include "LevelAreaGameStateComponent.generated.h"
 
 class ULevelAreaGraphData;
+class ALevelAreaInstanceBridge;
+class ALevelInstance;
 
 UCLASS(ClassGroup=(LevelManagement), meta=(BlueprintSpawnableComponent))
 class PROJECTER_API ULevelAreaGameStateComponent : public UActorComponent
@@ -39,11 +41,9 @@ public:
 
     /* ---------- Replicated State ---------- */
 
-    // Full collapse order — replicated once at start, never changes
     UPROPERTY(ReplicatedUsing=OnRep_HazardOrder, BlueprintReadOnly, Category="Hazard")
     TArray<int32> HazardOrder;
 
-    // Current phase — clients derive active hazards from this + HazardOrder
     UPROPERTY(ReplicatedUsing=OnRep_CurrentPhase, BlueprintReadOnly, Category="Hazard")
     int32 CurrentPhase = 0;
 
@@ -68,12 +68,27 @@ public:
     UFUNCTION(BlueprintCallable, BlueprintPure, Category="Hazard")
     bool IsAllPhasesExhausted() const { return (CurrentPhase * HazardsPerPhase) >= HazardOrder.Num(); }
 
+    // Wide — all bridges for a node area
+    UFUNCTION(BlueprintCallable, Category="LevelArea")
+    TArray<ALevelAreaInstanceBridge*> GetBridgeActorsByID(int32 NodeID) const;
+
+    // Narrow — exact bridge by its linked level instance
+    UFUNCTION(BlueprintCallable, Category="LevelArea")
+    ALevelAreaInstanceBridge* GetBridgeActorByInstance(ALevelInstance* LevelInstance) const;
+
 
     /* ---------- Lifecycle ---------- */
 
     virtual void GetLifetimeReplicatedProps(
         TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+    /// registration
+    void RegisterBridge(ALevelAreaInstanceBridge* Bridge);
+    void UnregisterBridge(ALevelAreaInstanceBridge* Bridge);
+
+public:
+
+    TMap<int32, TArray<TObjectPtr<ALevelAreaInstanceBridge>>> BridgeActorMap;
 
 private:
 
@@ -83,8 +98,8 @@ private:
     UFUNCTION()
     void OnRep_CurrentPhase();
 
-    // Applies all hazards up to and including CurrentPhase from HazardOrder
     void ApplyHazardsUpToCurrentPhase();
-
     void NotifyTrackers();
+    void BuildBridgeActorMap();
+    void NotifyBridgeActors(const TArray<int32>& HazardNodeIDs);
 };

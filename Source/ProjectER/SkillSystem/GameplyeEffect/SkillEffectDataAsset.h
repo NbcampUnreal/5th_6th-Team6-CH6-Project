@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -81,7 +81,7 @@ class PROJECTER_API USkillEffectDataAsset : public UDataAsset
 public:
     USkillEffectDataAsset();
 
-    TArray<FGameplayEffectSpecHandle> MakeSpecs(UAbilitySystemComponent* InstigatorASC, USkillBase* InstigatorSkill, AActor* InEffectCauser, const FGameplayEffectContextHandle InEffectContextHandle = FGameplayEffectContextHandle()) const;
+    TArray<FGameplayEffectSpecHandle> MakeSpecs(UAbilitySystemComponent* InstigatorASC, UGameplayAbility* InstigatorSkill, AActor* InEffectCauser, const FGameplayEffectContextHandle InEffectContextHandle = FGameplayEffectContextHandle()) const;
 
     UFUNCTION(BlueprintPure, Category = "Skill|UI")
     FText BuildEffectDescription(float InLevel = 1.0f) const;

@@ -1,4 +1,4 @@
-// ItemRecipeRow.h
+ï»¿// ItemRecipeRow.h
 #pragma once
 
 #include "CoreMinimal.h"
@@ -9,34 +9,34 @@ class UBaseItemData;
 class USoundBase;
 
 /**
- * ¾ÆÀÌÅÛ Á¶ÇÕ ·¹½ÃÇÇ ±¸Á¶Ã¼
+ * ì•„ì´í…œ ì¡°í•© ë ˆì‹œí”¼ êµ¬ì¡°ì²´
  */
 USTRUCT(BlueprintType)
 struct FItemRecipeRow : public FTableRowBase
 {
 	GENERATED_BODY()
 
-	// Àç·á 1
+	// ì¬ë£Œ 1
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Recipe")
 	TSoftObjectPtr<UBaseItemData> Material1;
 
-	// Àç·á 2
+	// ì¬ë£Œ 2
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Recipe")
 	TSoftObjectPtr<UBaseItemData> Material2;
 
-	// °á°ú ¾ÆÀÌÅÛ
+	// ê²°ê³¼ ì•„ì´í…œ
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Recipe")
 	TSoftObjectPtr<UBaseItemData> ResultItem;
 
-	// Á¶ÇÕ ½Ã°£ (ÃÊ)
+	// ì¡°í•© ì‹œê°„ (ì´ˆ)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Recipe", meta = (ClampMin = "0.1"))
 	float CraftTime;
 
-	// Á¶ÇÕ »ç¿îµå
+	// ì¡°í•© ì‚¬ìš´ë“œ
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Recipe")
 	TSoftObjectPtr<USoundBase> CraftSound;
 
-	// ¿ì¼±¼øÀ§ (³ôÀ»¼ö·Ï ¸ÕÀú ¼±ÅÃ)
+	// ìš°ì„ ìˆœìœ„ (ë†’ì„ìˆ˜ë¡ ë¨¼ì € ì„ íƒ)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Recipe")
 	int32 Priority;
 
