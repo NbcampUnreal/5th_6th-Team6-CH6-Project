@@ -1,4 +1,4 @@
-#include "CharacterSystem/Player/BasePlayerController.h"
+﻿#include "CharacterSystem/Player/BasePlayerController.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -1455,9 +1455,37 @@ void ABasePlayerController::Client_CloseTeleportUI_Implementation()
 	CurrentTeleportActor = nullptr;
 }
 
+void ABasePlayerController::Client_OpenRespawnTeleportUI_Implementation()
+{
+	if (!RespawnTeleportUIClass) return;
+
+	if (IsValid(RespawnTeleportUIInstance))
+	{
+		RespawnTeleportUIInstance->RemoveFromParent();
+		RespawnTeleportUIInstance = nullptr;
+	}
+
+	RespawnTeleportUIInstance = CreateWidget<UUserWidget>(this, RespawnTeleportUIClass);
+
+	if (IsValid(RespawnTeleportUIInstance))
+	{
+		RespawnTeleportUIInstance->AddToViewport(15);
+	}
+}
+
+void ABasePlayerController::Client_CloseRespawnTeleportUI_Implementation()
+{
+	if (IsValid(RespawnTeleportUIInstance))
+	{
+		RespawnTeleportUIInstance->RemoveFromParent();
+		RespawnTeleportUIInstance = nullptr;
+	}
+}
+
 void ABasePlayerController::Server_RequestTeleport_Implementation(int32 RegionIndex)
 {
 	Client_CloseTeleportUI();
+	Client_CloseRespawnTeleportUI();
 
 	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
 	ABaseCharacter* Char = Cast<ABaseCharacter>(GetPawn());

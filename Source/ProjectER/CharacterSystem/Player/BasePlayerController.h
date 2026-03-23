@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "ItemSystem/Interface/I_ItemInteractable.h" // [김현수 추가분]
 #include "ItemSystem/Data/ItemRecipeRow.h" // [김현수 추가분]
@@ -328,6 +328,12 @@ public:
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 	void Client_CloseTeleportUI();
 
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_OpenRespawnTeleportUI();
+
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void Client_CloseRespawnTeleportUI();
+
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_RequestTeleport(int32 RegionIndex);
 
@@ -438,6 +444,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UUserWidget> TeleportUIInstance;
+
+	UPROPERTY(EditDefaultsOnly, Category = "ProjectER|UI")
+	TSubclassOf<UUserWidget> RespawnTeleportUIClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> RespawnTeleportUIInstance;
 	
 	// 거리 측정을 위한 타겟 캐싱
 	UPROPERTY(Transient)
