@@ -21,6 +21,8 @@
 
 #include "AbilitySystemLog.h" // GAS 관련 로그 확인용
 
+#include "CharacterSystem/Player/BasePlayerController.h" // [김현수 추가분]
+
 USkillBase::USkillBase()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
@@ -42,6 +44,22 @@ void USkillBase::SetSkillTagCount(FGameplayTag Tag, int32 Count)
 
 void USkillBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
+
+	// [김현수 추가분]
+	if (AActor* const AvatarActor = GetAvatarActorFromActorInfo())
+	{
+		if (APlayerController* const PC = Cast<APlayerController>(AvatarActor->GetInstigatorController()))
+		{
+			if (ABasePlayerController* const BasePC = Cast<ABasePlayerController>(PC))
+			{
+				if (BasePC->IsCrafting())
+				{
+					BasePC->CancelCrafting();
+				}
+			}
+		}
+	}
+
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 }
 
