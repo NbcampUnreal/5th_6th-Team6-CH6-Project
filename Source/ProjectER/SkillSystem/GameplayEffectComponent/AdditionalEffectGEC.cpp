@@ -1,6 +1,7 @@
 #include "SkillSystem/GameplayEffectComponent/AdditionalEffectGEC.h"
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 #include "SkillSystem/SkillNiagaraSpawnConfig.h"
+#include "SkillSystem/SkillSoundSpawnConfig.h"
 #include "AbilitySystemComponent.h"
 #include "GameplayEffect.h"
 
@@ -43,32 +44,58 @@ bool UAdditionalEffectGEC::OnActiveGameplayEffectAdded(FActiveGameplayEffectsCon
 	ActiveGE.Spec.AddDynamicAssetTag(SkillProcTag);
 
 	const UAdditionalEffectConfig* const Config = ResolveTypedConfigFromSpec<UAdditionalEffectConfig>(ActiveGE.Spec);
-	if (IsValid(Config) && IsValid(Config->ActiveVfxConfig) && Config->ActiveVfxConfig->CueTag.IsValid())
+	if (IsValid(Config))
 	{
 		UAbilitySystemComponent* TargetASC = ActiveGEContainer.Owner;
 		if (IsValid(TargetASC))
 		{
-			FGameplayCueParameters Params(ActiveGE.Spec);
-			Params.SourceObject = Config->ActiveVfxConfig;
-			Params.Instigator = ActiveGE.Spec.GetContext().GetInstigator();
-			Params.EffectCauser = ActiveGE.Spec.GetContext().GetEffectCauser();
-
-			// 1. 버프 지속 동안 나이아가라 루프를 위해 AddGameplayCue 사용
+			// 1. Niagara VFX 처리
+			if (IsValid(Config->ActiveVfxConfig.Get()) && Config->ActiveVfxConfig->CueTag.IsValid())
 			{
-				FScopedPredictionWindow ForcedWindow(TargetASC, FPredictionKey(), false);
-				TargetASC->AddGameplayCue(Config->ActiveVfxConfig->CueTag, Params);
-			}
+				FGameplayCueParameters Params(ActiveGE.Spec);
+				Params.SourceObject = Config->ActiveVfxConfig.Get();
+				Params.Instigator = ActiveGE.Spec.GetContext().GetInstigator();
+				Params.EffectCauser = ActiveGE.Spec.GetContext().GetEffectCauser();
 
-			// 2. 버프가 제거될 때(만료 또는 소모) 자동으로 이펙트도 제거되도록 예약
-			FGameplayTag CueTag = Config->ActiveVfxConfig->CueTag;
-			ActiveGE.EventSet.OnEffectRemoved.AddLambda([TargetASC, CueTag, Params](const FGameplayEffectRemovalInfo& RemovalInfo)
-			{
-				if (IsValid(TargetASC))
 				{
 					FScopedPredictionWindow ForcedWindow(TargetASC, FPredictionKey(), false);
-					TargetASC->RemoveGameplayCue(CueTag);
+					TargetASC->AddGameplayCue(Config->ActiveVfxConfig->CueTag, Params);
 				}
-			});
+
+				FGameplayTag CueTag = Config->ActiveVfxConfig->CueTag;
+				ActiveGE.EventSet.OnEffectRemoved.AddLambda([TargetASC, CueTag](const FGameplayEffectRemovalInfo& RemovalInfo)
+				{
+					if (IsValid(TargetASC))
+					{
+						FScopedPredictionWindow ForcedWindow(TargetASC, FPredictionKey(), false);
+						TargetASC->RemoveGameplayCue(CueTag);
+					}
+				});
+			}
+
+			// 2. Sound 처리
+			if (IsValid(Config->ActiveSoundConfig.Get()) && Config->ActiveSoundConfig->CueTag.IsValid())
+			{
+				FGameplayCueParameters Params(ActiveGE.Spec);
+				Params.SourceObject = Config->ActiveSoundConfig.Get();
+				Params.Instigator = ActiveGE.Spec.GetContext().GetInstigator();
+				Params.EffectCauser = ActiveGE.Spec.GetContext().GetEffectCauser();
+
+				{
+					FScopedPredictionWindow ForcedWindow(TargetASC, FPredictionKey(), false);
+					TargetASC->AddGameplayCue(Config->ActiveSoundConfig->CueTag, Params);
+				}
+
+				FGameplayTag CueTag = Config->ActiveSoundConfig->CueTag;
+				ActiveGE.EventSet.OnEffectRemoved.AddLambda([TargetASC, CueTag](const FGameplayEffectRemovalInfo& RemovalInfo)
+				{
+					if (IsValid(TargetASC))
+					{
+						FScopedPredictionWindow ForcedWindow(TargetASC, FPredictionKey(), false);
+						TargetASC->RemoveGameplayCue(CueTag);
+					}
+				});
+			}
 		}
 	}
 

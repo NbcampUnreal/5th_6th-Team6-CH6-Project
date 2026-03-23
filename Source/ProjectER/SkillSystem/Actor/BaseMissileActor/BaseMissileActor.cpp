@@ -28,7 +28,8 @@ void ABaseMissileActor::InitializeMissile(
 	const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles,
 	AActor* InInstigatorActor,
 	AActor* InHomingTarget,
-	const FGameplayCueParameters& InHitCueParameters,
+	const FGameplayCueParameters& InHitVfxCueParameters,
+	const FGameplayCueParameters& InHitSoundCueParameters,
 	float InInitialSpeed,
 	float InMaxSpeed,
 	float InHomingAcceleration,
@@ -38,7 +39,8 @@ void ABaseMissileActor::InitializeMissile(
 	EffectSpecHandles = InEffectSpecHandles;
 	InstigatorActor = InInstigatorActor;
 	HomingTargetActor = InHomingTarget;
-	HitCueParameters = InHitCueParameters;
+	HitVfxCueParameters = InHitVfxCueParameters;
+	HitSoundCueParameters = InHitSoundCueParameters;
 	ReachThreshold = InReachThreshold;
 	bDestroyOnHit = bInDestroyOnHit;
 
@@ -102,8 +104,8 @@ void ABaseMissileActor::OnReachedTarget()
 	// 1. 타겟에 효과 적용
 	ApplyEffectsToTarget(HomingTargetActor);
 
-	// 2. 적중 VFX 실행
-	ExecuteHitVfx();
+	// 2. 적중 효과 실행
+	ExecuteHitCues();
 
 	// 3. 파괴 처리
 	if (bDestroyOnHit)
@@ -134,9 +136,9 @@ void ABaseMissileActor::ApplyEffectsToTarget(AActor* TargetActor)
 	}
 }
 
-void ABaseMissileActor::ExecuteHitVfx()
+void ABaseMissileActor::ExecuteHitCues()
 {
-	if (!IsValid(InstigatorActor) || !HitCueParameters.OriginalTag.IsValid())
+	if (!IsValid(InstigatorActor))
 	{
 		return;
 	}
@@ -147,9 +149,23 @@ void ABaseMissileActor::ExecuteHitVfx()
 		return;
 	}
 
-	FGameplayCueParameters Params = HitCueParameters;
-	Params.Location = GetActorLocation();
-	Params.EffectCauser = this;
-	Params.TargetAttachComponent = HomingTargetActor->GetRootComponent();
-	InstigatorASC->ExecuteGameplayCue(HitCueParameters.OriginalTag, Params);
+	// VFX
+	if (HitVfxCueParameters.OriginalTag.IsValid())
+	{
+		FGameplayCueParameters Params = HitVfxCueParameters;
+		Params.Location = GetActorLocation();
+		Params.EffectCauser = this;
+		Params.TargetAttachComponent = IsValid(HomingTargetActor) ? HomingTargetActor->GetRootComponent() : nullptr;
+		InstigatorASC->ExecuteGameplayCue(HitVfxCueParameters.OriginalTag, Params);
+	}
+
+	// Sound
+	if (HitSoundCueParameters.OriginalTag.IsValid())
+	{
+		FGameplayCueParameters Params = HitSoundCueParameters;
+		Params.Location = GetActorLocation();
+		Params.EffectCauser = this;
+		Params.TargetAttachComponent = IsValid(HomingTargetActor) ? HomingTargetActor->GetRootComponent() : nullptr;
+		InstigatorASC->ExecuteGameplayCue(HitSoundCueParameters.OriginalTag, Params);
+	}
 }

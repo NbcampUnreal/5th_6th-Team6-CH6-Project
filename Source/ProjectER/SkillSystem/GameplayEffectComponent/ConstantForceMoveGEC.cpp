@@ -111,7 +111,9 @@ void UConstantForceMoveGEC::Execute(AActor* Instigator, const FVector& Direction
             }
         }
         WeakThis->ExecuteMoveCue(ConfigRef->EndVfx, GESpecCopy, InstigatorPtr, ActualEndLoc);
+        WeakThis->ExecuteMoveSound(ConfigRef->EndSound, GESpecCopy, InstigatorPtr, ActualEndLoc);
         WeakThis->RemoveMovingCue(ConfigRef->MovingVfx, InstigatorPtr);
+        WeakThis->RemoveMovingSoundCue(ConfigRef->MovingSound, InstigatorPtr);
 
     },
     Duration + 0.05f,

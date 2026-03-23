@@ -28,9 +28,9 @@ TSubclassOf<UBaseGECConfig> UAouraGEC::GetRequiredConfigClass() const
 	return UAouraGECConfig::StaticClass();
 }
 
-void UAouraGEC::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetCueParameters) const
+void UAouraGEC::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetVfxCueParameters, const FGameplayCueParameters& HitTargetSoundCueParameters) const
 {
-	Super::InitializeRangeActor(RangeActor, Config, Instigator, Context, HitTargetCueParameters);
+	Super::InitializeRangeActor(RangeActor, Config, Instigator, Context, HitTargetVfxCueParameters, HitTargetSoundCueParameters);
 	if (!IsValid(RangeActor) || !IsValid(Config) || !IsValid(Instigator))
 	{
 		return;

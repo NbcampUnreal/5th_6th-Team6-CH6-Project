@@ -30,7 +30,8 @@ public:
 		const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles,
 		AActor* InInstigatorActor,
 		AActor* InHomingTarget,
-		const FGameplayCueParameters& InHitCueParameters,
+		const FGameplayCueParameters& InHitVfxCueParameters,
+		const FGameplayCueParameters& InHitSoundCueParameters,
 		float InInitialSpeed,
 		float InMaxSpeed,
 		float InHomingAcceleration,
@@ -48,8 +49,8 @@ protected:
 	/** 타겟에게 효과를 적용합니다. */
 	void ApplyEffectsToTarget(AActor* TargetActor);
 
-	/** 적중 VFX를 실행합니다. */
-	void ExecuteHitVfx();
+	/** 적중 효과(VFX, Sound)를 실행합니다. */
+	void ExecuteHitCues();
 
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Missile")
@@ -69,7 +70,10 @@ protected:
 	TObjectPtr<AActor> HomingTargetActor;
 
 	UPROPERTY()
-	FGameplayCueParameters HitCueParameters;
+	FGameplayCueParameters HitVfxCueParameters;
+
+	UPROPERTY()
+	FGameplayCueParameters HitSoundCueParameters;
 
 	UPROPERTY()
 	float ReachThreshold = 50.0f;

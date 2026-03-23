@@ -11,6 +11,7 @@
 class ABaseMissileActor;
 class USkillEffectDataAsset;
 class USkillNiagaraSpawnConfig;
+class USkillSoundSpawnConfig;
 struct FGameplayEffectSpec;
 struct FGameplayEffectContextHandle;
 struct FActiveGameplayEffectsContainer;
@@ -68,6 +69,16 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Missile|Niagara")
 	TObjectPtr<USkillNiagaraSpawnConfig> ImpactVfx;
+
+	//--- Sound ---
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Missile|Sound")
+	TObjectPtr<USkillSoundSpawnConfig> SummonerSound;
+
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Missile|Sound")
+	TObjectPtr<USkillSoundSpawnConfig> MissileSound;
+
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Missile|Sound")
+	TObjectPtr<USkillSoundSpawnConfig> ImpactSound;
 };
 
 /**
@@ -90,4 +101,5 @@ protected:
 	FTransform CalculateSpawnTransform(const ULaunchHomingMissileConfig* Config, const AActor* Instigator, const AActor* TargetActor) const;
 	AActor* GetTargetActorFromContainer(FActiveGameplayEffectsContainer& ActiveGEContainer) const;
 	void ExecuteVfx(const FGameplayEffectSpec& GESpec, const FGameplayEffectContextHandle& ContextHandle, AActor* Instigator, ABaseMissileActor* MissileActor, const ULaunchHomingMissileConfig* Config) const;
+	void ExecuteSound(const FGameplayEffectSpec& GESpec, const FGameplayEffectContextHandle& ContextHandle, AActor* Instigator, ABaseMissileActor* MissileActor, const ULaunchHomingMissileConfig* Config) const;
 };

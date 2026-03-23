@@ -64,7 +64,9 @@ void UTeleportMoveGEC::Execute(AActor* Instigator, const FVector& Direction, con
 
 	// 도착 지점 큐 실행 및 Moving 루핑 종료
 	ExecuteMoveCue(TeleportConfig->EndVfx, GESpec, Instigator, Destination);
+	ExecuteMoveSound(TeleportConfig->EndSound, GESpec, Instigator, Destination);
 	RemoveMovingCue(TeleportConfig->MovingVfx, Instigator);
+	RemoveMovingSoundCue(TeleportConfig->MovingSound, Instigator);
 
 	if (bHitWall && TeleportConfig->bDetectWallHit)
 	{

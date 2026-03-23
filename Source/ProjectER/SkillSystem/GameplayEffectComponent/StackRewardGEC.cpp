@@ -1,9 +1,10 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "StackRewardGEC.h"
 #include "AbilitySystemComponent.h"
 #include "GameplayEffect.h"
 #include "SkillSystem/SkillNiagaraSpawnConfig.h"
+#include "SkillSystem/SkillSoundSpawnConfig.h"
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 
 UStackRewardGEC::UStackRewardGEC()
@@ -89,17 +90,17 @@ void UStackRewardGEC::ProcessStackRewards(UAbilitySystemComponent* TargetASC, FA
 					// --- VFX 발동 로직 ---
 					// 1. 시전자(Instigator) 피드백 VFX
 					FScopedPredictionWindow ForcedWindow(SourceASC, FPredictionKey(), false);
-					if (IsValid(RewardInfo.InstigatorVfxConfig) && RewardInfo.InstigatorVfxConfig->CueTag.IsValid())
+					if (IsValid(RewardInfo.InstigatorVfxConfig.Get()) && RewardInfo.InstigatorVfxConfig->CueTag.IsValid())
 					{
 						FGameplayCueParameters Params(Effect->Spec);
-						Params.SourceObject = RewardInfo.InstigatorVfxConfig;
+						Params.SourceObject = RewardInfo.InstigatorVfxConfig.Get();
 						SourceASC->ExecuteGameplayCue(RewardInfo.InstigatorVfxConfig->CueTag, Params);
 					}
 					// 2. 발동 대상(Target) 피드백 VFX
-					if (IsValid(RewardInfo.TargetVfxConfig) && RewardInfo.TargetVfxConfig->CueTag.IsValid())
+					if (IsValid(RewardInfo.TargetVfxConfig.Get()) && RewardInfo.TargetVfxConfig->CueTag.IsValid())
 					{
 						FGameplayCueParameters Params(Effect->Spec);
-						Params.SourceObject = RewardInfo.TargetVfxConfig;
+						Params.SourceObject = RewardInfo.TargetVfxConfig.Get();
 						
 						// 대상 액터 본체에 어태치
 						if (AActor *TargetAvatar = TargetASC->GetAvatarActor())
@@ -108,6 +109,30 @@ void UStackRewardGEC::ProcessStackRewards(UAbilitySystemComponent* TargetASC, FA
 						}
 						
 						SourceASC->ExecuteGameplayCue(RewardInfo.TargetVfxConfig->CueTag, Params);
+					}
+				}
+
+				{
+					// --- Sound 발동 로직 ---
+					FScopedPredictionWindow ForcedWindow(SourceASC, FPredictionKey(), false);
+					if (IsValid(RewardInfo.InstigatorSoundConfig.Get()) && RewardInfo.InstigatorSoundConfig->CueTag.IsValid())
+					{
+						FGameplayCueParameters Params(Effect->Spec);
+						Params.SourceObject = RewardInfo.InstigatorSoundConfig.Get();
+						SourceASC->ExecuteGameplayCue(RewardInfo.InstigatorSoundConfig->CueTag, Params);
+					}
+
+					if (IsValid(RewardInfo.TargetSoundConfig.Get()) && RewardInfo.TargetSoundConfig->CueTag.IsValid())
+					{
+						FGameplayCueParameters Params(Effect->Spec);
+						Params.SourceObject = RewardInfo.TargetSoundConfig.Get();
+
+						if (AActor* TargetAvatar = TargetASC->GetAvatarActor())
+						{
+							Params.TargetAttachComponent = TargetAvatar->GetRootComponent();
+						}
+
+						SourceASC->ExecuteGameplayCue(RewardInfo.TargetSoundConfig->CueTag, Params);
 					}
 				}
 			}

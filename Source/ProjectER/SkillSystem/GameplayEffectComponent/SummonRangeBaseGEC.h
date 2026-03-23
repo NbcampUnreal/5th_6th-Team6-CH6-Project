@@ -15,10 +15,13 @@
 class ABaseRangeOverlapEffectActor;
 class USkillEffectDataAsset;
 class USkillNiagaraSpawnConfig;
+class USkillSoundSpawnConfig;
 struct FGameplayTag;
 struct FGameplayEffectSpec;
 struct FGameplayCueParameters;
 struct FGameplayEffectContextHandle;
+struct FActiveGameplayEffectsContainer;
+struct FPredictionKey;
 
 UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced, Abstract)
 class PROJECTER_API USummonRangeBaseConfig : public UBaseGECConfig
@@ -67,6 +70,15 @@ public:
 	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Summon Settings|Niagara")
 	TObjectPtr<USkillNiagaraSpawnConfig> HitTargetVfx;
 
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Summon Settings|Sound")
+	TObjectPtr<USkillSoundSpawnConfig> SummonerSpawnSound;
+
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Summon Settings|Sound")
+	TObjectPtr<USkillSoundSpawnConfig> RangeSpawnSound;
+
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Summon Settings|Sound")
+	TObjectPtr<USkillSoundSpawnConfig> HitTargetSound;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Effect")
 	TArray<TObjectPtr<USkillEffectDataAsset>> Applied;
 };
@@ -86,7 +98,7 @@ protected:
 	virtual AActor* GetTargetActorFromContainer(FActiveGameplayEffectsContainer& ActiveGEContainer) const;
 
 	FGameplayCueParameters BuildNiagaraCueParameters(const FGameplayEffectSpec& GESpec, const FGameplayTag& OriginalTag, const FGameplayEffectContextHandle& EffectContext, AActor* EffectCauser, const FVector& CueLocation, const UObject* SourceObject, const FVector& CueNormal = FVector::UpVector) const;
-	virtual void InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetCueParameters) const;
+	virtual void InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetVfxCueParameters, const FGameplayCueParameters& HitTargetSoundCueParameters) const;
 	virtual void SnapLocationToGround(FVector& InOutLocation, const USummonRangeBaseConfig* Config, const AActor* Instigator) const;
 	virtual void ApplyCommonSpawnOptions(FVector& InOutLocation, FRotator& InOutRotation, const USummonRangeBaseConfig* Config, const AActor* Instigator) const;
 	virtual FTransform ApplyCommonSpawnOptionsToTransform(const FTransform& InOriginTransform, const USummonRangeBaseConfig* Config, const AActor* Instigator) const;
