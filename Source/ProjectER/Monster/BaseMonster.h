@@ -66,6 +66,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SendStateTreeEvent(FGameplayTag InputTag);
 
+	UFUNCTION(BlueprintCallable) // SendAttackRangeEvent();
+	void SendAttackRangeEvent(float AttackRange);
+
 private:
 
 	UFUNCTION()
@@ -96,9 +99,6 @@ private:
 	UFUNCTION() // SendTargetOffEvent()
 	void OnTargetLostHandle();
 
-	UFUNCTION(BlueprintCallable) // SendAttackRangeEvent();
-	void SendAttackRangeEvent(float AttackRange);
-	//
 
 	// HealthBar 변경용
 	UFUNCTION()
