@@ -46,6 +46,9 @@ void AER_InGameMode::PostSeamlessTravel()
 
 	// 무한 로딩을 방지하기 위해 60초 타이머 설정
 	GetWorld()->GetTimerManager().SetTimer(LoadingTimeoutHandle, this, &AER_InGameMode::HandleLoadingTimeout, 60.0f, false);
+	
+	// Notify Blueprint that we have entered a new level
+	OnLevelInstanceLoaded();
 }
 
 void AER_InGameMode::HandleLoadingTimeout()
@@ -749,6 +752,9 @@ void AER_InGameMode::HandlePhaseTimeUp()
 	// 이후에 10초에서 180초로 수정
 	PhaseSS->StartPhaseTimer(*ERGS, PhaseDuration);
 	PhaseSS->StartNoticeTimer(PhaseDuration);
+
+	// bp exposed function for comp reaction
+	OnPhaseTimeUp(ERGS->GetCurrentPhase());
 }
 
 void AER_InGameMode::HandleObjectNoticeTimeUp()

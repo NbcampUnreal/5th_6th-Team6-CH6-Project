@@ -1,16 +1,16 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
+#include "Components/SceneComponent.h"
+#include "Data/RTBrushTypes.h"
 #include "FoliageRTInvokerComponent.generated.h"
 
 class URTPoolManager;
-class UTextureRenderTarget2D;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
 
 UCLASS(ClassGroup = "Foliage RT", meta = (BlueprintSpawnableComponent))
-class MATERIALDRIVENINTERACTION_API UFoliageRTInvokerComponent : public UActorComponent
+class MATERIALDRIVENINTERACTION_API UFoliageRTInvokerComponent : public USceneComponent
 {
 	GENERATED_BODY()
 
@@ -25,30 +25,22 @@ public:
 
 	// ── Brush assets ──────────────────────────────────────────────────────────
 
-	/**
-	 * Material drawn into ContinuousRT every tick.
-	 * Receives: BrushCentreUV, BrushUVExtent, BrushRotation, Weight.
-	 * Computes per-texel outward push direction from brush shape internally.
-	 * C++ only passes position, rotation and weight.
-	 */
+	/** Material drawn into ContinuousRT every draw cycle.
+	 *  Receives: BrushCentreUV, BrushUVExtent, BrushRotation, Weight. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage RT|Brush")
 	TObjectPtr<UMaterialInterface> BrushMaterial_Continuous;
 
-	/**
-	 * Material drawn into ImpulseRT on new pixel entry.
-	 * Receives: VelocityX, VelocityY, Weight, ImpactTime, BrushCentreUV, BrushUVExtent, ImpactTimeVec.
-	 * Stamps GameTime into G — foliage reads TimeDelta = View.GameTime - G to drive FRT_DampedSine.
-	 * Re-triggers automatically whenever the invoker moves out of and back into a texel.
-	 */
+	/** Material drawn into ImpulseRT on new texel entry.
+	 *  Receives: VelocityX, VelocityY, ImpactTime, BrushCentreUV, BrushUVExtent. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage RT|Brush")
 	TObjectPtr<UMaterialInterface> BrushMaterial_Impulse;
 
-	/** World-space half-extents of the brush footprint. Also determines which cells are registered. */
+	/** World-space radius of the brush footprint. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage RT|Brush",
 		meta = (ClampMin = 1.f))
-	FVector2D BrushExtent = FVector2D(60.f, 60.f);
+	float BrushRadius = 60.f;
 
-	/** Velocity magnitude that maps to 1.0 in the normalized range. Must match FRT_MaxVelocity in material. */
+	/** Velocity magnitude that maps to 1.0 in the normalized range. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage RT|Brush",
 		meta = (ClampMin = 1.f))
 	float MaxVelocity = 1200.f;
@@ -58,13 +50,13 @@ public:
 		meta = (ClampMin = 0.f, ClampMax = 1.f))
 	float BrushWeight = 1.f;
 
+	// ── Frame data — pulled by URTDrawManager each draw cycle ─────────────────
+
+	// Called by URTDrawManager during draw cycle.
+	// Builds and returns current frame data — sets MID parameters internally.
+	FRTInvokerFrameData GetFrameData(int32 SlotIndex, FVector2D CellOriginWS, float CellSize) const;
+
 	// ── Runtime read-outs ─────────────────────────────────────────────────────
-
-	UPROPERTY(BlueprintReadOnly, Category = "Foliage RT|State")
-	TArray<int32> ActiveSlotIndices;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Foliage RT|State")
-	FVector2D CurrentCellUV = FVector2D::ZeroVector;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Foliage RT|State")
 	FVector2D EncodedVelocity = FVector2D(0.5f, 0.5f);
@@ -72,33 +64,16 @@ public:
 	// ── Blueprint extension points ────────────────────────────────────────────
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Foliage RT|Events")
-	void OnContinuousPaint(UTextureRenderTarget2D* ContinuousRT,
-	                       FVector2D               CellUV,
-	                       FVector2D               BrushUVExtent);
+	void OnContinuousPaint(FVector2D CellUV, float UVRadius);
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Foliage RT|Events")
-	void OnImpulseStamp(UTextureRenderTarget2D* ImpulseRT,
-	                    FVector2D               CellUV,
-	                    FVector2D               BrushUVExtent);
+	void OnImpulseStamp(FVector2D CellUV, float UVRadius);
 
 private:
 
-	TArray<FIntPoint> GetOverlappingCells(const FVector& WorldLocation) const;
-	void              UpdateCellRegistrations(const FVector& WorldLocation);
-
 	FVector2D ComputeVelocity(float DeltaTime) const;
 	float     EncodeVelocityAxis(float WorldVelAxis) const;
-	FVector2D BrushExtentToUV() const;
 	bool      HasMovedToNewPixel(FVector2D CellUV, const FIntPoint& PrevTexel) const;
-
-	void DrawContinuousQuad(UTextureRenderTarget2D* RT,
-	                        FVector2D CurrentUV,
-	                        FVector2D UVExtent,
-	                        float OwnerYaw);
-
-	void DrawImpulseStamp(UTextureRenderTarget2D* RT,
-	                      FVector2D CurrentUV, FVector2D UVExtent,
-	                      float GameTime);
 
 	// ── Cached references ─────────────────────────────────────────────────────
 
@@ -115,8 +90,9 @@ private:
 
 	FVector PrevWorldLocation = FVector::ZeroVector;
 
-	TArray<FIntPoint>          CurrentCells;
-	TMap<FIntPoint, FIntPoint> PrevImpulseTexelMap;
+	// Per-cell texel tracking for impulse stamp gating.
+	// Mutable so GetFrameData (const) can update it.
+	mutable TMap<FIntPoint, FIntPoint> PrevImpulseTexelMap;
 
 	bool bFirstTick = true;
 };

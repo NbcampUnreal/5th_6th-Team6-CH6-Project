@@ -4,12 +4,11 @@
 #include "Components/ActorComponent.h"
 #include "RTMPCUpdater.generated.h"
 
+// FD
 struct FRTPoolEntry;
 class URTPoolManager;
 class UMaterialParameterCollection;
 class UMaterialParameterCollectionInstance;
-class UMaterialInstanceDynamic;
-class UTextureRenderTarget2D;
 
 static constexpr int32 FRT_MAX_POOL_SLOTS = 16;
 
@@ -55,7 +54,4 @@ private:
 
 	static const FName PN_CellSize;
 	static const FName PN_ActiveSlotCount;
-
-	/*UPROPERTY(VisibleAnywhere, Category = "Foliage RT|Debug")
-	TArray<FRTPoolEntry> DebugPool;*/
 };

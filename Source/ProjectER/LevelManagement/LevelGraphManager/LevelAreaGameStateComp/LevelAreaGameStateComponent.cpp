@@ -7,6 +7,7 @@
 #include "LevelManagement/Requirements/LevelAreaGraphData.h"
 #include "LevelManagement/LevelAreaTrackerComponent.h"
 #include "LevelManagement/LevelGraphManager/LevelAreaSubsystem/LevelAreaGraphSubsystem.h"
+#include "LevelManagement/Area/LevelAreaInstanceBridge.h"
 
 #include "LogHelper/DebugLogHelper.h"
 
@@ -59,6 +60,10 @@ void ULevelAreaGameStateComponent::BeginPlay()
     UE_LOG(LevelAreaGraphManagement, Log,
         TEXT("BeginPlay >> Graph built (%d nodes)"), GraphData->Nodes.Num());
 
+    /*/* ---------- Build Bridge Actor Map ---------- #1#
+
+    BuildBridgeActorMap();*/
+
     /* ---------- Seed ---------- */
 
     if (HazardSeed == 0)
@@ -80,8 +85,6 @@ void ULevelAreaGameStateComponent::BeginPlay()
 
     UE_LOG(LevelAreaGraphManagement, Log,
         TEXT("BeginPlay >> Hazard order ready (%d entries)"), HazardOrder.Num());
-
-    // HazardOrder is now replicated to clients via OnRep_HazardOrder
 }
 
 
@@ -96,6 +99,35 @@ void ULevelAreaGameStateComponent::GetLifetimeReplicatedProps(
 
     DOREPLIFETIME(ULevelAreaGameStateComponent, HazardOrder);
     DOREPLIFETIME(ULevelAreaGameStateComponent, CurrentPhase);
+}
+
+void ULevelAreaGameStateComponent::RegisterBridge(ALevelAreaInstanceBridge* Bridge)
+{
+    if (!Bridge || Bridge->NodeID == INDEX_NONE) return;
+
+    BridgeActorMap.FindOrAdd(Bridge->NodeID).AddUnique(Bridge);
+
+    UE_LOG(LevelAreaGraphManagement, Log,
+        TEXT("RegisterBridge >> NodeID %d → %s"),
+        Bridge->NodeID, *Bridge->GetName());
+}
+
+void ULevelAreaGameStateComponent::UnregisterBridge(ALevelAreaInstanceBridge* Bridge)
+{
+    if (!Bridge || Bridge->NodeID == INDEX_NONE) return;
+
+    if (TArray<TObjectPtr<ALevelAreaInstanceBridge>>* Found =
+        BridgeActorMap.Find(Bridge->NodeID))
+    {
+        Found->Remove(Bridge);
+
+        if (Found->IsEmpty())
+            BridgeActorMap.Remove(Bridge->NodeID);
+    }
+
+    UE_LOG(LevelAreaGraphManagement, Log,
+        TEXT("UnregisterBridge >> NodeID %d → %s"),
+        Bridge->NodeID, *Bridge->GetName());
 }
 
 
@@ -121,14 +153,12 @@ void ULevelAreaGameStateComponent::AdvancePhase()
         return;
     }
 
-    // Increment phase — replicates to clients, triggering OnRep_CurrentPhase
     CurrentPhase++;
 
     UE_LOG(LevelAreaGraphManagement, Log,
         TEXT("AdvancePhase >> Phase %d | State: %s"),
         CurrentPhase, *UEnum::GetValueAsString(HazardStatePerPhase));
 
-    // Apply on server directly
     ApplyHazardsUpToCurrentPhase();
 }
 
@@ -147,6 +177,7 @@ void ULevelAreaGameStateComponent::ResetHazards()
         Sub->ClearHazards();
     }
 
+    NotifyBridgeActors({});
     NotifyTrackers();
 
     UE_LOG(LevelAreaGraphManagement, Log,
@@ -160,8 +191,6 @@ void ULevelAreaGameStateComponent::ResetHazards()
 
 void ULevelAreaGameStateComponent::OnRep_HazardOrder()
 {
-    // HazardOrder just arrived on client — if phase is already set, apply immediately
-    // (handles late joiners where CurrentPhase replicated before HazardOrder)
     if (CurrentPhase > 0)
         ApplyHazardsUpToCurrentPhase();
 
@@ -171,7 +200,6 @@ void ULevelAreaGameStateComponent::OnRep_HazardOrder()
 
 void ULevelAreaGameStateComponent::OnRep_CurrentPhase()
 {
-    // CurrentPhase updated — apply all hazards up to this phase
     ApplyHazardsUpToCurrentPhase();
 
     UE_LOG(LevelAreaGraphManagement, Log,
@@ -194,7 +222,6 @@ void ULevelAreaGameStateComponent::ApplyHazardsUpToCurrentPhase()
         World->GetSubsystem<ULevelAreaGraphSubsystem>();
     if (!Sub) return;
 
-    // Derive the full active hazard set from HazardOrder up to CurrentPhase
     int32 ActiveCount = FMath::Min(CurrentPhase * HazardsPerPhase, HazardOrder.Num());
 
     TArray<int32> ActiveHazards;
@@ -204,11 +231,98 @@ void ULevelAreaGameStateComponent::ApplyHazardsUpToCurrentPhase()
     Sub->ClearHazards();
     Sub->ApplyHazardNodes(ActiveHazards, HazardStatePerPhase);
 
+    NotifyBridgeActors(ActiveHazards);
     NotifyTrackers();
 
     UE_LOG(LevelAreaGraphManagement, Log,
         TEXT("ApplyHazardsUpToCurrentPhase >> Applied %d hazards for phase %d"),
         ActiveHazards.Num(), CurrentPhase);
+}
+
+void ULevelAreaGameStateComponent::BuildBridgeActorMap()
+{
+    BridgeActorMap.Reset();
+
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    for (ULevel* Level : World->GetLevels())
+    {
+        if (!Level) continue;
+
+        for (AActor* Actor : Level->Actors)
+        {
+            ALevelAreaInstanceBridge* Bridge = Cast<ALevelAreaInstanceBridge>(Actor);
+
+            if (!Bridge || Bridge->NodeID == INDEX_NONE)
+                continue;
+
+            BridgeActorMap.FindOrAdd(Bridge->NodeID).Add(Bridge);
+
+            UE_LOG(LevelAreaGraphManagement, Log,
+                TEXT("BuildBridgeActorMap >> NodeID %d → %s"),
+                Bridge->NodeID, *Bridge->GetName());
+        }
+    }
+
+    UE_LOG(LevelAreaGraphManagement, Log,
+        TEXT("BuildBridgeActorMap >> Total: %d node entries"), BridgeActorMap.Num());
+}
+
+TArray<ALevelAreaInstanceBridge*> ULevelAreaGameStateComponent::GetBridgeActorsByID(int32 NodeID) const
+{
+    TArray<ALevelAreaInstanceBridge*> Result;
+
+    const TArray<TObjectPtr<ALevelAreaInstanceBridge>>* Found = BridgeActorMap.Find(NodeID);
+
+    if (!Found || Found->IsEmpty())
+    {
+        UE_LOG(LevelAreaGraphManagement, Warning,
+            TEXT("GetBridgeActorsByID >> NodeID %d not found"), NodeID);
+        return Result;
+    }
+
+    for (const TObjectPtr<ALevelAreaInstanceBridge>& Ptr : *Found)
+    {
+        if (Ptr)
+            Result.Add(Ptr.Get());
+    }
+
+    return Result;
+}
+
+ALevelAreaInstanceBridge* ULevelAreaGameStateComponent::GetBridgeActorByInstance(
+    ALevelInstance* LevelInstance) const
+{
+    for (const TPair<int32, TArray<TObjectPtr<ALevelAreaInstanceBridge>>>& Pair : BridgeActorMap)
+    {
+        for (const TObjectPtr<ALevelAreaInstanceBridge>& Bridge : Pair.Value)
+        {
+            if (Bridge && Bridge->GetOwningLevelInstance() == LevelInstance)
+                return Bridge.Get();
+        }
+    }
+
+    UE_LOG(LevelAreaGraphManagement, Warning,
+        TEXT("GetBridgeActorByInstance >> No bridge found for given LevelInstance"));
+
+    return nullptr;
+}
+
+void ULevelAreaGameStateComponent::NotifyBridgeActors(const TArray<int32>& HazardNodeIDs)
+{
+    for (const TPair<int32, TArray<TObjectPtr<ALevelAreaInstanceBridge>>>& Pair : BridgeActorMap)
+    {
+        EAreaHazardState State = HazardNodeIDs.Contains(Pair.Key)
+            ? HazardStatePerPhase
+            : EAreaHazardState::Safe;
+
+        for (const TObjectPtr<ALevelAreaInstanceBridge>& Bridge : Pair.Value)
+        {
+            if (Bridge)
+                Bridge->NotifyHazardStateChanged(State);
+        }
+    }
 }
 
 void ULevelAreaGameStateComponent::NotifyTrackers()

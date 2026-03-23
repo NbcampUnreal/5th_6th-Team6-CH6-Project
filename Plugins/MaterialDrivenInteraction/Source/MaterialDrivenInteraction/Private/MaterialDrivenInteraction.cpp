@@ -27,6 +27,7 @@ void FMaterialDrivenInteractionModule::StartupModule()
 			FPaths::Combine(Plugin->GetBaseDir(), TEXT("Shaders"));
 
 		AddShaderSourceDirectoryMapping(TEXT("/FoliageRT"), ShaderDir);
+		AddShaderSourceDirectoryMapping(TEXT("/TargetBrush"), ShaderDir);
 	}
 
 

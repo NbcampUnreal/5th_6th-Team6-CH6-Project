@@ -12,20 +12,32 @@
 //   G = ImpactTime raw float      (32f required — TimeDelta = View.GameTime - G)
 //   B = velocity Y encoded [0,1]
 //   A = weight * mask             (0 = never stamped, gates FRT_DampedSine)
+//
+// Blend mode on brush material MUST be Translucent.
+// Opacity pin MUST be step(0.5, CircleMask) — hard binary, not soft mask.
+// Translucent blend equation handles spatial masking:
+//   Inside brush  (Opacity=1): Dest = Src     → clean overwrite
+//   Outside brush (Opacity=0): Dest = Dest    → old stamp preserved exactly
+// G is raw ImpactTime with no mask multiplication — Opacity=0 outside brush
+// already prevents any write, so masking G is unnecessary and harmful.
+// DO NOT multiply any channel by Mask here — Opacity pin does that job.
+// A remains soft mask — only gates wobble strength, not the timestamp.
 // ─────────────────────────────────────────────────────────────────────────────
 float4 FRT_WriteImpulseChannels(
-    float VelocityX,
-    float VelocityY,
-    float ImpactTime,
-    float Weight,
-    float Mask
+    float VelocityX,    
+    float VelocityY,    
+    float ImpactTime,   
+    float Mask          // The soft CircleMask or SmearMask
 )
 {
     float4 Out;
-    Out.r = VelocityX * Mask;
-    Out.g = ImpactTime * Mask;  // 0 outside brush — no bleed
-    Out.b = VelocityY * Mask;
-    Out.a = Weight * Mask;
+    Out.r = VelocityX;   
+    Out.g = ImpactTime;  
+    Out.b = VelocityY;   
+    // We store the soft mask in Alpha. 
+    // This allows the wobble to fade out smoothly toward the brush edges,
+    // even though the G channel (Time) was written with a hard binary mask.
+    Out.a = Mask;        
     return Out;
 }
 
@@ -93,6 +105,8 @@ float FRT_BrushMask(float2 TexCoord, float2 CentreUV, float2 UVExtent)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FRT_CircleMask — radial, 1 at centre, 0 outside radius.
+// For ImpulseRT Opacity pin: feed output into step(0.5, CircleMask).
+// For ImpulseRT A channel  : use soft output directly (gates wobble strength).
 // ─────────────────────────────────────────────────────────────────────────────
 float FRT_CircleMask(float2 TexCoord, float2 CentreUV, float Radius, float Softness)
 {
@@ -100,6 +114,21 @@ float FRT_CircleMask(float2 TexCoord, float2 CentreUV, float Radius, float Softn
     float HardEdge = 1.0 - step(Radius, Dist);
     float SoftEdge = 1.0 - smoothstep(Radius * (1.0 - Softness), Radius, Dist);
     return lerp(HardEdge, SoftEdge, saturate(Softness));
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FRT_ImpulseOpacity
+// Hard binary mask for ImpulseRT Opacity pin.
+// MUST use this — not the raw CircleMask — to prevent lerped timestamps
+// at brush edges which corrupt TimeDelta and break DampedSine phase.
+// CircleMask at edge (e.g. 0.7) → Opacity=0.7 →
+//   G = NewTime*0.7 + OldTime*0.3 → meaningless timestamp → wrong wobble phase.
+// This function collapses that to 0 or 1, no in-between.
+// ─────────────────────────────────────────────────────────────────────────────
+float FRT_ImpulseOpacity(float CircleMask)
+{
+    return step(0.5, CircleMask);
 }
 
 
@@ -123,22 +152,13 @@ float FRT_SmearMask(float2 TexCoord, float2 PrevUV, float2 CentreUV, float Radiu
 // ─────────────────────────────────────────────────────────────────────────────
 // FRT_DampedSine
 // f(t) = Amplitude * exp(-Damping * t) * sin(Frequency * t * 2PI)
-// ImpWeight gate: 0 = texel never stamped → return 0 immediately.
-// Do NOT guard on TimeDelta <= 0 — an unstamped texel has G=0 giving
-// TimeDelta = CurrentTime which is large positive, not <= 0.
-//
-// Re-trigger: fires automatically when invoker moves out of and back into
-// a texel — HasMovedToNewPixel stamps fresh GameTime into G, resetting TimeDelta to 0.
-//
-// Presets:
-//   Short grass  : Amplitude=10, Frequency=4.0, Damping=2.0
-//   Long grass   : Amplitude=20, Frequency=2.0, Damping=0.8
-//   Shrub branch : Amplitude=12, Frequency=1.5, Damping=0.5
-//   Reed/cattail : Amplitude=30, Frequency=1.2, Damping=0.4
+// ImpactTime gate: 0 = texel never stamped → return 0 immediately.
+// Clear color is (0,0,0,0) — G=0 on fresh slots, so this guard fires
+// correctly and prevents phantom wobble before any invoker stamps.
 // ─────────────────────────────────────────────────────────────────────────────
-float FRT_DampedSine(float TimeDelta, float Amplitude, float Frequency, float Damping, float ImpWeight)
+float FRT_DampedSine(float TimeDelta, float Amplitude, float Frequency, float Damping, float ImpactTime)
 {
-    if (ImpWeight <= 0.0)
+    if (ImpactTime <= 0.0)
         return 0.0;
 
     float Envelope = exp(-Damping * TimeDelta);
@@ -169,10 +189,6 @@ float FRT_InCellMask(float2 WorldXY, float4 SlotData, float CellSize)
 // Combines static lean (ContinuousRT) and damped wobble (ImpulseRT)
 // into a final WPO vector. All velocity/direction inputs are raw encoded
 // [0,1] RT samples — this function decodes internally.
-//
-// ContinuousRT:  R=DirX_enc  G=DirY_enc  B=unused  A=weight
-// ImpulseRT:     R=VelX_enc  G=ImpactTime  B=VelY_enc  A=weight
-// TimeDelta:     View.GameTime - ImpulseRT.g  (compute in material graph)
 // ─────────────────────────────────────────────────────────────────────────────
 float3 FRT_ComputeWPO(
     float  ContDirX_Enc,
@@ -184,7 +200,7 @@ float3 FRT_ComputeWPO(
     float  Damping,
     float  ImpVelX_Enc,
     float  ImpVelY_Enc,
-    float  ImpWeight,
+    float  ImpactTime,
     float  MaxVelocity,
     float  HeightFraction,
     float  InCellMask
@@ -196,7 +212,7 @@ float3 FRT_ComputeWPO(
     float3 StaticLean = float3(PushDirX, PushDirY, 0.0) * ContWeight * HeightFraction;
 
     // ── Damped wobble ─────────────────────────────────────────────────────────
-    float WobbleAmount = FRT_DampedSine(TimeDelta, Amplitude, Frequency, Damping, ImpWeight);
+    float WobbleAmount = FRT_DampedSine(TimeDelta, Amplitude, Frequency, Damping, ImpactTime);
 
     float ImpVelX_WS = FRT_DecodeVelocity(ImpVelX_Enc, MaxVelocity);
     float ImpVelY_WS = FRT_DecodeVelocity(ImpVelY_Enc, MaxVelocity);
