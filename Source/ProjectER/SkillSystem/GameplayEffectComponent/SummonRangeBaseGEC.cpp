@@ -212,6 +212,9 @@ void USummonRangeBaseGEC::InitializeRangeActor(ABaseRangeOverlapEffectActor* Ran
 		InitGEHandles.Append(SkillEffectDataAsset->MakeSpecs(CauserASC, NonConstSkill, RangeActor, Context));
 	}
 
+	// 강화 효과(SkillProc) 확인 및 전이
+	UBaseGEC::GetSkillProcEffects(CauserASC, NonConstSkill, RangeActor, Context, InitGEHandles);
+
 	RangeActor->InitializeEffectData(InitGEHandles, Instigator, Config->CollisionRadius, Config->bHitOncePerTarget, Config, HitTargetCueParameters);
 	RangeActor->SetLifeSpan(Config->LifeSpan);
 }
