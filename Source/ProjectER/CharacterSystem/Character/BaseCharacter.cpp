@@ -1,4 +1,4 @@
-#include "CharacterSystem/Character/BaseCharacter.h"
+﻿#include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Player/BasePlayerState.h"
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -87,13 +87,13 @@ ABaseCharacter::ABaseCharacter()
 	// 26.01.29. mpyi
 	// 미니맵을 위한 씬 컴포넌트 2D <- 차후 '카메라' 시스템으로 이동할 예정
 	MinimapCaptureComponent = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("MinimapCaptureComponent"));
-	MinimapCaptureComponent->SetupAttachment(TopDownCameraComp);
+	MinimapCaptureComponent->SetupAttachment(RootComponent);
 
 	// 미니맵 캡처 기본 설정
 	MinimapCaptureComponent->SetAbsolute(false, true, false); // 순서대로: 위치, 회전, 스케일
 	// 위치는 캐릭터를 따라다녀야 함으로 앱솔루트 ㄴㄴ
 	MinimapCaptureComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 1000.0f));
-	MinimapCaptureComponent->SetRelativeRotation(FRotator(-90.0f, 0.0f, 0.0f));
+	MinimapCaptureComponent->SetRelativeRotation(FRotator(-90.0f, 45.0f, 0.0f));
 	MinimapCaptureComponent->ProjectionType = ECameraProjectionMode::Orthographic;
 	MinimapCaptureComponent->OrthoWidth = 2048.0f; // 이거로 미니맵 확대/축소 조절
 	MinimapCaptureComponent->CaptureSource = ESceneCaptureSource::SCS_FinalColorLDR;	// 투명도 반영
@@ -151,8 +151,9 @@ ABaseCharacter::ABaseCharacter()
 	HP_MP_BarWidget->SetDrawAtDesiredSize(true);
 
 	/// 최적화 필요시 아래 플래그 조절해가면서 해결해 보기
-	//MinimapCaptureComponent->ShowFlags.SetDynamicShadows(false); // 동적 그림자
-	//MinimapCaptureComponent->ShowFlags.SetGlobalIllumination(false); // 루멘
+	
+	MinimapCaptureComponent->ShowFlags.SetDynamicShadows(false); // 동적 그림자
+	MinimapCaptureComponent->ShowFlags.SetGlobalIllumination(false); // 루멘
 	//MinimapCaptureComponent->ShowFlags.SetMotionBlur(false); // 잔상 제거용
 	//MinimapCaptureComponent->CaptureSource = ESceneCaptureSource::SCS_BaseColor; // 포스트 프로세싱 무효화
 	

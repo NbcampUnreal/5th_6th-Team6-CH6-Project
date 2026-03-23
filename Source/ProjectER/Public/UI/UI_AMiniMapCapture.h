@@ -17,7 +17,10 @@ public:
 protected:
     virtual void BeginPlay() override;
 
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI|Minimap")
+    class USceneComponent* RootScene; // 추가
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI|Minimap")
     class USceneCaptureComponent2D* CaptureComponent;
 
     UPROPERTY(EditAnywhere)
