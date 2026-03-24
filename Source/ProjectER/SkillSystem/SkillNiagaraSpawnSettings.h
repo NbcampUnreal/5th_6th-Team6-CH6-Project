@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -52,4 +52,13 @@ struct FSkillNiagaraSpawnSettings
 
 	UPROPERTY(EditDefaultsOnly, Category = "Niagara|GameplayCue", meta = (Categories = "GameplayCue"))
 	FGameplayTag CueTag;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Niagara|Parameters")
+	TMap<FName, float> FloatParameters;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Niagara|Parameters")
+	TMap<FName, FVector> VectorParameters;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Niagara|Parameters")
+	TMap<FName, FLinearColor> ColorParameters;
 };
