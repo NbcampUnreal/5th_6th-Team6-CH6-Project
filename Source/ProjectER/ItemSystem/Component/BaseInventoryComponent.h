@@ -48,11 +48,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory")
 	int32 MaxSlots = 8;
 
-protected:
 	// 멀티플레이어 동기화를 위해 Replicated 추가
 	UPROPERTY(ReplicatedUsing = OnRep_InventoryContents, VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 	TArray<UBaseItemData*> InventoryContents;
 
+protected:
 	UPROPERTY(ReplicatedUsing = OnRep_InventoryContents, VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 	TArray<int32> InventoryStackCounts;
 
