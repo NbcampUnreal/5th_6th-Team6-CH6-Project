@@ -60,7 +60,7 @@ public:
     UFUNCTION(BlueprintCallable, Category="Hazard", BlueprintAuthorityOnly)
     void ResetHazards(EAreaHazardState NewState);
 
-    // Isntant death 
+    // Istant death 
     UFUNCTION(BlueprintCallable, Category="Hazard", BlueprintAuthorityOnly)
     void ScheduleInstantDeath(int32 NodeID, float Delay);
     // Cancel a pending instant death escalation for a node
