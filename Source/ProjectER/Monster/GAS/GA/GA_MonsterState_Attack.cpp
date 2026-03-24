@@ -55,12 +55,14 @@ void UGA_MonsterState_Attack::ActivateAbility(const FGameplayAbilitySpecHandle H
 			return;
 		}
 
+		Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+
 		UAbilityTask_WaitGameplayEvent* WaitEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, FGameplayTag::RequestGameplayTag("Event.Montage.AttackHit"));
 		WaitEventTask->EventReceived.AddDynamic(this, &UGA_MonsterState_Attack::OnAttackHitEventReceived);
 		WaitEventTask->ReadyForActivation();
 	}
 
-	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+	
 }
 
 void UGA_MonsterState_Attack::OnAttackHitEventReceived(FGameplayEventData Payload)

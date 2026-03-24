@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
@@ -58,6 +58,9 @@ public:
 protected:
 	UFUNCTION()
 	void OnTagRemoved();
+
+	UFUNCTION()
+	void OnMontageFinished();
 
 protected:
 	UPROPERTY(EditAnywhere, Category = "MonsterState")

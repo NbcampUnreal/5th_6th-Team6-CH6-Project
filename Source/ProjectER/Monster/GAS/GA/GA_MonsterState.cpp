@@ -57,6 +57,11 @@ void UGA_MonsterState::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 		UAbilityTask_PlayMontageAndWait* WaitPlayMontageTask =
 			UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, "PlayMontageTask", Montage);
 
+		WaitPlayMontageTask->OnCompleted.AddDynamic(this, &UGA_MonsterState::OnMontageFinished);
+		WaitPlayMontageTask->OnBlendOut.AddDynamic(this, &UGA_MonsterState::OnMontageFinished);
+		WaitPlayMontageTask->OnInterrupted.AddDynamic(this, &UGA_MonsterState::OnMontageFinished);
+		WaitPlayMontageTask->OnCancelled.AddDynamic(this, &UGA_MonsterState::OnMontageFinished);
+
 		WaitPlayMontageTask->ReadyForActivation();
 	}
 
@@ -90,6 +95,11 @@ void UGA_MonsterState::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 }
 
 void UGA_MonsterState::OnTagRemoved()
+{
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+}
+
+void UGA_MonsterState::OnMontageFinished()
 {
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
