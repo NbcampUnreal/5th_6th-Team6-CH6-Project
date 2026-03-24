@@ -1,5 +1,6 @@
 ﻿#include "ObstacleOcclusion/MaterialOcclusion/OcclusionObstacleComp_Material.h"
 #include "ObstacleOcclusion/Helper/OcclusionMeshUtil.h"
+#include "ObstacleOcclusion/Manager/OcclusionBinderSubsystem.h"
 #include "Components/MeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -13,6 +14,8 @@ UOcclusionObstacleComp_Material::UOcclusionObstacleComp_Material()
     PrimaryComponentTick.bStartWithTickEnabled = false;
 }
 
+// ── Lifecycle ─────────────────────────────────────────────────────────────────
+
 void UOcclusionObstacleComp_Material::BeginPlay()
 {
     Super::BeginPlay();
@@ -21,12 +24,24 @@ void UOcclusionObstacleComp_Material::BeginPlay()
         TEXT("UOcclusionObstacleComp_Material::BeginPlay>> %s"),
         *GetOwner()->GetName());
 
+    OcclusionTraceChannel = UOcclusionMeshUtil::GetOcclusionTraceChannel();
+    MouseTraceChannel     = UOcclusionMeshUtil::GetMouseTraceChannel();
+
+    // Non-pooled MIDs — bPooled=false, kept for lifetime of comp
     InitializeMaterials();
 
-    // Start fully visible — both alphas at their visible state
+    // force update alpha to mid
     CurrentAlpha      = 1.f;
     CurrentForceAlpha = 0.f;
     UpdateMaterialAlpha();
+}
+
+void UOcclusionObstacleComp_Material::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    // Return pooled slots before super so subsystem is still valid
+    // Non-pooled slots skipped by ReturnMaterials automatically
+    ReleaseMIDs();
+    Super::EndPlay(EndPlayReason);
 }
 
 void UOcclusionObstacleComp_Material::TickComponent(
@@ -53,6 +68,10 @@ void UOcclusionObstacleComp_Material::TickComponent(
         CurrentForceAlpha = TargetForceAlpha;
         UpdateMaterialAlpha();
         SetComponentTickEnabled(false);
+
+        // Fully visible — return pooled slots, non-pooled stay
+        if (!bShouldBeOccluded && !bForceOccluded)
+            ReleaseMIDs();
     }
 }
 
@@ -61,8 +80,15 @@ void UOcclusionObstacleComp_Material::TickComponent(
 void UOcclusionObstacleComp_Material::OnOcclusionEnter_Implementation(UObject* SourceTracer)
 {
     if (!SourceTracer) return;
+
+    const bool bWasIdle = ActiveOverlaps.IsEmpty() && !bForceOccluded;
     ActiveOverlaps.Add(SourceTracer);
-    bShouldBeOccluded = ActiveOverlaps.Num() > 0;
+    bShouldBeOccluded = true;
+
+    // Checkout pooled MIDs on first entering tracer
+    if (bWasIdle)
+        AcquireMIDs();
+
     SetComponentTickEnabled(true);
 
     UE_LOG(LogMaterialOcclusion, Verbose,
@@ -75,7 +101,7 @@ void UOcclusionObstacleComp_Material::OnOcclusionExit_Implementation(UObject* So
     if (!SourceTracer) return;
     ActiveOverlaps.Remove(SourceTracer);
     CleanupInvalidOverlaps();
-    
+
     if (!bForceOccluded)
         bShouldBeOccluded = ActiveOverlaps.Num() > 0;
 
@@ -88,8 +114,12 @@ void UOcclusionObstacleComp_Material::OnOcclusionExit_Implementation(UObject* So
 
 void UOcclusionObstacleComp_Material::ForceOcclude_Implementation(bool bForce)
 {
-    bForceOccluded = bForce;
-    bShouldBeOccluded = bForce ? true : ActiveOverlaps.Num() > 0;
+    bForceOccluded    = bForce;
+    bShouldBeOccluded = bForce || ActiveOverlaps.Num() > 0;
+
+    if (bForce)
+        AcquireMIDs();
+
     SetComponentTickEnabled(true);
 
     UE_LOG(LogMaterialOcclusion, Log,
@@ -103,14 +133,12 @@ void UOcclusionObstacleComp_Material::SetupOcclusionMeshes()
 {
     DiscoverChildMeshes();
 
-    // only when the shadow cast is required
     if (bCastShadowWhenOccluded)
     {
         GenerateShadowProxyMeshes();
     }
-    else 
+    else
     {
-        // Destroy any proxies left over from a previous setup run
         for (TObjectPtr<UStaticMeshComponent> Proxy : StaticShadowProxies)
             if (Proxy) Proxy->DestroyComponent();
         StaticShadowProxies.Empty();
@@ -124,7 +152,6 @@ void UOcclusionObstacleComp_Material::SetupOcclusionMeshes()
             *GetOwner()->GetName());
     }
 
-
     UE_LOG(LogMaterialOcclusion, Log,
         TEXT("UOcclusionObstacleComp_Material::SetupOcclusionMeshes>> Completed for %s"),
         *GetOwner()->GetName());
@@ -132,6 +159,9 @@ void UOcclusionObstacleComp_Material::SetupOcclusionMeshes()
 
 void UOcclusionObstacleComp_Material::InitializeCollisionAndShadow()
 {
+    const TEnumAsByte<ECollisionChannel> OcclusionCh = UOcclusionMeshUtil::GetOcclusionTraceChannel();
+    const TEnumAsByte<ECollisionChannel> MouseCh     = UOcclusionMeshUtil::GetMouseTraceChannel();
+    
     for (TSoftObjectPtr<UMeshComponent> MeshPtr : TargetMeshes)
     {
         UMeshComponent* Mesh = MeshPtr.Get();
@@ -140,17 +170,78 @@ void UOcclusionObstacleComp_Material::InitializeCollisionAndShadow()
         if (UStaticMeshComponent* StaticMesh = Cast<UStaticMeshComponent>(Mesh))
         {
             StaticMesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-            StaticMesh->SetCollisionResponseToChannel(OcclusionTraceChannel, ECR_Block);
-            StaticMesh->SetCollisionResponseToChannel(MouseTraceChannel, ECR_Ignore);
+            StaticMesh->SetCollisionResponseToChannel(OcclusionCh, ECR_Block);
+            StaticMesh->SetCollisionResponseToChannel(MouseCh, ECR_Ignore);
 
             UE_LOG(LogMaterialOcclusion, Log,
                 TEXT("UOcclusionObstacleComp_Material::InitializeCollisionAndShadow>> ECR_Block set on %s"),
                 *StaticMesh->GetName());
         }
 
-        // Source mesh shadow disabled — proxy handles it
         Mesh->SetCastShadow(false);
     }
+}
+
+// ── Pool ──────────────────────────────────────────────────────────────────────
+
+void UOcclusionObstacleComp_Material::InitializeMaterials()
+{
+    // Both params required — material comp drives AlphaParameterName AND ForceOccludeParameterName
+    // No pool passed — bPooled=false, kept for lifetime of comp
+    const FName AlphaParam = UOcclusionMeshUtil::GetAlphaParameterName();
+    const FName ForceParam = UOcclusionMeshUtil::GetForceOccludeParameterName();
+
+    UOcclusionMeshUtil::AcquireMaterials(
+        TargetMeshes,
+        { AlphaParam, ForceParam },
+        TargetSlots);
+
+    UE_LOG(LogMaterialOcclusion, Log,
+        TEXT("UOcclusionObstacleComp_Material::InitializeMaterials>> Slots: %d"),
+        TargetSlots.Num());
+}
+
+void UOcclusionObstacleComp_Material::AcquireMIDs()
+{
+    UOcclusionBinderSubsystem* Sub = GetWorld()->GetSubsystem<UOcclusionBinderSubsystem>();
+    if (!Sub) return;
+
+    const FName AlphaParam = UOcclusionMeshUtil::GetAlphaParameterName();
+    const FName ForceParam = UOcclusionMeshUtil::GetForceOccludeParameterName();
+
+    TArray<FOcclusionMIDSlot> PooledSlots;
+    UOcclusionMeshUtil::AcquireMaterials(
+        TargetMeshes,
+        { AlphaParam, ForceParam },
+        PooledSlots,
+        Sub);
+
+    TargetSlots.Append(PooledSlots);
+
+    UpdateMaterialAlpha();
+
+    UE_LOG(LogMaterialOcclusion, Log,
+        TEXT("UOcclusionObstacleComp_Material::AcquireMIDs>> %s | Total slots: %d"),
+        *GetOwner()->GetName(), TargetSlots.Num());
+}
+
+void UOcclusionObstacleComp_Material::ReleaseMIDs()
+{
+    UOcclusionBinderSubsystem* Sub = GetWorld()
+        ? GetWorld()->GetSubsystem<UOcclusionBinderSubsystem>() : nullptr;
+
+    // Only pooled slots are returned — non-pooled stay untouched
+    UOcclusionMeshUtil::ReturnMaterials(TargetSlots, Sub);
+
+    UE_LOG(LogMaterialOcclusion, Log,
+        TEXT("UOcclusionObstacleComp_Material::ReleaseMIDs>> %s"), *GetOwner()->GetName());
+}
+
+bool UOcclusionObstacleComp_Material::HasPooledMIDs() const
+{
+    for (const FOcclusionMIDSlot& Slot : TargetSlots)
+        if (Slot.bPooled) return true;
+    return false;
 }
 
 // ── Internal ──────────────────────────────────────────────────────────────────
@@ -158,15 +249,11 @@ void UOcclusionObstacleComp_Material::InitializeCollisionAndShadow()
 void UOcclusionObstacleComp_Material::DiscoverChildMeshes()
 {
     TargetMeshes.Empty();
-    StaticMIDs.Empty();
-    SkeletalMIDs.Empty();
+    TargetSlots.Empty();
 
     TArray<TSoftObjectPtr<UMeshComponent>> Dummy;
-
     UOcclusionMeshUtil::DiscoverChildMeshes(
         this,
-        MeshTag,
-        NAME_None,
         TargetMeshes,
         Dummy);
 
@@ -185,35 +272,19 @@ void UOcclusionObstacleComp_Material::GenerateShadowProxyMeshes()
         SkeletalShadowProxies);
 
     Modify();
-    bool DebugBoolCheck=MarkPackageDirty();
-}
-
-void UOcclusionObstacleComp_Material::InitializeMaterials()
-{
-    UOcclusionMeshUtil::CreateDynamicMaterials_Static  (TargetMeshes, StaticMIDs);
-    UOcclusionMeshUtil::CreateDynamicMaterials_Skeletal(TargetMeshes, SkeletalMIDs);
-
-    UE_LOG(LogMaterialOcclusion, Log,
-        TEXT("UOcclusionObstacleComp_Material::InitializeMaterials>> Static MIDs: %d | Skeletal MIDs: %d"),
-        StaticMIDs.Num(), SkeletalMIDs.Num());
+    bool DebugBoolChecker=MarkPackageDirty();
 }
 
 void UOcclusionObstacleComp_Material::UpdateMaterialAlpha()
 {
-    const float ParamAlpha = CurrentAlpha;
+    const FName AlphaParam = UOcclusionMeshUtil::GetAlphaParameterName();
+    const FName ForceParam = UOcclusionMeshUtil::GetForceOccludeParameterName();
 
-    for (UMaterialInstanceDynamic* MID : StaticMIDs)
+    for (FOcclusionMIDSlot& Slot : TargetSlots)
     {
-        if (!MID) continue;
-        MID->SetScalarParameterValue(AlphaParameterName, ParamAlpha);
-        MID->SetScalarParameterValue(ForceOccludeParameterName, CurrentForceAlpha);
-    }
-
-    for (UMaterialInstanceDynamic* MID : SkeletalMIDs)
-    {
-        if (!MID) continue;
-        MID->SetScalarParameterValue(AlphaParameterName, ParamAlpha);
-        MID->SetScalarParameterValue(ForceOccludeParameterName, CurrentForceAlpha);
+        if (!Slot.IsReady()) continue;
+        Slot.MID->SetScalarParameterValue(AlphaParam, CurrentAlpha);
+        Slot.MID->SetScalarParameterValue(ForceParam, CurrentForceAlpha);
     }
 }
 

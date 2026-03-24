@@ -1,4 +1,6 @@
-﻿#include "TopDownVision/Public/ObstacleOcclusion/OcclusionTracer/OcclusionTracerComponent.h"
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+
+#include "TopDownVision/Public/ObstacleOcclusion/OcclusionTracer/OcclusionTracerComponent.h"
 
 #include "TopDownVision/Public/ObstacleOcclusion/OcclusionTracer/OcclusionTraceLibrary.h"
 #include "TopDownVision/Public/ObstacleOcclusion/PhysicalOcclusion/FrustumToProjectionMatcherHelper.h"

@@ -1,4 +1,7 @@
-﻿#include "ObstacleOcclusion/OcclusionTracer/OcclusionTraceLibrary.h"
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+
+#include "ObstacleOcclusion/OcclusionTracer/OcclusionTraceLibrary.h"
+
 #include "ObstacleOcclusion/Binder/OcclusionBinder.h"
 #include "TopDownVisionDebug.h"
 #include "DrawDebugHelpers.h"

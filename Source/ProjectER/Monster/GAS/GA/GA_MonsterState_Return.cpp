@@ -10,8 +10,13 @@ UGA_MonsterState_Return::UGA_MonsterState_Return()
 	StateInitData.NiagaraCueTag = FGameplayTag::RequestGameplayTag("GameplayCue.Particle.Action.Move");
 	StateInitData.SoundCueTag = FGameplayTag::RequestGameplayTag("GameplayCue.Sound.Action.Move");
 	StateInitData.WaitTag = FGameplayTag(); //FGameplayTag::RequestGameplayTag("State.Action.Move");
-	
+	bIsUseWaitTag = false;
 	SetAssetTags(StateInitData.MonsterAssetTags);
+}
+
+void UGA_MonsterState_Return::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
+{
+	Super::OnGiveAbility(ActorInfo, Spec);
 }
 
 void UGA_MonsterState_Return::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -19,12 +24,6 @@ void UGA_MonsterState_Return::ActivateAbility(const FGameplayAbilitySpecHandle H
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
 	ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActorFromActorInfo());
-	if (IsValid(Monster) == false)
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
-
 	AAIController* AIC = Cast<AAIController>(Monster->GetController());
 	FVector TargetLocation = Monster->GetStartLocation();
 
@@ -65,4 +64,28 @@ void UGA_MonsterState_Return::EndAbility(const FGameplayAbilitySpecHandle Handle
 	}
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
+
+void UGA_MonsterState_Return::OnMontageCompleted()
+{
+}
+
+void UGA_MonsterState_Return::OnMontageBlendIn()
+{
+}
+
+void UGA_MonsterState_Return::OnMontageBlendOut()
+{
+}
+
+void UGA_MonsterState_Return::OnMontageInterrupt()
+{
+}
+
+void UGA_MonsterState_Return::OnMontageCancel()
+{
+}
+
+void UGA_MonsterState_Return::OnTagRemoved()
+{
 }
