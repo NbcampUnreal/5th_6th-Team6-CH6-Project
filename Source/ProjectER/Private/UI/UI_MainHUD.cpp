@@ -619,13 +619,19 @@ void UUI_MainHUD::HandleMinimapClicked(const FPointerEvent& InMouseEvent)
     float OffsetXRatio = AlphaX - 0.5f;
     float OffsetYRatio = AlphaY - 0.5f;
 
+    float minimapGap = 45.0f;
+    float RotationRad = FMath::DegreesToRadians(minimapGap);
+
+    float RotatedOffsetX = OffsetXRatio * FMath::Cos(RotationRad) - OffsetYRatio * FMath::Sin(RotationRad);
+    float RotatedOffsetY = OffsetXRatio * FMath::Sin(RotationRad) + OffsetYRatio * FMath::Cos(RotationRad);
+
+
     float MapWidth = MinimapCaptureComponent->OrthoWidth;
 
-    float RelativeWorldX = -(OffsetYRatio * MapWidth);
-    float RelativeWorldY = (OffsetXRatio * MapWidth);
+    float RelativeWorldX = -(RotatedOffsetY * MapWidth);
+    float RelativeWorldY = (RotatedOffsetX * MapWidth);
 
     FVector CameraLoc = MinimapCaptureComponent->GetComponentLocation();
-
     // 최종 목적지 계산
     FVector TargetWorldPos = FVector(CameraLoc.X + RelativeWorldX, CameraLoc.Y + RelativeWorldY, CameraLoc.Z);
 
