@@ -5,9 +5,8 @@
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
 
-void UUI_ToolTip::UpdateTooltip(UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, FText CostDesc)
+void UUI_ToolTip::UpdateTooltip(FText Name, FText ShortDesc, FText DetailDesc, FText CostDesc)
 {
-    if (IsValid(IconImage)) IconImage->SetBrushFromTexture(Icon);
     if (IsValid(txtName)) txtName->SetText(Name);
     if (IsValid(txtShortDesc)) txtShortDesc->SetText(ShortDesc);
     if (IsValid(txtLongDesc)) txtLongDesc->SetText(DetailDesc);

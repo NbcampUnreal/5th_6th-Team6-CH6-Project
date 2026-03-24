@@ -32,4 +32,11 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item|Settings")
     EItemPickupType PickupType;
+
+    // Item ToolTip
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item|Info")
+    FText ItemShortDesc;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item|Info")
+    FText ItemLongDesc;
+
 };

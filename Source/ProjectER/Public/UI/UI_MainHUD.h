@@ -128,10 +128,19 @@ protected:
 	UFUNCTION() void OnSkillLevelUp02Hovered();
 	UFUNCTION() void OnSkillLevelUp03Hovered();
 	UFUNCTION() void OnSkillLevelUp04Hovered();
+
+	UFUNCTION() void OnItem01Hovered();
+	UFUNCTION() void OnItem02Hovered();
+	UFUNCTION() void OnItem03Hovered();
+	UFUNCTION() void OnItem04Hovered();
+	UFUNCTION() void OnItem05Hovered();
+	UFUNCTION() void OnItem06Hovered();
+	UFUNCTION() void OnItem07Hovered();
+	UFUNCTION() void OnItem08Hovered();
 	// .............
 
 	// void ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, bool showUpper);
-	void ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, FText CostDesc, bool showUpper);
+	void ShowTooltip(UWidget* AnchorWidget, FText Name, FText ShortDesc, FText DetailDesc, FText CostDesc, bool showUpper);
 	UFUNCTION()
 	void HideTooltip();
 	void initSkillDataAssets(); // 스킬 데이터 애셋 초기화 (툴팁용)
@@ -353,6 +362,18 @@ protected:
 	void SkillFirePressed(ESkillKey index);
 	UFUNCTION()
 	void SkillFireReleased(ESkillKey index);
+
+	UFUNCTION() void OnItemClicked_01();
+	UFUNCTION() void OnItemClicked_02();
+	UFUNCTION() void OnItemClicked_03();
+	UFUNCTION() void OnItemClicked_04();
+	UFUNCTION() void OnItemClicked_05();
+	UFUNCTION() void OnItemClicked_06();
+	UFUNCTION() void OnItemClicked_07();
+	UFUNCTION() void OnItemClicked_08();
+
+	UFUNCTION()
+	void ItemUsePressed(int32 ItemIndex);
 
 	UFUNCTION()
 	void OnSkillLevelUpClicked_Q();

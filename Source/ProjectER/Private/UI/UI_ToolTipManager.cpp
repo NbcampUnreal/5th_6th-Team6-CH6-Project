@@ -11,11 +11,11 @@ UUI_ToolTipManager::UUI_ToolTipManager()
 {
 }
 
-void UUI_ToolTipManager::ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, FText CostDesc, bool showUpper)
+void UUI_ToolTipManager::ShowTooltip(UWidget* AnchorWidget, FText Name, FText ShortDesc, FText DetailDesc, FText CostDesc, bool showUpper)
 {
     if (!TooltipInstance || !AnchorWidget) return;
     
-    TooltipInstance->UpdateTooltip(Icon, Name, ShortDesc, DetailDesc, CostDesc);
+    TooltipInstance->UpdateTooltip(Name, ShortDesc, DetailDesc, CostDesc);
     TooltipInstance->SetVisibility(ESlateVisibility::HitTestInvisible);
 
     // 위젯의 위치 쓰던 말던 일단 가져오기

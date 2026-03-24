@@ -304,7 +304,6 @@ void UUI_MainHUD::NativeConstruct()
         skill_01->OnHovered.AddDynamic(this, &UUI_MainHUD::OnSkill01Hovered);
         skill_01->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
         skill_01->OnClicked.AddDynamic(this, &UUI_MainHUD::OnSkillClicked_Q);
-
     }
     if (skill_02)
     {
@@ -351,6 +350,57 @@ void UUI_MainHUD::NativeConstruct()
         skill_up_04->OnClicked.AddDynamic(this, &UUI_MainHUD::OnSkillLevelUpClicked_R);
     }
     // skil
+
+    // item
+    if (btn_item_01)
+    {
+        btn_item_01->OnHovered.AddDynamic(this, &UUI_MainHUD::OnItem01Hovered);
+        btn_item_01->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
+        btn_item_01->OnClicked.AddDynamic(this, &UUI_MainHUD::OnItemClicked_01);
+    }
+    if (btn_item_02)
+    {
+        btn_item_02->OnHovered.AddDynamic(this, &UUI_MainHUD::OnItem02Hovered);
+        btn_item_02->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
+        btn_item_02->OnClicked.AddDynamic(this, &UUI_MainHUD::OnItemClicked_02);
+    }
+    if (btn_item_03)
+    {
+        btn_item_03->OnHovered.AddDynamic(this, &UUI_MainHUD::OnItem03Hovered);
+        btn_item_03->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
+        btn_item_03->OnClicked.AddDynamic(this, &UUI_MainHUD::OnItemClicked_03);
+    }
+    if (btn_item_04)
+    {
+        btn_item_04->OnHovered.AddDynamic(this, &UUI_MainHUD::OnItem04Hovered);
+        btn_item_04->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
+        btn_item_04->OnClicked.AddDynamic(this, &UUI_MainHUD::OnItemClicked_04);
+    }
+    if (btn_item_05)
+    {
+        btn_item_05->OnHovered.AddDynamic(this, &UUI_MainHUD::OnItem05Hovered);
+        btn_item_05->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
+        btn_item_05->OnClicked.AddDynamic(this, &UUI_MainHUD::OnItemClicked_05);
+    }
+    if (btn_item_06)
+    {
+        btn_item_06->OnHovered.AddDynamic(this, &UUI_MainHUD::OnItem06Hovered);
+        btn_item_06->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
+        btn_item_06->OnClicked.AddDynamic(this, &UUI_MainHUD::OnItemClicked_06);
+    }
+    if (btn_item_07)
+    {
+        btn_item_07->OnHovered.AddDynamic(this, &UUI_MainHUD::OnItem07Hovered);
+        btn_item_07->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
+        btn_item_07->OnClicked.AddDynamic(this, &UUI_MainHUD::OnItemClicked_07);
+    }
+    if (btn_item_08)
+    {
+        btn_item_08->OnHovered.AddDynamic(this, &UUI_MainHUD::OnItem08Hovered);
+        btn_item_08->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
+        btn_item_08->OnClicked.AddDynamic(this, &UUI_MainHUD::OnItemClicked_08);
+    }
+    //
 
     // cool
     SkillCoolTexts[0] = skill_cool_01;
@@ -437,7 +487,7 @@ void UUI_MainHUD::OnSkill01Hovered()
     if (IsValid(SkillDataAssets[0]))
     {
         FSkillTooltipData nowSkill = SkillDataAssets[0]->GetSkillTooltipData(getSkillLevel(Q_SkillTag, false));
-        ShowTooltip(skill_01, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
+        ShowTooltip(skill_01, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
     }
 
 
@@ -463,7 +513,7 @@ void UUI_MainHUD::OnSkill02Hovered()
     if (IsValid(SkillDataAssets[1]))
     {
         FSkillTooltipData nowSkill = SkillDataAssets[1]->GetSkillTooltipData(getSkillLevel(Q_SkillTag, false));
-        ShowTooltip(skill_02, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
+        ShowTooltip(skill_02, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
     }
 }
 
@@ -474,7 +524,7 @@ void UUI_MainHUD::OnSkill03Hovered()
     if (IsValid(SkillDataAssets[2]))
     {
         FSkillTooltipData nowSkill = SkillDataAssets[2]->GetSkillTooltipData(getSkillLevel(Q_SkillTag, false));
-        ShowTooltip(skill_03, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
+        ShowTooltip(skill_03, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
     }
 }
 
@@ -487,7 +537,7 @@ void UUI_MainHUD::OnSkill04Hovered()
         if (ASC)
         {
             FSkillTooltipData nowSkill = SkillDataAssets[3]->GetSkillTooltipData(getSkillLevel(Q_SkillTag, false));
-            ShowTooltip(skill_04, nowSkill.SKillIcon, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
+            ShowTooltip(skill_04, nowSkill.SkillName, nowSkill.ShortDescription, nowSkill.DetailedDescription, nowSkill.CostDescription, true);
         }
     }
 }
@@ -508,11 +558,107 @@ void UUI_MainHUD::OnSkillLevelUp04Hovered()
 {
 }
 
-void UUI_MainHUD::ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, FText CostDesc, bool showUpper)
+void UUI_MainHUD::OnItem01Hovered()
+{
+    UW_InventorySlot* invTem = InventorySlotWidgets[0];
+    if (!IsValid(invTem)) return;
+    UBaseItemData* nowItem = invTem->GetCachedItemData();
+	if (!IsValid(nowItem)) return;
+    
+	FText blank = FText::FromString(TEXT(""));
+
+    ShowTooltip(btn_item_01, nowItem->ItemName, nowItem->ItemShortDesc, nowItem->ItemLongDesc, blank, true);
+}
+
+void UUI_MainHUD::OnItem02Hovered()
+{
+    UW_InventorySlot* invTem = InventorySlotWidgets[1];
+    if (!IsValid(invTem)) return;
+    UBaseItemData* nowItem = invTem->GetCachedItemData();
+    if (!IsValid(nowItem)) return;
+
+    FText blank = FText::FromString(TEXT(""));
+
+    ShowTooltip(btn_item_02, nowItem->ItemName, nowItem->ItemShortDesc, nowItem->ItemLongDesc, blank, true);
+}
+
+void UUI_MainHUD::OnItem03Hovered()
+{
+    UW_InventorySlot* invTem = InventorySlotWidgets[2];
+    if (!IsValid(invTem)) return;
+    UBaseItemData* nowItem = invTem->GetCachedItemData();
+    if (!IsValid(nowItem)) return;
+
+    FText blank = FText::FromString(TEXT(""));
+
+    ShowTooltip(btn_item_03, nowItem->ItemName, nowItem->ItemShortDesc, nowItem->ItemLongDesc, blank, true);
+}
+
+void UUI_MainHUD::OnItem04Hovered()
+{
+    UW_InventorySlot* invTem = InventorySlotWidgets[3];
+    if (!IsValid(invTem)) return;
+    UBaseItemData* nowItem = invTem->GetCachedItemData();
+    if (!IsValid(nowItem)) return;
+
+    FText blank = FText::FromString(TEXT(""));
+
+    ShowTooltip(btn_item_04, nowItem->ItemName, nowItem->ItemShortDesc, nowItem->ItemLongDesc, blank, true);
+}
+
+void UUI_MainHUD::OnItem05Hovered()
+{
+    UW_InventorySlot* invTem = InventorySlotWidgets[4];
+    if (!IsValid(invTem)) return;
+    UBaseItemData* nowItem = invTem->GetCachedItemData();
+    if (!IsValid(nowItem)) return;
+
+    FText blank = FText::FromString(TEXT(""));
+
+    ShowTooltip(btn_item_05, nowItem->ItemName, nowItem->ItemShortDesc, nowItem->ItemLongDesc, blank, true);
+}
+
+void UUI_MainHUD::OnItem06Hovered()
+{
+    UW_InventorySlot* invTem = InventorySlotWidgets[5];
+    if (!IsValid(invTem)) return;
+    UBaseItemData* nowItem = invTem->GetCachedItemData();
+    if (!IsValid(nowItem)) return;
+
+    FText blank = FText::FromString(TEXT(""));
+
+    ShowTooltip(btn_item_06, nowItem->ItemName, nowItem->ItemShortDesc, nowItem->ItemLongDesc, blank, true);
+}
+
+void UUI_MainHUD::OnItem07Hovered()
+{
+    UW_InventorySlot* invTem = InventorySlotWidgets[6];
+    if (!IsValid(invTem)) return;
+    UBaseItemData* nowItem = invTem->GetCachedItemData();
+    if (!IsValid(nowItem)) return;
+
+    FText blank = FText::FromString(TEXT(""));
+
+    ShowTooltip(btn_item_07, nowItem->ItemName, nowItem->ItemShortDesc, nowItem->ItemLongDesc, blank, true);
+}
+
+void UUI_MainHUD::OnItem08Hovered()
+{
+    UW_InventorySlot* invTem = InventorySlotWidgets[7];
+    if (!IsValid(invTem)) return;
+    UBaseItemData* nowItem = invTem->GetCachedItemData();
+    if (!IsValid(nowItem)) return;
+
+    FText blank = FText::FromString(TEXT(""));
+
+    ShowTooltip(btn_item_08, nowItem->ItemName, nowItem->ItemShortDesc, nowItem->ItemLongDesc, blank, true);
+}
+
+void UUI_MainHUD::ShowTooltip(UWidget* AnchorWidget, FText Name, FText ShortDesc, FText DetailDesc, FText CostDesc, bool showUpper)
 {
     if (TooltipManager)
     {
-		TooltipManager->ShowTooltip(AnchorWidget, Icon, Name, ShortDesc, DetailDesc, CostDesc, showUpper);
+		TooltipManager->ShowTooltip(AnchorWidget, Name, ShortDesc, DetailDesc, CostDesc, showUpper);
     }
 
 
@@ -793,6 +939,56 @@ void UUI_MainHUD::SkillFireReleased(ESkillKey _Index)
     else
     {
         UE_LOG(LogTemp, Warning, TEXT("Invalid SkillDataAsset or index out of range"));
+    }
+}
+
+void UUI_MainHUD::OnItemClicked_01()
+{
+    ItemUsePressed(0);
+}
+
+void UUI_MainHUD::OnItemClicked_02()
+{
+    ItemUsePressed(1);
+}
+
+void UUI_MainHUD::OnItemClicked_03()
+{
+    ItemUsePressed(2);
+}
+
+void UUI_MainHUD::OnItemClicked_04()
+{
+    ItemUsePressed(3);
+}
+
+void UUI_MainHUD::OnItemClicked_05()
+{
+    ItemUsePressed(4);
+}
+
+void UUI_MainHUD::OnItemClicked_06()
+{
+    ItemUsePressed(5);
+}
+
+void UUI_MainHUD::OnItemClicked_07()
+{
+    ItemUsePressed(6);
+}
+
+void UUI_MainHUD::OnItemClicked_08()
+{
+    ItemUsePressed(7);
+}
+
+void UUI_MainHUD::ItemUsePressed(int32 ItemIndex)
+{
+    ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
+
+    if (IsValid(PC))
+    {
+        PC->UseInventoryForUI(ItemIndex);
     }
 }
 

@@ -485,4 +485,7 @@ private:
 	TMap<EAudioType, USoundClass*> SoundClassMap;
 
 	void SetSoundMix(EAudioType AudioType, float Volume);
+
+public:
+	void UseInventoryForUI(int32 _ind);
 };
