@@ -83,12 +83,14 @@ void UER_PhaseSubsystem::OnPhaseTimeUp()
         return;
     }
 
+    // 다음 페이즈 세팅(HandlePhaseTimeUp)이 시작되기 전에 기존 타이머를 먼저 비워줍니다.
+    // 이 코드가 HandlePhaseTimeUp() 뒤에 있으면, 새로 갱신된(SetTimer) 타이머를 바로 지워버리게 됩니다.
+    World->GetTimerManager().ClearTimer(PeriodicCheckTimer);
+
     if (AER_InGameMode* GM = Cast<AER_InGameMode>(World->GetAuthGameMode()))
     {
         GM->HandlePhaseTimeUp();
     }
-
-    World->GetTimerManager().ClearTimer(PeriodicCheckTimer);
 }
 
 void UER_PhaseSubsystem::OnNoticeTimeUp()
@@ -122,6 +124,7 @@ void UER_PhaseSubsystem::OnPeriodicCheckTick()
         {
             return;
         }
+        UE_LOG(LogTemp, Log, TEXT("[PSS] OnPeriodicCheckTick"));
 
         for (APlayerState* PS : ERGS->PlayerArray)
         {
@@ -132,22 +135,12 @@ void UER_PhaseSubsystem::OnPeriodicCheckTick()
                     if (ULevelAreaTrackerComponent* Tracker = Pawn->FindComponentByClass<ULevelAreaTrackerComponent>())
                     {
                         // 활성화되는 금지구역 수량 제한 (Phase * HazardsPerPhase)
-                        const int32 ActiveCount = FMath::Min(AreaGSComp->CurrentPhase * AreaGSComp->HazardsPerPhase, AreaGSComp->HazardOrder.Num());
-                        UE_LOG(LogTemp, Log, TEXT("[PS] ActiveCount : %d"), ActiveCount);
-                        bool bIsInHazard = false;
-                        for (int32 i = 0; i < ActiveCount; ++i)
-                        {
-                            if (AreaGSComp->HazardOrder[i] == Tracker->CurrentNodeID)
-                            {
-                                bIsInHazard = true;
-                                break;
-                            }
-                        }
-
-                        if (bIsInHazard)
+                        if (Tracker->CurrentHazardState == EAreaHazardState::Hazard)
                         {
                             ERPS->CurrentRestrictedTime -= 1.0f;
                             UE_LOG(LogTemp, Log, TEXT("[PS] CurrentRestrictedTime: %f"), ERPS->CurrentRestrictedTime);
+
+                            // apply damage
                             if (ERPS->CurrentRestrictedTime <= 0.0f)
                             {
                                 if (UAbilitySystemComponent* ASC = ERPS->GetAbilitySystemComponent())
@@ -156,7 +149,7 @@ void UER_PhaseSubsystem::OnPeriodicCheckTick()
                                     // 이를 통해 BaseAttributeSet의 PostGameplayEffectExecute가 정상적으로 호출되며 체력 차감 및 사망 프로세스를 탑니다.
                                     UGameplayEffect* DamageEffect = NewObject<UGameplayEffect>(GetTransientPackage(), FName(TEXT("HazardDamage")));
                                     DamageEffect->DurationPolicy = EGameplayEffectDurationType::Instant;
-                                    
+
                                     FGameplayModifierInfo ModInfo;
                                     ModInfo.ModifierMagnitude = FScalableFloat(999999.0f);
                                     ModInfo.ModifierOp = EGameplayModOp::Additive;
@@ -168,6 +161,7 @@ void UER_PhaseSubsystem::OnPeriodicCheckTick()
                                 }
                             }
                         }
+
                     }
                 }
             }
