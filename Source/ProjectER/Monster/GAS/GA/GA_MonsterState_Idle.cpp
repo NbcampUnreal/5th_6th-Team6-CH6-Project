@@ -7,6 +7,51 @@ UGA_MonsterState_Idle::UGA_MonsterState_Idle()
 	StateInitData.NiagaraCueTag = FGameplayTag::RequestGameplayTag("GameplayCue.Particle.Action.Idle");
 	StateInitData.SoundCueTag = FGameplayTag::RequestGameplayTag("GameplayCue.Sound.Action.Idle");
 	StateInitData.WaitTag = FGameplayTag::RequestGameplayTag("State.Action.Idle");
-	bIsWaitTag = true;
+	bIsUseWaitTag = true;
 	SetAssetTags(StateInitData.MonsterAssetTags);
+}
+
+void UGA_MonsterState_Idle::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
+{
+	Super::OnGiveAbility(ActorInfo, Spec);
+
+}
+
+void UGA_MonsterState_Idle::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
+{
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+
+}
+
+void UGA_MonsterState_Idle::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+
+}
+
+
+void UGA_MonsterState_Idle::OnMontageCompleted()
+{
+}
+
+void UGA_MonsterState_Idle::OnMontageBlendIn()
+{
+}
+
+void UGA_MonsterState_Idle::OnMontageBlendOut()
+{
+}
+
+void UGA_MonsterState_Idle::OnMontageInterrupt()
+{
+}
+
+void UGA_MonsterState_Idle::OnMontageCancel()
+{
+}
+
+
+void UGA_MonsterState_Idle::OnTagRemoved()
+{
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }

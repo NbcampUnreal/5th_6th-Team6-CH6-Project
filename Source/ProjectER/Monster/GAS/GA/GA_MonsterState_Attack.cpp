@@ -17,8 +17,15 @@ UGA_MonsterState_Attack::UGA_MonsterState_Attack()
 	SetAssetTags(StateInitData.MonsterAssetTags);
 }
 
+void UGA_MonsterState_Attack::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
+{
+	Super::OnGiveAbility(ActorInfo, Spec);
+}
+
 void UGA_MonsterState_Attack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+
 	ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActorFromActorInfo());
 	if (IsValid(Monster))
 	{
@@ -55,14 +62,41 @@ void UGA_MonsterState_Attack::ActivateAbility(const FGameplayAbilitySpecHandle H
 			return;
 		}
 
-		Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-
 		UAbilityTask_WaitGameplayEvent* WaitEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, FGameplayTag::RequestGameplayTag("Event.Montage.AttackHit"));
 		WaitEventTask->EventReceived.AddDynamic(this, &UGA_MonsterState_Attack::OnAttackHitEventReceived);
 		WaitEventTask->ReadyForActivation();
 	}
 
 	
+}
+
+void UGA_MonsterState_Attack::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
+
+void UGA_MonsterState_Attack::OnMontageCompleted()
+{
+}
+
+void UGA_MonsterState_Attack::OnMontageBlendIn()
+{
+}
+
+void UGA_MonsterState_Attack::OnMontageBlendOut()
+{
+}
+
+void UGA_MonsterState_Attack::OnMontageInterrupt()
+{
+}
+
+void UGA_MonsterState_Attack::OnMontageCancel()
+{
+}
+
+void UGA_MonsterState_Attack::OnTagRemoved()
+{
 }
 
 void UGA_MonsterState_Attack::OnAttackHitEventReceived(FGameplayEventData Payload)
