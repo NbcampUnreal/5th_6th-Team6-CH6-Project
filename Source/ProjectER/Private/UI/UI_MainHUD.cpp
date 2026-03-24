@@ -887,7 +887,10 @@ void UUI_MainHUD::OnActivateSkillCoolTime(ESkillKey Skill_Index)
             // ************************************************************************
             // 스킬 레벨을 알아올 방법을 몰라서 일단 스킬레벨 1로 처리 차후 수정해야 함
             // ************************************************************************
-            float baseCool = SkillAsset->SkillConfig->Data.BaseCoolTime.GetValueAtLevel(1);
+
+            // 스킬레벨 알아와서 쿨타임 적용함
+			FGameplayTag InputTag = SkillAsset->SkillConfig->Data.InputKeyTag;
+            float baseCool = SkillAsset->SkillConfig->Data.BaseCoolTime.GetValueAtLevel(getSkillLevel(InputTag, false));
             float finalCool = baseCool * (1.0f + (nowSkillCoolReduc / 100.0f));
 
             // 최종 쿨

@@ -309,6 +309,30 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UImage* UI_BACKGROUND_LevelUp;
 
+	UPROPERTY(meta = (BindWidget))
+	UButton* btn_item_01;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* btn_item_02;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* btn_item_03;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* btn_item_04;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* btn_item_05;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* btn_item_06;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* btn_item_07;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* btn_item_08;
+
 	UFUNCTION()
 	void OnSkillClicked_Q();
 	UFUNCTION()
