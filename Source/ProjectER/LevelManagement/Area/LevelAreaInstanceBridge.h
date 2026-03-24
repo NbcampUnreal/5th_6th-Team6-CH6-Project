@@ -3,7 +3,6 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "LevelManagement/Requirements/LevelAreaData.h"
-#include "LevelSequence.h"
 #include "LevelAreaInstanceBridge.generated.h"
 
 class ALevelSequenceActor;
