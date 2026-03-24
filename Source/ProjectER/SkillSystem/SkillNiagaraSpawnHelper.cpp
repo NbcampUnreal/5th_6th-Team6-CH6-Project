@@ -8,7 +8,7 @@
 
 namespace
 {
-	USceneComponent* ResolveAttachComponent(const AActor* SourceActor, const FSkillNiagaraSpawnSettings& Settings)
+	USceneComponent* ResolveNiagaraAttachComponent(const AActor* SourceActor, const FSkillNiagaraSpawnSettings& Settings)
 	{
 		if (!IsValid(SourceActor))
 		{
@@ -29,7 +29,7 @@ namespace
 		return SourceActor->GetRootComponent();
 	}
 
-	FRotator CalculateWorldRotation(const FSkillNiagaraSpawnSettings& Settings, const FTransform& SourceTransform, const FVector* OptionalLookAtTarget)
+	FRotator CalculateNiagaraWorldRotation(const FSkillNiagaraSpawnSettings& Settings, const FTransform& SourceTransform, const FVector* OptionalLookAtTarget)
 	{
 		switch (Settings.RotationMode)
 		{
@@ -54,7 +54,7 @@ namespace
 		}
 	}
 
-	FRotator CalculateRelativeRotation(const FSkillNiagaraSpawnSettings& Settings, const FTransform& ParentTransform, const FVector* OptionalLookAtTarget)
+	FRotator CalculateNiagaraRelativeRotation(const FSkillNiagaraSpawnSettings& Settings, const FTransform& ParentTransform, const FVector* OptionalLookAtTarget)
 	{
 		switch (Settings.RotationMode)
 		{
@@ -100,14 +100,14 @@ void SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(UWorld* World, const FSkill
 
 	if (Settings.bAttachToSource && (IsValid(SourceActor) || IsValid(AttachTarget)))
 	{
-		USceneComponent* FinalAttachComponent = IsValid(AttachTarget) ? AttachTarget : ResolveAttachComponent(SourceActor, Settings);
+		USceneComponent* FinalAttachComponent = IsValid(AttachTarget) ? AttachTarget : ResolveNiagaraAttachComponent(SourceActor, Settings);
 		if (!IsValid(FinalAttachComponent))
 		{
 			return;
 		}
 
 		const FTransform ParentTransform = FinalAttachComponent->GetSocketTransform(Settings.SocketOrBoneName);
-		const FRotator RelativeAttachRotation = CalculateRelativeRotation(Settings, ParentTransform, OptionalLookAtTarget);
+		const FRotator RelativeAttachRotation = CalculateNiagaraRelativeRotation(Settings, ParentTransform, OptionalLookAtTarget);
 		ResultNC = UNiagaraFunctionLibrary::SpawnSystemAttached(LoadedNiagaraSystem, FinalAttachComponent, Settings.SocketOrBoneName, Settings.LocationOffset, RelativeAttachRotation, Settings.Scale, EAttachLocation::KeepRelativeOffset, true, ENCPoolMethod::None, false, false);
 	}
 	else {
@@ -117,7 +117,7 @@ void SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(UWorld* World, const FSkill
 			? SourceRotation.RotateVector(Settings.LocationOffset)
 			: Settings.LocationOffset;
 		const FVector SpawnLocation = SourceLocation + WorldLocationOffset;
-		const FRotator SpawnRotation = CalculateWorldRotation(Settings, SourceTransform, OptionalLookAtTarget);
+		const FRotator SpawnRotation = CalculateNiagaraWorldRotation(Settings, SourceTransform, OptionalLookAtTarget);
 		ResultNC = UNiagaraFunctionLibrary::SpawnSystemAtLocation(World, LoadedNiagaraSystem, SpawnLocation, SpawnRotation, Settings.Scale, true, false);
 	}
 	

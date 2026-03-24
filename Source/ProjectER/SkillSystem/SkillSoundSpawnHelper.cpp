@@ -8,7 +8,7 @@
 
 namespace
 {
-	USceneComponent* ResolveAttachComponent(const AActor* SourceActor, const FSkillSoundSpawnSettings& Settings)
+	USceneComponent* ResolveSoundAttachComponent(const AActor* SourceActor, const FSkillSoundSpawnSettings& Settings)
 	{
 		if (!IsValid(SourceActor))
 		{
@@ -29,7 +29,7 @@ namespace
 		return SourceActor->GetRootComponent();
 	}
 
-	FRotator CalculateWorldRotation(const FSkillSoundSpawnSettings& Settings, const FTransform& SourceTransform, const FVector* OptionalLookAtTarget)
+	FRotator CalculateSoundWorldRotation(const FSkillSoundSpawnSettings& Settings, const FTransform& SourceTransform, const FVector* OptionalLookAtTarget)
 	{
 		switch (Settings.RotationMode)
 		{
@@ -54,7 +54,7 @@ namespace
 		}
 	}
 
-	FRotator CalculateRelativeRotation(const FSkillSoundSpawnSettings& Settings, const FTransform& ParentTransform, const FVector* OptionalLookAtTarget)
+	FRotator CalculateSoundRelativeRotation(const FSkillSoundSpawnSettings& Settings, const FTransform& ParentTransform, const FVector* OptionalLookAtTarget)
 	{
 		switch (Settings.RotationMode)
 		{
@@ -96,11 +96,11 @@ void SkillSoundSpawnHelper::PlaySoundBySettings(UWorld* World, const FSkillSound
 
 	if (Settings.bAttachToSource && (IsValid(SourceActor) || IsValid(AttachTarget)))
 	{
-		USceneComponent* FinalAttachComponent = IsValid(AttachTarget) ? AttachTarget : ResolveAttachComponent(SourceActor, Settings);
+		USceneComponent* FinalAttachComponent = IsValid(AttachTarget) ? AttachTarget : ResolveSoundAttachComponent(SourceActor, Settings);
 		if (IsValid(FinalAttachComponent))
 		{
 			const FTransform ParentTransform = FinalAttachComponent->GetSocketTransform(Settings.SocketOrBoneName);
-			const FRotator RelativeAttachRotation = CalculateRelativeRotation(Settings, ParentTransform, OptionalLookAtTarget);
+			const FRotator RelativeAttachRotation = CalculateSoundRelativeRotation(Settings, ParentTransform, OptionalLookAtTarget);
 			
 			UGameplayStatics::SpawnSoundAttached(LoadedSound, FinalAttachComponent, Settings.SocketOrBoneName, Settings.LocationOffset, RelativeAttachRotation, EAttachLocation::KeepRelativeOffset, false, Settings.VolumeMultiplier, Settings.PitchMultiplier);
 			return;
@@ -114,7 +114,7 @@ void SkillSoundSpawnHelper::PlaySoundBySettings(UWorld* World, const FSkillSound
 		? SourceRotation.RotateVector(Settings.LocationOffset)
 		: Settings.LocationOffset;
 	const FVector SpawnLocation = SourceLocation + WorldLocationOffset;
-	const FRotator SpawnRotation = CalculateWorldRotation(Settings, SourceTransform, OptionalLookAtTarget);
+	const FRotator SpawnRotation = CalculateSoundWorldRotation(Settings, SourceTransform, OptionalLookAtTarget);
 
 	UGameplayStatics::PlaySoundAtLocation(World, LoadedSound, SpawnLocation, SpawnRotation, Settings.VolumeMultiplier, Settings.PitchMultiplier);
 }

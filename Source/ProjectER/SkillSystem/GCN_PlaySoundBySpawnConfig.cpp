@@ -7,12 +7,12 @@
 
 namespace
 {
-	const USkillSoundSpawnConfig* GetSpawnConfigFromParameters(const FGameplayCueParameters& Parameters)
+	const USkillSoundSpawnConfig* GetSoundSpawnConfigFromParameters(const FGameplayCueParameters& Parameters)
 	{
 		return Cast<USkillSoundSpawnConfig>(Parameters.SourceObject.Get());
 	}
 
-	bool ShouldSkipOnServer(const AActor* MyTarget)
+	bool ShouldSkipSoundOnServer(const AActor* MyTarget)
 	{
 		if (!IsValid(MyTarget))
 		{
@@ -25,7 +25,7 @@ namespace
 
 bool UGCN_PlaySoundBySpawnConfig::OnExecute_Implementation(AActor* MyTarget, const FGameplayCueParameters& Parameters) const
 {
-	if (ShouldSkipOnServer(MyTarget))
+	if (ShouldSkipSoundOnServer(MyTarget))
 	{
 		return false;
 	}
@@ -36,7 +36,7 @@ bool UGCN_PlaySoundBySpawnConfig::OnExecute_Implementation(AActor* MyTarget, con
 		return false;
 	}
 
-	const USkillSoundSpawnConfig* const SpawnConfig = GetSpawnConfigFromParameters(Parameters);
+	const USkillSoundSpawnConfig* const SpawnConfig = GetSoundSpawnConfigFromParameters(Parameters);
 	if (!IsValid(SpawnConfig))
 	{
 		return false;
@@ -86,7 +86,7 @@ bool UGCN_PlaySoundBySpawnConfig::OnRemove_Implementation(AActor* MyTarget, cons
 		return false;
 	}
 
-	const USkillSoundSpawnConfig* const SpawnConfig = GetSpawnConfigFromParameters(Parameters);
+	const USkillSoundSpawnConfig* const SpawnConfig = GetSoundSpawnConfigFromParameters(Parameters);
 	if (!IsValid(SpawnConfig) || SpawnConfig->Sound.IsNull())
 	{
 		return false;
