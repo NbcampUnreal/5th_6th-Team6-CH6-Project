@@ -2138,39 +2138,17 @@ void ABasePlayerController::CompleteCrafting()
 		return;
 	}
 
-	// 재료 소모 (서버 권위) - public 함수 사용
-	if (MyPawn->HasAuthority())
-	{
-		// 재료 1 소모
-		InvComp->ConsumeItemAtSlot(Mat1Index);
+	// 서버 RPC 호출 (클라이언트/서버 모두)
+	Server_CompleteCrafting(*CurrentCraftingRecipe, Mat1Index, Mat2Index);
 
-		// 재료 2 소모
-		InvComp->ConsumeItemAtSlot(Mat2Index);
-
-		// 결과 아이템 생성 (AddItem 사용 - 자동 스택)
-		UBaseItemData* const ResultItem = CurrentCraftingRecipe->ResultItem.LoadSynchronous();
-		if (ResultItem)
-		{
-			const bool bAdded = InvComp->AddItem(ResultItem);
-			if (bAdded)
-			{
-				UE_LOG(LogTemp, Log, TEXT("[Crafting] Crafted '%s'"), *ResultItem->ItemName.ToString());
-			}
-			else
-			{
-				UE_LOG(LogTemp, Error, TEXT("[Crafting] Failed to add result item"));
-			}
-		}
-	}
-
-	// 사운드 정지
+	// 사운드 정지 (로컬)
 	if (CraftingSoundComponent)
 	{
 		CraftingSoundComponent->Stop();
 		CraftingSoundComponent = nullptr;
 	}
 
-	// 조합 상태 종료
+	// 조합 상태 종료 (로컬)
 	bIsCrafting = false;
 	CurrentCraftingRecipe = nullptr;
 
@@ -2215,4 +2193,72 @@ int32 ABasePlayerController::FindFirstEmptySlot()
 	}
 
 	return -1;
+}
+
+void ABasePlayerController::Server_CompleteCrafting_Implementation(FItemRecipeRow Recipe, int32 Mat1Index, int32 Mat2Index)
+{
+	APawn* const MyPawn = GetPawn();
+	if (MyPawn == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Crafting Server] Pawn is null"));
+		return;
+	}
+
+	UBaseInventoryComponent* const InvComp = MyPawn->FindComponentByClass<UBaseInventoryComponent>();
+	if (InvComp == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Crafting Server] InventoryComponent is null"));
+		return;
+	}
+
+	// 서버에서 재료 재확인 (치트 방지)
+	UBaseItemData* const Mat1 = Recipe.Material1.LoadSynchronous();
+	UBaseItemData* const Mat2 = Recipe.Material2.LoadSynchronous();
+
+	if (Mat1 == nullptr || Mat2 == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Crafting Server] Invalid materials in recipe"));
+		return;
+	}
+
+	// 재료가 맞는지 검증
+	if (!InvComp->InventoryContents.IsValidIndex(Mat1Index) || !InvComp->InventoryContents.IsValidIndex(Mat2Index))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Crafting Server] Invalid slot indices"));
+		return;
+	}
+
+	UBaseItemData* const SlotItem1 = InvComp->GetItemAt(Mat1Index);
+	UBaseItemData* const SlotItem2 = InvComp->GetItemAt(Mat2Index);
+
+	if (SlotItem1 != Mat1 || SlotItem2 != Mat2)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Crafting Server] Material mismatch - possible cheat attempt"));
+		return;
+	}
+
+	// 재료 소모 (서버 권위)
+	InvComp->ConsumeItemAtSlot(Mat1Index);
+	InvComp->ConsumeItemAtSlot(Mat2Index);
+
+	// 결과 아이템 생성 (서버 권위)
+	UBaseItemData* const ResultItem = Recipe.ResultItem.LoadSynchronous();
+	if (ResultItem)
+	{
+		const bool bAdded = InvComp->AddItem(ResultItem);
+		if (bAdded)
+		{
+			UE_LOG(LogTemp, Log, TEXT("[Crafting Server] Successfully crafted '%s' for player %s"),
+				*ResultItem->ItemName.ToString(),
+				*MyPawn->GetName());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("[Crafting Server] Failed to add result item to inventory"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Crafting Server] Result item is null"));
+	}
 }
