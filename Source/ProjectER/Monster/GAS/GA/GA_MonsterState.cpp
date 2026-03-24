@@ -76,9 +76,12 @@ void UGA_MonsterState::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 
 	if (StateInitData.WaitTag.IsValid())
 	{
-		UAbilityTask_WaitGameplayTagRemoved* WaitRemoveTask = UAbilityTask_WaitGameplayTagRemoved::WaitGameplayTagRemove(this, StateInitData.WaitTag);
-		WaitRemoveTask->Removed.AddDynamic(this, &UGA_MonsterState::OnTagRemoved);
-		WaitRemoveTask->ReadyForActivation();
+		if (bIsWaitTag)
+		{
+			UAbilityTask_WaitGameplayTagRemoved* WaitRemoveTask = UAbilityTask_WaitGameplayTagRemoved::WaitGameplayTagRemove(this, StateInitData.WaitTag);
+			WaitRemoveTask->Removed.AddDynamic(this, &UGA_MonsterState::OnTagRemoved);
+			WaitRemoveTask->ReadyForActivation();
+		}
 	}
 	else
 	{
@@ -89,4 +92,9 @@ void UGA_MonsterState::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 void UGA_MonsterState::OnTagRemoved()
 {
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+}
+
+void UGA_MonsterState::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }

@@ -760,6 +760,15 @@ bool ABaseMonster::GetbIsDead()
 	return bIsDead;
 }
 
+void ABaseMonster::SetAttackUtility(float Amount)
+{
+	AttackUtility = Amount;
+}
+
+FVector ABaseMonster::GetStartLocation()
+{
+	return StartLocation;
+}
 
 ETeamType ABaseMonster::GetTeamType() const
 {

@@ -27,8 +27,6 @@ void UGA_MonsterState_Chase::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 		return;
 	}
 
-	Monster->SetbIsCombat(true);
-
 	AAIController* AIC = Cast<AAIController>(Monster->GetController());
 	AActor* TargetActor = Monster->GetTargetPlayer();
 
@@ -40,12 +38,15 @@ void UGA_MonsterState_Chase::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 		{
 			AttackRange = AS->GetAttackRange();
 		}
+	
+		Monster->SetbIsCombat(true);
 
 		float CapsuleRadius = Monster->GetCapsuleComponent()->GetScaledCapsuleRadius();
 		float AcceptanceRadius = FMath::Max(0.0f, AttackRange - CapsuleRadius);
 		
+		AIC->ReceiveMoveCompleted.RemoveAll(this);
 		AIC->ReceiveMoveCompleted.AddDynamic(this, &UGA_MonsterState_Chase::OnMoveFinished);
-		AIC->MoveToActor(TargetActor, AcceptanceRadius, true);
+		AIC->MoveToActor(TargetActor, AcceptanceRadius, false);
 	}
 	else
 	{
@@ -56,13 +57,17 @@ void UGA_MonsterState_Chase::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 
 void UGA_MonsterState_Chase::OnMoveFinished(FAIRequestID RequestID, EPathFollowingResult::Type Result)
 {
+	ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActorFromActorInfo());
+	if (UBaseMonsterAttributeSet* AS = Monster->GetAttributeSet())
+	{
+		Monster->SendAttackRangeEvent(AS->GetAttackRange());
+	}
+
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 
 void UGA_MonsterState_Chase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
-	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
-
 	ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActorFromActorInfo());
 	if (IsValid(Monster))
 	{
@@ -70,10 +75,7 @@ void UGA_MonsterState_Chase::EndAbility(const FGameplayAbilitySpecHandle Handle,
 		{
 			AIC->ReceiveMoveCompleted.RemoveAll(this);
 		}
-
-		if (UBaseMonsterAttributeSet* AS = Monster->GetAttributeSet())
-		{
-			Monster->SendAttackRangeEvent(AS->GetAttackRange());
-		}
 	}
+
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }

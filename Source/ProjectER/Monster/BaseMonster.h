@@ -46,10 +46,15 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SetbIsDead(bool Target);
 	bool GetbIsDead();
+	void SetAttackUtility(float Amount);
+	FVector GetStartLocation();
 	UMonsterRangeComponent* GetMonsterRangeComp() { return MonsterRangeComp; };
 	FMonsterTags& GetMonsterTags() { return MonsterTags; };
 	FPrimaryAssetId GetMonsterId() const { return MonsterId; }
 	UBaseMonsterAttributeSet* GetAttributeSet() { return AttributeSet; }
+
+	FVector GetStartLocation() const { return StartLocation; }
+	FRotator GetStartRotator() const { return StartRotator; }
 	
 protected:
 
@@ -117,6 +122,11 @@ public:
 	UFUNCTION(NetMulticast, BlueprintCallable, Reliable)
 	void Multicast_SetCollisionProfileName(FName ProfileName);
 
+	// 쿨다운 태그 관련
+	UFUNCTION(BlueprintCallable)
+	void OnCooldown(FGameplayTag CooldownTag, float Cooldown);
+
+
 private:
 	// 초기화 
 	void InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float Level);
@@ -134,11 +144,6 @@ private:
 	void InitStateTree();
 
 	void InitHPBar();
-	//
-
-	// 쿨다운 태그 관련
-	UFUNCTION(BlueprintCallable)
-	void OnCooldown(FGameplayTag CooldownTag, float Cooldown);
 
 	void AddCooldownTag(FGameplayTag CooldownTag);
 
