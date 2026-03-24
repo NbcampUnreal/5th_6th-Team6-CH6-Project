@@ -124,7 +124,6 @@ void UER_PhaseSubsystem::OnPeriodicCheckTick()
         {
             return;
         }
-        UE_LOG(LogTemp, Log, TEXT("[PSS] OnPeriodicCheckTick"));
 
         for (APlayerState* PS : ERGS->PlayerArray)
         {
