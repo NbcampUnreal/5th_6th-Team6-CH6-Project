@@ -31,6 +31,7 @@ void FMaterialDrivenInteractionModule::StartupModule()
 	}
 
 
+/*
 #if WITH_EDITOR
 	// Register URTPoolSettings in Project Settings → Plugins → Foliage RT Pool
 	if (ISettingsModule* SettingsModule = FModuleManager::GetModulePtr<ISettingsModule>("Settings"))
@@ -45,12 +46,15 @@ void FMaterialDrivenInteractionModule::StartupModule()
 		);
 	}
 #endif
+*/
+
+	// now done by UDeveloperSettings
 }
 
 void FMaterialDrivenInteractionModule::ShutdownModule()
 {
 	
-#if WITH_EDITOR
+/*#if WITH_EDITOR
 	if (ISettingsModule* SettingsModule = FModuleManager::GetModulePtr<ISettingsModule>("Settings"))
 	{
 		SettingsModule->UnregisterSettings(
@@ -58,7 +62,7 @@ void FMaterialDrivenInteractionModule::ShutdownModule()
 			"Plugins",
 			"FoliageRTPool");
 	}
-#endif
+#endif*/
 	
 }
 

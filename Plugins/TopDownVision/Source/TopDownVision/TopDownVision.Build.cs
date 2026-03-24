@@ -32,6 +32,7 @@ public class TopDownVision : ModuleRules
 				"Projects",// for plugin module (IPluginManager::Get())
 				
 				"DoubleRTBufferDrawer",// for Main RT Drawer
+				"DeveloperSettings"// for editor setting
 			}
 			);
 			

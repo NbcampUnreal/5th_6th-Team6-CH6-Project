@@ -27,6 +27,11 @@ void ULevelAreaGameStateComponent::BeginPlay()
 {
     Super::BeginPlay();
 
+    GenerateGraph();
+}
+
+void ULevelAreaGameStateComponent::GenerateGraph()
+{
     if (!GetOwner()->HasAuthority())
         return;
 
@@ -60,15 +65,17 @@ void ULevelAreaGameStateComponent::BeginPlay()
     UE_LOG(LevelAreaGraphManagement, Log,
         TEXT("BeginPlay >> Graph built (%d nodes)"), GraphData->Nodes.Num());
 
-    /*/* ---------- Build Bridge Actor Map ---------- #1#
+    /* ---------- Build Bridge Actor Map ---------- */
 
-    BuildBridgeActorMap();*/
+    /*BuildBridgeActorMap();*/  // temp no level sequence play map yet
 
     /* ---------- Seed ---------- */
 
-    if (HazardSeed == 0)
-        HazardSeed = FMath::Rand();
-
+    if (!bUseFixedSeed)// use flag instead, not just 0
+    {
+        HazardSeed = FMath::Rand();  //rand seed
+    }
+    
     UE_LOG(LevelAreaGraphManagement, Log,
         TEXT("BeginPlay >> Seed: %d"), HazardSeed);
 
@@ -86,6 +93,7 @@ void ULevelAreaGameStateComponent::BeginPlay()
     UE_LOG(LevelAreaGraphManagement, Log,
         TEXT("BeginPlay >> Hazard order ready (%d entries)"), HazardOrder.Num());
 }
+
 
 
 /* =====================================================================
@@ -137,7 +145,7 @@ void ULevelAreaGameStateComponent::UnregisterBridge(ALevelAreaInstanceBridge* Br
 
 void ULevelAreaGameStateComponent::AdvancePhase()
 {
-    if (HazardOrder.IsEmpty())
+    /*if (HazardOrder.IsEmpty())
     {
         UE_LOG(LevelAreaGraphManagement, Warning,
             TEXT("AdvancePhase >> HazardOrder is empty"));
@@ -159,7 +167,29 @@ void ULevelAreaGameStateComponent::AdvancePhase()
         TEXT("AdvancePhase >> Phase %d | State: %s"),
         CurrentPhase, *UEnum::GetValueAsString(HazardStatePerPhase));
 
-    ApplyHazardsUpToCurrentPhase();
+    ApplyHazardsUpToCurrentPhase();*/
+
+    if (HazardOrder.IsEmpty())
+    {
+        UE_LOG(LevelAreaGraphManagement, Warning,
+            TEXT("AdvancePhase >> HazardOrder is empty"));
+        return;
+    }
+
+    if (CurrentPhase * HazardsPerPhase >= HazardOrder.Num())
+    {
+        UE_LOG(LevelAreaGraphManagement, Log,
+            TEXT("AdvancePhase >> All phases exhausted at phase %d"), CurrentPhase);
+        return;
+    }
+
+    CurrentPhase++;
+
+    UE_LOG(LevelAreaGraphManagement, Log,
+        TEXT("AdvancePhase >> Phase %d | State: %s"),
+        CurrentPhase, *UEnum::GetValueAsString(HazardStatePerPhase));
+
+    ApplyHazards(CurrentPhase, HazardStatePerPhase);
 }
 
 
@@ -167,8 +197,10 @@ void ULevelAreaGameStateComponent::AdvancePhase()
    Reset
    ===================================================================== */
 
-void ULevelAreaGameStateComponent::ResetHazards()
+void ULevelAreaGameStateComponent::ResetHazards(EAreaHazardState NewState)
 {
+    CancelAllInstantDeath();
+    
     CurrentPhase = 0;
 
     if (ULevelAreaGraphSubsystem* Sub =
@@ -177,41 +209,87 @@ void ULevelAreaGameStateComponent::ResetHazards()
         Sub->ClearHazards();
     }
 
-    NotifyBridgeActors({});
+    // Reset all bridges to None
+    for (const TPair<int32, TArray<TObjectPtr<ALevelAreaInstanceBridge>>>& Pair : BridgeActorMap)
+    {
+        NotifyBridgeActors({ Pair.Key }, NewState);
+    }
+
     NotifyTrackers();
 
     UE_LOG(LevelAreaGraphManagement, Log,
         TEXT("ResetHazards >> Reset complete"));
 }
 
-
-/* =====================================================================
-   OnRep
-   ===================================================================== */
-
-void ULevelAreaGameStateComponent::OnRep_HazardOrder()
+void ULevelAreaGameStateComponent::ScheduleInstantDeath(int32 NodeID, float Delay)
 {
-    if (CurrentPhase > 0)
-        ApplyHazardsUpToCurrentPhase();
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    // Cancel any existing timer for this node before scheduling a new one
+    CancelInstantDeath(NodeID);
+
+    FTimerHandle Handle;
+    FTimerDelegate Delegate;
+    Delegate.BindUObject(this, &ULevelAreaGameStateComponent::ApplyInstantDeathToNode, NodeID);
+
+    World->GetTimerManager().SetTimer(Handle, Delegate, Delay, false);
+    InstantDeathTimerMap.Add(NodeID, Handle);
 
     UE_LOG(LevelAreaGraphManagement, Log,
-        TEXT("OnRep_HazardOrder >> Received %d entries"), HazardOrder.Num());
+        TEXT("ScheduleInstantDeath >> NodeID %d will escalate in %.2fs"), NodeID, Delay);
 }
 
-void ULevelAreaGameStateComponent::OnRep_CurrentPhase()
+void ULevelAreaGameStateComponent::CancelInstantDeath(int32 NodeID)
 {
-    ApplyHazardsUpToCurrentPhase();
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    if (FTimerHandle* Handle = InstantDeathTimerMap.Find(NodeID))
+    {
+        World->GetTimerManager().ClearTimer(*Handle);
+        InstantDeathTimerMap.Remove(NodeID);
+
+        UE_LOG(LevelAreaGraphManagement, Log,
+            TEXT("CancelInstantDeath >> NodeID %d escalation cancelled"), NodeID);
+    }
+}
+
+void ULevelAreaGameStateComponent::ScheduleInstantDeathForAllHazards(float Delay)
+{
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    ULevelAreaGraphSubsystem* Sub = World->GetSubsystem<ULevelAreaGraphSubsystem>();
+    if (!Sub) return;
+
+    for (const TPair<int32, EAreaHazardState>& Pair : Sub->ActiveHazardNodes)
+    {
+        // Only escalate nodes that are currently Hazard — skip already InstantDeath nodes
+        if (Pair.Value == EAreaHazardState::Hazard)
+            ScheduleInstantDeath(Pair.Key, Delay);
+    }
 
     UE_LOG(LevelAreaGraphManagement, Log,
-        TEXT("OnRep_CurrentPhase >> Phase %d received"), CurrentPhase);
+        TEXT("ScheduleInstantDeathForAllHazards >> %d nodes scheduled (%.2fs delay)"),
+        InstantDeathTimerMap.Num(), Delay);
 }
 
+void ULevelAreaGameStateComponent::CancelAllInstantDeath()
+{
+    UWorld* World = GetWorld();
+    if (!World) return;
 
-/* =====================================================================
-   Internal
-   ===================================================================== */
+    for (TPair<int32, FTimerHandle>& Pair : InstantDeathTimerMap)
+        World->GetTimerManager().ClearTimer(Pair.Value);
 
-void ULevelAreaGameStateComponent::ApplyHazardsUpToCurrentPhase()
+    InstantDeathTimerMap.Reset();
+
+    UE_LOG(LevelAreaGraphManagement, Log,
+        TEXT("CancelAllInstantDeath >> All escalations cancelled"));
+}
+
+void ULevelAreaGameStateComponent::ApplyHazards(int32 Phase, EAreaHazardState State)
 {
     if (HazardOrder.IsEmpty()) return;
 
@@ -222,22 +300,123 @@ void ULevelAreaGameStateComponent::ApplyHazardsUpToCurrentPhase()
         World->GetSubsystem<ULevelAreaGraphSubsystem>();
     if (!Sub) return;
 
-    int32 ActiveCount = FMath::Min(CurrentPhase * HazardsPerPhase, HazardOrder.Num());
+    // Full cumulative range from the beginning up to this phase
+    int32 PrevCount   = FMath::Min((Phase - 1) * HazardsPerPhase, HazardOrder.Num());
+    int32 ActiveCount = FMath::Min(Phase * HazardsPerPhase, HazardOrder.Num());
 
+    // All nodes that should be active hazards at this phase
     TArray<int32> ActiveHazards;
     for (int32 i = 0; i < ActiveCount; i++)
         ActiveHazards.Add(HazardOrder[i]);
 
-    Sub->ClearHazards();
-    Sub->ApplyHazardNodes(ActiveHazards, HazardStatePerPhase);
+    // Only the nodes that are NEW this phase — bridges for already-hazardous
+    // nodes must NOT be re-notified or they restart their transition sequences
+    TArray<int32> NewHazards;
+    for (int32 i = PrevCount; i < ActiveCount; i++)
+        NewHazards.Add(HazardOrder[i]);
 
-    NotifyBridgeActors(ActiveHazards);
+    // Rebuild subsystem state from scratch each time for correctness
+    Sub->ClearHazards();
+    Sub->ApplyHazardNodes(ActiveHazards, State);
+
+    // Only notify bridges for newly hazardous nodes this phase
+    NotifyBridgeActors(NewHazards, State);
     NotifyTrackers();
 
     UE_LOG(LevelAreaGraphManagement, Log,
-        TEXT("ApplyHazardsUpToCurrentPhase >> Applied %d hazards for phase %d"),
-        ActiveHazards.Num(), CurrentPhase);
+        TEXT("ApplyHazards >> Phase %d | New: %d | Total Active: %d | State: %s"),
+        Phase, NewHazards.Num(), ActiveHazards.Num(), *UEnum::GetValueAsString(State));
+
+    FString ActiveHazardString;
+    for (int32 i = 0; i < ActiveHazards.Num(); i++)
+    {
+        ActiveHazardString += FString::Printf(TEXT("%d"), ActiveHazards[i]);
+        if (i < ActiveHazards.Num() - 1)
+            ActiveHazardString += TEXT(", ");
+    }
+
+    UE_LOG(LevelAreaGraphManagement, Log,
+        TEXT("ApplyHazards >> Active danger areas: [%s]"), *ActiveHazardString);
 }
+
+void ULevelAreaGameStateComponent::NotifyBridgeActors(const TArray<int32>& NodeIDs, EAreaHazardState State)
+{
+    for (int32 NodeID : NodeIDs)
+    {
+        if (TArray<TObjectPtr<ALevelAreaInstanceBridge>>* Bridges =
+            BridgeActorMap.Find(NodeID))
+        {
+            for (const TObjectPtr<ALevelAreaInstanceBridge>& Bridge : *Bridges)
+            {
+                if (Bridge)
+                    Bridge->NotifyHazardStateChanged(State);
+            }
+        }
+    }
+}
+
+void ULevelAreaGameStateComponent::ApplyInstantDeathToNode(int32 NodeID)
+{
+    // Remove the timer entry — it has already fired
+    InstantDeathTimerMap.Remove(NodeID);
+
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    ULevelAreaGraphSubsystem* Sub = World->GetSubsystem<ULevelAreaGraphSubsystem>();
+    if (!Sub) return;
+
+    // Safety check — node may have been reset or removed before the timer fired
+    if (!Sub->IsNodeHazard(NodeID))
+    {
+        UE_LOG(LevelAreaGraphManagement, Warning,
+            TEXT("ApplyInstantDeathToNode >> NodeID %d is no longer a hazard, skipping"), NodeID);
+        return;
+    }
+
+    // Directly overwrite the subsystem state for this node only
+    Sub->ActiveHazardNodes.Add(NodeID, EAreaHazardState::InstantDeath);
+
+    NotifyBridgeActors({ NodeID }, EAreaHazardState::InstantDeath);
+    NotifyTrackers();
+
+    UE_LOG(LevelAreaGraphManagement, Log,
+        TEXT("ApplyInstantDeathToNode >> NodeID %d escalated to InstantDeath"), NodeID);
+}
+
+
+/* =====================================================================
+   OnRep
+   ===================================================================== */
+
+void ULevelAreaGameStateComponent::OnRep_HazardOrder()
+{
+    // HazardOrder just arrived on the client — if phase is already ahead
+    // (i.e. CurrentPhase replicated first), apply immediately to catch up
+    if (CurrentPhase > 0)
+        ApplyHazards(CurrentPhase, HazardStatePerPhase);
+
+    UE_LOG(LevelAreaGraphManagement, Log,
+        TEXT("OnRep_HazardOrder >> Received %d entries"), HazardOrder.Num());
+}
+
+void ULevelAreaGameStateComponent::OnRep_CurrentPhase()
+{
+    // Guard: if HazardOrder hasn't arrived yet, wait for OnRep_HazardOrder to apply
+    if (HazardOrder.IsEmpty()) return;
+
+    ApplyHazards(CurrentPhase, HazardStatePerPhase);
+
+    UE_LOG(LevelAreaGraphManagement, Log,
+        TEXT("OnRep_CurrentPhase >> Phase %d received"), CurrentPhase);
+}
+
+
+/* =====================================================================
+   Internal
+   ===================================================================== */
+
+
 
 void ULevelAreaGameStateComponent::BuildBridgeActorMap()
 {
@@ -309,21 +488,6 @@ ALevelAreaInstanceBridge* ULevelAreaGameStateComponent::GetBridgeActorByInstance
     return nullptr;
 }
 
-void ULevelAreaGameStateComponent::NotifyBridgeActors(const TArray<int32>& HazardNodeIDs)
-{
-    for (const TPair<int32, TArray<TObjectPtr<ALevelAreaInstanceBridge>>>& Pair : BridgeActorMap)
-    {
-        EAreaHazardState State = HazardNodeIDs.Contains(Pair.Key)
-            ? HazardStatePerPhase
-            : EAreaHazardState::Safe;
-
-        for (const TObjectPtr<ALevelAreaInstanceBridge>& Bridge : Pair.Value)
-        {
-            if (Bridge)
-                Bridge->NotifyHazardStateChanged(State);
-        }
-    }
-}
 
 void ULevelAreaGameStateComponent::NotifyTrackers()
 {

@@ -1,5 +1,6 @@
 #include "ObstacleOcclusion/Usage/Spline/DecorativeSplineMeshActor.h"
 #include "Components/SplineComponent.h"
+#include "ObstacleOcclusion/Helper/OcclusionMeshUtil.h"
 
 ADecorativeSplineMeshActor::ADecorativeSplineMeshActor()
 {
@@ -30,6 +31,11 @@ void ADecorativeSplineMeshActor::BuildSplineMesh()
 
     ClearSplineMeshComponents();
 
+    // Resolve tag — per-instance override takes priority, fall back to global setting
+    const FName ResolvedTag = SegmentOcclusionTag.IsNone()
+        ? UOcclusionMeshUtil::GetNormalMeshTag()
+        : SegmentOcclusionTag;
+
     if (bShouldAllowScaling)
         SectionLength = GetActorScale3D().X * 100.f;
 
@@ -48,9 +54,9 @@ void ADecorativeSplineMeshActor::BuildSplineMesh()
     }
 
     for (int32 i = 0; i < LoopCount; ++i)
-        GenerateSegment(i);
+        GenerateSegment(i, ResolvedTag);
 
-    const bool DebugChecker=MarkPackageDirty();
+    bool DebugBoolChecker=MarkPackageDirty();
 
     UE_LOG(LogTemp, Log,
         TEXT("ADecorativeSplineMeshActor::BuildSplineMesh>> Generated %d segments on %s"),
@@ -74,7 +80,7 @@ void ADecorativeSplineMeshActor::ClearSplineMeshComponents()
     const bool DebugChecker=MarkPackageDirty();
 }
 
-void ADecorativeSplineMeshActor::GenerateSegment(int32 SegmentIndex)
+void ADecorativeSplineMeshActor::GenerateSegment(int32 SegmentIndex,  FName OcclusionTag)
 {
     Modify();
 
@@ -105,8 +111,8 @@ void ADecorativeSplineMeshActor::GenerateSegment(int32 SegmentIndex)
 
     Segment->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    if (!SegmentOcclusionTag.IsNone())
-        Segment->ComponentTags.AddUnique(SegmentOcclusionTag);
+    if (!OcclusionTag.IsNone())
+        Segment->ComponentTags.AddUnique(OcclusionTag);
 
     Segment->RegisterComponent();
     AddInstanceComponent(Segment);
