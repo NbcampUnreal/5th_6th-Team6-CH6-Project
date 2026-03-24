@@ -24,17 +24,21 @@ protected:
 
 public:
 
+    void GenerateGraph();
+    
     /* ---------- Config ---------- */
-
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Hazard")
+    bool bUseFixedSeed = false;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Hazard")
+    int32 HazardSeed = 0;
+    
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Hazard")
     int32 HazardsPerPhase = 1;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Hazard")
     EAreaHazardState HazardStatePerPhase = EAreaHazardState::Hazard;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Hazard")
-    int32 HazardSeed = 0;
-
+    
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="LevelArea")
     ULevelAreaGraphData* GraphData;
 
@@ -54,7 +58,20 @@ public:
     void AdvancePhase();
 
     UFUNCTION(BlueprintCallable, Category="Hazard", BlueprintAuthorityOnly)
-    void ResetHazards();
+    void ResetHazards(EAreaHazardState NewState);
+
+    // Istant death 
+    UFUNCTION(BlueprintCallable, Category="Hazard", BlueprintAuthorityOnly)
+    void ScheduleInstantDeath(int32 NodeID, float Delay);
+    // Cancel a pending instant death escalation for a node
+    UFUNCTION(BlueprintCallable, Category="Hazard", BlueprintAuthorityOnly)
+    void CancelInstantDeath(int32 NodeID);
+    // Schedule all currently active Hazard nodes to escalate after Delay seconds
+    UFUNCTION(BlueprintCallable, Category="Hazard", BlueprintAuthorityOnly)
+    void ScheduleInstantDeathForAllHazards(float Delay);
+    // Cancel all pending instant death escalations
+    UFUNCTION(BlueprintCallable, Category="Hazard", BlueprintAuthorityOnly)
+    void CancelAllInstantDeath();
 
 
     /* ---------- Getters ---------- */
@@ -92,14 +109,23 @@ public:
 
 private:
 
+    // NodeID → active timer handle
+    TMap<int32, FTimerHandle> InstantDeathTimerMap;
+
     UFUNCTION()
     void OnRep_HazardOrder();
 
     UFUNCTION()
     void OnRep_CurrentPhase();
 
-    void ApplyHazardsUpToCurrentPhase();
+    // Core hazard apply — explicit phase and state instead of reading member vars
+    void ApplyHazards(int32 Phase, EAreaHazardState State);
+    
+    // Notify bridges for a list of nodes with an explicit state
+    void NotifyBridgeActors(const TArray<int32>& NodeIDs, EAreaHazardState State);
+
     void NotifyTrackers();
     void BuildBridgeActorMap();
-    void NotifyBridgeActors(const TArray<int32>& HazardNodeIDs);
+    
+    void ApplyInstantDeathToNode(int32 NodeID);
 };

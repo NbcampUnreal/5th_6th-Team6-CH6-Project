@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
 #include "ObstacleOcclusion/OcclusionTracer/OcclusionInterface.h"
+#include "ObstacleOcclusion/MIDPool/OcclusionMIDSlot.h"
 #include "OcclusionObstacleComp_Physical.generated.h"
 
 class UMeshComponent;
@@ -17,6 +18,7 @@ class TOPDOWNVISION_API UOcclusionObstacleComp_Physical : public USceneComponent
     GENERATED_BODY()
 
 public:
+
     UOcclusionObstacleComp_Physical();
 
     virtual void BeginPlay() override;
@@ -37,32 +39,12 @@ public:
 
     virtual void OnOcclusionEnter_Implementation(UObject* SourceTracer) override;
     virtual void OnOcclusionExit_Implementation(UObject* SourceTracer) override;
-
     virtual void ForceOcclude_Implementation(bool bForce) override;
 
-private:
-
-    void GenerateShadowProxyMeshes();  // delegates to OcclusionMeshUtil
-    void InitializeMaterials();
-    void UpdateMaterialAlpha();
-    void CleanupInvalidOverlaps();
-    void DiscoverChildMeshes();
-
-    //void UpdateMouseTraceCollision(bool bOccluded);
-
 protected:
-
-    UPROPERTY(EditAnywhere, Category="Occlusion")
-    FName NormalMeshTag = TEXT("OcclusionMesh");
-
-    UPROPERTY(EditAnywhere, Category="Occlusion")
-    FName OccludedMeshTag = TEXT("OccludedVisual");
-
+    
     UPROPERTY(EditAnywhere, Category="Occlusion")
     float FadeSpeed = 6.f;
-
-    UPROPERTY(EditAnywhere, Category="Occlusion")
-    FName AlphaParameterName = TEXT("OcclusionAlpha");
 
     UPROPERTY(EditAnywhere, Category="Occlusion")
     TEnumAsByte<ECollisionChannel> OcclusionTraceChannel = ECC_GameTraceChannel1;
@@ -72,32 +54,38 @@ protected:
 
     UPROPERTY(EditAnywhere, Category="Occlusion|Shadow")
     bool bCastShadowWhenOccluded = true;
-    
+
     UPROPERTY(EditAnywhere, Category="Occlusion|Shadow")
     TObjectPtr<UMaterialInterface> ShadowProxyMaterial;
 
 private:
 
+    void GenerateShadowProxyMeshes();
+    void InitializeMaterials();
+    void UpdateMaterialAlpha();
+    void CleanupInvalidOverlaps();
+    void DiscoverChildMeshes();
+
+    void AcquireMIDs();
+    void ReleaseMIDs();
+    bool HasMIDs() const;
+
     UPROPERTY(Transient)
     TSet<TWeakObjectPtr<UObject>> ActiveOverlaps;
 
-    float CurrentAlpha        = 0.f;
+    float CurrentAlpha        = 1.f;
     bool  bShouldBeOccluded   = false;
     bool  bLastOcclusionState = false;
+    bool  bForceOccluded      = false;
 
-    bool bForceOccluded = false;//occlusion state locked or not
+    // Unified slots — bPooled flag on each slot determines lifetime behavior
+    // bPooled=false → created at BeginPlay, kept forever, nothing to restore
+    // bPooled=true  → checked out on first occlusion enter, returned when fully visible
+    UPROPERTY(Transient)
+    TArray<FOcclusionMIDSlot> NormalSlots;
 
     UPROPERTY(Transient)
-    TArray<UMaterialInstanceDynamic*> NormalStaticMIDs;
-
-    UPROPERTY(Transient)
-    TArray<UMaterialInstanceDynamic*> NormalSkeletalMIDs;
-
-    UPROPERTY(Transient)
-    TArray<UMaterialInstanceDynamic*> OccludedStaticMIDs;
-
-    UPROPERTY(Transient)
-    TArray<UMaterialInstanceDynamic*> OccludedSkeletalMIDs;
+    TArray<FOcclusionMIDSlot> OccludedSlots;
 
     UPROPERTY(VisibleAnywhere)
     TArray<TSoftObjectPtr<UMeshComponent>> NormalMeshes;

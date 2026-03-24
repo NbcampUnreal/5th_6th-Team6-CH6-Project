@@ -31,6 +31,7 @@ public class MaterialDrivenInteraction : ModuleRules
 				"Engine",
 				"MaterialShaderQualitySettings",
 				"Projects",       // IPluginManager
+				"DeveloperSettings"// for editor setting
 			}
 			);
 			
@@ -40,7 +41,7 @@ public class MaterialDrivenInteraction : ModuleRules
 			{
 				"RenderCore",   // ETextureRenderTargetFormat
 				"RHI",          // FRHICommandListImmediate 
-				"Settings",     // required for ISettingsModule
+				//"Settings",     // required for ISettingsModule
 			}
 			);
 		
