@@ -126,6 +126,19 @@ void SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(UWorld* World, const FSkill
 		return;
 	}
 	else{
+		for (const auto& Pair : Settings.FloatParameters)
+		{
+			ResultNC->SetVariableFloat(Pair.Key, Pair.Value);
+		}
+		for (const auto& Pair : Settings.VectorParameters)
+		{
+			ResultNC->SetVariableVec3(Pair.Key, Pair.Value);
+		}
+		for (const auto& Pair : Settings.ColorParameters)
+		{
+			ResultNC->SetVariableLinearColor(Pair.Key, Pair.Value);
+		}
+
 		ResultNC->Activate();
 	}
 }
