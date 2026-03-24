@@ -329,10 +329,10 @@ protected:
 	class USceneCaptureComponent2D* MinimapCaptureComponent;
 	
 	// 미니맵용 얼굴 아이콘
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI|Minimap")
 	class UStaticMeshComponent* MinimapIconMesh;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI|Minimap")
 	class UStaticMeshComponent* MinimapLineMesh;
 
 	// 미니맵용 얼굴 마테리얼

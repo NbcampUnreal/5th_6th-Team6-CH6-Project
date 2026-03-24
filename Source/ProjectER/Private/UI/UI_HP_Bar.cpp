@@ -90,6 +90,11 @@ void UUI_HP_Bar::Update_PlayerName(FText PlayerName)
 	}
 }
 
+void UUI_HP_Bar::SetHPBarVisible(bool bVisible)
+{
+    SetVisibility(bVisible ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+}
+
 void UUI_HP_Bar::NativeConstruct()
 {
     Super::NativeConstruct();
