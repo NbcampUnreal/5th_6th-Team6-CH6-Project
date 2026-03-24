@@ -29,9 +29,9 @@ TSubclassOf<UBaseGECConfig> ULaunchProjectile::GetRequiredConfigClass() const
 	return ULaunchProjectileConfig::StaticClass();
 }
 
-void ULaunchProjectile::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetCueParameters) const
+void ULaunchProjectile::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetVfxCueParameters, const FGameplayCueParameters& HitTargetSoundCueParameters) const
 {
-	Super::InitializeRangeActor(RangeActor, Config, Instigator, Context, HitTargetCueParameters);
+	Super::InitializeRangeActor(RangeActor, Config, Instigator, Context, HitTargetVfxCueParameters, HitTargetSoundCueParameters);
 
 	const ULaunchProjectileConfig* const ProjectileConfig = Cast<ULaunchProjectileConfig>(Config);
 

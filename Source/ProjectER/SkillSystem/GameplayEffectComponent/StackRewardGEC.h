@@ -11,6 +11,9 @@ class UGameplayEffect;
 class UAbilitySystemComponent;
 struct FActiveGameplayEffectHandle;
 class USkillEffectDataAsset;
+ 
+struct FActiveGameplayEffectsContainer;
+struct FActiveGameplayEffect;
 
 USTRUCT(BlueprintType)
 struct FStackRewardInfo
@@ -40,6 +43,14 @@ struct FStackRewardInfo
 	// 발동 대상(피격자) 측에서 재생할 이펙트
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "VFX")
 	TObjectPtr<class USkillNiagaraSpawnConfig> TargetVfxConfig;
+
+	// 시전자(공격자) 측에서 재생할 사운드
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound")
+	TObjectPtr<class USkillSoundSpawnConfig> InstigatorSoundConfig;
+
+	// 발동 대상(피격자) 측에서 재생할 사운드
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound")
+	TObjectPtr<class USkillSoundSpawnConfig> TargetSoundConfig;
 };
 
 UCLASS(BlueprintType, EditInlineNew, DefaultToInstanced)

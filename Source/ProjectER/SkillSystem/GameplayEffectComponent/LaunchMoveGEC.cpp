@@ -98,7 +98,9 @@ void ULaunchMoveGEC::Execute(AActor* Instigator, const FVector& Direction, const
 					{
 						// 도착(착지) 큐 실행 및 Moving 루핑 종료
 						WeakThis->ExecuteMoveCue(LaunchConfig->EndVfx, GESpec, WeakChar.Get(), WeakChar->GetActorLocation());
+						WeakThis->ExecuteMoveSound(LaunchConfig->EndSound, GESpec, WeakChar.Get(), WeakChar->GetActorLocation());
 						WeakThis->RemoveMovingCue(LaunchConfig->MovingVfx, WeakChar.Get());
+						WeakThis->RemoveMovingSoundCue(LaunchConfig->MovingSound, WeakChar.Get());
 
 						// 충돌 무시는 서버에서만 제어
 						if (LaunchConfig->bIgnoreUnitCollision && WeakChar->HasAuthority())
@@ -124,7 +126,9 @@ void ULaunchMoveGEC::Execute(AActor* Instigator, const FVector& Direction, const
 				if (WeakThis.IsValid() && WeakChar.IsValid() && LaunchConfig)
 				{
 					WeakThis->ExecuteMoveCue(LaunchConfig->EndVfx, GESpec, WeakChar.Get(), WeakChar->GetActorLocation());
+					WeakThis->ExecuteMoveSound(LaunchConfig->EndSound, GESpec, WeakChar.Get(), WeakChar->GetActorLocation());
 					WeakThis->RemoveMovingCue(LaunchConfig->MovingVfx, WeakChar.Get());
+					WeakThis->RemoveMovingSoundCue(LaunchConfig->MovingSound, WeakChar.Get());
 				}
 			},
 			PredictDuration,

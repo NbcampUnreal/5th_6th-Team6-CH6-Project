@@ -13,6 +13,7 @@
 #include "SkillSystem/GameAbility/SkillBase.h"
 #include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
 #include "SkillSystem/SkillNiagaraSpawnConfig.h"
+#include "SkillSystem/SkillSoundSpawnConfig.h"
 #include "SkillSystem/GameplayEffectComponent/SummonRangeAtBone.h"
 
 FText USummonRangeBaseConfig::BuildTooltipDescription(float InLevel) const
@@ -98,15 +99,23 @@ void USummonRangeBaseGEC::OnGameplayEffectApplied(FActiveGameplayEffectsContaine
 	}
 
 	// 3. 초기화 및 마무리
-	const FGameplayCueParameters HitTargetCueParameters = BuildNiagaraCueParameters(
+	const FGameplayCueParameters HitTargetVfxCueParameters = BuildNiagaraCueParameters(
 		GESpec,
-		IsValid(SpawnConfig->HitTargetVfx) ? SpawnConfig->HitTargetVfx->CueTag : FGameplayTag(),
+		IsValid(SpawnConfig->HitTargetVfx.Get()) ? SpawnConfig->HitTargetVfx->CueTag : FGameplayTag(),
 		ContextHandle,
 		DeferredSpawnedActor,
 		RangeSpawnLocation,
-		SpawnConfig->HitTargetVfx);
+		SpawnConfig->HitTargetVfx.Get());
 
-	InitializeRangeActor(DeferredSpawnedActor, SpawnConfig, EffectInstigator, ContextHandle, HitTargetCueParameters);
+	const FGameplayCueParameters HitTargetSoundCueParameters = BuildNiagaraCueParameters(
+		GESpec,
+		IsValid(SpawnConfig->HitTargetSound.Get()) ? SpawnConfig->HitTargetSound->CueTag : FGameplayTag(),
+		ContextHandle,
+		DeferredSpawnedActor,
+		RangeSpawnLocation,
+		SpawnConfig->HitTargetSound.Get());
+
+	InitializeRangeActor(DeferredSpawnedActor, SpawnConfig, EffectInstigator, ContextHandle, HitTargetVfxCueParameters, HitTargetSoundCueParameters);
 	DeferredSpawnedActor->FinishSpawning(SpawnTransform);
 
 	// 4. 시각 효과 실행
@@ -157,6 +166,23 @@ void USummonRangeBaseGEC::ExecuteGameplayCues(const FGameplayEffectSpec& GESpec,
 		}
 		InstigatorASC->ExecuteGameplayCue(Config->RangeSpawnVfx->CueTag, RangeCueParams);
 	}
+
+	// Sound 실행
+	if (IsValid(Config->SummonerSpawnSound) && Config->SummonerSpawnSound->CueTag.IsValid())
+	{
+		const FGameplayCueParameters SummonerCueParams = BuildNiagaraCueParameters(GESpec, Config->SummonerSpawnSound->CueTag, ContextHandle, RangeActor, OriginTransform.GetLocation(), Config->SummonerSpawnSound);
+		InstigatorASC->ExecuteGameplayCue(Config->SummonerSpawnSound->CueTag, SummonerCueParams);
+	}
+
+	if (IsValid(Config->RangeSpawnSound) && Config->RangeSpawnSound->CueTag.IsValid())
+	{
+		FGameplayCueParameters RangeCueParams = BuildNiagaraCueParameters(GESpec, Config->RangeSpawnSound->CueTag, ContextHandle, RangeActor, OriginTransform.GetLocation(), Config->RangeSpawnSound, OriginTransform.GetRotation().GetForwardVector());
+		if (IsValid(RangeActor))
+		{
+			RangeCueParams.TargetAttachComponent = RangeActor->GetRootComponent();
+		}
+		InstigatorASC->ExecuteGameplayCue(Config->RangeSpawnSound->CueTag, RangeCueParams);
+	}
 }
 
 AActor* USummonRangeBaseGEC::GetTargetActorFromContainer(FActiveGameplayEffectsContainer& ActiveGEContainer) const
@@ -187,7 +213,7 @@ FGameplayCueParameters USummonRangeBaseGEC::BuildNiagaraCueParameters(const FGam
 	return CueParams;
 }
 
-void USummonRangeBaseGEC::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetCueParameters) const
+void USummonRangeBaseGEC::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetVfxCueParameters, const FGameplayCueParameters& HitTargetSoundCueParameters) const
 {
 	if (!IsValid(RangeActor) || !IsValid(Config) || !IsValid(Instigator))
 	{
@@ -215,7 +241,7 @@ void USummonRangeBaseGEC::InitializeRangeActor(ABaseRangeOverlapEffectActor* Ran
 	// 강화 효과(SkillProc) 확인 및 전이
 	UBaseGEC::GetSkillProcEffects(CauserASC, NonConstSkill, RangeActor, Context, InitGEHandles);
 
-	RangeActor->InitializeEffectData(InitGEHandles, Instigator, Config->CollisionRadius, Config->bHitOncePerTarget, Config, HitTargetCueParameters);
+	RangeActor->InitializeEffectData(InitGEHandles, Instigator, Config->CollisionRadius, Config->bHitOncePerTarget, Config, HitTargetVfxCueParameters, HitTargetSoundCueParameters);
 	RangeActor->SetLifeSpan(Config->LifeSpan);
 }
 

@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "SkillBase.h"
@@ -8,6 +8,7 @@
 #include "Abilities/Tasks/AbilityTask_WaitTargetData.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/GameplayAbilityTargetActor.h"
+#include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "SkillSystem/AbilityTask/AbilityTask_WaitGameplayEventSyn.h"
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 #include "SkillSystem/SkillDataAsset.h"
@@ -98,6 +99,16 @@ void USkillBase::ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FG
 		if (SpecHandle.IsValid())
 		{
 			float Duration = CachedConfig->Data.BaseCoolTime.GetValueAtLevel(GetAbilityLevel());
+			
+			// Skill Haste (스킬 가속) 반영
+			if (UAbilitySystemComponent* ASC = GetASC())
+			{
+				float Haste = ASC->GetNumericAttribute(UBaseAttributeSet::GetCooldownReductionAttribute());
+				// 공식: 최종 쿨타임 = 기본 쿨타임 / (1 + (스킬가속 / 100))
+				Duration /= (1.0f + (FMath::Max(Haste, 0.0f) / 100.0f));
+				Duration = FMath::Max(Duration, 0.1f); // 최소 쿨타임 보장
+			}
+
 			SpecHandle.Data.Get()->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Skill.Data.CoolTime")), Duration);
 			SpecHandle.Data.Get()->DynamicGrantedTags.AppendTags(CachedConfig->Data.CoolTimeTags);
 			ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, SpecHandle);

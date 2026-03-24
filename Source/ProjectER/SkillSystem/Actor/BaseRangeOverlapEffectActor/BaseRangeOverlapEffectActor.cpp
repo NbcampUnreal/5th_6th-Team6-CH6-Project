@@ -16,14 +16,15 @@ ABaseRangeOverlapEffectActor::ABaseRangeOverlapEffectActor()
 	bReplicates = true;
 }
 
-void ABaseRangeOverlapEffectActor::InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget, const UObject* InHitTargetCueSourceObject, const FGameplayCueParameters& InHitTargetCueParameters)
+void ABaseRangeOverlapEffectActor::InitializeEffectData(const TArray<FGameplayEffectSpecHandle>& InEffectSpecHandles, AActor* InInstigatorActor, const FVector& InCollisionSize, bool bInHitOncePerTarget, const UObject* InHitTargetCueSourceObject, const FGameplayCueParameters& InHitTargetVfxCueParameters, const FGameplayCueParameters& InHitTargetSoundCueParameters)
 {
 	EffectSpecHandles = InEffectSpecHandles;
 	InstigatorActor = InInstigatorActor;
 	SetInstigator(Cast<APawn>(InInstigatorActor));
 	bHitOncePerTarget = bInHitOncePerTarget;
 	HitTargetCueSourceObject = InHitTargetCueSourceObject;
-	HitTargetCueParameters = InHitTargetCueParameters;
+	HitTargetVfxCueParameters = InHitTargetVfxCueParameters;
+	HitTargetSoundCueParameters = InHitTargetSoundCueParameters;
 
 	PendingCollisionSize = InCollisionSize;
 	bHasPendingCollisionSize = true;
@@ -131,8 +132,42 @@ void ABaseRangeOverlapEffectActor::SetAreaPeriodicComponent(UAreaPeriodicEffectC
 	}
 }
 
+void ABaseRangeOverlapEffectActor::InitializePeriodicCues(const FGameplayCueParameters& InPeriodicVfxCueParameters, const FGameplayCueParameters& InPeriodicSoundCueParameters)
+{
+	PeriodicVfxCueParameters = InPeriodicVfxCueParameters;
+	PeriodicSoundCueParameters = InPeriodicSoundCueParameters;
+}
+
 void ABaseRangeOverlapEffectActor::OnAreaPeriodicTrigger(const TArray<AActor*>& Targets)
 {
+	UAbilitySystemComponent* InstigatorASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(InstigatorActor);
+	if (IsValid(InstigatorASC))
+	{
+		// Periodic VFX
+		if (PeriodicVfxCueParameters.OriginalTag.IsValid())
+		{
+			FGameplayCueParameters Params = PeriodicVfxCueParameters;
+			Params.Location = GetActorLocation();
+			Params.EffectCauser = this;
+			{
+				FScopedPredictionWindow ForcedWindow(InstigatorASC, FPredictionKey(), false);
+				InstigatorASC->ExecuteGameplayCue(Params.OriginalTag, Params);
+			}
+		}
+
+		// Periodic Sound
+		if (PeriodicSoundCueParameters.OriginalTag.IsValid())
+		{
+			FGameplayCueParameters Params = PeriodicSoundCueParameters;
+			Params.Location = GetActorLocation();
+			Params.EffectCauser = this;
+			{
+				FScopedPredictionWindow ForcedWindow(InstigatorASC, FPredictionKey(), false);
+				InstigatorASC->ExecuteGameplayCue(Params.OriginalTag, Params);
+			}
+		}
+	}
+
 	ApplyEffectsToTargets(Targets);
 }
 
@@ -161,9 +196,23 @@ void ABaseRangeOverlapEffectActor::ApplyEffectsToTarget(AActor* TargetActor)
 		}
 	}
 
-	if (HitTargetCueParameters.OriginalTag.IsValid())
+	// VFX
+	if (HitTargetVfxCueParameters.OriginalTag.IsValid())
 	{
-		FGameplayCueParameters CueParameters = HitTargetCueParameters;
+		FGameplayCueParameters CueParameters = HitTargetVfxCueParameters;
+		CueParameters.Location = TargetActor->GetActorLocation();
+		CueParameters.EffectCauser = this;
+		CueParameters.TargetAttachComponent = TargetActor->GetRootComponent();
+		{
+			FScopedPredictionWindow ForcedWindow(InstigatorASC, FPredictionKey(), false);
+			InstigatorASC->ExecuteGameplayCue(CueParameters.OriginalTag, CueParameters);
+		}
+	}
+
+	// Sound
+	if (HitTargetSoundCueParameters.OriginalTag.IsValid())
+	{
+		FGameplayCueParameters CueParameters = HitTargetSoundCueParameters;
 		CueParameters.Location = TargetActor->GetActorLocation();
 		CueParameters.EffectCauser = this;
 		CueParameters.TargetAttachComponent = TargetActor->GetRootComponent();

@@ -26,10 +26,13 @@ public:
       const TArray<FGameplayEffectSpecHandle> &InEffectSpecHandles,
       AActor *InInstigatorActor, const FVector &InCollisionSize,
       bool bInHitOncePerTarget, const UObject *InHitTargetCueSourceObject,
-      const FGameplayCueParameters &InHitTargetCueParameters);
+      const FGameplayCueParameters &InHitTargetVfxCueParameters,
+      const FGameplayCueParameters &InHitTargetSoundCueParameters);
 
   /** 컴포넌트를 이 액터의 도트 관리자로 설정 (GEC에서 호출) */
   void SetAreaPeriodicComponent(UAreaPeriodicEffectComponent* InComponent);
+
+  void InitializePeriodicCues(const FGameplayCueParameters& InPeriodicVfxCueParameters, const FGameplayCueParameters& InPeriodicSoundCueParameters);
 
 protected:
   virtual void BeginPlay() override;
@@ -80,9 +83,18 @@ protected:
   TObjectPtr<const UObject> HitTargetCueSourceObject;
 
   UPROPERTY()
-  FGameplayCueParameters HitTargetCueParameters;
+  FGameplayCueParameters HitTargetVfxCueParameters;
+
+  UPROPERTY()
+  FGameplayCueParameters HitTargetSoundCueParameters;
 
   /** 도트 로직용 컴포넌트 */
   UPROPERTY()
   TObjectPtr<UAreaPeriodicEffectComponent> AreaPeriodicComponent;
+
+  UPROPERTY()
+  FGameplayCueParameters PeriodicVfxCueParameters;
+
+  UPROPERTY()
+  FGameplayCueParameters PeriodicSoundCueParameters;
 };

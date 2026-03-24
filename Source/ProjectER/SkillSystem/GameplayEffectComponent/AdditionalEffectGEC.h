@@ -9,6 +9,10 @@
 
 class USkillEffectDataAsset;
 class USkillNiagaraSpawnConfig;
+class USkillSoundSpawnConfig;
+ 
+struct FActiveGameplayEffectsContainer;
+struct FActiveGameplayEffect;
 
 /**
  * Enhancement effect configuration containing a list of SkillEffectDataAssets
@@ -31,6 +35,10 @@ public:
 	/** 버프가 활성화되어 있는 동안 재생할 나이아가라 효과 */
 	UPROPERTY(EditDefaultsOnly, Category = "Niagara")
 	TObjectPtr<USkillNiagaraSpawnConfig> ActiveVfxConfig;
+
+	/** 버프가 활성화되어 있는 동안 재생할 사운드 효과 */
+	UPROPERTY(EditDefaultsOnly, Category = "Sound")
+	TObjectPtr<USkillSoundSpawnConfig> ActiveSoundConfig;
 };
 
 /**

@@ -30,6 +30,12 @@ public:
 
     UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Periodic", meta = (EditCondition = "OriginType == ESummonOriginType::InstigatorBone"))
     FName SummonBoneName;
+
+    UPROPERTY(EditDefaultsOnly, Instanced, Category = "Summon Settings|Periodic")
+    TObjectPtr<USkillNiagaraSpawnConfig> PeriodicVfx;
+
+    UPROPERTY(EditDefaultsOnly, Instanced, Category = "Summon Settings|Periodic")
+    TObjectPtr<USkillSoundSpawnConfig> PeriodicSound;
 };
 
 UCLASS()
@@ -43,5 +49,5 @@ public:
 
 protected:
     virtual FTransform CalculateOriginTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const AActor* TargetActor) const override;
-    virtual void InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetCueParameters) const override;
+    virtual void InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetVfxCueParameters, const FGameplayCueParameters& HitTargetSoundCueParameters) const override;
 };

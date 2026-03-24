@@ -4,6 +4,8 @@
 #include "SkillSystem/GameplayEffectComponent/SummonRangeGEC.h"
 #include "SkillSystem/Actor/BaseRangeOverlapEffectActor/BaseRangeOverlapEffectActor.h"
 #include "SkillSystem/Component/AreaPeriodicEffectComponent.h"
+#include "SkillSystem/SkillNiagaraSpawnConfig.h"
+#include "SkillSystem/SkillSoundSpawnConfig.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemGlobals.h"
@@ -56,10 +58,10 @@ FTransform USummonPeriodicPoolGEC::CalculateOriginTransform(const FGameplayEffec
     return OriginTransform;
 }
 
-void USummonPeriodicPoolGEC::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetCueParameters) const
+void USummonPeriodicPoolGEC::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetVfxCueParameters, const FGameplayCueParameters& HitTargetSoundCueParameters) const
 {
     // 부모의 초기화 로직 (Effect Specs 설정 등) 실행
-    Super::InitializeRangeActor(RangeActor, Config, Instigator, Context, HitTargetCueParameters);
+    Super::InitializeRangeActor(RangeActor, Config, Instigator, Context, HitTargetVfxCueParameters, HitTargetSoundCueParameters);
     
     const USummonPeriodicPoolConfig* const PeriodicConfig = Cast<USummonPeriodicPoolConfig>(Config);
     if (IsValid(RangeActor) && IsValid(PeriodicConfig))
@@ -78,6 +80,23 @@ void USummonPeriodicPoolGEC::InitializeRangeActor(ABaseRangeOverlapEffectActor* 
 
             // 3. 주기적 효과 설정 (실행은 액터의 BeginPlay에서 담당)
             PeriodicComp->SetupPeriodicEffect(PeriodicConfig->Period, PeriodicConfig->bApplyImmediately);
+
+            // 4. 주기적 큐 설정
+            FGameplayCueParameters PeriodicVfxParams;
+            if (IsValid(PeriodicConfig->PeriodicVfx.Get()))
+            {
+                PeriodicVfxParams.OriginalTag = PeriodicConfig->PeriodicVfx->CueTag;
+                PeriodicVfxParams.SourceObject = PeriodicConfig->PeriodicVfx.Get();
+            }
+
+            FGameplayCueParameters PeriodicSoundParams;
+            if (IsValid(PeriodicConfig->PeriodicSound.Get()))
+            {
+                PeriodicSoundParams.OriginalTag = PeriodicConfig->PeriodicSound->CueTag;
+                PeriodicSoundParams.SourceObject = PeriodicConfig->PeriodicSound.Get();
+            }
+
+            RangeActor->InitializePeriodicCues(PeriodicVfxParams, PeriodicSoundParams);
         }
     }
 }
