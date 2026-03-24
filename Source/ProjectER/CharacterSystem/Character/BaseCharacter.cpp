@@ -237,7 +237,6 @@ void ABaseCharacter::PossessedBy(AController* NewController)
 	// ASC 초기화 (서버)
 	InitAbilitySystem();
 	
-	// 최초 1회만 HP,MP 초기화
 	if (HasAuthority())
 	{
 		UBaseAttributeSet* AS = nullptr;
@@ -281,26 +280,12 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 
 ETeamType ABaseCharacter::GetTeamType() const
 {
-	
-/*<<<<<<< HEAD
-	/*AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
-	return PS->TeamType;#1#
-
-	if (const AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
-	{
-		return ERPS->GetTeamType();
-	}
-
-	else return TeamID;
-=======*/
-	
 	if (AER_PlayerState* PS = GetPlayerState<AER_PlayerState>())
 	{
 		return PS->TeamType;
 	}
 	
 	return TeamID;
-
 }
 
 
@@ -321,12 +306,10 @@ void ABaseCharacter::HighlightActor(bool bIsHighlight, int32 StencilValue)
 {
 	if (USkeletalMeshComponent* MyMesh = GetMesh())
 	{
-		// 커스텀 뎁스 렌더링 켜기/끄기
 		MyMesh->SetRenderCustomDepth(bIsHighlight);
 		
 		if (bIsHighlight)
 		{
-			// 스텐실 값 부여 (어떤 색으로 아웃라인을 그릴지 포스트 프로세스에 전달)
 			MyMesh->SetCustomDepthStencilValue(StencilValue);
 		}
 	}
@@ -342,12 +325,8 @@ void ABaseCharacter::OnRep_TeamID()
 	
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, Message);
+		// GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, Message);
 	}
-	
-	// 
-	// UE_LOG(LogTemp, Warning, TEXT("%s"), *Message);
-	
 }
 
 void ABaseCharacter::Server_SetTeamID_Implementation(ETeamType NewTeamID)
@@ -399,8 +378,7 @@ void ABaseCharacter::OnRep_PlayerState()
 
 	// ASC 초기화 (클라이언트)
 	InitAbilitySystem();
-
-
+	
 	// [길 2] 클라이언트는 서버가 PlayerState를 복제해준 순간 초기화
 	InitPlayer();
 }
@@ -471,17 +449,10 @@ void ABaseCharacter::HandleLevelUp()
 			CueParams
 		);
 	}
-    
-	// UE_LOG(LogTemp, Warning, TEXT("[LevelUp] New Level: %f"), GetCharacterLevel());
 }
 
 float ABaseCharacter::GetCharacterLevel() const
 {
-	/*if (const UBaseAttributeSet* BaseSet = GetPlayerState<ABasePlayerState>() ? GetPlayerState<ABasePlayerState>()->GetAttributeSet() : nullptr)
-	{
-		return BaseSet->GetLevel();
-	}*/
-
 	if (const AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
 	{
 		if (const UBaseAttributeSet* AS = ERPS->GetAttributeSet())
@@ -529,8 +500,7 @@ UAnimMontage* ABaseCharacter::GetCharacterMontageByTag(FGameplayTag MontageTag)
 	{
 		return CachedMontages[MontageTag];
 	}
-    
-	// UE_LOG(LogTemp, Warning, TEXT("태그(%s)에 해당하는 몽타주가 캐싱되어 있지 않습니다!"), *MontageTag.ToString());
+	
 	return nullptr;
 }
 
@@ -555,12 +525,8 @@ void ABaseCharacter::PreloadMontages()
 
 void ABaseCharacter::Server_UpgradeSkill_Implementation(FGameplayTag SkillTag)
 {
-	// 함수 진입 확인 로그 (무슨 태그가 넘어왔는지 확인)
-	// UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 함수 진입! 전달받은 태그: %s"), *SkillTag.ToString());
-
 	if (!AbilitySystemComponent.IsValid())
 	{
-		// UE_LOG(LogTemp, Error, TEXT("[UpgradeSkill] 실패: ASC가 유효하지 않음!"));
 		return;
 	}
 
@@ -577,13 +543,11 @@ void ABaseCharacter::Server_UpgradeSkill_Implementation(FGameplayTag SkillTag)
 
 	if (!AS)
 	{
-		// UE_LOG(LogTemp, Error, TEXT("[UpgradeSkill] 실패: AttributeSet을 찾을 수 없음!"));
 		return;
 	}
 
 	if (AS->GetSkillPoint() <= 0.0f)
 	{
-		// UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 실패: 스킬 포인트 부족! 현재 SP: %f"), AS->GetSkillPoint());
 		return; 
 	}
 
@@ -606,19 +570,12 @@ void ABaseCharacter::Server_UpgradeSkill_Implementation(FGameplayTag SkillTag)
 	{
 		if (TargetSpec->Level >= 5) 
 		{
-			// UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 이미 마스터한 스킬! (현재 레벨: %d)"), TargetSpec->Level);
 			return;
 		}
 
 		TargetSpec->Level += 1;
 		AbilitySystemComponent->MarkAbilitySpecDirty(*TargetSpec);
 		AS->SetSkillPoint(AS->GetSkillPoint() - 1.0f);
-		
-		// UE_LOG(LogTemp, Warning, TEXT("[UpgradeSkill] 대성공! [%s] 스킬 레벨업 완료! 현재 레벨: %d"), *SkillTag.ToString(), TargetSpec->Level);
-	}
-	else
-	{
-		// UE_LOG(LogTemp, Error, TEXT("[UpgradeSkill] 실패: [%s] 태그를 가진 어빌리티를 찾을 수 없습니다!"), *SkillTag.ToString());
 	}
 }
 
@@ -638,18 +595,6 @@ void ABaseCharacter::OnRep_HeroData()
 
 void ABaseCharacter::InitAbilitySystem()
 {
-	// [전민성] - 원본 코드
-	//ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
-	//if (!PS) return;
-	// 
-	//UAbilitySystemComponent* ASC = PS->GetAbilitySystemComponent();
-	//if (!ASC) return;
-	// 
-	//// ASC 캐싱 / Actor Info 설정
-	//AbilitySystemComponent = ASC;
-	//ASC->InitAbilityActorInfo(PS, this);
-
-	// [전민성] - MVP 병합 시 ERPS로 통합 필요
 	ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
 
 	AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>();
@@ -778,10 +723,6 @@ void ABaseCharacter::InitAttributes()
 					// GE Spec 값 주입 (SetByCaller)
 					SpecHandle.Data->SetSetByCallerMagnitude(AttributeTag, Value);
 				}
-				else
-				{
-					// UE_LOG(LogTemp, Warning, TEXT("Curve Row Not Found: %s"), *RowName.ToString());
-				}
 			};
 
 		// 레벨 설정
@@ -859,8 +800,6 @@ void ABaseCharacter::InitVisuals()
 			GetMesh()->SetAnimInstanceClass(LoadedAnimClass);
 		}
 	}
-
-	//
 }
 
 void ABaseCharacter::Server_MoveToLocation_Implementation(FVector TargetLocation)
@@ -1048,64 +987,6 @@ void ABaseCharacter::UpdatePathFollowing()
 
 		SetActorRotation(NewRotation);
 	}
-
-#if WITH_EDITOR
-	// [디버깅] 액터 Rotation 체크
-	/*FRotator MyRot = GetActorRotation();
-	UE_LOG(LogTemp, Warning, TEXT("Rotation Check -> Pitch: %f | Yaw: %f"), MyRot.Pitch, MyRot.Yaw);*/
-
-	// [디버깅] 경로 및 이동 방향 시각화
-	/*if (bShowDebug)
-	{
-		// 전체 경로 그리기 (초록색 선)
-		for (int32 i = 0; i < PathPoints.Num() - 1; ++i)
-		{
-			DrawDebugLine(
-				GetWorld(),
-				PathPoints[i],
-				PathPoints[i + 1],
-				FColor::Green,
-				false, -1.0f, 0, 3.0f // 두께 3.0
-			);
-		}
-
-		// 현재 목표 지점 (빨간색 구체)
-		if (PathPoints.IsValidIndex(CurrentPathIndex))
-		{
-			DrawDebugSphere(
-				GetWorld(),
-				PathPoints[CurrentPathIndex],
-				30.0f, // 반지름
-				12,
-				FColor::Red,
-				false, -1.0f, 0, 2.0f
-			);
-
-			// 내 위치에서 목표 지점까지 연결선 (노란색 점선)
-			DrawDebugLine(
-				GetWorld(),
-				GetActorLocation(),
-				PathPoints[CurrentPathIndex],
-				FColor::Yellow,
-				false, -1.0f, 0, 1.5f
-			);
-		}
-
-		// 실제 이동 방향 (파란색 화살표)
-		FVector Velocity = GetVelocity();
-		if (!Velocity.IsNearlyZero())
-		{
-			DrawDebugDirectionalArrow(
-				GetWorld(),
-				GetActorLocation(),
-				GetActorLocation() + Velocity.GetSafeNormal() * 100.0f, // 1m 길이
-				50.0f, // 화살표 크기
-				FColor::Blue,
-				false, -1.0f, 0, 5.0f // 두께
-			);
-		}
-	}*/
-#endif
 }
 
 void ABaseCharacter::StopPathFollowing()
@@ -1141,11 +1022,9 @@ FRotator ABaseCharacter::GetCombatGazeRotation(FName SocketName)
     
 	if (TargetActor) 
 	{
-		// 단순 ActorLocation은 발밑(Root)일 수 있으므로, 
-		// 캡슐 컴포넌트의 중간이나 특정 뼈를 노리는 보정 로직 추가
 		TargetPos = TargetActor->GetActorLocation();
         
-		// [디테일] 타겟의 키 절반만큼 위를 조준 (가슴팍)
+		// 타겟의 키 절반만큼 위를 조준 (가슴팍)
 		// ACharacter로 캐스팅 가능하다면 Capsule HalfHeight를 더해줌
 		if (ACharacter* TargetChar = Cast<ACharacter>(TargetActor))
 		{
@@ -1339,15 +1218,6 @@ void ABaseCharacter::OnRep_TargetActor()
 	{
 		PathfindingTimer = 0.0f;
 	}
-
-#if WITH_EDITOR
-	/*if (bShowDebug)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[%s] Set Target Actor -> %s"),
-			*GetName(),
-			TargetActor ? *TargetActor->GetName() : TEXT("None"));
-	}*/
-#endif
 }
 
 void ABaseCharacter::ScanForEnemiesWhileMoving()
@@ -1643,9 +1513,6 @@ void ABaseCharacter::Multicast_Revive_Implementation(FVector RespawnLocation)
 	}
 	
 	SetActorTickEnabled(true);
-    
-	// (선택) 부활 이펙트 재생
-	// UNiagaraFunctionLibrary::SpawnSystemAtLocation(...)
 }
 
 void ABaseCharacter::Multicast_Death_Implementation()
@@ -1680,18 +1547,6 @@ void ABaseCharacter::Multicast_Death_Implementation()
 		GetCharacterMovement()->StopMovementImmediately();
 		GetCharacterMovement()->DisableMovement();
 	}
-
-	/* // 입력 차단 
-	if (APlayerController* PC = Cast<APlayerController>(GetController()))
-	{
-		PC->DisableInput(PC);
-        
-		// (선택) UI 띄우기 호출
-		// if (ABasePlayerController* BasePC = Cast<ABasePlayerController>(PC))
-		// {
-		//     BasePC->Client_SetDead(); 
-		// }
-	} */
     
 	// 틱 비활성화 (불필요한 연산 방지)
 	SetActorTickEnabled(false);
