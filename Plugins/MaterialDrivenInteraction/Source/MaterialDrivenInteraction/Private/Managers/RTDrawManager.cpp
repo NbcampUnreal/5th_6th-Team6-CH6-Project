@@ -178,7 +178,7 @@ void URTDrawManager::DrawImpulseForSlot(UTextureRenderTarget2D* RT, int32 SlotId
 			// DEBUG — remove bShouldStamp gate to verify RT is writing at all
 			if (!Data.MID_Impulse) { continue; }
 
-			UE_LOG(RTFoliageInvoker, Log,
+			UE_LOG(RTFoliageInvoker, Verbose,
 				TEXT("URTDrawManager::DrawImpulseForSlot >> Drawing Slot %d UV(%.3f,%.3f) Stamp=%s"),
 				SlotIdx, Data.CellUV.X, Data.CellUV.Y,
 				Data.bShouldStamp ? TEXT("yes") : TEXT("no"));
@@ -228,12 +228,12 @@ void URTDrawManager::DrawTiledBrush(
     if (bWrapLeft  && bWrapTop)    Tiles.Add({ FVector2D( 1.f, -1.f), EBrushTileType::Wrapped });
     if (bWrapRight && bWrapTop)    Tiles.Add({ FVector2D(-1.f, -1.f), EBrushTileType::Wrapped });
 
-    // 🔥 Pixel-safe inset (screen space)
+    //  Pixel-safe inset (screen space)
     const FVector2D PixelInset(0.5f, 0.5f);
     const FVector2D DrawPos  = PixelInset;
     const FVector2D DrawSize = CanvasSize - PixelInset * 2.0f;
 
-    // 🔥 UV-safe inset (this is the missing piece)
+    // UV-safe inset (this is the missing piece)
     const FVector2D UVInset(
         0.5f / CanvasSize.X,
         0.5f / CanvasSize.Y);
