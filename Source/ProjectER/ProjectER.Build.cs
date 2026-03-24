@@ -34,7 +34,10 @@ public class ProjectER : ModuleRules
             "PhysicsCore",// for physic material
             //"UnrealEd",//for the editor function
             "Projects",// for plugin module (IPluginManager::Get())
-
+            
+            "LevelSequence",// level sequence play
+            "MovieScene",
+            "MovieSceneTracks",
         });
         
         PrivateDependencyModuleNames.AddRange(new string[]

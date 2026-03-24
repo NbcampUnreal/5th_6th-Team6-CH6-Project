@@ -1,0 +1,32 @@
+﻿#include "Monster/GAS/GA/GA_MonsterState_Death.h"
+#include "Monster/BaseMonster.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Components/CapsuleComponent.h"
+
+UGA_MonsterState_Death::UGA_MonsterState_Death()
+{
+	StateInitData.MonsterAssetTags = FGameplayTagContainer(FGameplayTag::RequestGameplayTag("Ability.Action.Death"));
+	StateInitData.MontageType = EMonsterMontageType::Dead;
+	StateInitData.NiagaraCueTag = FGameplayTag::RequestGameplayTag("GameplayCue.Particle.Action.Death");
+	StateInitData.SoundCueTag = FGameplayTag::RequestGameplayTag("GameplayCue.Sound.Action.Death");
+	StateInitData.WaitTag = FGameplayTag::RequestGameplayTag("State.Life.Death");
+
+	SetAssetTags(StateInitData.MonsterAssetTags);
+}
+
+void UGA_MonsterState_Death::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
+{
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+
+	ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActorFromActorInfo());
+	if (IsValid(Monster))
+	{
+		if (UCharacterMovementComponent* MoveComp = Monster->GetCharacterMovement())
+		{
+			MoveComp->StopMovementImmediately();
+			MoveComp->DisableMovement();
+		}
+
+		Monster->Multicast_SetCollisionProfileName(FName("Spectator"));
+	}
+}

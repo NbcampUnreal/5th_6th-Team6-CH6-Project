@@ -49,6 +49,7 @@ public:
 	UMonsterRangeComponent* GetMonsterRangeComp() { return MonsterRangeComp; };
 	FMonsterTags& GetMonsterTags() { return MonsterTags; };
 	FPrimaryAssetId GetMonsterId() const { return MonsterId; }
+	UBaseMonsterAttributeSet* GetAttributeSet() { return AttributeSet; }
 	
 protected:
 
@@ -64,6 +65,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void SendStateTreeEvent(FGameplayTag InputTag);
+
+	UFUNCTION(BlueprintCallable) // SendAttackRangeEvent();
+	void SendAttackRangeEvent(float AttackRange);
 
 private:
 
@@ -95,9 +99,6 @@ private:
 	UFUNCTION() // SendTargetOffEvent()
 	void OnTargetLostHandle();
 
-	UFUNCTION(BlueprintCallable) // SendAttackRangeEvent();
-	void SendAttackRangeEvent(float AttackRange);
-	//
 
 	// HealthBar 변경용
 	UFUNCTION()
@@ -113,6 +114,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level);
 	
+	UFUNCTION(NetMulticast, BlueprintCallable, Reliable)
+	void Multicast_SetCollisionProfileName(FName ProfileName);
+
 private:
 	// 초기화 
 	void InitMonsterDataLoading(FPrimaryAssetId MonsterAssetId, float Level);
@@ -143,9 +147,6 @@ private:
 
 	UFUNCTION(BlueprintCallable)
 	bool HasASCTag(FGameplayTag Tag);
-
-	UFUNCTION(NetMulticast, BlueprintCallable, Reliable)
-	void Multicast_SetCollisionProfileName(FName ProfileName);
 
 	UFUNCTION(BlueprintCallable)
 	void GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGameplayEffect> GE, FGameplayTag Tag, float Amount);

@@ -128,38 +128,50 @@ void AER_OutGameMode::PostLogin(APlayerController* NewPlayer)
     }
 }
 
+
 void AER_OutGameMode::StartGame()
 {
     UE_LOG(LogTemp, Log, TEXT("[GM] : StartGame"));
 
     AER_GameState* GS = GetGameState<AER_GameState>();
-    if (GS)
+    if (!GS) return;
+
+    // Validate that a map has been assigned in the editor
+    if (!BattleMap.IsValid() && BattleMap.IsNull())
     {
-        UE_LOG(LogTemp, Log, TEXT("[GM] : StartGame"));
-
-        // 트래블 전 모든 클라이언트에게 로딩 화면을 띄우도록 지시
-        for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-        {
-            if (ABasePlayerController* PC = Cast<ABasePlayerController>(It->Get()))
-            {
-                PC->Client_OpenLoadingUI();
-            }
-        }
-
-        int32 PlayerCount = GS->PlayerArray.Num();
-        //FString TravelURL = FString::Printf(TEXT("/Game/Level/BattleMap/BattleMap?PlayerCount=%d"), PlayerCount);
-        FString TravelURL = FString::Printf(TEXT("/Game/Level/BasicMap?PlayerCount=%d"), PlayerCount);
-
-        GetWorld()->ServerTravel(TravelURL, true);
+        UE_LOG(LogTemp, Error, TEXT("[GM] : BattleMap is not set in the editor!"));
+        return;
     }
+
+    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+    {
+        if (ABasePlayerController* PC = Cast<ABasePlayerController>(It->Get()))
+        {
+            PC->Client_OpenLoadingUI();
+        }
+    }
+
+    int32 PlayerCount = GS->PlayerArray.Num();
+
+    // Extract just the asset name from the soft reference (e.g. "BasicMap")
+    FString MapName = BattleMap.GetAssetName();
+    FString TravelURL = FString::Printf(TEXT("%s?PlayerCount=%d"), *MapName, PlayerCount);
+
+    GetWorld()->ServerTravel(TravelURL, true);
 }
 
 void AER_OutGameMode::EndGame()
 {
-	if (!HasAuthority())
-		return;
+    if (!HasAuthority()) return;
 
-	GetWorld()->ServerTravel("/Game/Level/Level_Lobby", true);
+    if (!LobbyMap.IsValid() && LobbyMap.IsNull())
+    {
+        UE_LOG(LogTemp, Error, TEXT("[GM] : LobbyMap is not set in the editor!"));
+        return;
+    }
+
+    FString MapName = LobbyMap.GetAssetName();
+    GetWorld()->ServerTravel(MapName, true);
 }
 
 void AER_OutGameMode::ShowCharacterSelectionToAll()
