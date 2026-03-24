@@ -1,4 +1,4 @@
-#include "GameModeBase/GameMode/ER_InGameMode.h"
+﻿#include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
@@ -20,6 +20,9 @@
 #include "ItemSystem/Component/BaseInventoryComponent.h"
 #include "ItemSystem/Data/BaseItemData.h"
 #include "CharacterSystem/Data/CharacterData.h"
+
+#include "LevelManagement/LevelGraphManager/LevelAreaGameStateComp/LevelAreaGameStateComponent.h"
+#include "LevelManagement/LevelAreaTrackerComponent.h"
 
 void AER_InGameMode::BeginPlay()
 {
@@ -559,6 +562,12 @@ void AER_InGameMode::StartGame()
 
 				FTransform Location = RespawnSS->GetRespawnPointLocation(Idx);
 				PC->GetPawn()->SetActorTransform(Location);
+
+				if (ULevelAreaTrackerComponent* Tracker = PC->GetPawn()->FindComponentByClass<ULevelAreaTrackerComponent>())
+				{
+					Tracker->UpdateArea();
+				}
+
 				UE_LOG(LogTemp, Log, TEXT("[GM] Success Get SpawnPoint %d"), Idx);
 			}
 			else
@@ -738,6 +747,18 @@ void AER_InGameMode::HandlePhaseTimeUp()
 	{
 		ERGS->SetCurrentPhase(ERGS->GetCurrentPhase() + 1);
 		// 페이즈에 따라 작동할 코드 넣기
+		ULevelAreaGameStateComponent* AreaGSComp = ERGS->GetComponentByClass<ULevelAreaGameStateComponent>();
+		AreaGSComp->AdvancePhase();
+
+		FString Text = "";
+		for (auto& aa : AreaGSComp->HazardOrder)
+		{
+			Text.Append(" -> ");
+			Text.AppendInt(aa);
+
+		}
+		UE_LOG(LogTemp, Log, TEXT("[GM] AreaGSComp->HazardOrder : %s"), *Text);
+
 		UER_ObjectSubsystem* ObjectSS = GetWorld()->GetSubsystem<UER_ObjectSubsystem>();
 		if (ObjectSS)
 		{
