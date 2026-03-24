@@ -1,4 +1,4 @@
-#include "LevelAreaGameStateComponent.h"
+﻿#include "LevelAreaGameStateComponent.h"
 
 #include "Net/UnrealNetwork.h"
 #include "Engine/World.h"
@@ -75,7 +75,7 @@ void ULevelAreaGameStateComponent::GenerateGraph()
     {
         HazardSeed = FMath::Rand();  //rand seed
     }
-    
+
     UE_LOG(LevelAreaGraphManagement, Log,
         TEXT("BeginPlay >> Seed: %d"), HazardSeed);
 
@@ -200,7 +200,7 @@ void ULevelAreaGameStateComponent::AdvancePhase()
 void ULevelAreaGameStateComponent::ResetHazards(EAreaHazardState NewState)
 {
     CancelAllInstantDeath();
-    
+
     CurrentPhase = 0;
 
     if (ULevelAreaGraphSubsystem* Sub =
@@ -301,7 +301,7 @@ void ULevelAreaGameStateComponent::ApplyHazards(int32 Phase, EAreaHazardState St
     if (!Sub) return;
 
     // Full cumulative range from the beginning up to this phase
-    int32 PrevCount   = FMath::Min((Phase - 1) * HazardsPerPhase, HazardOrder.Num());
+    int32 PrevCount = FMath::Min((Phase - 1) * HazardsPerPhase, HazardOrder.Num());
     int32 ActiveCount = FMath::Min(Phase * HazardsPerPhase, HazardOrder.Num());
 
     // All nodes that should be active hazards at this phase
@@ -326,17 +326,6 @@ void ULevelAreaGameStateComponent::ApplyHazards(int32 Phase, EAreaHazardState St
     UE_LOG(LevelAreaGraphManagement, Log,
         TEXT("ApplyHazards >> Phase %d | New: %d | Total Active: %d | State: %s"),
         Phase, NewHazards.Num(), ActiveHazards.Num(), *UEnum::GetValueAsString(State));
-
-    FString ActiveHazardString;
-    for (int32 i = 0; i < ActiveHazards.Num(); i++)
-    {
-        ActiveHazardString += FString::Printf(TEXT("%d"), ActiveHazards[i]);
-        if (i < ActiveHazards.Num() - 1)
-            ActiveHazardString += TEXT(", ");
-    }
-
-    UE_LOG(LevelAreaGraphManagement, Log,
-        TEXT("ApplyHazards >> Active danger areas: [%s]"), *ActiveHazardString);
 }
 
 void ULevelAreaGameStateComponent::NotifyBridgeActors(const TArray<int32>& NodeIDs, EAreaHazardState State)
