@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -22,8 +22,14 @@ public:
 	void OnPhaseTimeUp();
 	void OnNoticeTimeUp();
 
+private:
+	void OnPeriodicCheckTick();
 
 private:
 	FTimerHandle PhaseTimer;
 	FTimerHandle NoticeTimer;
+	FTimerHandle PeriodicCheckTimer;
+
+	// 캐싱된 GameState. Subsystem이 소유권을 가지지 않으므로 TWeakObjectPtr 사용이 안전합니다.
+	TWeakObjectPtr<class AER_GameState> CachedGameState;
 };
