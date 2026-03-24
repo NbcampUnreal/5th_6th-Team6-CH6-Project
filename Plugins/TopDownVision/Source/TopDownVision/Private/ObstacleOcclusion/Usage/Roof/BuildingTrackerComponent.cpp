@@ -1,6 +1,7 @@
 #include "ObstacleOcclusion/Usage/Roof/BuildingTrackerComponent.h"
 #include "ObstacleOcclusion/Usage/Roof/BuildingOcclusionManager.h"
 #include "TopDownVisionDebug.h"
+#include "ObstacleOcclusion/Helper/OcclusionMeshUtil.h"
 
 DEFINE_LOG_CATEGORY(BuildingTracker);
 
@@ -12,6 +13,9 @@ UBuildingTrackerComponent::UBuildingTrackerComponent()
 void UBuildingTrackerComponent::BeginPlay()
 {
     Super::BeginPlay();
+
+    // apply the trace channel for the checking
+    InteriorTraceChannel = UOcclusionMeshUtil::GetInteriorTraceChannel();
 }
 
 // ── API ───────────────────────────────────────────────────────────────────────

@@ -30,6 +30,7 @@
 #include "Components/AudioComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "ItemSystem/Data/ItemRecipeRow.h"
+#include "NavigationSystem.h"
 
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/GameMode/ER_OutGameMode.h"
@@ -48,6 +49,72 @@
 
 //Log
 DEFINE_LOG_CATEGORY(Controller_Camera);
+
+namespace
+{
+	constexpr float LootInteractDistance = 300.f;
+
+	static float GetDistanceToActorBounds2D(const AActor* TargetActor, const FVector& FromLocation)
+	{
+		if (!IsValid(TargetActor))
+		{
+			return TNumericLimits<float>::Max();
+		}
+
+		const FBox Bounds = TargetActor->GetComponentsBoundingBox(true);
+		if (!Bounds.IsValid)
+		{
+			return FVector::Dist2D(FromLocation, TargetActor->GetActorLocation());
+		}
+
+		const FVector ClosestPoint(
+			FMath::Clamp(FromLocation.X, Bounds.Min.X, Bounds.Max.X),
+			FMath::Clamp(FromLocation.Y, Bounds.Min.Y, Bounds.Max.Y),
+			FMath::Clamp(FromLocation.Z, Bounds.Min.Z, Bounds.Max.Z)
+		);
+
+		return FVector::Dist2D(FromLocation, ClosestPoint);
+	}
+
+	static FVector GetApproachLocationForActor(UWorld* World, const AActor* TargetActor, const FVector& FromLocation)
+	{
+		if (!IsValid(TargetActor))
+		{
+			return FromLocation;
+		}
+
+		const FBox Bounds = TargetActor->GetComponentsBoundingBox(true);
+		if (!Bounds.IsValid)
+		{
+			return TargetActor->GetActorLocation();
+		}
+
+		const FVector Center = Bounds.GetCenter();
+		FVector Direction = (FromLocation - Center);
+		Direction.Z = 0.f;
+		Direction = Direction.GetSafeNormal();
+
+		if (Direction.IsNearlyZero())
+		{
+			Direction = FVector(1.f, 0.f, 0.f);
+		}
+
+		const float StandOff = FMath::Max(Bounds.GetExtent().Size2D(), 80.f) + 100.f;
+		FVector DesiredLocation = Center + Direction * StandOff;
+		DesiredLocation.Z = FromLocation.Z;
+
+		if (UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World))
+		{
+			FNavLocation Projected;
+			if (NavSys->ProjectPointToNavigation(DesiredLocation, Projected, FVector(100.f, 100.f, 300.f)))
+			{
+				return Projected.Location;
+			}
+		}
+
+		return DesiredLocation;
+	}
+}
 
 ABasePlayerController::ABasePlayerController()
 {
@@ -581,25 +648,31 @@ void ABasePlayerController::MoveToMouseCursor()
 				InteractionTarget = nullptr;
 			}*/
 
-		//2026/03/01 no safety check for the hit actor being nullptr. added the safety net
+			bool bShouldMoveToApproachLocation = false;
+
+			//2026/03/01 no safety check for the hit actor being nullptr. added the safety net
 			if (IsValid(HitActor))
 			{
 				if (HitActor->FindComponentByClass<ULootableComponent>())
 				{
 					InteractionTargetDistance =
-						FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
+						GetDistanceToActorBounds2D(HitActor, ControlledBaseChar->GetActorLocation());
 					InteractionTarget = HitActor;
+					bShouldMoveToApproachLocation = true;
 				}
 				else if (HitActor->FindComponentByClass<UER_TeleportComponent>())
 				{
-					InteractionTargetDistance = FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
+					InteractionTargetDistance =
+						GetDistanceToActorBounds2D(HitActor, ControlledBaseChar->GetActorLocation());
 					InteractionTarget = HitActor;
+					bShouldMoveToApproachLocation = true;
 				}
 				else if (HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
 				{
 					InteractionTargetDistance =
-						FVector::Dist(ControlledBaseChar->GetActorLocation(), HitActor->GetActorLocation());
+						GetDistanceToActorBounds2D(HitActor, ControlledBaseChar->GetActorLocation());
 					InteractionTarget = HitActor;
+					bShouldMoveToApproachLocation = true;
 				}
 				else
 				{
@@ -621,9 +694,17 @@ void ABasePlayerController::MoveToMouseCursor()
 			}
 
 			ControlledBaseChar->SetTarget(nullptr);
-			ControlledBaseChar->MoveToLocation(Hit.Location);
 
 			// SpawnDestinationEffect(Hit.Location);
+			if (bShouldMoveToApproachLocation && IsValid(HitActor))
+			{
+				ControlledBaseChar->MoveToLocation(
+					GetApproachLocationForActor(GetWorld(), HitActor, ControlledBaseChar->GetActorLocation()));
+			}
+			else
+			{
+				ControlledBaseChar->MoveToLocation(Hit.Location);
+			}
 		}
 		else
 		{
@@ -708,14 +789,15 @@ void ABasePlayerController::ProcessMouseInteraction()
 // [김현수 추가분] 거리 체크 및 실제 습득 함수
 void ABasePlayerController::CheckInteractionDistance()
 {
-	if (!InteractionTarget || !ControlledBaseChar)
+	if (!IsValid(InteractionTarget) || !IsValid(ControlledBaseChar))
 	{
+		InteractionTarget = nullptr;
 		return;
 	}
 
-	const float CurrentDistance = ControlledBaseChar->GetDistanceTo(InteractionTarget);
+	const float CurrentDistance = GetDistanceToActorBounds2D(InteractionTarget, ControlledBaseChar->GetActorLocation());
 
-	if (CurrentDistance > 200.f)
+	if (CurrentDistance > LootInteractDistance)
 	{
 		return;
 	}
@@ -1227,17 +1309,16 @@ void ABasePlayerController::Server_RequestPickup_Implementation(ABaseItemActor* 
 // 박스 아이템 루팅 RPC 시작
 void ABasePlayerController::Server_BeginLoot_Implementation(AActor* Actor)
 {
-	if (!Actor) return;
+	if (!IsValid(Actor)) return;
 
 	ABaseCharacter* Char = Cast<ABaseCharacter>(GetPawn());
-	if (!Char) return;
+	if (!IsValid(Char)) return;
 
 	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
 	if (!PS) return;
 
-	// 서버 권위 거리 검증 (치트 방지)
-	const float Dist = FVector::Dist(Char->GetActorLocation(), Actor->GetActorLocation());
-	if (Dist > 150.f) return;
+	const float Dist = GetDistanceToActorBounds2D(Actor, Char->GetActorLocation());
+	if (Dist > LootInteractDistance) return;
 
 	// 루팅 시작 시 캐릭터 정지
 	Char->StopMove();
@@ -1504,18 +1585,17 @@ void ABasePlayerController::Server_RequestTeleport_Implementation(int32 RegionIn
 
 void ABasePlayerController::Server_BeginLootFromActor_Implementation(AActor* TargetActor)
 {
-	if (!TargetActor)
+	if (!IsValid(TargetActor))
 		return;
 
 	ABaseCharacter* Char = Cast<ABaseCharacter>(GetPawn());
-	if (!Char)
+	if (!IsValid(Char))
 		return;
 
 	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
 	if (!PS)
 		return;
 
-	// LootableComponent 찾기
 	ULootableComponent* LootComp = TargetActor->FindComponentByClass<ULootableComponent>();
 	if (!LootComp)
 	{
@@ -1523,9 +1603,8 @@ void ABasePlayerController::Server_BeginLootFromActor_Implementation(AActor* Tar
 		return;
 	}
 
-	// 거리 체크
-	const float Dist = FVector::Dist(Char->GetActorLocation(), TargetActor->GetActorLocation());
-	if (Dist > 500.f)
+	const float Dist = GetDistanceToActorBounds2D(TargetActor, Char->GetActorLocation());
+	if (Dist > LootInteractDistance)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Server_BeginLootFromActor: Too far (%.1f)"), Dist);
 		return;
@@ -2138,39 +2217,17 @@ void ABasePlayerController::CompleteCrafting()
 		return;
 	}
 
-	// 재료 소모 (서버 권위) - public 함수 사용
-	if (MyPawn->HasAuthority())
-	{
-		// 재료 1 소모
-		InvComp->ConsumeItemAtSlot(Mat1Index);
+	// 서버 RPC 호출 (클라이언트/서버 모두)
+	Server_CompleteCrafting(*CurrentCraftingRecipe, Mat1Index, Mat2Index);
 
-		// 재료 2 소모
-		InvComp->ConsumeItemAtSlot(Mat2Index);
-
-		// 결과 아이템 생성 (AddItem 사용 - 자동 스택)
-		UBaseItemData* const ResultItem = CurrentCraftingRecipe->ResultItem.LoadSynchronous();
-		if (ResultItem)
-		{
-			const bool bAdded = InvComp->AddItem(ResultItem);
-			if (bAdded)
-			{
-				UE_LOG(LogTemp, Log, TEXT("[Crafting] Crafted '%s'"), *ResultItem->ItemName.ToString());
-			}
-			else
-			{
-				UE_LOG(LogTemp, Error, TEXT("[Crafting] Failed to add result item"));
-			}
-		}
-	}
-
-	// 사운드 정지
+	// 사운드 정지 (로컬)
 	if (CraftingSoundComponent)
 	{
 		CraftingSoundComponent->Stop();
 		CraftingSoundComponent = nullptr;
 	}
 
-	// 조합 상태 종료
+	// 조합 상태 종료 (로컬)
 	bIsCrafting = false;
 	CurrentCraftingRecipe = nullptr;
 
@@ -2215,4 +2272,72 @@ int32 ABasePlayerController::FindFirstEmptySlot()
 	}
 
 	return -1;
+}
+
+void ABasePlayerController::Server_CompleteCrafting_Implementation(FItemRecipeRow Recipe, int32 Mat1Index, int32 Mat2Index)
+{
+	APawn* const MyPawn = GetPawn();
+	if (MyPawn == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Crafting Server] Pawn is null"));
+		return;
+	}
+
+	UBaseInventoryComponent* const InvComp = MyPawn->FindComponentByClass<UBaseInventoryComponent>();
+	if (InvComp == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Crafting Server] InventoryComponent is null"));
+		return;
+	}
+
+	// 서버에서 재료 재확인 (치트 방지)
+	UBaseItemData* const Mat1 = Recipe.Material1.LoadSynchronous();
+	UBaseItemData* const Mat2 = Recipe.Material2.LoadSynchronous();
+
+	if (Mat1 == nullptr || Mat2 == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Crafting Server] Invalid materials in recipe"));
+		return;
+	}
+
+	// 재료가 맞는지 검증
+	if (!InvComp->InventoryContents.IsValidIndex(Mat1Index) || !InvComp->InventoryContents.IsValidIndex(Mat2Index))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Crafting Server] Invalid slot indices"));
+		return;
+	}
+
+	UBaseItemData* const SlotItem1 = InvComp->GetItemAt(Mat1Index);
+	UBaseItemData* const SlotItem2 = InvComp->GetItemAt(Mat2Index);
+
+	if (SlotItem1 != Mat1 || SlotItem2 != Mat2)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Crafting Server] Material mismatch - possible cheat attempt"));
+		return;
+	}
+
+	// 재료 소모 (서버 권위)
+	InvComp->ConsumeItemAtSlot(Mat1Index);
+	InvComp->ConsumeItemAtSlot(Mat2Index);
+
+	// 결과 아이템 생성 (서버 권위)
+	UBaseItemData* const ResultItem = Recipe.ResultItem.LoadSynchronous();
+	if (ResultItem)
+	{
+		const bool bAdded = InvComp->AddItem(ResultItem);
+		if (bAdded)
+		{
+			UE_LOG(LogTemp, Log, TEXT("[Crafting Server] Successfully crafted '%s' for player %s"),
+				*ResultItem->ItemName.ToString(),
+				*MyPawn->GetName());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("[Crafting Server] Failed to add result item to inventory"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Crafting Server] Result item is null"));
+	}
 }

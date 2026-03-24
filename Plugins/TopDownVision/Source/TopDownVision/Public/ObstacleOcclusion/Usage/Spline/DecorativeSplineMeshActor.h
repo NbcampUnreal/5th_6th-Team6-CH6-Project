@@ -50,12 +50,12 @@ protected:
 
     // Tag applied to all generated segments — used by occlusion DiscoverChildMeshes
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spline Mesh|Occlusion")
-    FName SegmentOcclusionTag = TEXT("OcclusionMesh");
+    FName SegmentOcclusionTag = NAME_None;
 
 private:
 
     void ClearSplineMeshComponents();
-    void GenerateSegment(int32 SegmentIndex);
+    void GenerateSegment(int32 SegmentIndex, FName OcclusionTag);
 
     void GetLocationAndTangent(
         int32 SegmentIndex,

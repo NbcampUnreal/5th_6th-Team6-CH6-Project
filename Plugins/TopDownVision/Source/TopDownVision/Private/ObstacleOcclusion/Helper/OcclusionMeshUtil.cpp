@@ -3,16 +3,55 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Components/SplineMeshComponent.h"
 #include "Materials/MaterialInterface.h"
+
+#include "ObstacleOcclusion/Manager/OcclusionBinderSubsystem.h"
+#include "ObstacleOcclusion/MIDPool/OcclusionMIDSlot.h"
+#include "EditorSetting/OcclusionMIDSettings.h"
 
 DEFINE_LOG_CATEGORY(OcclusionMeshHelper);
 
 // ── Discover ──────────────────────────────────────────────────────────────────
 
+FName UOcclusionMeshUtil::GetNormalMeshTag()
+{
+    const UOcclusionTagSettings* S = GetDefault<UOcclusionTagSettings>();
+    return S ? S->NormalMeshTag : TEXT("OcclusionMesh");
+}
+
+FName UOcclusionMeshUtil::GetOccludedMeshTag()
+{
+    const UOcclusionTagSettings* S = GetDefault<UOcclusionTagSettings>();
+    return S ? S->OccludedMeshTag : TEXT("OccludedVisual");
+}
+
+FName UOcclusionMeshUtil::GetRTMaterialTag()
+{
+    const UOcclusionTagSettings* S = GetDefault<UOcclusionTagSettings>();
+    return S ? S->RTMaterialTag : TEXT("RTOcclusionMesh");
+}
+
+FName UOcclusionMeshUtil::GetNoShadowProxyTag()
+{
+    const UOcclusionTagSettings* S = GetDefault<UOcclusionTagSettings>();
+    return S ? S->NoShadowProxyTag : NAME_None;
+}
+
+FName UOcclusionMeshUtil::GetAlphaParameterName()
+{
+    const UOcclusionTagSettings* S = GetDefault<UOcclusionTagSettings>();
+    return S ? S->AlphaParameterName : TEXT("OcclusionAlpha");
+}
+
+FName UOcclusionMeshUtil::GetForceOccludeParameterName()
+{
+    const UOcclusionTagSettings* S = GetDefault<UOcclusionTagSettings>();
+    return S ? S->ForceOccludeParameterName : TEXT("FullOcclusionAlpha");
+}
+
 void UOcclusionMeshUtil::DiscoverChildMeshes(
     USceneComponent* Root,
-    FName NormalTag,
-    FName OccludedTag,
     TArray<TSoftObjectPtr<UMeshComponent>>& OutNormalMeshes,
     TArray<TSoftObjectPtr<UMeshComponent>>& OutOccludedMeshes)
 {
@@ -29,6 +68,9 @@ void UOcclusionMeshUtil::DiscoverChildMeshes(
     UE_LOG(OcclusionMeshHelper, Log,
         TEXT("UOcclusionMeshUtil::DiscoverChildMeshes>> Scanning children of %s"),
         *Root->GetOwner()->GetName());
+
+    const FName NormalTag   = GetNormalMeshTag();
+    const FName OccludedTag = GetOccludedMeshTag();
 
     TArray<USceneComponent*> Children;
     Root->GetChildrenComponents(true, Children);
@@ -139,6 +181,186 @@ void UOcclusionMeshUtil::CreateDynamicMaterials_Skeletal(
     CreateMIDsForMeshType(Meshes, OutMIDs, false);
 }
 
+void UOcclusionMeshUtil::CheckoutMaterials(const TArray<TSoftObjectPtr<UMeshComponent>>& Meshes,
+    UOcclusionBinderSubsystem* Pool, TArray<FOcclusionMIDSlot>& OutSlots)
+{
+    OutSlots.Reset();
+    if (!Pool) return;
+
+    for (const TSoftObjectPtr<UMeshComponent>& MeshPtr : Meshes)
+    {
+        UMeshComponent* Mesh = MeshPtr.Get();
+        if (!IsValid(Mesh)) continue;
+
+        const int32 NumMats = Mesh->GetNumMaterials();
+        for (int32 SlotIdx = 0; SlotIdx < NumMats; ++SlotIdx)
+        {
+            UMaterialInterface* Current = Mesh->GetMaterial(SlotIdx);
+            if (!Current) continue;
+
+            // Unwrap any already-applied MID to get the real asset for the pool key
+            UMaterialInterface* ParentAsset = Current;
+            if (const UMaterialInstanceDynamic* ExistingMID = Cast<UMaterialInstanceDynamic>(Current))
+            {
+                if (!ExistingMID->Parent) continue;
+                ParentAsset = ExistingMID->Parent;
+            }
+
+            UMaterialInstanceDynamic* MID = Pool->CheckoutMID(ParentAsset, Mesh);
+            if (!MID) continue;
+
+            Mesh->SetMaterial(SlotIdx, MID);
+
+            FOcclusionMIDSlot& Slot = OutSlots.AddDefaulted_GetRef();
+            Slot.Mesh             = Mesh;
+            Slot.SlotIndex        = SlotIdx;
+            Slot.OriginalMaterial = ParentAsset;
+            Slot.MID              = MID;
+
+            UE_LOG(OcclusionMeshHelper, Verbose,
+                TEXT("UOcclusionMeshUtil::CheckoutMaterials>> %s slot %d | Parent: %s"),
+                *Mesh->GetName(), SlotIdx, *ParentAsset->GetName());
+        }
+    }
+
+    UE_LOG(OcclusionMeshHelper, Verbose,
+        TEXT("UOcclusionMeshUtil::CheckoutMaterials>> Checked out %d slots"),
+        OutSlots.Num());
+}
+
+void UOcclusionMeshUtil::ReturnMaterials(TArray<FOcclusionMIDSlot>& Slots, UOcclusionBinderSubsystem* Pool)
+{
+    for (int32 i = Slots.Num() - 1; i >= 0; --i)
+    {
+        FOcclusionMIDSlot& Slot = Slots[i];
+        if (!Slot.bPooled) continue;
+
+        if (Pool && IsValid(Slot.MID))
+            Pool->ReturnMID(Slot.MID);
+
+        if (Slot.Mesh.IsValid())
+            Slot.Mesh->SetMaterial(Slot.SlotIndex, Slot.OriginalMaterial);
+
+        Slots.RemoveAtSwap(i, EAllowShrinking::No);
+    }
+
+    UE_LOG(OcclusionMeshHelper, Verbose,
+        TEXT("UOcclusionMeshUtil::ReturnMaterials>> Pooled slots returned, non-pooled kept"));
+}
+
+void UOcclusionMeshUtil::AcquireMaterials(
+    const TArray<TSoftObjectPtr<UMeshComponent>>& Meshes,
+    const TArray<FName>& RequiredParameters,
+    TArray<FOcclusionMIDSlot>& OutSlots,
+    UOcclusionBinderSubsystem* Pool)
+{
+    OutSlots.Reset();
+
+    for (const TSoftObjectPtr<UMeshComponent>& MeshPtr : Meshes)
+    {
+        UMeshComponent* Mesh = MeshPtr.Get();
+        if (!IsValid(Mesh)) continue;
+
+        const int32 NumMats = Mesh->GetNumMaterials();
+        for (int32 SlotIdx = 0; SlotIdx < NumMats; ++SlotIdx)
+        {
+            UMaterialInterface* Current = Mesh->GetMaterial(SlotIdx);
+            if (!Current) continue;
+
+            // Unwrap existing MID to get real parent asset
+            UMaterialInterface* ParentAsset = Current;
+            if (const UMaterialInstanceDynamic* ExistingMID = Cast<UMaterialInstanceDynamic>(Current))
+            {
+                if (!IsValid(ExistingMID) || !IsValid(ExistingMID->Parent)) continue;
+                ParentAsset = ExistingMID->Parent;
+            }
+
+            // Skip slots whose material doesn't have all required parameters
+            if (!DoesMaterialHaveScalarParameters(ParentAsset, RequiredParameters))
+            {
+                UE_LOG(OcclusionMeshHelper, Verbose,
+                    TEXT("UOcclusionMeshUtil::AcquireMaterials>> %s slot %d skipped — missing required params"),
+                    *Mesh->GetName(), SlotIdx);
+                continue;
+            }
+
+            const bool bUsePool = Pool != nullptr;
+
+            UMaterialInstanceDynamic* MID = bUsePool
+                ? Pool->CheckoutMID(ParentAsset, Mesh)
+                : Mesh->CreateDynamicMaterialInstance(SlotIdx, ParentAsset);
+
+            if (!IsValid(MID))
+            {
+                if (bUsePool)
+                {
+                    // Pool full — mesh keeps its existing direct MID, skip pooled slot
+                    UE_LOG(OcclusionMeshHelper, Verbose,
+                        TEXT("UOcclusionMeshUtil::AcquireMaterials>> %s slot %d — pool full, mesh skipped"),
+                        *Mesh->GetName(), SlotIdx);
+                }
+                else
+                {
+                    UE_LOG(OcclusionMeshHelper, Warning,
+                        TEXT("UOcclusionMeshUtil::AcquireMaterials>> %s slot %d — MID acquisition failed"),
+                        *Mesh->GetName(), SlotIdx);
+                }
+                continue;
+            }
+
+            if (bUsePool)
+            {
+                if (!IsValid(Mesh))
+                {
+                    Pool->ReturnMID(MID);
+                    continue;
+                }
+
+                if (Mesh->IsA<USplineMeshComponent>())
+                {
+                    Pool->ReturnMID(MID);
+
+                    UMaterialInstanceDynamic* DirectMID = Mesh->CreateDynamicMaterialInstance(SlotIdx, ParentAsset);
+                    if (!IsValid(DirectMID)) continue;
+
+                    FOcclusionMIDSlot& Slot = OutSlots.AddDefaulted_GetRef();
+                    Slot.Mesh             = Mesh;
+                    Slot.SlotIndex        = SlotIdx;
+                    Slot.OriginalMaterial = ParentAsset;
+                    Slot.MID              = DirectMID;
+                    Slot.bPooled          = false;
+
+                    UE_LOG(OcclusionMeshHelper, Verbose,
+                        TEXT("UOcclusionMeshUtil::AcquireMaterials>> %s slot %d | spline — direct create"),
+                        *Mesh->GetName(), SlotIdx);
+                    continue;
+                }
+
+                Mesh->SetMaterial(SlotIdx, MID);
+            }
+
+            
+
+            FOcclusionMIDSlot& Slot = OutSlots.AddDefaulted_GetRef();
+            Slot.Mesh             = Mesh;
+            Slot.SlotIndex        = SlotIdx;
+            Slot.OriginalMaterial = ParentAsset;
+            Slot.MID              = MID;
+            Slot.bPooled          = bUsePool;
+
+            UE_LOG(OcclusionMeshHelper, Verbose,
+                TEXT("UOcclusionMeshUtil::AcquireMaterials>> %s slot %d | %s | Parent: %s"),
+                *Mesh->GetName(), SlotIdx,
+                bUsePool ? TEXT("pooled") : TEXT("created"),
+                *ParentAsset->GetName());
+        }
+    }
+
+    UE_LOG(OcclusionMeshHelper, Log,
+        TEXT("UOcclusionMeshUtil::AcquireMaterials>> %d slots acquired (%s)"),
+        OutSlots.Num(), Pool ? TEXT("pooled") : TEXT("created"));
+}
+
 // ── Shadow Proxy Generation ───────────────────────────────────────────────────
 
 void UOcclusionMeshUtil::GenerateShadowProxyMeshes(
@@ -155,7 +377,6 @@ void UOcclusionMeshUtil::GenerateShadowProxyMeshes(
         return;
     }
 
-    // Destroy existing proxies
     for (TObjectPtr<UStaticMeshComponent> Proxy : OutStaticProxies)
         if (Proxy) Proxy->DestroyComponent();
     OutStaticProxies.Empty();
@@ -171,10 +392,20 @@ void UOcclusionMeshUtil::GenerateShadowProxyMeshes(
             *Owner->GetName());
     }
 
+    const FName NoShadowTag = GetNoShadowProxyTag();  // loaded from UOcclusionTagSettings
+
     for (const TSoftObjectPtr<UMeshComponent>& MeshPtr : SourceMeshes)
     {
         UMeshComponent* SourceMesh = MeshPtr.Get();
         if (!SourceMesh) continue;
+
+        if (NoShadowTag != NAME_None && SourceMesh->ComponentHasTag(NoShadowTag))
+        {
+            UE_LOG(OcclusionMeshHelper, Log,
+                TEXT("UOcclusionMeshUtil::GenerateShadowProxyMeshes>> %s skipped — has NoShadowTag '%s'"),
+                *SourceMesh->GetName(), *NoShadowTag.ToString());
+            continue;
+        }
 
         // ── Static proxy ──────────────────────────────────────────────────
         if (UStaticMeshComponent* SourceStatic = Cast<UStaticMeshComponent>(SourceMesh))
@@ -244,4 +475,39 @@ void UOcclusionMeshUtil::GenerateShadowProxyMeshes(
     UE_LOG(OcclusionMeshHelper, Log,
         TEXT("UOcclusionMeshUtil::GenerateShadowProxyMeshes>> Done for %s — Static: %d | Skeletal: %d"),
         *Owner->GetName(), OutStaticProxies.Num(), OutSkeletalProxies.Num());
+}
+
+TEnumAsByte<ECollisionChannel> UOcclusionMeshUtil::GetOcclusionTraceChannel()
+{
+    const UOcclusionTagSettings* S = GetDefault<UOcclusionTagSettings>();
+    return S ? S->OcclusionTraceChannel : TEnumAsByte<ECollisionChannel>(ECC_GameTraceChannel1);
+}
+
+TEnumAsByte<ECollisionChannel> UOcclusionMeshUtil::GetMouseTraceChannel()
+{
+    const UOcclusionTagSettings* S = GetDefault<UOcclusionTagSettings>();
+    return S ? S->MouseTraceChannel : TEnumAsByte<ECollisionChannel>(ECC_Visibility);
+}
+
+TEnumAsByte<ECollisionChannel> UOcclusionMeshUtil::GetInteriorTraceChannel()
+{
+    const UOcclusionTagSettings* S = GetDefault<UOcclusionTagSettings>();
+    return S ? S->InteriorTraceChannel : TEnumAsByte<ECollisionChannel>(ECC_GameTraceChannel2);
+}
+
+bool UOcclusionMeshUtil::DoesMaterialHaveScalarParameters(const UMaterialInterface* Material,
+                                                          const TArray<FName>& ParameterNames)
+{
+    if (!Material || ParameterNames.IsEmpty()) return false;
+
+    float Dummy = 0.f;
+    for (const FName& Param : ParameterNames)
+    {
+        if (Param == NAME_None) continue;  // skip invalid
+
+        if (!Material->GetScalarParameterValue(Param, Dummy))
+            return false;  // this param doesn't exist — fail immediately
+    }
+
+    return true;
 }

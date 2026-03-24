@@ -201,6 +201,11 @@ private:
 	// 조합 채널링 완료
 	void CompleteCrafting();
 
+	// 서버 RPC : 조합 완료 처리
+	UFUNCTION(Server, Reliable)
+	void Server_CompleteCrafting(FItemRecipeRow Recipe, int32 Mat1Index, int32 Mat2Index);
+
+
 	// 재료가 인벤토리에 있는지 확인
 	bool HasMaterialsInInventory(const FItemRecipeRow* Recipe, int32& OutMat1Index, int32& OutMat2Index);
 

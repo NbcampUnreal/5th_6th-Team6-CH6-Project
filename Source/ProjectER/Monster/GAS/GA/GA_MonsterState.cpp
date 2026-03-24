@@ -30,14 +30,6 @@ void UGA_MonsterState::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
-
-	if (StateInitData.MontageType == EMonsterMontageType::None || StateInitData.WaitTag.IsValid() == false)
-	{
-		UE_LOG(LogTemp, Error, TEXT("UGA_MonsterState::ActivateAbility : [%s] 데이터 초기화 누락!"), *GetName());
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
-
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
@@ -55,9 +47,30 @@ void UGA_MonsterState::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 	if (IsValid(Montage))
 	{
 		UAbilityTask_PlayMontageAndWait* WaitPlayMontageTask =
-			UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, "PlayMontageTask", Montage);
+			UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
+				this, 
+				NAME_None,
+				Montage,
+				1.f,
+				NAME_None,
+				true,
+				1.f,
+				0.f,
+				false
+			);
+
+		WaitPlayMontageTask->OnCompleted.AddDynamic(this, &UGA_MonsterState::OnMontageCompleted);
+		WaitPlayMontageTask->OnBlendedIn.AddDynamic(this, &UGA_MonsterState::OnMontageBlendIn);
+		WaitPlayMontageTask->OnBlendOut.AddDynamic(this, &UGA_MonsterState::OnMontageBlendOut);
+		WaitPlayMontageTask->OnInterrupted.AddDynamic(this, &UGA_MonsterState::OnMontageInterrupt);
+		WaitPlayMontageTask->OnCancelled.AddDynamic(this, &UGA_MonsterState::OnMontageCancel);
 
 		WaitPlayMontageTask->ReadyForActivation();
+	}
+	else
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
 	}
 
 	if (StateInitData.SoundCueTag.IsValid())
@@ -76,17 +89,40 @@ void UGA_MonsterState::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 
 	if (StateInitData.WaitTag.IsValid())
 	{
-		UAbilityTask_WaitGameplayTagRemoved* WaitRemoveTask = UAbilityTask_WaitGameplayTagRemoved::WaitGameplayTagRemove(this, StateInitData.WaitTag);
-		WaitRemoveTask->Removed.AddDynamic(this, &UGA_MonsterState::OnTagRemoved);
-		WaitRemoveTask->ReadyForActivation();
+		if (bIsUseWaitTag)
+		{
+			UAbilityTask_WaitGameplayTagRemoved* WaitRemoveTask = UAbilityTask_WaitGameplayTagRemoved::WaitGameplayTagRemove(this, StateInitData.WaitTag);
+			WaitRemoveTask->Removed.AddDynamic(this, &UGA_MonsterState::OnTagRemoved);
+			WaitRemoveTask->ReadyForActivation();
+		}
 	}
-	else
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
-	}
+}
+
+void UGA_MonsterState::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
+
+void UGA_MonsterState::OnMontageCompleted()
+{
+}
+
+void UGA_MonsterState::OnMontageBlendIn()
+{
+}
+
+void UGA_MonsterState::OnMontageBlendOut()
+{
+}
+
+void UGA_MonsterState::OnMontageInterrupt()
+{
+}
+
+void UGA_MonsterState::OnMontageCancel()
+{
 }
 
 void UGA_MonsterState::OnTagRemoved()
 {
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }

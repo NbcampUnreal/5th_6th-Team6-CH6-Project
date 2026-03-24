@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/TextureRenderTarget2D.h"
+#include "Engine/DeveloperSettings.h"// for editor setting
 #include "RTPoolTypes.generated.h"
 
 USTRUCT(BlueprintType)
@@ -57,13 +58,17 @@ struct MATERIALDRIVENINTERACTION_API FRTPoolEntry
 };
 
 UCLASS(config = Game, defaultconfig, meta = (DisplayName = "Foliage RT Pool"))
-class MATERIALDRIVENINTERACTION_API URTPoolSettings : public UObject
+class MATERIALDRIVENINTERACTION_API URTPoolSettings : public UDeveloperSettings
 {
 	GENERATED_BODY()
 
 public:
 	URTPoolSettings()
 	{
+		//category view
+		CategoryName  = TEXT("MaterialDrivenInteraction");
+		SectionName   = TEXT("Foliage RT Pool");
+
 		PoolSize      = 9;
 		CellSize      = 2000.f;
 		RTResolution  = 512;

@@ -18,6 +18,9 @@ class TOPDOWNVISION_API UOcclusionBinderSubsystem : public UWorldSubsystem
 
 public:
 
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+	virtual void Deinitialize() override;
+
 	// Called by AOcclusionBinder at BeginPlay for each primitive on its bound actors
 	void RegisterBinderPrimitive(UPrimitiveComponent* Prim, AOcclusionBinder* Binder);
 
@@ -28,8 +31,24 @@ public:
 	// Returns the binder that owns the given primitive, or nullptr
 	AOcclusionBinder* FindBinder(UPrimitiveComponent* Prim) const;
 
+
+	// Returns a recycled MID for Parent, or creates a new one.
+	// Outer is only used when creating — any stable UObject works (e.g. the mesh).
+	UMaterialInstanceDynamic* CheckoutMID(UMaterialInterface* Parent, UObject* Outer);
+
+	void ReturnMID(UMaterialInstanceDynamic* MID);
+
+	void PrePopulatePool();// populate the mid in pool
+	void CommitGenocide();// kill them all
+
 private:
 
 	// Primitive → binder pair — key is hit primitive, value is owning binder
 	TMap<TWeakObjectPtr<UPrimitiveComponent>, TWeakObjectPtr<AOcclusionBinder>> PrimitiveToBinderMap;
+	
+	TMap<TObjectPtr<UMaterialInterface>, TArray<TObjectPtr<UMaterialInstanceDynamic>>> MIDPool;
+
+	// GC anchor — prevents the engine from collecting idle pooled MIDs
+	UPROPERTY()
+	TArray<TObjectPtr<UMaterialInstanceDynamic>> AllPooledMIDs;
 };
