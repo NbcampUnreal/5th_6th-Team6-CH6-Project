@@ -1,6 +1,6 @@
-﻿#include "SkillSystem/GameplayEffectComponent/BaseGEC.h"
+#include "SkillSystem/GameplayEffectComponent/BaseGEC.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGECConfig.h"
-#include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
+#include "SkillSystem/GameplayEffect/SkillEffectDataAsset.h"
 #include "SkillSystem/GameplayEffectComponent/AdditionalEffectGEC.h"
 #include "SkillSystem/GameAbility/SkillBase.h"
 #include "AbilitySystemComponent.h"

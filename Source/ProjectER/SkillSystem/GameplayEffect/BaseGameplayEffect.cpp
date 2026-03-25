@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "SkillSystem/GameplyeEffect/BaseGameplayEffect.h"
+#include "SkillSystem/GameplayEffect/BaseGameplayEffect.h"
 #include "GameplayEffect.h"
 #include "SkillSystem/GameplayEffectExecutionCalculation/BaseExecutionCalculation.h"
 #include "SkillSystem/GameplayModMagnitudeCalculation/BaseModMagnitudeCalculation.h"

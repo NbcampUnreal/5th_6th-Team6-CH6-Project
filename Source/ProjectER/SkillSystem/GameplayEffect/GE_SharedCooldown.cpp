@@ -1,7 +1,7 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "SkillSystem/GameplyeEffect/GE_SharedCooldown.h"
+#include "SkillSystem/GameplayEffect/GE_SharedCooldown.h"
 #include "GameplayEffect.h"
 
 UGE_SharedCooldown::UGE_SharedCooldown()

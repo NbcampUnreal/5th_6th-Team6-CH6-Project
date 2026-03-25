@@ -1,11 +1,11 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
 #include "SkillSystem/SkillData.h"
-#include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
+#include "SkillSystem/GameplayEffect/SkillEffectDataAsset.h"
 #include "BaseSkillConfig.generated.h"
 
 /**
@@ -46,10 +46,10 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Config", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<USkillBase> AbilityClass;
 
-	FORCEINLINE const TArray<TObjectPtr<USkillEffectDataAsset>>& GetExcutionEffects() const { return ExcutionEffects; }
+	FORCEINLINE const TArray<TObjectPtr<USkillEffectDataAsset>>& GetExecutionEffects() const { return ExecutionEffects; }
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Config")
-	TArray<TObjectPtr<USkillEffectDataAsset>> ExcutionEffects;
+	TArray<TObjectPtr<USkillEffectDataAsset>> ExecutionEffects;
 
 public:
 	UGameplayEffect* CreateCostGameplayEffect(UObject* Outer);

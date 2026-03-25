@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "SkillSystem/GameplayAbilityTargetActor/TargetActor.h"
@@ -14,7 +14,7 @@ ATargetActor::ATargetActor()
 void ATargetActor::ConfirmTargetingAndContinue()
 {
     UMouseTargetSkill* MouseSkill = Cast<UMouseTargetSkill>(OwningAbility);
-    checkf(IsValid(MouseSkill), TEXT("ATargetActor::ConfirmTargetingAndContinue - MouseSkill Is Not Valid"));
+    if (!ensureMsgf(IsValid(MouseSkill), TEXT("ATargetActor::ConfirmTargetingAndContinue - MouseSkill Is Not Valid"))) { return; }
 
     if (TryConfirmMouseTarget() == false)
     {
@@ -26,7 +26,7 @@ void ATargetActor::ConfirmTargetingAndContinue()
 bool ATargetActor::TryConfirmMouseTarget()
 {
     UMouseTargetSkill* MouseSkill = Cast<UMouseTargetSkill>(OwningAbility);
-    checkf(IsValid(MouseSkill), TEXT("ATargetActor::ConfirmTargetingAndContinue - MouseSkill Is Not Valid"));
+    if (!ensureMsgf(IsValid(MouseSkill), TEXT("ATargetActor::ConfirmTargetingAndContinue - MouseSkill Is Not Valid"))) { return false; }
 
     AActor* ValidTarget = MouseSkill->GetTargetUnderCursorInRange();
 
