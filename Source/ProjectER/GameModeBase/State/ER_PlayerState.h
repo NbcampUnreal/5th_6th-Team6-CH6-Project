@@ -142,6 +142,9 @@ public:
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	float CurrentRestrictedTime = 10.f;
 
+	UFUNCTION()
+	void OnRep_CurrentRestrictedTime();
+
 	// [수정] 값이 복제될 때 클라에서 OnRep 함수가 자동 실행되도록 ReplicatedUsing으로 변경
 	UPROPERTY(ReplicatedUsing = OnRep_SelectedCharacterData, BlueprintReadOnly, Category = "Character Selection")
 	TSoftObjectPtr<UCharacterData> SelectedCharacterData;

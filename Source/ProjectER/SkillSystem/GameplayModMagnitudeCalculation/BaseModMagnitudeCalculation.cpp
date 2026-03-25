@@ -163,7 +163,7 @@ float UBaseModMagnitudeCalculation::CalculateBaseMagnitude_Implementation(const 
         const EAdjustmentType AdjustmentType = MyDef.Adjustment;
         FinalValue *= (AdjustmentType == EAdjustmentType::Add ? 1.0f : -1.0f);
         
-        UE_LOG(LogTemp, Log, TEXT("MMC: [%s] Calculated Final Magnitude: %f"), *GetName(), FinalValue);
+        // UE_LOG(LogTemp, Log, TEXT("MMC: [%s] Calculated Final Magnitude: %f"), *GetName(), FinalValue);
         return FinalValue;
     }
 

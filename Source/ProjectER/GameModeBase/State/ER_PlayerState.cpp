@@ -1,8 +1,11 @@
-#include "ER_PlayerState.h"
+﻿#include "ER_PlayerState.h"
 #include "Net/UnrealNetwork.h"
 #include "AbilitySystemComponent.h"
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "CharacterSystem/Data/CharacterData.h"
+
+#include "UI/UI_HUDFactory.h"	// UI연결용
+#include "UI/UI_MainHUD.h"	// UI연결용
 
 AER_PlayerState::AER_PlayerState()
 {
@@ -109,6 +112,21 @@ void AER_PlayerState::SetSelectedCharacterData(TSoftObjectPtr<UCharacterData> In
 	if (HasAuthority())
 	{
 		OnCharacterDataChanged.Broadcast(SelectedCharacterData);
+	}
+}
+
+void AER_PlayerState::OnRep_CurrentRestrictedTime()
+{
+	APlayerController* PC = GetPlayerController();
+
+	if (PC && PC->IsLocalController())
+	{
+		AUI_HUDFactory* MyHUD = Cast<AUI_HUDFactory>(PC->GetHUD());
+		if (MyHUD && MyHUD->MainWidget)
+		{
+			int32 DisplayTime = FMath::CeilToInt(CurrentRestrictedTime);
+			MyHUD->MainWidget->WarningSign(DisplayTime);
+		}
 	}
 }
 

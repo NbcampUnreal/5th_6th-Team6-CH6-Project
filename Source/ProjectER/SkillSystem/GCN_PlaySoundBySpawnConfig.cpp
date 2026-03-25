@@ -51,24 +51,32 @@ bool UGCN_PlaySoundBySpawnConfig::OnExecute_Implementation(AActor* MyTarget, con
 	const AActor* const EffectCauser = Cast<AActor>(Parameters.EffectCauser.Get());
 	const AActor* const Instigator = Cast<AActor>(Parameters.Instigator.Get());
 
-	// SourceActor 결정 (Niagara와 동일 로직)
-	const FString TagStr = Parameters.OriginalTag.ToString();
+	static const FGameplayTag TagSummoner = FGameplayTag::RequestGameplayTag(TEXT("GameplayCue.Skill.Summoner"));
+	static const FGameplayTag TagHitTarget = FGameplayTag::RequestGameplayTag(TEXT("GameplayCue.Skill.HitTarget"));
+	static const FGameplayTag TagRange = FGameplayTag::RequestGameplayTag(TEXT("GameplayCue.Skill.Range"));
+	
 	const AActor* SourceActor = nullptr;
-	if (TagStr.Contains(TEXT("Summoner")))
+	if (Parameters.OriginalTag.MatchesTag(TagSummoner))
 	{
-		SourceActor = IsValid(Instigator) ? Instigator : MyTarget;
+	    SourceActor = IsValid(Instigator) ? Instigator : MyTarget;
 	}
-	else if (TagStr.Contains(TEXT("HitTarget")))
+	else if (Parameters.OriginalTag.MatchesTag(TagHitTarget))
 	{
-		SourceActor = MyTarget;
+	    SourceActor = MyTarget;
 	}
-	else
+	else // 기본값 (Range 포함)
 	{
-		SourceActor = IsValid(EffectCauser) ? EffectCauser : MyTarget;
+	    SourceActor = EffectCauser;
 	}
 
-	FTransform SourceTransform = IsValid(SourceActor) ? SourceActor->GetActorTransform() : FTransform::Identity;
-	SourceTransform.SetLocation(Parameters.Location);
+	// 3. Transform 설정 및 Location 예외 처리
+	FTransform SourceTransform = IsValid(SourceActor) ? SourceActor->GetActorTransform() : FTransform(FRotator::ZeroRotator, Parameters.Location);
+	
+	// [핵심] Range일 때만 전달받은 위치(마우스 클릭 지점 등)로 강제 고정
+	if (Parameters.OriginalTag.MatchesTag(TagRange))
+	{
+	    SourceTransform.SetLocation(Parameters.Location);
+	}
 
 	SkillSoundSpawnHelper::PlaySoundBySettings(World, SpawnSettings, SourceTransform, SourceActor, nullptr, Parameters.TargetAttachComponent.Get());
 	return true;
