@@ -176,47 +176,47 @@ void ULootableComponent::InitializeRandomLoot()
 	GetOwner()->ForceNetUpdate();
 }
 
-void ULootableComponent::InitializeWithItems(const TArray<UBaseItemData*>& Items)
+void ULootableComponent::InitializeWithItems(const TArray<UBaseItemData*>& Items)//임시적 사용 중단
 {
-	if (!GetOwner()->HasAuthority())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[LootableComponent] InitializeWithItems: Only call on server!"));
-		return;
-	}
+	// if (!GetOwner()->HasAuthority())
+	// {
+	// 	UE_LOG(LogTemp, Warning, TEXT("[LootableComponent] InitializeWithItems: Only call on server!"));
+	// 	return;
+	// }
 
-	// 시체/루팅 대상 전용 런타임 풀 재구성
-	ItemPool.Empty();
-	CurrentItemList.Empty();
-	CurrentItemList.SetNum(MaxSlots);
+	// // 시체/루팅 대상 전용 런타임 풀 재구성
+	// ItemPool.Empty();
+	// CurrentItemList.Empty();
+	// CurrentItemList.SetNum(MaxSlots);
 
-	int32 WriteIndex = 0;
+	// int32 WriteIndex = 0;
 
-	for (UBaseItemData* Item : Items)
-	{
-		if (!Item || WriteIndex >= MaxSlots)
-		{
-			continue;
-		}
+	// for (UBaseItemData* Item : Items)
+	// {
+	// 	if (!Item || WriteIndex >= MaxSlots)
+	// 	{
+	// 		continue;
+	// 	}
 
-		const int32 PoolIndex = ItemPool.Add(Item);
+	// 	const int32 PoolIndex = ItemPool.Add(Item);
 
-		CurrentItemList[WriteIndex].ItemId = PoolIndex;
-		CurrentItemList[WriteIndex].Count = 1;
-		++WriteIndex;
-	}
+	// 	CurrentItemList[WriteIndex].ItemId = PoolIndex;
+	// 	CurrentItemList[WriteIndex].Count = 1;
+	// 	++WriteIndex;
+	// }
 
-	// 나머지는 빈 슬롯 처리
-	for (int32 i = WriteIndex; i < MaxSlots; ++i)
-	{
-		CurrentItemList[i].ItemId = -1;
-		CurrentItemList[i].Count = 0;
-	}
+	// // 나머지는 빈 슬롯 처리
+	// for (int32 i = WriteIndex; i < MaxSlots; ++i)
+	// {
+	// 	CurrentItemList[i].ItemId = -1;
+	// 	CurrentItemList[i].Count = 0;
+	// }
 
-	OnLootChanged.Broadcast();
-	GetOwner()->ForceNetUpdate();
+	// OnLootChanged.Broadcast();
+	// GetOwner()->ForceNetUpdate();
 
-	UE_LOG(LogTemp, Log, TEXT("[LootableComponent] InitializeWithItems: Created %d items for %s (ItemPool=%d)"),
-		WriteIndex, *GetOwner()->GetName(), ItemPool.Num());
+	// UE_LOG(LogTemp, Log, TEXT("[LootableComponent] InitializeWithItems: Created %d items for %s (ItemPool=%d)"),
+	// 	WriteIndex, *GetOwner()->GetName(), ItemPool.Num());
 }
 
 void ULootableComponent::ClearLoot()
