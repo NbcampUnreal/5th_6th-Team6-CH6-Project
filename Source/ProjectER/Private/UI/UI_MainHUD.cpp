@@ -252,9 +252,6 @@ void UUI_MainHUD::UpdateSkillPoint(float _nowSP)
         {
             isOverUltLevel = true;
         }
-            
-
-
 
         ShowSkillUp(true, isOverUltLevel);
     }

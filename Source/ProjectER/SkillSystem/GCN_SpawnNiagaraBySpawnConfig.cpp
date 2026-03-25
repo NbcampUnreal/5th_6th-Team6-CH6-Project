@@ -85,10 +85,17 @@ bool UGCN_SpawnNiagaraBySpawnConfig::OnExecute_Implementation(AActor* MyTarget, 
 	}
 	else // 기본값 (Range 포함)
 	{
-	    SourceActor = IsValid(EffectCauser) ? EffectCauser : MyTarget;
+	    SourceActor = EffectCauser;
+		// [최종 수정] 발사체 또는 범위 액터가 충돌 즉시 파괴된 경우(SourceActor 무효), 시전자에게 붙지 않고 재생을 취소함.
+		if (!IsValid(SourceActor))
+		{
+			return false;
+		}
 	}
+
 	// 3. Transform 설정 및 Location 예외 처리
-	FTransform SourceTransform = IsValid(SourceActor) ? SourceActor->GetActorTransform() : FTransform::Identity;
+	FTransform SourceTransform = IsValid(SourceActor) ? SourceActor->GetActorTransform() : FTransform(FRotator::ZeroRotator, Parameters.Location);
+	
 	// [핵심] Range일 때만 전달받은 위치(마우스 클릭 지점 등)로 강제 고정
 	if (Parameters.OriginalTag.MatchesTag(TagRange))
 	{
