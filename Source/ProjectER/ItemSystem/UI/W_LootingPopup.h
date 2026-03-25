@@ -67,8 +67,12 @@ protected:
 	UPROPERTY()
 	UUI_ToolTipManager* TooltipManager;
 
+	UPROPERTY()
+	TMap<UButton*, UBaseItemData*> TooltipSlotItemMap;
+
 	UFUNCTION()
 	void OnItemHovered();
+
 public:
 	UFUNCTION()
 	void HideTooltip();

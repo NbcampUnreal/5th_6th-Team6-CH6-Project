@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
@@ -66,4 +66,7 @@ private:
 	TObjectPtr<UTextBlock> StackCountText = nullptr;
 
 	int32 CachedStackCount = 0;
+
+public:
+	UBaseItemData* GetCachedItemData() const { return CachedItemData.Get(); }
 };

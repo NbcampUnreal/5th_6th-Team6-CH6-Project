@@ -121,6 +121,7 @@ void UW_LootingPopup::UpdateLootingSlots(const AActor* Box)
 
 	ItemGridPanel->ClearChildren();
 	SlotItemMap.Empty();
+	TooltipSlotItemMap.Empty();
 
 	const int32 ColumnCount = 5;
 
@@ -252,7 +253,7 @@ void UW_LootingPopup::TryLootItem(int32 SlotIndex)
 
 void UW_LootingPopup::OnItemHovered()
 {
-	for (auto& Elem : SlotItemMap)
+	for (auto& Elem : TooltipSlotItemMap)
 	{
 		UButton* Btn = Elem.Key;
 		//UE_LOG(LogTemp, Error, TEXT("ssssssssss"));
@@ -261,21 +262,20 @@ void UW_LootingPopup::OnItemHovered()
 		{
 			// Todo:
 			/// 버튼 정보의 아이템 데이터를 읽어와서 툴팁에 전달 하도록 추후 업데이트 예정///
+			
 			if (TooltipManager)
 			{
 				TooltipManager->ShowTooltip(
 					Btn,
-					nullptr,
-					FText::FromString("Item Name"),
-					FText::FromString("Short Description"),
-					FText::FromString("Detailed Description goes here."),
+					Elem.Value->ItemName,
+					Elem.Value->ItemShortDesc,
+					Elem.Value->ItemLongDesc,
 					FText::FromString(""),
 					true
 				);
 			}
 		}
 	}
-
 
 	// 차후 데이터 애셋에서 정보를 읽어올 수 있도록 개선해야 함
 

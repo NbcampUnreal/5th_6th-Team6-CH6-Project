@@ -6,6 +6,7 @@
 #include "GameplayEffect.h"
 #include "GameFramework/Character.h"
 #include "SkillSystem/SkillNiagaraSpawnConfig.h"
+#include "LevelManagement/LevelAreaTrackerComponent.h"
 
 UTeleportMoveGEC::UTeleportMoveGEC()
 {
@@ -61,6 +62,7 @@ void UTeleportMoveGEC::Execute(AActor* Instigator, const FVector& Direction, con
 	SnapToGround(Destination, TeleportConfig, Instigator);
 
 	Instigator->SetActorLocation(Destination, false, nullptr, ETeleportType::TeleportPhysics);
+	UpdateLevelTracker(Instigator);
 
 	// 도착 지점 큐 실행 및 Moving 루핑 종료
 	ExecuteMoveCue(TeleportConfig->EndVfx, GESpec, Instigator, Destination);
@@ -114,4 +116,10 @@ FVector UTeleportMoveGEC::CalculateDestination(const AActor* Instigator, const F
 	}
 
 	return TargetLoc;
+}
+
+void UTeleportMoveGEC::UpdateLevelTracker(AActor* Actor) const
+{
+	if (!IsValid(Actor)) return;
+	if (ULevelAreaTrackerComponent* Tracker = Actor->FindComponentByClass<ULevelAreaTrackerComponent>()) Tracker->UpdateArea();
 }

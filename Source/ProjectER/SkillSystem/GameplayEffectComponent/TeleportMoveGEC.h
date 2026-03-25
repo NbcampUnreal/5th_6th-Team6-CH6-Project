@@ -32,4 +32,5 @@ protected:
 
 private:
 	FVector CalculateDestination(const AActor* Instigator, const FVector& Direction, const UTeleportMoveGECConfig* Config) const;
+	void UpdateLevelTracker(AActor* Actor) const;
 };

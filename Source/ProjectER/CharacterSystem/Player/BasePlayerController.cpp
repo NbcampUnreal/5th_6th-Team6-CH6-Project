@@ -1836,7 +1836,12 @@ void ABasePlayerController::SetSoundMix(EAudioType AudioType, float Volume)
 		0.f,
 		true
 	);
-};
+}
+void ABasePlayerController::UseInventoryForUI(int32 _ind)
+{
+	UseInventorySlot(_ind);
+}
+;
 
 void ABasePlayerController::PawnLeavingGame()
 {
