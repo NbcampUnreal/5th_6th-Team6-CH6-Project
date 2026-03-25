@@ -22,7 +22,8 @@ enum class EItemStatType : uint8
 	Defense         UMETA(DisplayName = "Defense"),
 	AttackSpeed     UMETA(DisplayName = "Attack Speed"),
 	MoveSpeed       UMETA(DisplayName = "Move Speed"),
-	MaxHealth       UMETA(DisplayName = "Max Health")
+	MaxHealth       UMETA(DisplayName = "Max Health"),
+	CriticalChance  UMETA(DisplayName = "CriticalChance")
 };
 
 UCLASS(BlueprintType)
