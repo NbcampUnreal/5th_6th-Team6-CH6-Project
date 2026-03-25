@@ -1,4 +1,4 @@
-﻿#include "Monster/GAS/GA/GA_MonsterState_Attack.h"
+#include "Monster/GAS/GA/GA_MonsterState_Attack.h"
 #include "Monster/BaseMonster.h"
 #include "Monster/GAS/AttributeSet/BaseMonsterAttributeSet.h"
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
@@ -115,6 +115,12 @@ void UGA_MonsterState_Attack::OnAttackHitEventReceived(FGameplayEventData Payloa
 			if (SpecHandle.IsValid())
 			{
 				ASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Target));
+				
+				if (!Monster->GetIsFirstAttack())
+				{
+					Monster->SetIsFirstAttack(true);
+				}
+				Monster->SetAttackCount(Monster->GetAttackCount() + 1);
 			}
 		}
 	}

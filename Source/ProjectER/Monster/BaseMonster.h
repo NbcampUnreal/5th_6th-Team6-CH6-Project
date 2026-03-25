@@ -55,6 +55,15 @@ public:
 
 	FVector GetStartLocation() const { return StartLocation; }
 	FRotator GetStartRotator() const { return StartRotator; }
+
+	UFUNCTION(BlueprintCallable)
+	bool GetIsFirstAttack() const { return bIsFirstAttack; }
+	UFUNCTION(BlueprintCallable)
+	uint8 GetAttackCount() const { return AttackCount; }
+	UFUNCTION(BlueprintCallable)
+	void SetIsFirstAttack(bool bIsFirst) { bIsFirstAttack = bIsFirst; }
+	UFUNCTION(BlueprintCallable)
+	void SetAttackCount(uint8 Count) { AttackCount = Count; }
 	
 protected:
 
@@ -232,6 +241,13 @@ private:
 	UPROPERTY(ReplicatedUsing = OnRep_IsDead, VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	bool bIsDead;
 
+
+	bool bIsFirstAttack = false;
+
+	uint8 AttackCount = 0;
+
+
+	// 제거 예정
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	float AttackUtility = 1.f;
 
@@ -243,7 +259,7 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
 	bool bIsPhaseTrigger;
-
+	//
 #pragma endregion
 
 

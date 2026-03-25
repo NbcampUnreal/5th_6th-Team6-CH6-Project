@@ -48,6 +48,9 @@ void UGA_MonsterState_Return::OnMoveFinished(FAIRequestID RequestID, EPathFollow
 		Monster->SetAttackUtility(1.f);
 		Monster->SetActorRotation(Monster->GetStartRotator());
 		Monster->SendStateTreeEvent(FGameplayTag::RequestGameplayTag("Event.Action.Return"));
+
+		Monster->SetIsFirstAttack(false);
+		Monster->SetAttackCount(0);
 	}
 
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
