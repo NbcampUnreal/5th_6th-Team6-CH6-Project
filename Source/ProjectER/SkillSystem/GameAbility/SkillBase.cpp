@@ -182,7 +182,6 @@ void USkillBase::ExecuteSkill()
 	}
 
 	// 메인 로직: 들여쓰기 없이 평탄하게 진행
-	SetSkillTagCount(ActiveTag, 1);
 	ApplyExcutionEffectToSelf(CachedConfig->GetExcutionEffects());
 
 	if (HasAuthority(&CurrentActivationInfo))
@@ -240,6 +239,10 @@ void USkillBase::PlayAnimMontage()
 	PlayTask->OnCancelled.AddDynamic(this, &USkillBase::OnMontageCancelled);
 	PlayTask->OnCompleted.AddDynamic(this, &USkillBase::OnMontageCompleted);
 	PlayTask->ReadyForActivation();
+
+	ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(GetAvatar());
+	if (!IsValid(BaseCharacter)) return;
+	BaseCharacter->StopMove();
 }
 
 void USkillBase::SetWaitEventActiveTag()
@@ -310,13 +313,14 @@ bool USkillBase::TryExecuteSkill()
 	}
 
 	SetSkillTagCount(CastingTag, 0);
+	SetSkillTagCount(ActiveTag, 1);
 	ExecuteSkill();
 	return true;
 }
 
 void USkillBase::CompleteFinishSkill()
 {
-	SetSkillTagCount(ActiveTag, 0);
+	//SetSkillTagCount(ActiveTag, 0);
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 
