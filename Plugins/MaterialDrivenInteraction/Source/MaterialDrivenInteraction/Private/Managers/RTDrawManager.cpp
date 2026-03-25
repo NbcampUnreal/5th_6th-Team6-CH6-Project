@@ -12,7 +12,10 @@
 #include "CanvasItem.h"
 #include "Engine/World.h"
 
-static const FLinearColor GContinuousNeutral(0.5f, 0.5f, 0.f, 0.f);
+// Clear color update — ImpulseRT neutral is (0.5, 0.5, 0, 0)
+// R=0.5 G=0.5 = zero velocity, A=0 = never stamped
+static const FLinearColor GImpulseNeutral(0.5f, 0.5f, 0.f, 0.f);
+static const FLinearColor GContinuousNeutral(0.f, 0.f, 0.f, 0.f);
 
 // for the clipping
 enum class EBrushTileType : uint8
@@ -29,18 +32,21 @@ bool URTDrawManager::ShouldCreateSubsystem(UObject* Outer) const
 
 void URTDrawManager::Initialize(FSubsystemCollectionBase& Collection)
 {
-	// Ensure URTPoolManager is initialized before this subsystem
-	Collection.InitializeDependency<URTPoolManager>();// make this subsystem to be initialized first
-
+	Collection.InitializeDependency<URTPoolManager>();
 	Super::Initialize(Collection);
 
 	PoolManager = GetWorld()->GetSubsystem<URTPoolManager>();
+	if (!PoolManager) { return; }
 
-	if (!PoolManager)
+	// Clear stale timestamps from previous session
+	const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
+	for (int32 i = 0; i < Pool.Num(); ++i)
 	{
-		UE_LOG(RTFoliageInvoker, Error,
-			TEXT("URTDrawManager::Initialize >> URTPoolManager not found"));
-		return;
+		if (Pool[i].ImpulseRT)
+		{
+			UKismetRenderingLibrary::ClearRenderTarget2D(
+				GetWorld(), Pool[i].ImpulseRT, GImpulseNeutral);
+		}
 	}
 
 	UE_LOG(RTFoliageInvoker, Log, TEXT("URTDrawManager::Initialize >> Ready"));
@@ -80,7 +86,8 @@ void URTDrawManager::Update(float DeltaTime)
 }
 
 void URTDrawManager::DrawAllInvokers(
-	const TArray<TTuple<UFoliageRTInvokerComponent*, int32>>& AssignedInvokers,  float DeltaTime) const
+	const TArray<TTuple<UFoliageRTInvokerComponent*, int32>>& AssignedInvokers,
+	float DeltaTime) const
 {
 	if (AssignedInvokers.Num() == 0) { return; }
 
@@ -91,22 +98,13 @@ void URTDrawManager::DrawAllInvokers(
 		FVector2D               DummyOrigin;
 
 		if (!PoolManager->GetSlotData(SlotIdx, ImpulseRT, ContinuousRT, DummyOrigin))
-		{
 			continue;
-		}
 
 		if (ContinuousRT)
-		{
 			DrawContinuousForSlot(ContinuousRT, SlotIdx, AssignedInvokers);
-		}
-		if (ImpulseRT)
-		{
-			DrawImpulseForSlot(ImpulseRT, SlotIdx, AssignedInvokers);
 
-			/*// the new method with decay progression
-			DecayImpulseForSlot(ImpulseRT, DeltaTime);
-			StampImpulseForSlot(ImpulseRT, SlotIdx, AssignedInvokers);*/
-		}
+		if (ImpulseRT)
+			DrawImpulseForSlot(ImpulseRT, SlotIdx, AssignedInvokers);
 	}
 }
 
@@ -139,9 +137,9 @@ void URTDrawManager::DrawContinuousForSlot(UTextureRenderTarget2D* RT, int32 Slo
 
 			if (!Data.MID_Continuous) { continue; }
 
+			// Additive — multiple invokers accumulate into combined height field
 			DrawTiledBrush(Canvas, CanvasSize, Data.MID_Continuous,
-				Data.CellUV, Data.UVExtent, SE_BLEND_MAX );// height lerp , no drawing over other's normal
-
+				Data.CellUV, Data.UVExtent, SE_BLEND_Additive);
 		}
 
 		UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(GetWorld(), Context);
@@ -175,16 +173,13 @@ void URTDrawManager::DrawImpulseForSlot(UTextureRenderTarget2D* RT, int32 SlotId
 			const FRTInvokerFrameData Data =
 				Invoker->GetFrameData(SlotIdx, CellOriginWS, PoolManager->CellSize);
 
-			// DEBUG — remove bShouldStamp gate to verify RT is writing at all
 			if (!Data.MID_Impulse) { continue; }
 
-			UE_LOG(RTFoliageInvoker, Verbose,
-				TEXT("URTDrawManager::DrawImpulseForSlot >> Drawing Slot %d UV(%.3f,%.3f) Stamp=%s"),
-				SlotIdx, Data.CellUV.X, Data.CellUV.Y,
-				Data.bShouldStamp ? TEXT("yes") : TEXT("no"));
-
+			// SE_BLEND_MAX — latest timestamp wins per texel.
+			// Written every tick while present, freezes on exit.
+			// bShouldStamp gate removed.
 			DrawTiledBrush(Canvas, CanvasSize, Data.MID_Impulse,
-				Data.CellUV, Data.UVExtent, SE_BLEND_Translucent);
+				Data.CellUV, Data.UVExtent, SE_BLEND_MAX);
 		}
 
 		UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(GetWorld(), Context);
@@ -277,11 +272,22 @@ void URTDrawManager::DrawTiledBrush(
 
 void URTDrawManager::ProcessPendingImpulseClears() const
 {
+	/*const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
+	for (int32 i = 0; i < Pool.Num(); ++i)
+	{
+		if (Pool[i].bImpulseNeedsClear)
+		{
+			ClearImpulseSlot(i);
+			PoolManager->ClearImpulseFlag(i);
+		}
+	}*/
 	const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
 	for (int32 i = 0; i < Pool.Num(); ++i)
 	{
 		if (Pool[i].bImpulseNeedsClear)
 		{
+			UE_LOG(RTFoliageInvoker, Warning,
+				TEXT("URTDrawManager >> Clearing ImpulseRT slot %d"), i);
 			ClearImpulseSlot(i);
 			PoolManager->ClearImpulseFlag(i);
 		}
@@ -305,11 +311,9 @@ void URTDrawManager::ClearImpulseSlot(int32 SlotIndex) const
 	const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
 	if (!Pool.IsValidIndex(SlotIndex) || !Pool[SlotIndex].ImpulseRT) { return; }
 
+	// (0.5, 0.5, 0, 0) — neutral velocity, A=0 guards consumer spring
 	UKismetRenderingLibrary::ClearRenderTarget2D(
-		GetWorld(), Pool[SlotIndex].ImpulseRT, FLinearColor::Black);
-
-	UE_LOG(RTFoliageInvoker, Verbose,
-		TEXT("URTDrawManager::ClearImpulseSlot >> Slot %d cleared"), SlotIndex);
+		GetWorld(), Pool[SlotIndex].ImpulseRT, GImpulseNeutral);
 }
 
 void URTDrawManager::ClearContinuousSlot(int32 SlotIndex) const
@@ -322,7 +326,7 @@ void URTDrawManager::ClearContinuousSlot(int32 SlotIndex) const
 }
 
 
-//Temp testing
+/*//Temp testing
 void URTDrawManager::DecayImpulseForSlot(UTextureRenderTarget2D* RT, float DeltaTime) const
 {
 	if (!RT) { return; }
@@ -392,4 +396,4 @@ void URTDrawManager::StampImpulseForSlot(UTextureRenderTarget2D* RT, int32 SlotI
 
 		UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(GetWorld(), Context);
 	}
-}
+}*/

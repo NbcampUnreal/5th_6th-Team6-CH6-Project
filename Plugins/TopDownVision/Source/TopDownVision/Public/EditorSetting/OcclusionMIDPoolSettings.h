@@ -4,17 +4,17 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DeveloperSettings.h"
-#include "OcclusionMIDSettings.generated.h"
+#include "OcclusionMIDPoolSettings.generated.h"
 
 
 UCLASS(config=Game, defaultconfig, meta=(DisplayName="Occlusion MID Pool"))
-class TOPDOWNVISION_API UOcclusionMIDSettings : public UDeveloperSettings
+class TOPDOWNVISION_API UOcclusionMIDPoolSettings : public UDeveloperSettings
 {
 	GENERATED_BODY()
 
 public:
 
-	UOcclusionMIDSettings()
+	UOcclusionMIDPoolSettings()
 	{
 		CategoryName = TEXT("TopDownVision");
 		SectionName  = TEXT("Occlusion MID Pool");
@@ -33,6 +33,10 @@ public:
 
 	UPROPERTY(config, EditAnywhere, BlueprintReadOnly, Category="Pool|PreWarm")
 	TArray<TSoftObjectPtr<UMaterialInterface>> PreWarmMaterials;
+
+	UPROPERTY(config, EditAnywhere, BlueprintReadOnly, Category="Pool",
+	meta=(ClampMin=1.f))
+	float OverflowTrimInterval = 60.f;
 };
 
 UCLASS(config=Game, defaultconfig, meta=(DisplayName="Occlusion Tags"))

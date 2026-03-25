@@ -8,7 +8,7 @@
 
 #include "ObstacleOcclusion/Manager/OcclusionBinderSubsystem.h"
 #include "ObstacleOcclusion/MIDPool/OcclusionMIDSlot.h"
-#include "EditorSetting/OcclusionMIDSettings.h"
+#include "EditorSetting/OcclusionMIDPoolSettings.h"
 
 DEFINE_LOG_CATEGORY(OcclusionMeshHelper);
 
@@ -285,6 +285,25 @@ void UOcclusionMeshUtil::AcquireMaterials(
             }
 
             const bool bUsePool = Pool != nullptr;
+
+            // Non-pooled path — skip materials that belong to the pool
+            // They will be handled by AcquireMIDs on occlusion enter
+            if (!bUsePool)
+            {
+                if (UWorld* World = Mesh->GetWorld())
+                {
+                    if (UOcclusionBinderSubsystem* Sub = World->GetSubsystem<UOcclusionBinderSubsystem>())
+                    {
+                        if (Sub->IsMaterialPooled(ParentAsset))
+                        {
+                            UE_LOG(OcclusionMeshHelper, Verbose,
+                                TEXT("UOcclusionMeshUtil::AcquireMaterials>> %s slot %d skipped — material is pooled"),
+                                *Mesh->GetName(), SlotIdx);
+                            continue;
+                        }
+                    }
+                }
+            }
 
             UMaterialInstanceDynamic* MID = bUsePool
                 ? Pool->CheckoutMID(ParentAsset, Mesh)
