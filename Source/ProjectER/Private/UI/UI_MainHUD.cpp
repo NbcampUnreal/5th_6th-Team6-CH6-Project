@@ -47,6 +47,7 @@ void UUI_MainHUD::Update_LV(float CurrentLV)
     if(IsValid(stat_LV))
     {
         stat_LV->SetText(FText::AsNumber(FMath::RoundToInt(CurrentLV)));
+		nowLevel = CurrentLV;
 	}
 }
 
@@ -126,11 +127,23 @@ void UUI_MainHUD::UPdate_MP(float CurrentMP, float MaxMP)
     }
 }
 
-void UUI_MainHUD::ShowSkillUp(bool show)
+void UUI_MainHUD::ShowSkillUp(bool show, bool isUlt/* = false */)
 {
-    if (UI_BACKGROUND_LevelUp)
+    if (UI_BACKGROUND_LevelUp && UI_BACKGROUND_LevelUp_Ult)
     {
-        UI_BACKGROUND_LevelUp->SetVisibility(show ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+       if (show)
+       {
+           if (isUlt)
+               UI_BACKGROUND_LevelUp_Ult->SetVisibility(ESlateVisibility::Visible);
+           else
+               UI_BACKGROUND_LevelUp->SetVisibility(ESlateVisibility::Visible);
+       }
+       else
+       {
+            UI_BACKGROUND_LevelUp_Ult->SetVisibility(ESlateVisibility::Hidden);
+            UI_BACKGROUND_LevelUp->SetVisibility(ESlateVisibility::Hidden);
+            skill_up_04->SetVisibility(ESlateVisibility::Hidden);
+       }
     }
 
     if (IsValid(skill_up_01))
@@ -145,10 +158,13 @@ void UUI_MainHUD::ShowSkillUp(bool show)
     {
         skill_up_03->SetVisibility(show ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
     }
-    if (IsValid(skill_up_04))
+    if (isUlt)
     {
-        skill_up_04->SetVisibility(show ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
-	}
+        if (IsValid(skill_up_04))
+        {
+            skill_up_04->SetVisibility(show ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+        }
+    }
 }
 
 void UUI_MainHUD::setStat(ECharacterStat stat, int32 value)
@@ -221,7 +237,26 @@ void UUI_MainHUD::UpdateSkillPoint(float _nowSP)
     }
     else
     {
-        ShowSkillUp(true);
+        bool isOverUltLevel = false;
+
+        int nowUltLevel = getSkillLevel(R_SkillTag, false);
+        if (nowLevel >= 3 && nowUltLevel < 1)
+        {
+            isOverUltLevel = true;
+        }
+        if (nowLevel >= 6 && nowUltLevel < 2)
+        {
+            isOverUltLevel = true;
+        }
+        if (nowLevel >= 9 && nowUltLevel < 3)
+        {
+            isOverUltLevel = true;
+        }
+            
+
+
+
+        ShowSkillUp(true, isOverUltLevel);
     }
 	// UE_LOG(LogTemp, Error, TEXT("UpdateSkillPoint called with SP: %f"), _nowSP);
 }
@@ -280,9 +315,10 @@ void UUI_MainHUD::NativeConstruct()
     RefreshInventoryGridLayout();
     UpdateInventoryUI();
 
-    if (UI_BACKGROUND_LevelUp)
+    if (UI_BACKGROUND_LevelUp && UI_BACKGROUND_LevelUp_Ult)
     {
         UI_BACKGROUND_LevelUp->SetVisibility(ESlateVisibility::Collapsed);
+        UI_BACKGROUND_LevelUp_Ult->SetVisibility(ESlateVisibility::Collapsed);
     }
 
     // 툴팁 init
@@ -399,6 +435,7 @@ void UUI_MainHUD::NativeConstruct()
     //    &UUI_MainHUD::AddKillPerSecond,
     //    1.0f,
     //    true);
+    
 }
 
 /// 마우스 이벤트!
@@ -1190,6 +1227,25 @@ void UUI_MainHUD::AddKillPerSecond()
         AS = PS->GetAttributeSet();
         AS->SetSkillPoint(AS->GetSkillPoint() + 1.0f);
     }
+}
+
+void UUI_MainHUD::WarningSign(int number)
+{
+    int32 TotalIntSeconds = FMath::Clamp(number, 0, 99);
+    int32 Seconds = TotalIntSeconds % 60;
+
+    int32 SecTenDigit = Seconds / 10;
+    int32 SecOneDigit = Seconds % 10;
+
+    if (WarningNumber_ten && SegmentTextures[SecTenDigit])
+    {
+        WarningNumber_ten->SetBrushFromTexture(SegmentTextures[SecTenDigit]);
+    }
+    if (WarningNumber_one && SegmentTextures[SecOneDigit])
+    {
+        WarningNumber_one->SetBrushFromTexture(SegmentTextures[SecOneDigit]);
+    }
+
 }
 
 void UUI_MainHUD::UpdateTeamHP(int32 TeamIndex, float CurrentHP, float MaxHP)

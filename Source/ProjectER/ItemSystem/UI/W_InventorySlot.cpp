@@ -351,7 +351,7 @@ void UW_InventorySlot::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 	if (IsValid(TooltipInstance))
 		TooltipInstance->SetVisibility(ESlateVisibility::Collapsed);
 
-	UE_LOG(LogTemp, Log, TEXT("Mouse Left Slot %d"), SlotIndex);
+	// UE_LOG(LogTemp, Log, TEXT("Mouse Left Slot %d"), SlotIndex);
 }
 
 void UW_InventorySlot::SetStackCount(int32 InStackCount)
