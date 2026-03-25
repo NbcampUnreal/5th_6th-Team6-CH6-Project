@@ -1,4 +1,4 @@
-#include "ItemSystem/UI/W_InventorySlot.h"
+﻿#include "ItemSystem/UI/W_InventorySlot.h"
 
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Blueprint/WidgetTree.h"
@@ -17,11 +17,21 @@
 #include "Components/OverlaySlot.h"
 #include "Components/TextBlock.h"
 
+#include "UI/UI_ToolTip.h"	// 툴팁용
+#include "UI/UI_ToolTipManager.h"	// 툴팁용
+
 UW_InventorySlot::UW_InventorySlot(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
 	SetVisibility(ESlateVisibility::Visible);
 	bIsFocusable = false;
+
+	static ConstructorHelpers::FClassFinder<UUI_ToolTip> ToolTipAsset(TEXT("/Game/Blueprints/BP_UI/BP_UI_ToolTip.BP_UI_ToolTip_C"));
+
+	if (ToolTipAsset.Succeeded())
+	{
+		ToolTipWidgetClass = ToolTipAsset.Class;
+	}
 }
 
 TSharedRef<SWidget> UW_InventorySlot::RebuildWidget()
@@ -179,14 +189,41 @@ UBaseInventoryComponent* UW_InventorySlot::GetInventoryComponent() const
 	return Pawn->FindComponentByClass<UBaseInventoryComponent>();
 }
 
+// 버튼 클릭으로 아이템 먹어지도록
+void UW_InventorySlot::thisPressed()
+{
+	ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
+
+	if (IsValid(PC))
+	{
+		PC->UseInventoryForUI(SlotIndex);
+	}
+}
+
 FReply UW_InventorySlot::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (CachedItemData && InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 	{
-		return UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton).NativeReply;
+		// UE_LOG(LogTemp, Log, TEXT("Inventory Slot [%d] - Mouse Down!"), SlotIndex);
+
+		return FReply::Handled().DetectDrag(TakeWidget(), EKeys::LeftMouseButton);
 	}
 
 	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+}
+
+FReply UW_InventorySlot::NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		
+		// UE_LOG(LogTemp, Warning, TEXT("Inventory Slot [%d] - Mouse Up! Action Executed."), SlotIndex);
+		thisPressed();
+		
+		return FReply::Handled();
+	}
+
+	return Super::NativeOnMouseButtonUp(InGeometry, InMouseEvent);
 }
 
 void UW_InventorySlot::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation)
@@ -270,6 +307,51 @@ bool UW_InventorySlot::NativeOnDrop(const FGeometry& InGeometry, const FDragDrop
 	}
 
 	return InventoryComp->SwapSlots(DragOp->SourceSlotIndex, SlotIndex);
+}
+
+void UW_InventorySlot::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	Super::NativeOnMouseEnter(InGeometry, InMouseEvent);
+
+	if (!TooltipInstance && ToolTipWidgetClass)
+	{
+		TooltipInstance = CreateWidget<UUI_ToolTip>(GetOwningPlayer(), ToolTipWidgetClass);
+		if (TooltipInstance)
+		{
+			TooltipInstance->SetVisibility(ESlateVisibility::Collapsed);
+			TooltipInstance->AddToViewport(10);
+		}
+	}
+
+	if (!TooltipManager && TooltipInstance)
+	{
+		TooltipManager = NewObject<UUI_ToolTipManager>(this);
+		TooltipManager->setTooltipInstance(TooltipInstance);
+	}
+
+	// 툴팁 표시
+	if (CachedItemData && TooltipManager)
+	{
+		TooltipInstance->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+
+		TooltipManager->ShowTooltip(
+			this,
+			CachedItemData->ItemName,
+			CachedItemData->ItemShortDesc,
+			CachedItemData->ItemLongDesc,
+			FText::GetEmpty(),
+			true
+		);
+	}
+}
+void UW_InventorySlot::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
+{
+	Super::NativeOnMouseLeave(InMouseEvent);
+
+	if (IsValid(TooltipInstance))
+		TooltipInstance->SetVisibility(ESlateVisibility::Collapsed);
+
+	UE_LOG(LogTemp, Log, TEXT("Mouse Left Slot %d"), SlotIndex);
 }
 
 void UW_InventorySlot::SetStackCount(int32 InStackCount)

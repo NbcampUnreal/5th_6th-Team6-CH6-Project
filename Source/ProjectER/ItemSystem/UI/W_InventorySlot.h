@@ -32,10 +32,25 @@ protected:
 	virtual void NativeConstruct() override;
 
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
 	virtual void NativeOnDragEnter(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	virtual void NativeOnDragLeave(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
+	
+	// 툴팁용
+	virtual void NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
+
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	TSubclassOf<class UUI_ToolTip> ToolTipWidgetClass;
+
+	UPROPERTY()
+	class UUI_ToolTip* TooltipInstance;
+
+	UPROPERTY()
+	class UUI_ToolTipManager* TooltipManager;
+	// 툴팁용
 
 private:
 	void BuildWidgetTree();
@@ -69,4 +84,7 @@ private:
 
 public:
 	UBaseItemData* GetCachedItemData() const { return CachedItemData.Get(); }
+
+	UFUNCTION()
+	void thisPressed();
 };

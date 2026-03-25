@@ -526,6 +526,7 @@ void ABasePlayerController::OnMoveStarted()
 	}
 
 	Client_CloseLootUI();
+	Server_EndLoot();
 	Client_CloseTeleportUI();
 
 	// 조합 중이면 취소
@@ -922,6 +923,7 @@ void ABasePlayerController::OnCanceled() {
 	}
 
 	Client_CloseLootUI();
+	Server_EndLoot();
 	Client_CloseTeleportUI();
 }
 
