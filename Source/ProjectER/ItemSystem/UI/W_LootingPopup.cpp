@@ -176,6 +176,7 @@ void UW_LootingPopup::UpdateLootingSlots(const AActor* Box)
 				if (bHasItem && CurrentItem)
 				{
 					SlotItemMap.Add(SlotButton, i);
+					TooltipSlotItemMap.Add(SlotButton, CurrentItem);
 					SlotButton->OnClicked.RemoveAll(this);
 					SlotButton->OnClicked.AddDynamic(this, &UW_LootingPopup::OnSlotButtonClicked);
 
@@ -256,13 +257,8 @@ void UW_LootingPopup::OnItemHovered()
 	for (auto& Elem : TooltipSlotItemMap)
 	{
 		UButton* Btn = Elem.Key;
-		//UE_LOG(LogTemp, Error, TEXT("ssssssssss"));
-		//UE_LOG(LogTemp, Error, TEXT("Btn : %s"), *Btn->GetName());
 		if (Btn->IsHovered())
 		{
-			// Todo:
-			/// 버튼 정보의 아이템 데이터를 읽어와서 툴팁에 전달 하도록 추후 업데이트 예정///
-			
 			if (TooltipManager)
 			{
 				TooltipManager->ShowTooltip(

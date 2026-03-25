@@ -47,6 +47,7 @@ void UUI_MainHUD::Update_LV(float CurrentLV)
     if(IsValid(stat_LV))
     {
         stat_LV->SetText(FText::AsNumber(FMath::RoundToInt(CurrentLV)));
+		nowLevel = CurrentLV;
 	}
 }
 
@@ -126,11 +127,23 @@ void UUI_MainHUD::UPdate_MP(float CurrentMP, float MaxMP)
     }
 }
 
-void UUI_MainHUD::ShowSkillUp(bool show)
+void UUI_MainHUD::ShowSkillUp(bool show, bool isUlt/* = false */)
 {
-    if (UI_BACKGROUND_LevelUp)
+    if (UI_BACKGROUND_LevelUp && UI_BACKGROUND_LevelUp_Ult)
     {
-        UI_BACKGROUND_LevelUp->SetVisibility(show ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+       if (show)
+       {
+           if (isUlt)
+               UI_BACKGROUND_LevelUp_Ult->SetVisibility(ESlateVisibility::Visible);
+           else
+               UI_BACKGROUND_LevelUp->SetVisibility(ESlateVisibility::Visible);
+       }
+       else
+       {
+            UI_BACKGROUND_LevelUp_Ult->SetVisibility(ESlateVisibility::Hidden);
+            UI_BACKGROUND_LevelUp->SetVisibility(ESlateVisibility::Hidden);
+            skill_up_04->SetVisibility(ESlateVisibility::Hidden);
+       }
     }
 
     if (IsValid(skill_up_01))
@@ -145,10 +158,13 @@ void UUI_MainHUD::ShowSkillUp(bool show)
     {
         skill_up_03->SetVisibility(show ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
     }
-    if (IsValid(skill_up_04))
+    if (isUlt)
     {
-        skill_up_04->SetVisibility(show ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
-	}
+        if (IsValid(skill_up_04))
+        {
+            skill_up_04->SetVisibility(show ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+        }
+    }
 }
 
 void UUI_MainHUD::setStat(ECharacterStat stat, int32 value)
@@ -221,7 +237,26 @@ void UUI_MainHUD::UpdateSkillPoint(float _nowSP)
     }
     else
     {
-        ShowSkillUp(true);
+        bool isOverUltLevel = false;
+
+        int nowUltLevel = getSkillLevel(R_SkillTag, false);
+        if (nowLevel >= 3 && nowUltLevel < 1)
+        {
+            isOverUltLevel = true;
+        }
+        if (nowLevel >= 6 && nowUltLevel < 2)
+        {
+            isOverUltLevel = true;
+        }
+        if (nowLevel >= 9 && nowUltLevel < 3)
+        {
+            isOverUltLevel = true;
+        }
+            
+
+
+
+        ShowSkillUp(true, isOverUltLevel);
     }
 	// UE_LOG(LogTemp, Error, TEXT("UpdateSkillPoint called with SP: %f"), _nowSP);
 }
@@ -280,9 +315,10 @@ void UUI_MainHUD::NativeConstruct()
     RefreshInventoryGridLayout();
     UpdateInventoryUI();
 
-    if (UI_BACKGROUND_LevelUp)
+    if (UI_BACKGROUND_LevelUp && UI_BACKGROUND_LevelUp_Ult)
     {
         UI_BACKGROUND_LevelUp->SetVisibility(ESlateVisibility::Collapsed);
+        UI_BACKGROUND_LevelUp_Ult->SetVisibility(ESlateVisibility::Collapsed);
     }
 
     // 툴팁 init
@@ -351,57 +387,6 @@ void UUI_MainHUD::NativeConstruct()
     }
     // skil
 
-    // item
-    if (btn_item_01)
-    {
-        btn_item_01->OnHovered.AddDynamic(this, &UUI_MainHUD::OnItem01Hovered);
-        btn_item_01->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
-        btn_item_01->OnClicked.AddDynamic(this, &UUI_MainHUD::OnItemClicked_01);
-    }
-    if (btn_item_02)
-    {
-        btn_item_02->OnHovered.AddDynamic(this, &UUI_MainHUD::OnItem02Hovered);
-        btn_item_02->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
-        btn_item_02->OnClicked.AddDynamic(this, &UUI_MainHUD::OnItemClicked_02);
-    }
-    if (btn_item_03)
-    {
-        btn_item_03->OnHovered.AddDynamic(this, &UUI_MainHUD::OnItem03Hovered);
-        btn_item_03->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
-        btn_item_03->OnClicked.AddDynamic(this, &UUI_MainHUD::OnItemClicked_03);
-    }
-    if (btn_item_04)
-    {
-        btn_item_04->OnHovered.AddDynamic(this, &UUI_MainHUD::OnItem04Hovered);
-        btn_item_04->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
-        btn_item_04->OnClicked.AddDynamic(this, &UUI_MainHUD::OnItemClicked_04);
-    }
-    if (btn_item_05)
-    {
-        btn_item_05->OnHovered.AddDynamic(this, &UUI_MainHUD::OnItem05Hovered);
-        btn_item_05->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
-        btn_item_05->OnClicked.AddDynamic(this, &UUI_MainHUD::OnItemClicked_05);
-    }
-    if (btn_item_06)
-    {
-        btn_item_06->OnHovered.AddDynamic(this, &UUI_MainHUD::OnItem06Hovered);
-        btn_item_06->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
-        btn_item_06->OnClicked.AddDynamic(this, &UUI_MainHUD::OnItemClicked_06);
-    }
-    if (btn_item_07)
-    {
-        btn_item_07->OnHovered.AddDynamic(this, &UUI_MainHUD::OnItem07Hovered);
-        btn_item_07->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
-        btn_item_07->OnClicked.AddDynamic(this, &UUI_MainHUD::OnItemClicked_07);
-    }
-    if (btn_item_08)
-    {
-        btn_item_08->OnHovered.AddDynamic(this, &UUI_MainHUD::OnItem08Hovered);
-        btn_item_08->OnUnhovered.AddDynamic(this, &UUI_MainHUD::HideTooltip);
-        btn_item_08->OnClicked.AddDynamic(this, &UUI_MainHUD::OnItemClicked_08);
-    }
-    //
-
     // cool
     SkillCoolTexts[0] = skill_cool_01;
     SkillCoolTexts[1] = skill_cool_02;
@@ -450,6 +435,7 @@ void UUI_MainHUD::NativeConstruct()
     //    &UUI_MainHUD::AddKillPerSecond,
     //    1.0f,
     //    true);
+    
 }
 
 /// 마우스 이벤트!
@@ -556,102 +542,6 @@ void UUI_MainHUD::OnSkillLevelUp03Hovered()
 
 void UUI_MainHUD::OnSkillLevelUp04Hovered()
 {
-}
-
-void UUI_MainHUD::OnItem01Hovered()
-{
-    UW_InventorySlot* invTem = InventorySlotWidgets[0];
-    if (!IsValid(invTem)) return;
-    UBaseItemData* nowItem = invTem->GetCachedItemData();
-	if (!IsValid(nowItem)) return;
-    
-	FText blank = FText::FromString(TEXT(""));
-
-    ShowTooltip(btn_item_01, nowItem->ItemName, nowItem->ItemShortDesc, nowItem->ItemLongDesc, blank, true);
-}
-
-void UUI_MainHUD::OnItem02Hovered()
-{
-    UW_InventorySlot* invTem = InventorySlotWidgets[1];
-    if (!IsValid(invTem)) return;
-    UBaseItemData* nowItem = invTem->GetCachedItemData();
-    if (!IsValid(nowItem)) return;
-
-    FText blank = FText::FromString(TEXT(""));
-
-    ShowTooltip(btn_item_02, nowItem->ItemName, nowItem->ItemShortDesc, nowItem->ItemLongDesc, blank, true);
-}
-
-void UUI_MainHUD::OnItem03Hovered()
-{
-    UW_InventorySlot* invTem = InventorySlotWidgets[2];
-    if (!IsValid(invTem)) return;
-    UBaseItemData* nowItem = invTem->GetCachedItemData();
-    if (!IsValid(nowItem)) return;
-
-    FText blank = FText::FromString(TEXT(""));
-
-    ShowTooltip(btn_item_03, nowItem->ItemName, nowItem->ItemShortDesc, nowItem->ItemLongDesc, blank, true);
-}
-
-void UUI_MainHUD::OnItem04Hovered()
-{
-    UW_InventorySlot* invTem = InventorySlotWidgets[3];
-    if (!IsValid(invTem)) return;
-    UBaseItemData* nowItem = invTem->GetCachedItemData();
-    if (!IsValid(nowItem)) return;
-
-    FText blank = FText::FromString(TEXT(""));
-
-    ShowTooltip(btn_item_04, nowItem->ItemName, nowItem->ItemShortDesc, nowItem->ItemLongDesc, blank, true);
-}
-
-void UUI_MainHUD::OnItem05Hovered()
-{
-    UW_InventorySlot* invTem = InventorySlotWidgets[4];
-    if (!IsValid(invTem)) return;
-    UBaseItemData* nowItem = invTem->GetCachedItemData();
-    if (!IsValid(nowItem)) return;
-
-    FText blank = FText::FromString(TEXT(""));
-
-    ShowTooltip(btn_item_05, nowItem->ItemName, nowItem->ItemShortDesc, nowItem->ItemLongDesc, blank, true);
-}
-
-void UUI_MainHUD::OnItem06Hovered()
-{
-    UW_InventorySlot* invTem = InventorySlotWidgets[5];
-    if (!IsValid(invTem)) return;
-    UBaseItemData* nowItem = invTem->GetCachedItemData();
-    if (!IsValid(nowItem)) return;
-
-    FText blank = FText::FromString(TEXT(""));
-
-    ShowTooltip(btn_item_06, nowItem->ItemName, nowItem->ItemShortDesc, nowItem->ItemLongDesc, blank, true);
-}
-
-void UUI_MainHUD::OnItem07Hovered()
-{
-    UW_InventorySlot* invTem = InventorySlotWidgets[6];
-    if (!IsValid(invTem)) return;
-    UBaseItemData* nowItem = invTem->GetCachedItemData();
-    if (!IsValid(nowItem)) return;
-
-    FText blank = FText::FromString(TEXT(""));
-
-    ShowTooltip(btn_item_07, nowItem->ItemName, nowItem->ItemShortDesc, nowItem->ItemLongDesc, blank, true);
-}
-
-void UUI_MainHUD::OnItem08Hovered()
-{
-    UW_InventorySlot* invTem = InventorySlotWidgets[7];
-    if (!IsValid(invTem)) return;
-    UBaseItemData* nowItem = invTem->GetCachedItemData();
-    if (!IsValid(nowItem)) return;
-
-    FText blank = FText::FromString(TEXT(""));
-
-    ShowTooltip(btn_item_08, nowItem->ItemName, nowItem->ItemShortDesc, nowItem->ItemLongDesc, blank, true);
 }
 
 void UUI_MainHUD::ShowTooltip(UWidget* AnchorWidget, FText Name, FText ShortDesc, FText DetailDesc, FText CostDesc, bool showUpper)
@@ -939,56 +829,6 @@ void UUI_MainHUD::SkillFireReleased(ESkillKey _Index)
     else
     {
         UE_LOG(LogTemp, Warning, TEXT("Invalid SkillDataAsset or index out of range"));
-    }
-}
-
-void UUI_MainHUD::OnItemClicked_01()
-{
-    ItemUsePressed(0);
-}
-
-void UUI_MainHUD::OnItemClicked_02()
-{
-    ItemUsePressed(1);
-}
-
-void UUI_MainHUD::OnItemClicked_03()
-{
-    ItemUsePressed(2);
-}
-
-void UUI_MainHUD::OnItemClicked_04()
-{
-    ItemUsePressed(3);
-}
-
-void UUI_MainHUD::OnItemClicked_05()
-{
-    ItemUsePressed(4);
-}
-
-void UUI_MainHUD::OnItemClicked_06()
-{
-    ItemUsePressed(5);
-}
-
-void UUI_MainHUD::OnItemClicked_07()
-{
-    ItemUsePressed(6);
-}
-
-void UUI_MainHUD::OnItemClicked_08()
-{
-    ItemUsePressed(7);
-}
-
-void UUI_MainHUD::ItemUsePressed(int32 ItemIndex)
-{
-    ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
-
-    if (IsValid(PC))
-    {
-        PC->UseInventoryForUI(ItemIndex);
     }
 }
 
@@ -1389,6 +1229,25 @@ void UUI_MainHUD::AddKillPerSecond()
     }
 }
 
+void UUI_MainHUD::WarningSign(int number)
+{
+    int32 TotalIntSeconds = FMath::Clamp(number, 0, 99);
+    int32 Seconds = TotalIntSeconds % 60;
+
+    int32 SecTenDigit = Seconds / 10;
+    int32 SecOneDigit = Seconds % 10;
+
+    if (WarningNumber_ten && SegmentTextures[SecTenDigit])
+    {
+        WarningNumber_ten->SetBrushFromTexture(SegmentTextures[SecTenDigit]);
+    }
+    if (WarningNumber_one && SegmentTextures[SecOneDigit])
+    {
+        WarningNumber_one->SetBrushFromTexture(SegmentTextures[SecOneDigit]);
+    }
+
+}
+
 void UUI_MainHUD::UpdateTeamHP(int32 TeamIndex, float CurrentHP, float MaxHP)
 {
     if (TeamIndex > MAX_TEAMMATE) return;
@@ -1576,6 +1435,7 @@ void UUI_MainHUD::EnsureInventorySlotWidgets()
     for (int32 i = 0; i < DesiredSlotCount; ++i)
     {
         UW_InventorySlot* SlotWidget = CreateWidget<UW_InventorySlot>(PC, UW_InventorySlot::StaticClass());
+        
         if (!SlotWidget)
         {
             continue;

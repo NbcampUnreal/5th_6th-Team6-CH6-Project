@@ -23,6 +23,9 @@ public:
 	FName BoneName;
 	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Rotation")
 	bool bUseInstigatorRotation = false;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Summon Settings|Attachment")
+	bool bAttachToBone = false;
 };
 
 UCLASS()
@@ -38,4 +41,5 @@ public:
 protected:
 	virtual bool ShouldProcessOnInstigator(const AActor* Instigator) const override;
 	virtual FTransform CalculateOriginTransform(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const AActor* TargetActor) const override;
+	virtual void InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetVfxCueParameters, const FGameplayCueParameters& HitTargetSoundCueParameters) const override;
 };

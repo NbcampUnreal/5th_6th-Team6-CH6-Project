@@ -7,6 +7,7 @@
 #include "GameplayEffect.h"
 #include "DrawDebugHelpers.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "SkillSystem/Actor/BaseRangeOverlapEffectActor/BaseRangeOverlapEffectActor.h"
 
 USummonRangeAtBone::USummonRangeAtBone()
 {
@@ -55,4 +56,23 @@ FTransform USummonRangeAtBone::CalculateOriginTransform(const FGameplayEffectSpe
 	}
 
 	return FTransform(CombinedRotation, BaseLocation);
+}
+
+void USummonRangeAtBone::InitializeRangeActor(ABaseRangeOverlapEffectActor* RangeActor, const USummonRangeBaseConfig* Config, AActor* Instigator, const FGameplayEffectContextHandle& Context, const FGameplayCueParameters& HitTargetVfxCueParameters, const FGameplayCueParameters& HitTargetSoundCueParameters) const
+{
+	Super::InitializeRangeActor(RangeActor, Config, Instigator, Context, HitTargetVfxCueParameters, HitTargetSoundCueParameters);
+
+	const USummonRangeByBoneGECConfig* const BoneConfig = Cast<USummonRangeByBoneGECConfig>(Config);
+	if (!IsValid(BoneConfig) || !BoneConfig->bAttachToBone || !IsValid(Instigator) || !IsValid(RangeActor))
+	{
+		return;
+	}
+
+	if (USkeletalMeshComponent* const Mesh = Instigator->FindComponentByClass<USkeletalMeshComponent>())
+	{
+		if (Mesh->DoesSocketExist(BoneConfig->BoneName))
+		{
+			RangeActor->AttachToComponent(Mesh, FAttachmentTransformRules::KeepWorldTransform, BoneConfig->BoneName);
+		}
+	}
 }

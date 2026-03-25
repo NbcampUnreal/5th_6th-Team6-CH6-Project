@@ -65,7 +65,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
 	void UPdate_MP(float CurrentHP, float MaxHP);
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
-	void ShowSkillUp(bool show);
+	void ShowSkillUp(bool show, bool isUlt = false);
 
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
 	void setStat(ECharacterStat stat, int32 Value);
@@ -129,14 +129,6 @@ protected:
 	UFUNCTION() void OnSkillLevelUp03Hovered();
 	UFUNCTION() void OnSkillLevelUp04Hovered();
 
-	UFUNCTION() void OnItem01Hovered();
-	UFUNCTION() void OnItem02Hovered();
-	UFUNCTION() void OnItem03Hovered();
-	UFUNCTION() void OnItem04Hovered();
-	UFUNCTION() void OnItem05Hovered();
-	UFUNCTION() void OnItem06Hovered();
-	UFUNCTION() void OnItem07Hovered();
-	UFUNCTION() void OnItem08Hovered();
 	// .............
 
 	// void ShowTooltip(UWidget* AnchorWidget, UTexture2D* Icon, FText Name, FText ShortDesc, FText DetailDesc, bool showUpper);
@@ -319,28 +311,16 @@ protected:
 	UImage* UI_BACKGROUND_LevelUp;
 
 	UPROPERTY(meta = (BindWidget))
-	UButton* btn_item_01;
+	UImage* UI_BACKGROUND_LevelUp_Ult;
 
 	UPROPERTY(meta = (BindWidget))
-	UButton* btn_item_02;
+	UImage* WarningSkull;
 
 	UPROPERTY(meta = (BindWidget))
-	UButton* btn_item_03;
+	UImage* WarningNumber_ten;
 
 	UPROPERTY(meta = (BindWidget))
-	UButton* btn_item_04;
-
-	UPROPERTY(meta = (BindWidget))
-	UButton* btn_item_05;
-
-	UPROPERTY(meta = (BindWidget))
-	UButton* btn_item_06;
-
-	UPROPERTY(meta = (BindWidget))
-	UButton* btn_item_07;
-
-	UPROPERTY(meta = (BindWidget))
-	UButton* btn_item_08;
+	UImage* WarningNumber_one;
 
 	UFUNCTION()
 	void OnSkillClicked_Q();
@@ -363,17 +343,6 @@ protected:
 	UFUNCTION()
 	void SkillFireReleased(ESkillKey index);
 
-	UFUNCTION() void OnItemClicked_01();
-	UFUNCTION() void OnItemClicked_02();
-	UFUNCTION() void OnItemClicked_03();
-	UFUNCTION() void OnItemClicked_04();
-	UFUNCTION() void OnItemClicked_05();
-	UFUNCTION() void OnItemClicked_06();
-	UFUNCTION() void OnItemClicked_07();
-	UFUNCTION() void OnItemClicked_08();
-
-	UFUNCTION()
-	void ItemUsePressed(int32 ItemIndex);
 
 	UFUNCTION()
 	void OnSkillLevelUpClicked_Q();
@@ -455,6 +424,10 @@ private:
 	FTimerHandle KillTimerHandle;
 	void AddKillPerSecond();
 	int32 CurrentKillCount = 0;
+	
+public:
+	UFUNCTION()
+	void WarningSign(int number);
 
 	// TEAM HUD Management
 public:
@@ -477,6 +450,8 @@ protected:
 
 	float debugHP_01 = 1000.f;
 	float debugHP_02 = 1000.f;
+
+	int32 nowLevel = 1;
 
 private:
 	void RefreshInventoryGridLayout(); // [김현수 추가분]
