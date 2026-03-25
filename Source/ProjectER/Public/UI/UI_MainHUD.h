@@ -65,7 +65,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
 	void UPdate_MP(float CurrentHP, float MaxHP);
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
-	void ShowSkillUp(bool show);
+	void ShowSkillUp(bool show, bool isUlt = false);
 
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
 	void setStat(ECharacterStat stat, int32 Value);
@@ -310,6 +310,18 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UImage* UI_BACKGROUND_LevelUp;
 
+	UPROPERTY(meta = (BindWidget))
+	UImage* UI_BACKGROUND_LevelUp_Ult;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* WarningSkull;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* WarningNumber_ten;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* WarningNumber_one;
+
 	UFUNCTION()
 	void OnSkillClicked_Q();
 	UFUNCTION()
@@ -412,6 +424,10 @@ private:
 	FTimerHandle KillTimerHandle;
 	void AddKillPerSecond();
 	int32 CurrentKillCount = 0;
+	
+public:
+	UFUNCTION()
+	void WarningSign(int number);
 
 	// TEAM HUD Management
 public:
@@ -434,6 +450,8 @@ protected:
 
 	float debugHP_01 = 1000.f;
 	float debugHP_02 = 1000.f;
+
+	int32 nowLevel = 1;
 
 private:
 	void RefreshInventoryGridLayout(); // [김현수 추가분]
