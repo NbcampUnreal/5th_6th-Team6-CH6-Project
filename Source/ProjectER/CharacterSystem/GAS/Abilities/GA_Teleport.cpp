@@ -1,10 +1,13 @@
-#include "GA_Teleport.h"
+﻿#include "GA_Teleport.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_WaitDelay.h"
 #include "Engine/World.h"
+#include "LevelManagement/LevelAreaTrackerComponent.h"
+
+
 UGA_Teleport::UGA_Teleport()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
@@ -66,7 +69,14 @@ void UGA_Teleport::OnDelayFinish()
 				}
 			}
 		}
-
+		if (ULevelAreaTrackerComponent* Tracker = Char->FindComponentByClass<ULevelAreaTrackerComponent>()) 
+		{
+			Tracker->UpdateArea();
+		}
+		else 
+		{
+			UE_LOG(LogTemp, Log, TEXT("[GA_Teleport] Can't Find ULevelAreaTrackerComponent"));
+		}
 		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 	}
 }

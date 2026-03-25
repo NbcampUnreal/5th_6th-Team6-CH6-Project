@@ -41,7 +41,7 @@ protected:
 
 	// 박스와의 최대 거리
 	UPROPERTY(EditDefaultsOnly, Category = "OpenBox")
-	float MaxLootDistance = 150.f;
+	float MaxLootDistance = 300.f;
 
 	// 거리를 체크할 tick 시간
 	UPROPERTY(EditDefaultsOnly, Category = "OpenBox")
