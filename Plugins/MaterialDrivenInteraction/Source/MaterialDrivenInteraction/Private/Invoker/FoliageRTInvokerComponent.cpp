@@ -63,6 +63,9 @@ void UFoliageRTInvokerComponent::TickComponent(float DeltaTime,
         return;
     }
 
+    // Skip velocity update if no slot assigned — not being drawn this cycle
+    if (!PoolManager->IsInvokerActive(this)) { return; }
+
     const FVector2D RawVelocity = ComputeVelocity(DeltaTime);
     EncodedVelocity = FVector2D(
         EncodeVelocityAxis(RawVelocity.X),

@@ -16,57 +16,24 @@ const FName URTMPCUpdater::PN_Period          (TEXT("FRT_Period"));
 
 URTMPCUpdater::URTMPCUpdater()
 {
-    PrimaryComponentTick.bCanEverTick = true;
-    PrimaryComponentTick.TickGroup   = TG_PostUpdateWork;
+    PrimaryComponentTick.bCanEverTick          = true;
+    PrimaryComponentTick.bStartWithTickEnabled = false;
+    PrimaryComponentTick.TickGroup             = TG_PostUpdateWork;
 }
 
 void URTMPCUpdater::BeginPlay()
 {
     Super::BeginPlay();
-
-    UWorld* World = GetOwner() ? GetOwner()->GetWorld() : nullptr;
-    if (!World)
-    {
-        UE_LOG(RTFoliageInvoker, Warning,
-            TEXT("URTMPCUpdater::BeginPlay >> World is null — component disabled"));
-        return;
-    }
-
-    PoolManager = World->GetSubsystem<URTPoolManager>();
-    if (!PoolManager)
-    {
-        UE_LOG(RTFoliageInvoker, Warning,
-            TEXT("URTMPCUpdater::BeginPlay >> URTPoolManager not found — component disabled"));
-        SetComponentTickEnabled(false);
-        return;
-    }
-
-    PoolManager->OnCellAssigned.AddDynamic(this, &URTMPCUpdater::OnCellAssigned);
-    PoolManager->OnCellReclaimed.AddDynamic(this, &URTMPCUpdater::OnCellReclaimed);
-
-    BuildParameterNames();
-    PushVectorDataToMPC();
-
-    const FVector OwnerLoc = GetOwner()->GetActorLocation();
-    UE_LOG(RTFoliageInvoker, Log,
-        TEXT("URTMPCUpdater::BeginPlay >> Initialised — PoolSize=%d CellSize=%.0f Period=%.1f MPC=%s  OwnerLoc(%.0f,%.0f,%.0f)"),
-        PoolManager->PoolSize, PoolManager->CellSize, TimestampPeriod,
-        ParameterCollection ? *ParameterCollection->GetName() : TEXT("none"),
-        OwnerLoc.X, OwnerLoc.Y, OwnerLoc.Z);
+    // Intentionally empty — wait for InitializeMPCUpdater from local player
 }
 
 void URTMPCUpdater::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-    if (PoolManager)
-    {
-        PoolManager->OnCellAssigned.RemoveDynamic(this, &URTMPCUpdater::OnCellAssigned);
-        PoolManager->OnCellReclaimed.RemoveDynamic(this, &URTMPCUpdater::OnCellReclaimed);
-    }
+    DeinitializeMPCUpdater();
 
-    const FVector OwnerLoc = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
     UE_LOG(RTFoliageInvoker, Log,
-        TEXT("URTMPCUpdater::EndPlay >> Delegates unbound  OwnerLoc(%.0f,%.0f,%.0f)"),
-        OwnerLoc.X, OwnerLoc.Y, OwnerLoc.Z);
+        TEXT("URTMPCUpdater::EndPlay >> Loc(%.0f,%.0f,%.0f)"),
+        GetSourceLocation().X, GetSourceLocation().Y, GetSourceLocation().Z);
 
     Super::EndPlay(EndPlayReason);
 }
@@ -76,15 +43,97 @@ void URTMPCUpdater::TickComponent(float DeltaTime, ELevelTick TickType,
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    UE_LOG(RTFoliageInvoker, Log, TEXT("URTMPCUpdater::Tick >> NowFrac=%.4f"), 
-    FMath::Frac(GetOwner()->GetWorld()->GetTimeSeconds() / FMath::Max(TimestampPeriod, 1.f)));
+    if (PoolManager)
+    {
+        PoolManager->SetPriorityCenter(GetSourceLocation());
+        PoolManager->SetDrawRadius(DrawRadius);
+    }
+
     PushVectorDataToMPC();
+}
+
+bool URTMPCUpdater::InitializeMPCUpdater(USceneComponent* InRootComponent)
+{
+    if (bInitialized) { return false; }
+
+    if (!InRootComponent)
+    {
+        UE_LOG(RTFoliageInvoker, Warning,
+            TEXT("URTMPCUpdater::InitializeMPCUpdater >> InRootComponent is null"));
+        return false;
+    }
+
+    UWorld* World = GetOwner() ? GetOwner()->GetWorld() : nullptr;
+    if (!World)
+    {
+        UE_LOG(RTFoliageInvoker, Warning,
+            TEXT("URTMPCUpdater::InitializeMPCUpdater >> World is null"));
+        return false;
+    }
+
+    PoolManager = World->GetSubsystem<URTPoolManager>();
+    if (!PoolManager)
+    {
+        UE_LOG(RTFoliageInvoker, Warning,
+            TEXT("URTMPCUpdater::InitializeMPCUpdater >> URTPoolManager not found"));
+        return false;
+    }
+
+    CachedRootComponent = InRootComponent;
+
+    PoolManager->OnCellAssigned.AddDynamic(this, &URTMPCUpdater::OnCellAssigned);
+    PoolManager->OnCellReclaimed.AddDynamic(this, &URTMPCUpdater::OnCellReclaimed);
+
+    BuildParameterNames();
+    PushVectorDataToMPC();
+
+    SetComponentTickEnabled(true);
+    bInitialized = true;
+
+    UE_LOG(RTFoliageInvoker, Log,
+        TEXT("URTMPCUpdater::InitializeMPCUpdater >> Activated — PoolSize=%d CellSize=%.0f Period=%.1f DrawRadius=%.0f MPC=%s  Loc(%.0f,%.0f,%.0f)"),
+        PoolManager->PoolSize, PoolManager->CellSize, TimestampPeriod, DrawRadius,
+        ParameterCollection ? *ParameterCollection->GetName() : TEXT("none"),
+        GetSourceLocation().X, GetSourceLocation().Y, GetSourceLocation().Z);
+
+    return true;
+}
+
+void URTMPCUpdater::DeinitializeMPCUpdater()
+{
+    if (!bInitialized) { return; }
+
+    SetComponentTickEnabled(false);
+    CachedRootComponent = nullptr;
+
+    if (PoolManager)
+    {
+        PoolManager->OnCellAssigned.RemoveDynamic(this, &URTMPCUpdater::OnCellAssigned);
+        PoolManager->OnCellReclaimed.RemoveDynamic(this, &URTMPCUpdater::OnCellReclaimed);
+    }
+
+    bInitialized = false;
+
+    UE_LOG(RTFoliageInvoker, Log,
+        TEXT("URTMPCUpdater::DeinitializeMPCUpdater >> Deactivated on %s"),
+        GetOwner() ? *GetOwner()->GetName() : TEXT("null"));
 }
 
 UMaterialParameterCollectionInstance* URTMPCUpdater::GetMPCInstance() const
 {
     if (!ParameterCollection || !GetOwner() || !GetOwner()->GetWorld()) { return nullptr; }
     return GetOwner()->GetWorld()->GetParameterCollectionInstance(ParameterCollection);
+}
+
+FVector URTMPCUpdater::GetSourceLocation() const
+{
+    if (CachedRootComponent)
+        return CachedRootComponent->GetComponentLocation();
+
+    if (GetOwner())
+        return GetOwner()->GetActorLocation();
+
+    return FVector::ZeroVector;
 }
 
 void URTMPCUpdater::BuildParameterNames()
@@ -119,8 +168,6 @@ void URTMPCUpdater::PushVectorDataToMPC()
         return;
     }
 
-    // ── Slot data ─────────────────────────────────────────────────────────────
-
     const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
     const int32 SlotCount = FMath::Min(Pool.Num(), FRT_MAX_POOL_SLOTS);
     int32 ActiveCount = 0;
@@ -148,15 +195,12 @@ void URTMPCUpdater::PushVectorDataToMPC()
             World, ParameterCollection, ParamName_SlotData[i], FLinearColor::Black);
     }
 
-    // ── Scalar params ─────────────────────────────────────────────────────────
-
     UKismetMaterialLibrary::SetScalarParameterValue(
         World, ParameterCollection, PN_CellSize, PoolManager->CellSize);
 
     UKismetMaterialLibrary::SetScalarParameterValue(
         World, ParameterCollection, PN_ActiveSlotCount, static_cast<float>(ActiveCount));
 
-    // Timestamp params — consumer computes: age = frac(NowFrac - StampFrac) * Period
     const float SafePeriod = FMath::Max(TimestampPeriod, 1.f);
     const float NowFrac    = FMath::Frac(World->GetTimeSeconds() / SafePeriod);
 
@@ -166,29 +210,25 @@ void URTMPCUpdater::PushVectorDataToMPC()
     UKismetMaterialLibrary::SetScalarParameterValue(
         World, ParameterCollection, PN_Period, SafePeriod);
 
-    // ── Logging ───────────────────────────────────────────────────────────────
-
-    const FVector OwnerLoc = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
+    const FVector Loc = GetSourceLocation();
     UE_LOG(RTFoliageInvoker, Verbose,
-        TEXT("URTMPCUpdater::PushVectorDataToMPC >> CellSize=%.0f ActiveSlots=%d/%d NowFrac=%.4f Period=%.1f  OwnerLoc(%.0f,%.0f,%.0f)"),
-        PoolManager->CellSize, ActiveCount, SlotCount, NowFrac, SafePeriod,
-        OwnerLoc.X, OwnerLoc.Y, OwnerLoc.Z);
+        TEXT("URTMPCUpdater::PushVectorDataToMPC >> CellSize=%.0f ActiveSlots=%d/%d NowFrac=%.4f Period=%.1f DrawRadius=%.0f  Loc(%.0f,%.0f,%.0f)"),
+        PoolManager->CellSize, ActiveCount, SlotCount, NowFrac, SafePeriod, DrawRadius,
+        Loc.X, Loc.Y, Loc.Z);
 }
 
 void URTMPCUpdater::OnCellAssigned(FIntPoint CellIndex, int32 SlotIndex)
 {
-    const FVector OwnerLoc = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
+    const FVector Loc = GetSourceLocation();
     UE_LOG(RTFoliageInvoker, Verbose,
-        TEXT("URTMPCUpdater::OnCellAssigned >> Slot %d → Cell (%d,%d)  OwnerLoc(%.0f,%.0f,%.0f)"),
-        SlotIndex, CellIndex.X, CellIndex.Y,
-        OwnerLoc.X, OwnerLoc.Y, OwnerLoc.Z);
+        TEXT("URTMPCUpdater::OnCellAssigned >> Slot %d → Cell (%d,%d)  Loc(%.0f,%.0f,%.0f)"),
+        SlotIndex, CellIndex.X, CellIndex.Y, Loc.X, Loc.Y, Loc.Z);
 }
 
 void URTMPCUpdater::OnCellReclaimed(FIntPoint CellIndex, int32 SlotIndex)
 {
-    const FVector OwnerLoc = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
+    const FVector Loc = GetSourceLocation();
     UE_LOG(RTFoliageInvoker, Verbose,
-        TEXT("URTMPCUpdater::OnCellReclaimed >> Slot %d reclaimed from Cell (%d,%d)  OwnerLoc(%.0f,%.0f,%.0f)"),
-        SlotIndex, CellIndex.X, CellIndex.Y,
-        OwnerLoc.X, OwnerLoc.Y, OwnerLoc.Z);
+        TEXT("URTMPCUpdater::OnCellReclaimed >> Slot %d reclaimed from Cell (%d,%d)  Loc(%.0f,%.0f,%.0f)"),
+        SlotIndex, CellIndex.X, CellIndex.Y, Loc.X, Loc.Y, Loc.Z);
 }

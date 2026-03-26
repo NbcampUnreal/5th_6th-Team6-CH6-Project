@@ -66,6 +66,12 @@ public:
 	UPROPERTY(config, EditAnywhere, BlueprintReadOnly, Category="Tags")
 	FName NoShadowProxyTag = TEXT("NoShadowProxy");
 
+	UPROPERTY(config, EditAnywhere, BlueprintReadOnly, Category="Tags")
+	FName OcclusionTypeSwitchTag = TEXT("IsRTorPhysical");
+
+	UPROPERTY(config, EditAnywhere, BlueprintReadOnly, Category="Tags")
+	FName OcclusionLockTag = TEXT("ShouldOcclude");
+
 	// Material Params
 
 	UPROPERTY(config, EditAnywhere, BlueprintReadOnly, Category="Parameters")

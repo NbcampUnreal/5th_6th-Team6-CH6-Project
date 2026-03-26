@@ -174,9 +174,19 @@ void UMainVisionRTManager::UpdateCameraLOS()
 			);
 			const float RadiusUV = Provider->GetVisibleRange() / (CameraVisionRange * 2.f);
 
-			const EVisionChannel V_Channel = Provider->GetVisionChannel();
+			/*const EVisionChannel V_Channel = Provider->GetVisionChannel();
 			const uint32 ChannelBitMask =
-				(V_Channel == EVisionChannel::None) ? 0u : (1u << static_cast<uint32>(V_Channel));
+				(V_Channel == EVisionChannel::None) ? 0u : (1u << static_cast<uint32>(V_Channel));*/
+			
+			const EVisionChannel V_Channel = Provider->GetVisionChannel();
+			const uint32 ChannelBitMask = [V_Channel]() -> uint32
+			{
+				if (V_Channel == EVisionChannel::None)
+					return 0u;
+				if (V_Channel == EVisionChannel::AlwaysVisible)
+					return 0xFFFFFFFFu; // matches every view mask
+				return 1u << static_cast<uint32>(V_Channel);
+			}();
 
 			FLOSStampData& Stamp = StampData_GT.AddDefaulted_GetRef();
 			Stamp.CenterRadiusStrength = FVector4f(CenterUV.X, CenterUV.Y, RadiusUV, Provider->GetVisibilityAlpha());

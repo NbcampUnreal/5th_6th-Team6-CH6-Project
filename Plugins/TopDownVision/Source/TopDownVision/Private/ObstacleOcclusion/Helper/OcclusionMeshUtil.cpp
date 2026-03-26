@@ -50,6 +50,18 @@ FName UOcclusionMeshUtil::GetForceOccludeParameterName()
     return S ? S->ForceOccludeParameterName : TEXT("FullOcclusionAlpha");
 }
 
+FName UOcclusionMeshUtil::GetRTSwitchParameterName()
+{
+    const UOcclusionTagSettings* S = GetDefault<UOcclusionTagSettings>();
+    return S ? S->OcclusionTypeSwitchTag : TEXT("IsRTorPhysical");
+}
+
+FName UOcclusionMeshUtil::GetOcclusionLockParameterName()
+{
+    const UOcclusionTagSettings* S = GetDefault<UOcclusionTagSettings>();
+    return S ? S->OcclusionLockTag : TEXT("ShouldOcclude");
+}
+
 void UOcclusionMeshUtil::DiscoverChildMeshes(
     USceneComponent* Root,
     TArray<TSoftObjectPtr<UMeshComponent>>& OutNormalMeshes,

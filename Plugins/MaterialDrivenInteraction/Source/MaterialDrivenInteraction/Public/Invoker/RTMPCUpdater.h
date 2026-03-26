@@ -25,16 +25,30 @@ public:
     virtual void TickComponent(float DeltaTime, ELevelTick TickType,
                                FActorComponentTickFunction* ThisTickFunction) override;
 
+    /** Call from locally controlled character only.
+     *  Pass the root component to use as priority center.
+     *  Returns false if already initialized or setup failed. */
+    UFUNCTION(BlueprintCallable, Category = "Foliage RT|MPC")
+    bool InitializeMPCUpdater(USceneComponent* InRootComponent);
+
+    UFUNCTION(BlueprintCallable, Category = "Foliage RT|MPC")
+    void DeinitializeMPCUpdater();
+
     /** MPC asset receiving slot data, cell size, and timestamp params each tick. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage RT|MPC")
     TObjectPtr<UMaterialParameterCollection> ParameterCollection;
 
     /** Period used for frac(GameTime/Period) timestamp encoding.
-     *  Must match TimestampPeriod on all UFoliageRTInvokerComponents.
-     *  Consumer spring decay must complete within this window. */
+     *  Must match TimestampPeriod on all UFoliageRTInvokerComponents. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage RT|MPC",
         meta = (ClampMin = 1.f))
     float TimestampPeriod = 60.f;
+
+    /** Only invokers within this world-unit radius will be drawn.
+     *  Culls distant invokers from slot evaluation entirely. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage RT|MPC",
+        meta = (ClampMin = 100.f))
+    float DrawRadius = 5000.f;
 
     UFUNCTION(BlueprintPure, Category = "Foliage RT|MPC")
     UMaterialParameterCollectionInstance* GetMPCInstance() const;
@@ -43,6 +57,7 @@ private:
 
     void PushVectorDataToMPC();
     void BuildParameterNames();
+    FVector GetSourceLocation() const;
 
     UFUNCTION()
     void OnCellAssigned(FIntPoint CellIndex, int32 SlotIndex);
@@ -53,12 +68,18 @@ private:
     UPROPERTY()
     TObjectPtr<URTPoolManager> PoolManager;
 
+    /** Cached root component — passed in via InitializeMPCUpdater. */
+    UPROPERTY()
+    TObjectPtr<USceneComponent> CachedRootComponent;
+
     TArray<FName> ParamName_SlotData;
     TArray<FName> ParamName_ImpulseRT;
     TArray<FName> ParamName_ContinuousRT;
 
     static const FName PN_CellSize;
     static const FName PN_ActiveSlotCount;
-    static const FName PN_NowFrac;   // frac(GameTime / Period) — consumer age origin
-    static const FName PN_Period;    // Period in seconds — consumer age scale
+    static const FName PN_NowFrac;
+    static const FName PN_Period;
+
+    bool bInitialized = false;
 };
