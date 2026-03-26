@@ -1,0 +1,210 @@
+﻿// FoliageRT_V2.ush
+// Place in: YourPlugin/Shaders/FoliageRT_V2.ush
+// Include in any Custom node: #include "/FoliageRT_V2/FoliageRT_V2.ush"
+// Virtual path registered in FMaterialDrivenInteractionModule::StartupModule().
+
+#pragma once
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FRT_DecodeDirection
+// [0,1] → [-1,1]. 0.5 = no direction.
+// ─────────────────────────────────────────────────────────────────────────────
+float FRT_DecodeDirection(float EncodedValue)
+{
+    return EncodedValue * 2.0 - 1.0;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FRT_DecodeVelocity
+// [0,1] → world units. 0.5 = stationary.
+// ─────────────────────────────────────────────────────────────────────────────
+float FRT_DecodeVelocity(float EncodedValue, float MaxVelocity)
+{
+    return (EncodedValue - 0.5) * 2.0 * MaxVelocity;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FRT_ComputeAge
+// Computes age in seconds from two frac(GameTime/Period) values.
+// Returns -1 if texel was never stamped (StampFrac == 0, clear color guard).
+//
+// frac() handles wrap correctly:
+//   NowFrac=0.01, StampFrac=0.99 → frac(0.01-0.99) = frac(-0.98) = 0.02
+//   age = 0.02 * Period — correct.
+// ─────────────────────────────────────────────────────────────────────────────
+float FRT_ComputeAge(float NowFrac, float StampFrac, float Period)
+{
+    if (StampFrac <= 0.0)
+        return -1.0;
+
+    float NormAge = frac(NowFrac - StampFrac);
+
+    // Dead zone — if age is > 0.99 it means NowFrac just barely passed StampFrac
+    // which is effectively "just stamped" not "nearly full period old"
+    // Treat as not yet triggered
+    if (NormAge > 0.99f)
+        return -1.0;
+
+    return NormAge * Period;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FRT_DampedSine
+// f(t) = Amplitude * exp(-Damping * t) * sin(Frequency * t * 2PI)
+// Pass AgeSecs from FRT_ComputeAge — returns 0 if age is negative (never stamped).
+// Consumer controls Amplitude externally (e.g. via ContinuousRT.A).
+// ─────────────────────────────────────────────────────────────────────────────
+float FRT_DampedSine(float AgeSecs, float Amplitude, float Frequency, float Damping)
+{
+    // Never stamped guard
+    if (AgeSecs < 0.0)
+        return 0.0;
+
+    float Envelope = exp(-Damping * AgeSecs);
+
+    // Early exit — envelope fully decayed
+    if (Envelope < 0.001)
+        return 0.0;
+
+    return Amplitude * Envelope * sin(Frequency * AgeSecs * 6.28318530718);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FRT_InCellMask
+// 1.0 if WorldXY is inside this slot's active cell, 0.0 otherwise.
+// SlotData: .xy = CellOriginWS  .z = IsActive (1/0)  .w = SlotIndex
+// ─────────────────────────────────────────────────────────────────────────────
+float FRT_InCellMask(float2 WorldXY, float4 SlotData, float CellSize)
+{
+    float2 CellOrigin = SlotData.xy;
+    float  IsActive   = SlotData.z;
+    float2 UV         = (WorldXY - CellOrigin) / CellSize;
+    bool   InBounds   = (UV.x >= 0.0 && UV.x <= 1.0 && UV.y >= 0.0 && UV.y <= 1.0);
+    return (InBounds && IsActive > 0.5) ? 1.0 : 0.0;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FRT_ComputeWPO
+// Combines static lean (ContinuousRT) and damped spring (ImpulseRT).
+//
+// ContinuousRT channels:  R=DirX  G=DirY  B=reserved  A=weight/falloff
+// ImpulseRT channels:     R=VelX  G=VelY  B=reserved  A=GameTimeFrac
+//
+// NowFrac        = frac(GameTime / Period) — pass from MPC or material param
+// Period         = must match TimestampPeriod on invoker component
+// ContWeight     = ContinuousRT.A — also used as spring amplitude envelope
+// ─────────────────────────────────────────────────────────────────────────────
+float3 FRT_ComputeWPO(
+    // Continuous RT inputs
+    float  ContDirX_Enc,
+    float  ContDirY_Enc,
+    float  ContWeight,
+    // Impulse RT inputs
+    float  ImpVelX_Enc,
+    float  ImpVelY_Enc,
+    float  StampFrac,      // ImpulseRT.A
+    // Timing
+    float  NowFrac,        // frac(GameTime / Period)
+    float  Period,
+    // Spring params
+    float  Frequency,
+    float  Damping,
+    float  MaxVelocity,
+    // Geometry
+    float  HeightFraction,
+    float  InCellMask)
+{
+    // ── Static lean ───────────────────────────────────────────────────────────
+    float  PushDirX   = FRT_DecodeDirection(ContDirX_Enc);
+    float  PushDirY   = FRT_DecodeDirection(ContDirY_Enc);
+    float3 StaticLean = float3(PushDirX, PushDirY, 0.0) * ContWeight * HeightFraction;
+
+    // ── Damped spring ─────────────────────────────────────────────────────────
+    // Age computed from frozen timestamp — starts climbing the moment invoker exits
+    float AgeSecs = FRT_ComputeAge(NowFrac, StampFrac, Period);
+
+    // ContinuousRT.A drives amplitude — no effect if invoker never painted this texel
+    float WobbleAmount = FRT_DampedSine(AgeSecs, ContWeight, Frequency, Damping);
+
+    // Direction from velocity — decoded and normalized
+    float  ImpVelX_WS = FRT_DecodeVelocity(ImpVelX_Enc, MaxVelocity);
+    float  ImpVelY_WS = FRT_DecodeVelocity(ImpVelY_Enc, MaxVelocity);
+    float2 RawDir     = float2(ImpVelX_WS, ImpVelY_WS);
+    float  DirLen     = length(RawDir);
+    float  DirThresh  = MaxVelocity * 0.05;
+
+    float3 WobbleDir = DirLen > DirThresh
+                       ? float3(normalize(RawDir), 0.0)
+                       : float3(0.0, 0.0, 0.0);
+
+    float3 DampedSpring = WobbleDir * WobbleAmount * HeightFraction;
+
+    return (StaticLean + DampedSpring) * InCellMask;
+}
+
+
+void FRT_SampleSlot(
+    float4 ContSample,
+    float4 ImpSample,
+    float2 WorldXY,
+    float4 SlotData,
+    float  CellSize,
+    out float4 OutContinuous,
+    out float4 OutImpulse)
+{
+    float Mask = FRT_InCellMask(WorldXY, SlotData, CellSize);
+
+    OutContinuous = float4(
+        (ContSample.r * 2.f - 1.f) * Mask,
+        (ContSample.g * 2.f - 1.f) * Mask,
+        0.f,
+        ContSample.a * Mask
+    );
+
+    OutImpulse = float4(
+        (ImpSample.r * 2.f - 1.f) * Mask,
+        (ImpSample.g * 2.f - 1.f) * Mask,
+        0.f,
+        ImpSample.a   // no mask — frozen timestamp must survive after invoker exits
+    );
+}
+
+float4 FRT_MergeImpSlot(float4 Existing, float4 NewSlot)
+{
+    if (NewSlot.a > Existing.a)
+        return NewSlot;
+    return Existing;
+
+    /*// B = freshness, 0 = never stamped — skip never-stamped slots
+    if (NewSlot.b <= 0.f) return Existing;
+    if (Existing.b <= 0.f) return NewSlot;
+
+    // Smallest freshness = most recently stamped wins
+    if (NewSlot.b < Existing.b)
+        return NewSlot;
+
+    return Existing;*/
+}
+
+
+//============== Try 2=============//
+float3 FRT_SpringWPO(
+    float2 ImpDir,        // MergedImp.xy — decoded velocity direction
+    float  StampFrac,     // MergedImp.a  — frozen timestamp
+    float  NowFrac,       // FRT_NowFrac from MPC
+    float  Period,        // FRT_Period from MPC
+    float  Frequency,
+    float  Damping,
+    float  Amplitude,
+    float  HeightFraction)
+{
+    float AgeSecs = FRT_ComputeAge(NowFrac, StampFrac, Period);
+
+    float Spring = FRT_DampedSine(AgeSecs, Amplitude, Frequency, Damping);
+
+    float2 Dir = float2(ImpDir.x, ImpDir.y);
+    float  Len = length(Dir);
+    Dir = Len > 0.0001f ? Dir / Len : float2(0.f, 0.f);
+
+    return float3(Dir.x, Dir.y, 0.f) * Spring * HeightFraction;
+}

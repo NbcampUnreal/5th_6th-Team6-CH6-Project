@@ -38,8 +38,13 @@ public:
 
 	void ReturnMID(UMaterialInstanceDynamic* MID);
 
+	// Returns true if this material is registered for pooling
+	static bool IsMaterialPooled(const UMaterialInterface* Material);
+	
 	void PrePopulatePool();// populate the mid in pool
 	void CommitGenocide();// kill them all
+
+	void TrimOverflowPool();// clean the overflowed mids
 
 private:
 
@@ -51,4 +56,10 @@ private:
 	// GC anchor — prevents the engine from collecting idle pooled MIDs
 	UPROPERTY()
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> AllPooledMIDs;
+
+	// Over-cap MIDs waiting for GC — trimmed periodically
+	UPROPERTY()
+	TArray<TObjectPtr<UMaterialInstanceDynamic>> OverflowMIDs;
+
+	FTimerHandle TrimTimerHandle;
 };

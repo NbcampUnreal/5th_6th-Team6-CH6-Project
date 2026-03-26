@@ -35,6 +35,9 @@ public:
 	void SetPriorityCenter(FVector WorldLocation);
 	FVector GetPriorityCenter() const { return PriorityCenter; }
 
+	void SetDrawRadius(float Radius) { DrawRadius = Radius; }
+	float GetDrawRadius() const { return DrawRadius; }
+
 	// ── Invoker registration — called once at BeginPlay/EndPlay ───────────────
 
 	// Stores the invoker permanently. Pool evaluation assigns slots internally.
@@ -94,6 +97,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Foliage RT|Events")
 	FOnCellReclaimed OnCellReclaimed;
 
+
+	// Bool Check
+	bool IsInvokerActive(UFoliageRTInvokerComponent* Invoker) const;
+
 	// ── Config ────────────────────────────────────────────────────────────────
 
 	UPROPERTY(BlueprintReadOnly, Category = "Foliage RT|Config")
@@ -134,4 +141,7 @@ private:
 
 	// Frame guard
 	uint64 LastTickFrame = 0;
+
+	//filter range
+	float DrawRadius = 5000.f;
 };
