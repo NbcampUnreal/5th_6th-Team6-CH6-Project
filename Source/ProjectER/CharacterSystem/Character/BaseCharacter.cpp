@@ -87,7 +87,7 @@ ABaseCharacter::ABaseCharacter()
 	// 26.01.29. mpyi
 	// 미니맵을 위한 씬 컴포넌트 2D <- 차후 '카메라' 시스템으로 이동할 예정
 	MinimapCaptureComponent = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("MinimapCaptureComponent"));
-	MinimapCaptureComponent->SetupAttachment(RootComponent);
+	MinimapCaptureComponent->SetupAttachment(TopDownCameraComp);
 
 	// 미니맵 캡처 기본 설정
 	MinimapCaptureComponent->SetAbsolute(false, true, false); // 순서대로: 위치, 회전, 스케일
@@ -1606,8 +1606,6 @@ void ABaseCharacter::InitUI()
 			// 팀원 UI 오픈
 			ETeamType MyTeam = GetTeamType();
 
-			// UE_LOG(LogTemp, Error, TEXT("My Team : %d"), MyTeam);
-
 			if (AGameStateBase* GS = GetWorld()->GetGameState())
 			{
 				AER_GameState* ERGS = Cast<AER_GameState>(GS);
@@ -1886,7 +1884,15 @@ EVisionChannel ABaseCharacter::GetVisionChannelFromVisionPlayerStateComp()
 void ABaseCharacter::InitPlayer()
 {
 	// UI 초기화 (로컬 플레이어 전용 로직이 내부에 있음)
-	InitUI();
+	//InitUI();
+
+	// 일단 임시로 2초 뒤에 로딩하도록
+	GetWorld()->GetTimerManager().SetTimer(
+	UILoadTimerHandle,
+    this,
+    &ABaseCharacter::InitUI,
+    2.0f,
+    false);
 
 	// Camera Setting for local player pawn
 	if (TopDownCameraComp)
