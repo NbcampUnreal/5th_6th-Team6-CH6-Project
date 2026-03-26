@@ -1795,8 +1795,8 @@ void ABasePlayerController::OnInventoryUpdated()
 		MainHUD->UpdateInventoryUI();
 		return;
 	}
-
-	UE_LOG(LogTemp, Error, TEXT("[BasePlayerController] Failed to find valid MainHUD!"));
+	else
+		UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] Failed to find valid MainHUD!"));
 }
 
 // 인벤토리 슬롯 사용
@@ -1807,14 +1807,14 @@ void ABasePlayerController::UseInventorySlot(int32 SlotIndex)
 	APawn* ControlledPawn = GetPawn();
 	if (!ControlledPawn)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[BasePlayerController] No pawn to use item!"));
+		UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] No pawn to use item!"));
 		return;
 	}
 
 	UBaseInventoryComponent* InventoryComp = ControlledPawn->FindComponentByClass<UBaseInventoryComponent>();
 	if (!InventoryComp)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[BasePlayerController] No inventory component found!"));
+		UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] No inventory component found!"));
 		return;
 	}
 

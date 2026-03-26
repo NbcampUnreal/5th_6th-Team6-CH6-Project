@@ -349,6 +349,9 @@ protected:
 	UPROPERTY()
 	UUI_HP_Bar* HPBarWidgetInstance;
 
+	FTimerHandle UILoadTimerHandle;
+
+
 public:
 	// 팀 구분해서 아이콘 색상 업데이트
 	void UpdateMinimapVisuals(FLinearColor n_teamColor);
