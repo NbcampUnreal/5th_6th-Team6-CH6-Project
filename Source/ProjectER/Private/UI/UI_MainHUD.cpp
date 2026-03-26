@@ -1571,27 +1571,27 @@ float UUI_MainHUD::getSkillLevel(FGameplayTag SkillTag, bool levelUp)
         ABasePlayerController* PC = Cast<ABasePlayerController>(GetOwningPlayer());
         if (!IsValid(PC))
         {
-            return -1;
+            return -1.0f;
         }
         APawn* Pawn = PC->GetPawn();
         if (!IsValid(Pawn))
         {
-            return -1;
+            return -1.0f;
         }
         ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(Pawn);
         if (!IsValid(BaseCharacter))
         {
-            return -1;
+            return -1.0f;
         }
         BaseCharacter->Server_UpgradeSkill(SkillTag);
-        return -1;
+        return -1.0f;
     }
     // else일 때는 단순히 스킬 레벨이 몇인지 반환한다
     else
     {
         if (!IsValid(ASC))
         {
-            return -1;
+            return -1.0f;
         }
         UBaseAttributeSet* AS = nullptr;
         AER_PlayerState* PS = Cast<AER_PlayerState>(GetOwningPlayerState());
@@ -1600,7 +1600,7 @@ float UUI_MainHUD::getSkillLevel(FGameplayTag SkillTag, bool levelUp)
         }
         if (!AS)
         {
-            return -1;
+            return -1.0f;
         }
 
         FGameplayAbilitySpec* TargetSpec = nullptr;
@@ -1619,5 +1619,5 @@ float UUI_MainHUD::getSkillLevel(FGameplayTag SkillTag, bool levelUp)
         
         return TargetSpec->Level;
     }
-    return -1;
+    return -1.0f;
 }
