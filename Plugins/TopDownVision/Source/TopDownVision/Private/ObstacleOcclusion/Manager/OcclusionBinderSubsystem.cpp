@@ -3,7 +3,7 @@
 
 #include "ObstacleOcclusion/Manager/OcclusionBinderSubsystem.h"
 #include "ObstacleOcclusion/Binder/OcclusionBinder.h"
-#include "EditorSetting/OcclusionMIDSettings.h"
+#include "EditorSetting/OcclusionMIDPoolSettings.h"
 
 DEFINE_LOG_CATEGORY(OcclusionBinderSubsystem);
 
@@ -13,13 +13,28 @@ void UOcclusionBinderSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 	//populate the pool
 	PrePopulatePool();
+
+	const UOcclusionMIDPoolSettings* Settings = GetDefault<UOcclusionMIDPoolSettings>();
+	const float TrimInterval = Settings ? Settings->OverflowTrimInterval : 60.f;
+
+	GetWorld()->GetTimerManager().SetTimer(
+		TrimTimerHandle,
+		this,
+		&UOcclusionBinderSubsystem::TrimOverflowPool,
+		TrimInterval,
+		true);
 }
 
 void UOcclusionBinderSubsystem::Deinitialize()
 {
-	CommitGenocide();
+	// no more checking
+	GetWorld()->GetTimerManager().ClearTimer(TrimTimerHandle);
+
+	CommitGenocide();// kill them all
 	
+	OverflowMIDs.Empty();
 	PrimitiveToBinderMap.Empty();
+	
 	Super::Deinitialize();
 }
 
@@ -65,7 +80,7 @@ UMaterialInstanceDynamic* UOcclusionBinderSubsystem::CheckoutMID(UMaterialInterf
 {
 	if (!Parent) return nullptr;
 
-	const UOcclusionMIDSettings* Settings = GetDefault<UOcclusionMIDSettings>();
+	const UOcclusionMIDPoolSettings* Settings = GetDefault<UOcclusionMIDPoolSettings>();
 	const int32 MaxPerMaterial = Settings ? Settings->MaxPooledMIDsPerMaterial : 50;
 
 	// Recycle from free list first
@@ -88,29 +103,32 @@ UMaterialInstanceDynamic* UOcclusionBinderSubsystem::CheckoutMID(UMaterialInterf
 			return IsValid(M) && M->Parent == Parent;
 		}).Num();
 
-	// Hard cap — return nullptr, caller skips this mesh
-	if (TotalAnchored >= MaxPerMaterial)
-	{
-		UE_LOG(OcclusionBinderSubsystem, Verbose,
-			TEXT("CheckoutMID>> Pool cap reached for %s | Cap: %d — mesh skipped"),
-			*Parent->GetName(), MaxPerMaterial);
-		return nullptr;
-	}
-
-	// Under cap — create and anchor
 	UMaterialInstanceDynamic* Fresh = UMaterialInstanceDynamic::Create(Parent, Outer);
-	AllPooledMIDs.Add(Fresh);
 
-	UE_LOG(OcclusionBinderSubsystem, Verbose,
-		TEXT("CheckoutMID>> Created+anchored for %s | Total: %d / %d"),
-		*Parent->GetName(), TotalAnchored + 1, MaxPerMaterial);
+	if (TotalAnchored < MaxPerMaterial)
+	{
+		AllPooledMIDs.Add(Fresh);
+
+		UE_LOG(OcclusionBinderSubsystem, Verbose,
+			TEXT("CheckoutMID>> Created+anchored for %s | Total: %d / %d"),
+			*Parent->GetName(), TotalAnchored + 1, MaxPerMaterial);
+	}
+	else
+	{
+		// Over cap — anchor in overflow list, trimmed periodically
+		OverflowMIDs.Add(Fresh);
+
+		UE_LOG(OcclusionBinderSubsystem, Verbose,
+			TEXT("CheckoutMID>> Over cap for %s | Overflow count: %d"),
+			*Parent->GetName(), OverflowMIDs.Num());
+	}
 
 	return Fresh;
 }
 
 void UOcclusionBinderSubsystem::PrePopulatePool()
 {
-	const UOcclusionMIDSettings* Settings = GetDefault<UOcclusionMIDSettings>();
+	const UOcclusionMIDPoolSettings* Settings = GetDefault<UOcclusionMIDPoolSettings>();
 	if (!Settings || Settings->PreWarmCountPerMaterial <= 0) return;
 
 	for (const TSoftObjectPtr<UMaterialInterface>& SoftMat : Settings->PreWarmMaterials)
@@ -145,6 +163,18 @@ void UOcclusionBinderSubsystem::CommitGenocide()
 		TEXT("UOcclusionBinderSubsystem::TeardownPool>> Pool cleared"));
 }
 
+void UOcclusionBinderSubsystem::TrimOverflowPool()
+{
+	if (OverflowMIDs.IsEmpty()) return;
+
+	const int32 Count = OverflowMIDs.Num();
+	OverflowMIDs.Empty();
+
+	UE_LOG(OcclusionBinderSubsystem, Log,
+		TEXT("UOcclusionBinderSubsystem::TrimOverflowPool>> Trimmed %d overflow MIDs"),
+		Count);
+}
+
 void UOcclusionBinderSubsystem::ReturnMID(UMaterialInstanceDynamic* MID)
 {
 	if (!IsValid(MID)) return;
@@ -154,9 +184,40 @@ void UOcclusionBinderSubsystem::ReturnMID(UMaterialInstanceDynamic* MID)
 
 	MID->ClearParameterValues();
 
-	MIDPool.FindOrAdd(Parent).Add(TObjectPtr<UMaterialInstanceDynamic>(MID));
+	const bool bIsAnchored = AllPooledMIDs.ContainsByPredicate(
+		[MID](const TObjectPtr<UMaterialInstanceDynamic>& M){ return M == MID; });
 
-	UE_LOG(OcclusionBinderSubsystem, Verbose,
-		TEXT("ReturnMID>> Returned for %s | Free: %d"),
-		*Parent->GetName(), MIDPool.Find(Parent)->Num());
+	if (bIsAnchored)
+	{
+		MIDPool.FindOrAdd(Parent).Add(TObjectPtr<UMaterialInstanceDynamic>(MID));
+
+		UE_LOG(OcclusionBinderSubsystem, Verbose,
+			TEXT("ReturnMID>> Returned for %s | Free: %d"),
+			*Parent->GetName(), MIDPool.Find(Parent)->Num());
+	}
+	else
+	{
+		// Over-cap — park in overflow, trimmed on next tick
+		if (!OverflowMIDs.Contains(MID))
+			OverflowMIDs.Add(MID);
+
+		UE_LOG(OcclusionBinderSubsystem, Verbose,
+			TEXT("ReturnMID>> Over-cap MID parked in overflow | Total overflow: %d"),
+			OverflowMIDs.Num());
+	}
+}
+
+bool UOcclusionBinderSubsystem::IsMaterialPooled(const UMaterialInterface* Material)
+{
+	if (!Material) return false;
+
+	const UOcclusionMIDPoolSettings* Settings = GetDefault<UOcclusionMIDPoolSettings>();
+	if (!Settings) return false;
+
+	for (const TSoftObjectPtr<UMaterialInterface>& SoftMat : Settings->PreWarmMaterials)
+	{
+		if (SoftMat.Get() == Material) return true;
+	}
+
+	return false;
 }

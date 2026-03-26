@@ -10,13 +10,13 @@ struct MATERIALDRIVENINTERACTION_API FRTPoolEntry
 {
 	GENERATED_BODY()
 
-	// ImpulseRT — RGBA32f, stamp-and-snap.
-	// Written once per new pixel entry by the invoker brush material.
+	// ImpulseRT — RGBA32F, stamped every tick via SE_BLEND_MAX.
 	//   R = velocity X encoded [0,1]  (0.5 = stationary)
-	//   G = ImpactTime raw float      (32f required — TimeDelta = Now - G)
-	//   B = velocity Y encoded [0,1]
-	//   A = weight * mask             (0 = texel never stamped, gates FRT_DampedSine)
-	// Clear color: (0,0,0,0) — A=0 ensures DampedSine guard fires, no phantom wobble.
+	//   G = velocity Y encoded [0,1]  (0.5 = stationary)
+	//   B = speed magnitude [0,1]     (reserved, 0 if unused)
+	//   A = frac(GameTime / Period)   — timestamp, written every tick while present,
+	//       frozen by MAX on exit. Consumer reads: age = frac(CurrentTime - A)
+	// Clear color: (0.5, 0.5, 0, 0) — neutral velocity, A=0 = never stamped.
 	// Cleared lazily on slot reassignment via bImpulseNeedsClear.
 	UPROPERTY(BlueprintReadOnly, Category = "Foliage RT")
 	TObjectPtr<UTextureRenderTarget2D> ImpulseRT = nullptr;

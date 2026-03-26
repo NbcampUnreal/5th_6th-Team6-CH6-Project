@@ -16,6 +16,7 @@ class UAbilitySystemComponent;
  * 
  */
 UCLASS()
+
 class PROJECTER_API UUI_HP_Bar : public UUserWidget
 {
 	GENERATED_BODY()
@@ -35,6 +36,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
 	void Update_PlayerName(FText PlayerName);
+
+	UFUNCTION(BlueprintCallable, Category = "UI_MainHUD")
+	void SetHPBarVisible(bool bVisible);
 
 protected:
 	virtual void NativeConstruct() override; // 생성자
