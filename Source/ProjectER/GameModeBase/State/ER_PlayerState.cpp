@@ -115,7 +115,7 @@ void AER_PlayerState::SetSelectedCharacterData(TSoftObjectPtr<UCharacterData> In
 	}
 }
 
-void AER_PlayerState::OnRep_CurrentRestrictedTime()
+void AER_PlayerState::setUI_RestrictedTime_Implementation()
 {
 	APlayerController* PC = GetPlayerController();
 
