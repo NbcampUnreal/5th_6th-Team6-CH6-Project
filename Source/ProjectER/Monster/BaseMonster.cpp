@@ -454,12 +454,6 @@ void ABaseMonster::OnMonterHitHandle(AActor* Target)
 	{
 		SetTargetPlayer(Target);
 	}
-
-	if (bIsPhaseTrigger == false && AttributeSet->GetHPPersent() <= 0.5f)
-	{
-		bIsPhaseTrigger = true;
-		SendStateTreeEvent(MonsterTags.Phase2EventTag);
-	}
 	
 	if (IsValid(StateTreeComp) == false)
 	{
@@ -763,10 +757,7 @@ bool ABaseMonster::GetbIsDead()
 	return bIsDead;
 }
 
-void ABaseMonster::SetAttackUtility(float Amount)
-{
-	AttackUtility = Amount;
-}
+
 
 FVector ABaseMonster::GetStartLocation()
 {
@@ -815,18 +806,7 @@ void ABaseMonster::HighlightActor(bool bIsHighlight, int32 StencilValue)
 
 void ABaseMonster::OnRep_TeamID()
 {
-	/*FString Team = (TeamID == ETeamType::Team_A) ? TEXT("Team_A") : 
-						(TeamID == ETeamType::Team_B) ? TEXT("Team_B") : 
-							(TeamID == ETeamType::Team_C) ? TEXT("Team_C") : TEXT("None");
-	
-	FString Message = FString::Printf(TEXT("[%s] Team Changed to: %s"), *GetName(), *Team);
-	
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, Message);
-	}
-	
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *Message);*/
+
 }
 
 void ABaseMonster::Death()

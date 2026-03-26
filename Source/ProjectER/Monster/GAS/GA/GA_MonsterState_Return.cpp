@@ -45,7 +45,6 @@ void UGA_MonsterState_Return::OnMoveFinished(FAIRequestID RequestID, EPathFollow
 	if (IsValid(Monster))
 	{
 		Monster->SetbIsCombat(false);
-		Monster->SetAttackUtility(1.f);
 		Monster->SetActorRotation(Monster->GetStartRotator());
 		Monster->SendStateTreeEvent(FGameplayTag::RequestGameplayTag("Event.Action.Return"));
 

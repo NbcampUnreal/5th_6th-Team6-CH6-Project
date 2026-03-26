@@ -46,7 +46,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SetbIsDead(bool Target);
 	bool GetbIsDead();
-	void SetAttackUtility(float Amount);
+
 	FVector GetStartLocation();
 	UMonsterRangeComponent* GetMonsterRangeComp() { return MonsterRangeComp; };
 	FMonsterTags& GetMonsterTags() { return MonsterTags; };
@@ -246,20 +246,6 @@ private:
 
 	uint8 AttackCount = 0;
 
-
-	// 제거 예정
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
-	float AttackUtility = 1.f;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
-	float QSkillUtility = 1.f;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
-	float WSkillUtility = 1.f;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "StateTree", meta = (AllowPrivateAccess = "true"))
-	bool bIsPhaseTrigger;
-	//
 #pragma endregion
 
 
