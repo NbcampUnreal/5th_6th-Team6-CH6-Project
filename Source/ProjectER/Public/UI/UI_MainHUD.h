@@ -463,6 +463,6 @@ private:
 
 
 	bool test = true;
-	float getSkillLevel(FGameplayTag SkillTag, bool levelUp);
+	int32 getSkillLevel(FGameplayTag SkillTag, bool levelUp);
 };
 
