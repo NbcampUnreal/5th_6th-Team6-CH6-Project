@@ -39,6 +39,7 @@ void AOcclusionBinder::BeginPlay()
     CurrentAlpha      = 1.f;
     CurrentForceAlpha = 0.f;
     UpdateMaterialAlpha();
+    UpdateOccludedMeshVisibility();// set visibility for occluded mesh
 
 }
 
@@ -110,6 +111,8 @@ void AOcclusionBinder::OnOcclusionExit_Implementation(UObject* SourceTracer)
     if (!bForceOccluded)
         bShouldBeOccluded = ActiveOverlaps.Num() > 0;
 
+    UpdateOccludedMeshVisibility();
+
     SetActorTickEnabled(true);
 
     UE_LOG(OcclusionBinder, Log,
@@ -125,6 +128,8 @@ void AOcclusionBinder::ForceOcclude_Implementation(bool bForce)
     if (bForce)
         AcquireMIDs();
 
+    UpdateOccludedMeshVisibility();
+    
     SetActorTickEnabled(true);
 
     UE_LOG(OcclusionBinder, Log,
@@ -202,10 +207,38 @@ void AOcclusionBinder::AcquireMIDs()
 
 void AOcclusionBinder::ReleaseMIDs()
 {
-    UOcclusionBinderSubsystem* Sub = GetWorld()
+    /*UOcclusionBinderSubsystem* Sub = GetWorld()
         ? GetWorld()->GetSubsystem<UOcclusionBinderSubsystem>() : nullptr;
 
     // Only pooled slots returned — non-pooled stay untouched
+    UOcclusionMeshUtil::ReturnMaterials(NormalSlots,   Sub);
+    UOcclusionMeshUtil::ReturnMaterials(OccludedSlots, Sub);
+    UOcclusionMeshUtil::ReturnMaterials(RTSlots,       Sub);
+
+    UE_LOG(OcclusionBinder, Log,
+        TEXT("AOcclusionBinder::ReleaseMIDs>> %s"), *GetName());*/
+    UOcclusionBinderSubsystem* Sub = GetWorld()
+        ? GetWorld()->GetSubsystem<UOcclusionBinderSubsystem>() : nullptr;
+
+    const FName RTSwitchParam = UOcclusionMeshUtil::GetRTSwitchParameterName();
+
+    // Reset ALL pooled MIDs before returning
+    auto ResetSlots = [&](TArray<FOcclusionMIDSlot>& Slots)
+    {
+        for (FOcclusionMIDSlot& Slot : Slots)
+        {
+            if (!Slot.IsReady() || !Slot.bPooled) continue;
+
+            // Reset to default (Physical)
+            Slot.MID->SetScalarParameterValue(RTSwitchParam, 0.f);
+        }
+    };
+
+    ResetSlots(NormalSlots);
+    ResetSlots(OccludedSlots);
+    ResetSlots(RTSlots);
+
+    // Now return them
     UOcclusionMeshUtil::ReturnMaterials(NormalSlots,   Sub);
     UOcclusionMeshUtil::ReturnMaterials(OccludedSlots, Sub);
     UOcclusionMeshUtil::ReturnMaterials(RTSlots,       Sub);
@@ -226,25 +259,35 @@ bool AOcclusionBinder::HasPooledMIDs() const
 
 void AOcclusionBinder::UpdateMaterialAlpha()
 {
-    const FName AlphaParam = UOcclusionMeshUtil::GetAlphaParameterName();
-    const FName ForceParam = UOcclusionMeshUtil::GetForceOccludeParameterName();
+    const FName AlphaParam         = UOcclusionMeshUtil::GetAlphaParameterName();
+    const FName ForceParam         = UOcclusionMeshUtil::GetForceOccludeParameterName();
+    const FName RTSwitchParam      = UOcclusionMeshUtil::GetRTSwitchParameterName();
+    const FName ShouldOccludeParam = UOcclusionMeshUtil::GetOcclusionLockParameterName();
 
     const float NormalAlpha   = CurrentAlpha;
     const float OccludedAlpha = 1.f - CurrentAlpha;
 
     for (FOcclusionMIDSlot& Slot : NormalSlots)
-        if (Slot.IsReady())
-            Slot.MID->SetScalarParameterValue(AlphaParam, NormalAlpha);
+    {
+        if (!Slot.IsReady()) continue;
+        Slot.MID->SetScalarParameterValue(RTSwitchParam, 0.f);
+        Slot.MID->SetScalarParameterValue(AlphaParam,    NormalAlpha);
+    }
 
     for (FOcclusionMIDSlot& Slot : OccludedSlots)
-        if (Slot.IsReady())
-            Slot.MID->SetScalarParameterValue(AlphaParam, OccludedAlpha);
+    {
+        if (!Slot.IsReady()) continue;
+        Slot.MID->SetScalarParameterValue(RTSwitchParam, 0.f);
+        Slot.MID->SetScalarParameterValue(AlphaParam,    OccludedAlpha);
+    }
 
     for (FOcclusionMIDSlot& Slot : RTSlots)
     {
         if (!Slot.IsReady()) continue;
-        Slot.MID->SetScalarParameterValue(AlphaParam,  NormalAlpha);
-        Slot.MID->SetScalarParameterValue(ForceParam,  CurrentForceAlpha);
+        Slot.MID->SetScalarParameterValue(RTSwitchParam,      1.f);
+        Slot.MID->SetScalarParameterValue(AlphaParam,         NormalAlpha);
+        Slot.MID->SetScalarParameterValue(ForceParam,         CurrentForceAlpha);
+        Slot.MID->SetScalarParameterValue(ShouldOccludeParam, 1.f); // MID always active — default mat has 0 baked in
     }
 }
 
@@ -450,4 +493,20 @@ void AOcclusionBinder::CleanupInvalidOverlaps()
 {
     for (auto It = ActiveOverlaps.CreateIterator(); It; ++It)
         if (!It->IsValid()) It.RemoveCurrent();
+}
+
+void AOcclusionBinder::UpdateOccludedMeshVisibility()
+{
+    /*const float FadeTimeMargine=0.01f;
+    const bool bOccluded = CurrentAlpha < 1.f-FadeTimeMargine; */
+    
+    const bool bOccluded = (bShouldBeOccluded || bForceOccluded);
+    
+    for (TSoftObjectPtr<UMeshComponent> MeshPtr : OccludedMeshes)
+    {
+        if (UMeshComponent* Mesh = MeshPtr.Get())
+        {
+            Mesh->SetHiddenInGame(!bOccluded);
+        }
+    }
 }

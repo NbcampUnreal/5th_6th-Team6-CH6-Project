@@ -92,6 +92,30 @@ void UVisionPlayerStateComp::OnRep_AllReveal()
 
 bool UVisionPlayerStateComp::CanSeeTeam(EVisionChannel InTeam) const
 {
+    /*return bAllReveal || (TeamChannel == InTeam);*/
+    // AlwaysVisible bypasses all team filtering
+    /*if (InTeam == EVisionChannel::AlwaysVisible)
+        return true;
+
+    if (bAllReveal)
+        return true;
+
+    if (TeamChannel == EVisionChannel::None)
+        return false;
+
+    return InTeam == TeamChannel
+        || InTeam == EVisionChannel::SharedVision;*/
+    /*if (InTeam == EVisionChannel::None)          return false; 
+    if (InTeam == EVisionChannel::AlwaysVisible) return true;
+    if (bAllReveal)                              return true;
+    if (TeamChannel == EVisionChannel::None)     return false;
+
+    return InTeam == TeamChannel
+        || InTeam == EVisionChannel::SharedVision;*/
+
+    if (InTeam == EVisionChannel::AlwaysVisible) // always
+        return true;
+
     return bAllReveal || (TeamChannel == InTeam);
 }
 
