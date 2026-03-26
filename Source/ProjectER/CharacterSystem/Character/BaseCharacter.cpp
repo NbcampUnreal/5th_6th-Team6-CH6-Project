@@ -1543,6 +1543,7 @@ void ABaseCharacter::Multicast_Death_Implementation()
 		GetMesh()->SetCollisionResponseToAllChannels(ECR_Ignore);
 		GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 		GetMesh()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);  // 플레이어 통과 가능
+		GetMesh()->SetCollisionResponseToChannel(ECC_GameTraceChannel5, ECR_Block);  // 커서 클릭 가능
 	}
 
 	// 이동 정지 및 기능 비활성화
