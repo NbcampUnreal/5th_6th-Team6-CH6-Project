@@ -1400,6 +1400,7 @@ void ABaseCharacter::Revive(FVector RespawnLocation)
 		AS = ERPS->GetAttributeSet();
 		ERPS->bIsDead = false;
 		ERPS->CurrentRestrictedTime = 10.0f;
+		ERPS->setUI_RestrictedTime();
 		ERPS->ForceNetUpdate();
 
 	}
