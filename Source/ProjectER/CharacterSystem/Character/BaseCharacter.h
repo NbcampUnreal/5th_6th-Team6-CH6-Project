@@ -349,7 +349,7 @@ protected:
 	UPROPERTY()
 	UUI_HP_Bar* HPBarWidgetInstance;
 
-	FTimerHandle KillTimerHandle;
+	FTimerHandle UILoadTimerHandle;
 
 
 public:
