@@ -267,6 +267,7 @@ void UUI_MainHUD::InitHeroDataHUD(UCharacterData* _HeroData)
 {
     HeroData = _HeroData;
     initSkillDataAssets();
+    UpdateSkillIcon();
 }
 
 void UUI_MainHUD::InitASCHud(UAbilitySystemComponent* _ASC)
@@ -404,7 +405,7 @@ void UUI_MainHUD::NativeConstruct()
     // UI 애니메이션 강제 바인딩
     HeadHitAnim_01 = GetWidgetAnimationByName(TEXT("AN_HeadHitAnim_01"));
     HeadHitAnim_02 = GetWidgetAnimationByName(TEXT("AN_HeadHitAnim_02"));
-
+    RestrictedSign_01 = GetWidgetAnimationByName(TEXT("AN_RestrictedSign_01"));
     // 페이즈 And Time
     GetWorld()->GetTimerManager().SetTimer(
         PhaseAndTimeTimer,
@@ -970,6 +971,89 @@ void UUI_MainHUD::UpdateSkillCoolDown(int32 SkillIndex)
     }
 }
 
+void UUI_MainHUD::UpdateSkillIcon()
+{
+    if (IsValid(skill_01))
+    {
+        if (SkillDataAssets.Num() > 0 && IsValid(SkillDataAssets[0]))
+        {
+            FButtonStyle NewStyle = skill_01->WidgetStyle;
+            UTexture2D* TargetIcon = SkillDataAssets[0]->GetSkillIcon();
+            FSlateBrush NewBrush;
+            NewBrush.SetResourceObject(TargetIcon);
+
+            //if (TargetIcon)
+            //{
+            //    NewBrush.ImageSize = FVector2D(TargetIcon->GetSizeX(), TargetIcon->GetSizeY());
+            //}
+            
+            NewStyle.SetNormal(NewBrush);
+            NewStyle.SetHovered(NewBrush);
+            NewStyle.SetPressed(NewBrush);
+
+            skill_01->SetStyle(NewStyle);
+        }
+    }
+    if (IsValid(skill_02))
+    {
+        if (SkillDataAssets.Num() > 1 && IsValid(SkillDataAssets[1]))
+        {
+            FButtonStyle NewStyle = skill_02->WidgetStyle;
+            UTexture2D* TargetIcon = SkillDataAssets[1]->GetSkillIcon();
+            FSlateBrush NewBrush;
+            NewBrush.SetResourceObject(TargetIcon);
+
+            //if (TargetIcon)
+            //{
+            //    NewBrush.ImageSize = FVector2D(TargetIcon->GetSizeX(), TargetIcon->GetSizeY());
+            //}
+
+            NewStyle.SetNormal(NewBrush);
+            NewStyle.SetHovered(NewBrush);
+            NewStyle.SetPressed(NewBrush);
+
+            skill_02->SetStyle(NewStyle);
+        }
+    }
+    if (IsValid(skill_03))
+    {
+        if (SkillDataAssets.Num() > 2 && IsValid(SkillDataAssets[2]))
+        {
+            FButtonStyle NewStyle = skill_03->WidgetStyle;
+            UTexture2D* TargetIcon = SkillDataAssets[2]->GetSkillIcon();
+            FSlateBrush NewBrush;
+            NewBrush.SetResourceObject(TargetIcon);
+
+            //if (TargetIcon)
+            //{
+            //    NewBrush.ImageSize = FVector2D(TargetIcon->GetSizeX(), TargetIcon->GetSizeY());
+            //}
+
+            NewStyle.SetNormal(NewBrush);
+            NewStyle.SetHovered(NewBrush);
+            NewStyle.SetPressed(NewBrush);
+
+            skill_03->SetStyle(NewStyle);
+        }
+    }
+    if (IsValid(skill_04))
+    {
+        if (SkillDataAssets.Num() > 3 && IsValid(SkillDataAssets[3]))
+        {
+            FButtonStyle NewStyle = skill_04->WidgetStyle;
+            UTexture2D* TargetIcon = SkillDataAssets[3]->GetSkillIcon();
+            FSlateBrush NewBrush;
+            NewBrush.SetResourceObject(TargetIcon);
+
+            NewStyle.SetNormal(NewBrush);
+            NewStyle.SetHovered(NewBrush);
+            NewStyle.SetPressed(NewBrush);
+
+            skill_04->SetStyle(NewStyle);
+        }
+    }
+}
+
 TArray<int32> UUI_MainHUD::GetDigitsFromNumber(int32 InNumber)
 {
     TArray<int32> Digits;
@@ -1233,6 +1317,11 @@ void UUI_MainHUD::WarningSign(int number)
 
     int32 SecTenDigit = Seconds / 10;
     int32 SecOneDigit = Seconds % 10;
+
+    if (RestrictedSign_01 && !IsAnimationPlaying(RestrictedSign_01))
+    {
+        PlayAnimation(RestrictedSign_01);
+    }
 
     if (WarningNumber_ten && SegmentTextures[SecTenDigit])
     {

@@ -180,17 +180,8 @@ void UER_RespawnSubsystem::StartRespawnTimer(AER_PlayerState& PS, AER_GameState&
 						{
 							PC->Client_OpenRespawnTeleportUI();
 						}
-						/*if (ABaseCharacter* Char = Cast<ABaseCharacter>(Pawn))
-						{
-							Char->Server_Revive(Char->GetActorLocation());
-						}*/
 					}
 				}
-
-				PS_->bIsDead = false;
-				PS_->ForceNetUpdate();
-
-				UE_LOG(LogTemp, Log, TEXT("[RSS] : Player(%s) Respawned"), *PS_->GetPlayerName());
 			}),
 		RespawnTime,
 		false
