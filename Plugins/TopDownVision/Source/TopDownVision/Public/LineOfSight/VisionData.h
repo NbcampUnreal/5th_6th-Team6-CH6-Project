@@ -10,6 +10,8 @@ enum class EVisionChannel : uint8
 	TeamA        = 0   UMETA(DisplayName = "TeamA"),
 	TeamB        = 1   UMETA(DisplayName = "TeamB"),
 	TeamC        = 2   UMETA(DisplayName = "TeamC"),
+	// for always visible vision channel
+	AlwaysVisible = 4   UMETA(DisplayName = "AlwaysVisible"),
 };
 
 UENUM(BlueprintType)

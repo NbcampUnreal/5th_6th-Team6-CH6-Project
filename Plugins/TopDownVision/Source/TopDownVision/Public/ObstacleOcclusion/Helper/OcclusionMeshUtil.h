@@ -35,6 +35,8 @@ public:
 	static FName GetNoShadowProxyTag();
 	static FName GetAlphaParameterName();
 	static FName GetForceOccludeParameterName();
+	static FName GetRTSwitchParameterName();
+	static FName GetOcclusionLockParameterName();
 	
 #pragma endregion
 	

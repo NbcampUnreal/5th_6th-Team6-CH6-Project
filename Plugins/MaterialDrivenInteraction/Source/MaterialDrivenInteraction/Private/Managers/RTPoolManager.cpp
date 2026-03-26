@@ -125,10 +125,20 @@ TArray<TTuple<UFoliageRTInvokerComponent*, int32>> URTPoolManager::EvaluateAndAs
 	}
 
 	Sorted.Sort([](const TPair<float, UFoliageRTInvokerComponent*>& A,
-	               const TPair<float, UFoliageRTInvokerComponent*>& B)
+			   const TPair<float, UFoliageRTInvokerComponent*>& B)
 	{
 		return A.Key < B.Key;
 	});
+
+	// Cull invokers beyond DrawRadius — added here
+	Sorted.RemoveAll([&](const TPair<float, UFoliageRTInvokerComponent*>& Pair)
+	{
+		return Pair.Key > DrawRadius;
+	});
+
+	UE_LOG(RTFoliageInvoker, Verbose,
+		TEXT("URTPoolManager::EvaluateAndAssignSlots >> %d invokers within DrawRadius=%.0f"),
+		Sorted.Num(), DrawRadius);
 
 	// Release all current slot assignments — fresh evaluation each cycle
 	for (FRTPoolEntry& Slot : Pool)
@@ -315,9 +325,9 @@ FString URTPoolManager::GetPoolDebugString() const
 	Out.Reserve(512);
 
 	Out += FString::Printf(
-		TEXT("=== RTPoolManager | Slots:%d CellSize:%.0f DecayDuration:%.1fs Invokers:%d PriorityCenter:(%.0f,%.0f) ===\n"),
-		PoolSize, CellSize, DecayDuration, RegisteredInvokers.Num(),
-		PriorityCenter.X, PriorityCenter.Y);
+	TEXT("=== RTPoolManager | Slots:%d CellSize:%.0f DecayDuration:%.1fs Invokers:%d DrawRadius:%.0f PriorityCenter:(%.0f,%.0f) ===\n"),
+	PoolSize, CellSize, DecayDuration, RegisteredInvokers.Num(), DrawRadius,
+	PriorityCenter.X, PriorityCenter.Y);
 
 	for (int32 i = 0; i < Pool.Num(); ++i)
 	{
@@ -373,6 +383,23 @@ FString URTPoolManager::GetPoolDebugString() const
 	}
 
 	return Out;
+}
+
+bool URTPoolManager::IsInvokerActive(UFoliageRTInvokerComponent* Invoker) const
+{
+	for (const FRTPoolEntry& Slot : Pool)
+	{
+		if (Slot.IsOccupied() && Slot.ActiveInvokerCount > 0)
+		{
+			// Slot is active — check if this invoker is assigned to it
+			// by checking if invoker's location falls within the cell
+			const FVector Loc = Invoker->GetComponentLocation();
+			const FIntPoint Cell = WorldToCell(Loc);
+			if (Slot.AssignedCell == Cell)
+				return true;
+		}
+	}
+	return false;
 }
 
 // ── Private helpers ───────────────────────────────────────────────────────────
