@@ -60,6 +60,7 @@ private:
     void InitializeMaterials();
     void UpdateMaterialAlpha();
     void CleanupInvalidOverlaps();
+    void UpdateOccludedMeshVisibility();
 
     // ── Pool ──────────────────────────────────────────────────────────────
     void AcquireMIDs();
@@ -104,4 +105,8 @@ private:
     float CurrentForceAlpha = 0.f;
     bool  bShouldBeOccluded = false;
     bool  bForceOccluded    = false;
+
+    /*//one time only
+    float CurrentRTMode = 0.f;   // 0 = Physical, 1 = RT
+    float TargetRTMode  = 0.f;   // desired state*/
 };

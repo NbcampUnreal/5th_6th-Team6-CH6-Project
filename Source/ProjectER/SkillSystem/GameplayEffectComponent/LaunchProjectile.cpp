@@ -9,7 +9,7 @@
 #include "GameFramework/Actor.h"
 #include "SkillSystem/GameplayEffectComponent/BaseGECConfig.h"
 #include "SkillSystem/Actor/BaseRangeOverlapEffectActor/BaseRangeOverlapEffectActor.h"
-#include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
+#include "SkillSystem/GameplayEffect/SkillEffectDataAsset.h"
 #include "SkillSystem/GameAbility/SkillBase.h"
 
 #include "SkillSystem/GameplayEffectComponent/LaunchProjectile.h"

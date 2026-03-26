@@ -496,6 +496,9 @@ void ABaseMonster::OnMonterDeathHandle(AActor* Target)
 	LootableComp->InitializeWithItems(MonsterData->ItemList);
 	//보상 지급
 	GameplayEffectSetByCaller(Target, XPRewardEffect, MonsterTags.IncomingXPTag, MonsterData->Exp);
+
+	// BP Exposed Function for visual udpate
+	//TODO::
 }
 
 void ABaseMonster::GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGameplayEffect> GE, FGameplayTag Tag, float Amount)

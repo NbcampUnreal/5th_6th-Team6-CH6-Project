@@ -106,6 +106,7 @@ float4 TB_RadialNormal(
     Out.a = Weight * Mask;
 
     return Out;
+
 }
 
 
@@ -146,4 +147,78 @@ float4 TB_RotateNormal(
     Out.a = Weight * Mask;
 
     return Out;
+}
+
+
+
+//====================== Impulse Brush ==========================//
+
+// Written every tick via SE_BLEND_MAX while invoker is present.
+// Pixels outside brush radius or unowned tile are clipped —
+// MAX preserves frozen values for those texels untouched.
+//
+//   R = VelocityX encoded [0,1]  (0.5 = stationary)
+//   G = VelocityY encoded [0,1]  (0.5 = stationary)
+//   B = 0 (reserved)
+//   A = GameTimeFrac — freezes on exit, consumer reads age = frac(Now - A)
+
+float4 TB_ImpulseBrush(
+    float2 TexCoord,
+    float2 CentreUV,
+    float2 UVExtent,
+    float  TileType,
+    float  VelocityX,
+    float  VelocityY,
+    float  GameTimeFrac)
+{
+    /*float Owned = TB_IsPixelOwned(TexCoord, CentreUV, TileType);
+    clip(Owned - 0.5f);
+
+    float2 Delta  = TB_GetWrappedDelta(TexCoord, CentreUV);
+    float  Dist   = length(Delta);
+    float  Radius = UVExtent.x;
+
+    clip(Radius - Dist);
+
+    // Flat velocity across full radius — consumer uses ContinuousRT.A as envelope
+    return float4(
+        VelocityX,    // R
+        VelocityY,    // G
+        0.f,          // B — reserved
+        GameTimeFrac  // A — timestamp, freezes on exit
+    );*/
+
+    float Owned = TB_IsPixelOwned(TexCoord, CentreUV, TileType);
+    if (Owned < 0.5)
+        return float4(0.5f, 0.5f, 0.f, 0.f);  // A=0 — MAX keeps existing
+
+    float2 Delta  = TB_GetWrappedDelta(TexCoord, CentreUV);
+    float  Dist   = length(Delta);
+    float  Radius = UVExtent.x;
+
+    if (Dist > Radius)
+        return float4(0.5f, 0.5f, 0.f, 0.f);  // A=0 — MAX keeps existing
+
+    return float4(
+        VelocityX,
+        VelocityY,
+        0.f,
+        GameTimeFrac  // A — timestamp
+    );
+}
+
+
+float2 FRT_HeightToNormal(float Height)
+{
+    float GradX = ddx(Height);
+    float GradY = ddy(Height);
+
+    float2 Dir = float2(GradX, GradY);
+    float  Len = length(Dir);
+
+    // Return zero direction if gradient is too small — no meaningful push
+    if (Len < 0.0001f)
+        return float2(0.f, 0.f);
+
+    return Dir / Len;
 }
