@@ -1,4 +1,4 @@
-﻿#include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
+#include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
@@ -6,6 +6,7 @@
 
 #include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_PlayerState.h"
+#include "GameModeBase/State/ER_GameState.h"
 
 #include "GameplayEffect.h"
 #include "GameplayEffectExtension.h"
@@ -184,12 +185,20 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 				return;
 
 			APlayerState* AttackerPS = nullptr;
+			bool bIsSystemDamage = false; // [전민성] 시스템(금지구역 등)에 의한 환경 데미지 여부
 			if (const FGameplayEffectContext* Ctx = Data.EffectSpec.GetEffectContext().Get())
 			{
 				if (AActor* InstigatorActor = Ctx->GetOriginalInstigator())
 				{
-					// Instigator가 Pawn/Character라면 PlayerState로
-					if (APawn* Pawn = Cast<APawn>(InstigatorActor))
+					// 1) 시스템(GameState) 환경 데미지 판별
+					if (AER_GameState* GS = Cast<AER_GameState>(InstigatorActor))
+					{
+						bIsSystemDamage = true;
+						// 시스템사 전용 로그 (추후 전용 UI 이벤트 연결 시 활용 가능)
+						UE_LOG(LogTemp, Warning, TEXT("[BaseAttributeSet] 금지 구역(GameState)에 의해 대상(%s)이 데미지를 입거나 사망했습니다!"), *TargetChar->GetName());
+					}
+					// 2) Instigator가 Pawn/Character라면 PlayerState로
+					else if (APawn* Pawn = Cast<APawn>(InstigatorActor))
 					{
 						AttackerPS = Pawn->GetPlayerState();
 					}
@@ -238,6 +247,13 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallba
 					{
 						// 8초 안에 데미지를 줬으면 어시스트 판정
 						TargetPS->GetAssists(Now, 8.f, AttackerPS, OutAssists);
+
+						// 자신이 준 데미지가 어시스트로 처리되는 일(자기 자신 킬, 자기 자신 데미지)을 확실하게 방지
+						if (AttackerPS)
+						{
+							OutAssists.Remove(AttackerPS);
+						}
+						OutAssists.Remove(TargetPS);
 
 						// 죽으면 기여 기록 초기화
 						TargetPS->ResetDamageContrib();
