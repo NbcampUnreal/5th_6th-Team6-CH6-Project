@@ -140,7 +140,7 @@ public:
 	int32 StartPoint = 0;
 	
 	UPROPERTY(Replicated, BlueprintReadOnly)
-	float CurrentRestrictedTime = 10.f;
+	float CurrentRestrictedTime = 30.f;
 
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 	void setUI_RestrictedTime();
