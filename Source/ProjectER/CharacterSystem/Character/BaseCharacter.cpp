@@ -1398,6 +1398,10 @@ void ABaseCharacter::Revive(FVector RespawnLocation)
 	if (AER_PlayerState* ERPS = GetPlayerState<AER_PlayerState>())
 	{
 		AS = ERPS->GetAttributeSet();
+		ERPS->bIsDead = false;
+		ERPS->CurrentRestrictedTime = 10.0f;
+		ERPS->ForceNetUpdate();
+
 	}
 	else if (ABasePlayerState* BasePS = GetPlayerState<ABasePlayerState>())
 	{

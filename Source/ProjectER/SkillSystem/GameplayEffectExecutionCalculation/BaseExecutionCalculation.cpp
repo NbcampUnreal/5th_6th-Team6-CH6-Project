@@ -1,9 +1,9 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "SkillSystem/GameplayEffectExecutionCalculation/BaseExecutionCalculation.h"
 #include "SkillSystem/SkillDataAsset.h"
-#include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
+#include "SkillSystem/GameplayEffect/SkillEffectDataAsset.h"
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 
 #define ATTRIBUTE_CLASS UBaseAttributeSet

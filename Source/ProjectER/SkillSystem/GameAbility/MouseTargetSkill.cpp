@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "SkillSystem/GameAbility/MouseTargetSkill.h"
@@ -7,7 +7,7 @@
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
-#include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
+#include "SkillSystem/GameplayEffect/SkillEffectDataAsset.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "SkillSystem/GameplayAbilityTargetActor/TargetActor.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -209,7 +209,7 @@ bool UMouseTargetSkill::IsInRange(AActor* Actor)
 	if (!IsValid(Avatar)) return false;
 
 	UMouseTargetSkillConfig* Config = Cast<UMouseTargetSkillConfig>(CachedConfig);
-	checkf(IsValid(Config), TEXT("UMouseTargetSkill::IsInRange - Config Is Not Valid"));
+	if (!ensureMsgf(IsValid(Config), TEXT("UMouseTargetSkill::IsInRange - Config Is Not Valid"))) { return false; }
 
 	FVector TargetLocation = Actor->GetActorLocation();
 	FVector InstigatorLocation = Avatar->GetActorLocation();

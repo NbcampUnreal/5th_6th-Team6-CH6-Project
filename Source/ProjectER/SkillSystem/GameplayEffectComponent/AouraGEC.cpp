@@ -9,7 +9,7 @@
 #include "SkillSystem/Actor/BaseRangeOverlapEffectActor/BaseRangeOverlapEffectActor.h"
 #include "SkillSystem/Component/AreaPeriodicEffectComponent.h"
 #include "SkillSystem/GameAbility/SkillBase.h"
-#include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
+#include "SkillSystem/GameplayEffect/SkillEffectDataAsset.h"
 
 UAouraGECConfig::UAouraGECConfig()
 {

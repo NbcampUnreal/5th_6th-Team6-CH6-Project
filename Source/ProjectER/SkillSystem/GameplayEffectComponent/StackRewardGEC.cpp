@@ -5,7 +5,7 @@
 #include "GameplayEffect.h"
 #include "SkillSystem/SkillNiagaraSpawnConfig.h"
 #include "SkillSystem/SkillSoundSpawnConfig.h"
-#include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
+#include "SkillSystem/GameplayEffect/SkillEffectDataAsset.h"
 
 UStackRewardGEC::UStackRewardGEC()
 {

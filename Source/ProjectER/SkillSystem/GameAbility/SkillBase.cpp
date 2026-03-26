@@ -13,14 +13,15 @@
 #include "SkillSystem/SkillConfig/BaseSkillConfig.h"
 #include "SkillSystem/SkillDataAsset.h"
 #include "SkillSystem/SkillData.h"
-#include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
-#include "SkillSystem/GameplyeEffect/GE_SharedCooldown.h"
+#include "SkillSystem/GameplayEffect/SkillEffectDataAsset.h"
+#include "SkillSystem/GameplayEffect/GE_SharedCooldown.h"
 #include "Monster/BaseMonster.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Interface/TargetableInterface.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 
 #include "AbilitySystemLog.h" // GAS 관련 로그 확인용
+#include "AbilitySystemGlobals.h" // [김현수 추가분] 태그 체크용
 
 #include "CharacterSystem/Player/BasePlayerController.h" // [김현수 추가분]
 
@@ -182,7 +183,7 @@ void USkillBase::ExecuteSkill()
 	}
 
 	// 메인 로직: 들여쓰기 없이 평탄하게 진행
-	ApplyExcutionEffectToSelf(CachedConfig->GetExcutionEffects());
+	ApplyExcutionEffectToSelf(CachedConfig->GetExecutionEffects());
 
 	if (HasAuthority(&CurrentActivationInfo))
 	{
@@ -197,6 +198,11 @@ void USkillBase::OnActiveTagEventReceived(FGameplayEventData Payload)
 	if (!TryExecuteSkill())
 	{
 		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+	}
+	else{
+		SetSkillTagCount(CastingTag, 0);
+		SetSkillTagCount(ActiveTag, 1);
+		ExecuteSkill();
 	}
 }
 
@@ -308,13 +314,17 @@ bool USkillBase::TryExecuteSkill()
 		return false;
 	}
 
-	if (!DoesAbilitySatisfyTagRequirements(*ASC, nullptr, nullptr, nullptr)){
+	FGameplayTagContainer RelevantTags;
+	if (!DoesAbilitySatisfyTagRequirements(*ASC, nullptr, nullptr, &RelevantTags)){
+		// 만약 차단된 원인이 오직 ActiveTag 하나뿐이라면 (글로벌 차단 태그 제외), 통과시킵니다.
+		RelevantTags.RemoveTag(UAbilitySystemGlobals::Get().ActivateFailTagsBlockedTag);
+		if (RelevantTags.Num() == 1 && RelevantTags.HasTag(ActiveTag))
+		{
+			return true;
+		}
 		return false;
 	}
 
-	SetSkillTagCount(CastingTag, 0);
-	SetSkillTagCount(ActiveTag, 1);
-	ExecuteSkill();
 	return true;
 }
 

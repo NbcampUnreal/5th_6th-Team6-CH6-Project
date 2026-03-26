@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "SkillSystem/GameAbility/MouseClickSkill.h"
@@ -77,7 +77,7 @@ void UMouseClickSkill::RotateToLocation(const FVector& Location)
 
 void UMouseClickSkill::ExecuteSkill()
 {
-	if (IsValid(CachedConfig) == false || CachedConfig->GetExcutionEffects().Num() <= 0) return;
+	if (IsValid(CachedConfig) == false || CachedConfig->GetExecutionEffects().Num() <= 0) return;
 
 	AActor* Avatar = GetAvatarActorFromActorInfo();
 	if (IsValid(Avatar) == false) return;
@@ -85,14 +85,14 @@ void UMouseClickSkill::ExecuteSkill()
 	if (HasAuthority(&CurrentActivationInfo))
 	{
 		FGameplayEffectContext* EffectContext = TargetLocationEffectContext.Get();
-		EffectContext->SetAbility(this);
-
 		if (EffectContext == nullptr || !EffectContext->HasOrigin())
 		{
 			UE_LOG(LogTemp, Warning, TEXT("ExecuteSkill::TargetLocationEffectContext has no valid origin"));
 			//FinishSkill();
 			return;
 		}
+
+		EffectContext->SetAbility(this);
 
 		UAbilitySystemComponent* InstigatorASC = GetAbilitySystemComponentFromActorInfo();
 		if (!IsValid(InstigatorASC))
@@ -101,7 +101,7 @@ void UMouseClickSkill::ExecuteSkill()
 			return;
 		}
 
-		const TArray<TObjectPtr<USkillEffectDataAsset>>& ExecutionEffects = CachedConfig->GetExcutionEffects();
+		const TArray<TObjectPtr<USkillEffectDataAsset>>& ExecutionEffects = CachedConfig->GetExecutionEffects();
 		for (USkillEffectDataAsset* EffectData : ExecutionEffects)
 		{
 			if (!EffectData) continue;

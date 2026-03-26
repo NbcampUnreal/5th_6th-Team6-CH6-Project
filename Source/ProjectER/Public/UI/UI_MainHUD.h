@@ -375,6 +375,8 @@ protected:
 	UTextBlock* SkillCoolTexts[4];
 	void UpdateSkillCoolDown(int32 SkillIndex);
 
+	void UpdateSkillIcon();
+
 private:
 	float nowSkillCoolReduc = 0.f;
 
@@ -444,6 +446,9 @@ protected:
 
 	UPROPERTY(Transient, BlueprintReadOnly)
 	UWidgetAnimation* HeadHitAnim_02;
+
+	UPROPERTY(Transient, BlueprintReadOnly)
+	UWidgetAnimation* RestrictedSign_01;
 
 	float LastHP_01;
 	float LastHP_02;

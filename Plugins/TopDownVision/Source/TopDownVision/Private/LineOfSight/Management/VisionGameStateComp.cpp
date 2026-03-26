@@ -116,10 +116,24 @@ void UVisionGameStateComp::ClearActorVisibleToTeam(AActor* Target, EVisionChanne
 
 bool UVisionGameStateComp::IsActorVisibleToTeam(AActor* Target, EVisionChannel Team) const
 {
-    for (const FVisibleActorEntry& Entry : VisibleActors.Items)
+    /*for (const FVisibleActorEntry& Entry : VisibleActors.Items)
         if (Entry.Target == Target && Entry.TeamChannel == Team)
             return true;
 
+    return false;*/
+
+    for (const FVisibleActorEntry& Entry : VisibleActors.Items)
+    {
+        if (Entry.Target != Target)
+            continue;
+
+        // An AlwaysVisible entry satisfies any team query
+        if (Entry.TeamChannel == EVisionChannel::AlwaysVisible)
+            return true;
+
+        if (Entry.TeamChannel == Team)
+            return true;
+    }
     return false;
 }
 
