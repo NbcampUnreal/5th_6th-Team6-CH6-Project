@@ -18,7 +18,8 @@ ABaseItemActor::ABaseItemActor()
 	InteractionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionSphere"));
 	InteractionSphere->SetupAttachment(RootComponent);
 	InteractionSphere->SetSphereRadius(150.f);
-	InteractionSphere->SetCollisionProfileName(TEXT("Trigger"));
+
+	ApplyWorldItemCollisionSettings();
 }
 
 void ABaseItemActor::BeginPlay()
@@ -71,11 +72,51 @@ void ABaseItemActor::RefreshVisualFromItemData()
 		if (UStaticMesh* Mesh = ItemData->ItemMesh.LoadSynchronous())
 		{
 			ItemMesh->SetStaticMesh(Mesh);
+
+			// [중요]
+			// 메시 에셋 자체에 박혀 있는 Collision 설정이 다시 살아날 수 있으므로
+			// 메시를 갈아끼운 뒤에도 월드 드랍 아이템용 충돌 설정을 다시 강제 적용
+			ApplyWorldItemCollisionSettings();
 			return;
 		}
 	}
 
 	ItemMesh->SetStaticMesh(nullptr);
+	ApplyWorldItemCollisionSettings();
+}
+
+void ABaseItemActor::ApplyWorldItemCollisionSettings()
+{
+	// -------------------------------------------------
+	// ItemMesh:
+	// 실제 바닥 충돌/길막/끼임을 만들던 원인이므로 완전히 비활성화
+	// -------------------------------------------------
+	if (ItemMesh)
+	{
+		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		ItemMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+		ItemMesh->SetGenerateOverlapEvents(false);
+		ItemMesh->CanCharacterStepUpOn = ECB_No;
+		ItemMesh->SetCanEverAffectNavigation(false);
+	}
+
+	// -------------------------------------------------
+	// InteractionSphere:
+	// 1) 자동 줍기용 Pawn Overlap 유지
+	// 2) 수동 클릭/마우스 hover용 Visibility Block 유지
+	// 3) 물리 충돌은 하지 않음(QueryOnly)
+	// -------------------------------------------------
+	if (InteractionSphere)
+	{
+		InteractionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		InteractionSphere->SetCollisionObjectType(ECC_WorldDynamic);
+		InteractionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+		InteractionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+		InteractionSphere->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+		InteractionSphere->SetGenerateOverlapEvents(true);
+		InteractionSphere->CanCharacterStepUpOn = ECB_No;
+		InteractionSphere->SetCanEverAffectNavigation(false);
+	}
 }
 
 void ABaseItemActor::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,

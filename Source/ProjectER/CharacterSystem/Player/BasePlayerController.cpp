@@ -650,16 +650,20 @@ void ABasePlayerController::MoveToMouseCursor()
 			}*/
 
 			bool bShouldMoveToApproachLocation = false;
+			FVector Destination = Hit.Location;
 
 			//2026/03/01 no safety check for the hit actor being nullptr. added the safety net
 			if (IsValid(HitActor))
 			{
-				if (HitActor->FindComponentByClass<ULootableComponent>())
+				if (Cast<ABaseItemActor>(HitActor))
 				{
-					InteractionTargetDistance =
-						GetDistanceToActorBounds2D(HitActor, ControlledBaseChar->GetActorLocation());
+					InteractionTargetDistance = FVector::Dist(
+						ControlledBaseChar->GetActorLocation(),
+						HitActor->GetActorLocation());
+
 					InteractionTarget = HitActor;
-					bShouldMoveToApproachLocation = true;
+					Destination = HitActor->GetActorLocation();
+					bShouldMoveToApproachLocation = false;
 				}
 				else if (HitActor->FindComponentByClass<UER_TeleportComponent>())
 				{
@@ -796,7 +800,34 @@ void ABasePlayerController::CheckInteractionDistance()
 		return;
 	}
 
-	const float CurrentDistance = GetDistanceToActorBounds2D(InteractionTarget, ControlledBaseChar->GetActorLocation());
+	// -------------------------------------------------
+	// 바닥 아이템은 bounds 기준이 아니라 actor 중심 기준으로 체크
+	// 이유:
+	// BaseItemActor의 InteractionSphere가 bounds에 포함되면
+	// 실제 아이템까지 도착하기 전에 너무 빨리 멈출 수 있음
+	// -------------------------------------------------
+	if (ABaseItemActor* ItemActor = Cast<ABaseItemActor>(InteractionTarget))
+	{
+		constexpr float ItemPickupDistance = 200.f;
+
+		const float CurrentDistance = FVector::Dist(
+			ControlledBaseChar->GetActorLocation(),
+			ItemActor->GetActorLocation());
+
+		if (CurrentDistance > ItemPickupDistance)
+		{
+			return;
+		}
+
+		ControlledBaseChar->StopMove();
+		Server_RequestPickup(ItemActor);
+		InteractionTarget = nullptr;
+		return;
+	}
+
+	// 그 외 상호작용 액터는 기존 bounds 기준 유지
+	const float CurrentDistance =
+		GetDistanceToActorBounds2D(InteractionTarget, ControlledBaseChar->GetActorLocation());
 
 	if (CurrentDistance > LootInteractDistance)
 	{
@@ -845,15 +876,6 @@ void ABasePlayerController::CheckInteractionDistance()
 			return;
 		}
 
-		// 살아있는 캐릭터는 여기서 상호작용 없음
-		InteractionTarget = nullptr;
-		return;
-	}
-
-	// 바닥 아이템
-	if (ABaseItemActor* ItemActor = Cast<ABaseItemActor>(InteractionTarget))
-	{
-		Server_RequestPickup(ItemActor);
 		InteractionTarget = nullptr;
 		return;
 	}
@@ -1295,15 +1317,27 @@ void ABasePlayerController::Server_MoveTeam_Implementation(int32 TeamIdx)
 }
 
 void ABasePlayerController::Server_RequestPickup_Implementation(ABaseItemActor* Item)
-{ // 바닥에 있는 아이템 줍기
-	if (!Item) return;
+{
+	if (!IsValid(Item))
+	{
+		return;
+	}
 
 	APawn* PlayerPawn = GetPawn();
-	if (!PlayerPawn) return;
-
-	constexpr float MaxDist = 200.f;
-	if (FVector::DistSquared(PlayerPawn->GetActorLocation(), Item->GetActorLocation()) > FMath::Square(MaxDist))
+	if (!IsValid(PlayerPawn))
+	{
 		return;
+	}
+
+	constexpr float ItemPickupDistance = 200.f;
+	const float DistSq = FVector::DistSquared(
+		PlayerPawn->GetActorLocation(),
+		Item->GetActorLocation());
+
+	if (DistSq > FMath::Square(ItemPickupDistance))
+	{
+		return;
+	}
 
 	Item->PickupItem(PlayerPawn);
 }

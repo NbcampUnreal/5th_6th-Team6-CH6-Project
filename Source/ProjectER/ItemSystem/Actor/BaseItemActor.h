@@ -25,15 +25,19 @@ public:
 	// 상호작용 인터페이스 구현
 	virtual void PickupItem(APawn* InHandler) override;
 
-	// [추가] 인벤토리에서 떨어질 때 데이터 초기화
+	// 인벤토리에서 떨어질 때 데이터 초기화
 	void InitializeFromItemData(UBaseItemData* InItemData, APawn* InDropperPawn = nullptr);
 
 protected:
-	// [추가] ItemData가 복제되면 클라이언트에서도 메시 갱신
+	// ItemData가 복제되면 클라이언트에서도 메시 갱신
 	UFUNCTION()
 	void OnRep_ItemData();
 
 	void RefreshVisualFromItemData();
+
+	// 바닥 아이템 메시의 물리 충돌은 끄고,
+	// 클릭/자동줍기는 InteractionSphere가 맡도록 설정
+	void ApplyWorldItemCollisionSettings();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item|Interaction")
 	TObjectPtr<USphereComponent> InteractionSphere;
