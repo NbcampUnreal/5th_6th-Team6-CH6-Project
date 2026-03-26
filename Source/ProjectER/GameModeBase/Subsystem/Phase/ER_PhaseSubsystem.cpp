@@ -136,11 +136,8 @@ void UER_PhaseSubsystem::OnPeriodicCheckTick()
                         // 활성화되는 금지구역 수량 제한 (Phase * HazardsPerPhase)
                         if (Tracker->CurrentHazardState == EAreaHazardState::Hazard)
                         {
-                            ERPS->CurrentRestrictedTime -= 1.0f;
-                            UE_LOG(LogTemp, Log, TEXT("[PS] CurrentRestrictedTime: %f"), ERPS->CurrentRestrictedTime);
-
                             // apply damage
-                            if (ERPS->CurrentRestrictedTime <= 0.0f)
+                            if (ERPS->CurrentRestrictedTime <= 1.0f && !ERPS->bIsDead)
                             {
                                 if (UAbilitySystemComponent* ASC = ERPS->GetAbilitySystemComponent())
                                 {
@@ -155,9 +152,18 @@ void UER_PhaseSubsystem::OnPeriodicCheckTick()
                                     ModInfo.Attribute = UBaseAttributeSet::GetIncomingDamageAttribute();
                                     DamageEffect->Modifiers.Add(ModInfo);
 
-                                    ASC->ApplyGameplayEffectToSelf(DamageEffect, 1.0f, ASC->MakeEffectContext());
+                                    FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+                                    // 환경(Phase) 데미지가 자신(Player)의 데미지로 판정되어 자살로 인해 킬이 오르는 것을 막기 위해 Instigator를 변경
+                                    EffectContext.AddInstigator(ERGS, ERGS);
+
+                                    ASC->ApplyGameplayEffectToSelf(DamageEffect, 1.0f, EffectContext);
                                     ERPS->CurrentRestrictedTime = 0.0f;
                                 }
+                            }
+                            if (ERPS->CurrentRestrictedTime >= 1.0f)
+                            {
+                                ERPS->CurrentRestrictedTime -= 1.0f;
+                                UE_LOG(LogTemp, Log, TEXT("[PS] CurrentRestrictedTime: %f"), ERPS->CurrentRestrictedTime);
                             }
                         }
 
