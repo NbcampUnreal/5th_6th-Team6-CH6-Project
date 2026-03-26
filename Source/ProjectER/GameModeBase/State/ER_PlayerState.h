@@ -140,10 +140,10 @@ public:
 	int32 StartPoint = 0;
 	
 	UPROPERTY(Replicated, BlueprintReadOnly)
-	float CurrentRestrictedTime = 10.f;
+	float CurrentRestrictedTime = 30.f;
 
-	UFUNCTION()
-	void OnRep_CurrentRestrictedTime();
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+	void setUI_RestrictedTime();
 
 	// [수정] 값이 복제될 때 클라에서 OnRep 함수가 자동 실행되도록 ReplicatedUsing으로 변경
 	UPROPERTY(ReplicatedUsing = OnRep_SelectedCharacterData, BlueprintReadOnly, Category = "Character Selection")

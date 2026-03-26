@@ -87,7 +87,7 @@ ABaseCharacter::ABaseCharacter()
 	// 26.01.29. mpyi
 	// 미니맵을 위한 씬 컴포넌트 2D <- 차후 '카메라' 시스템으로 이동할 예정
 	MinimapCaptureComponent = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("MinimapCaptureComponent"));
-	MinimapCaptureComponent->SetupAttachment(RootComponent);
+	MinimapCaptureComponent->SetupAttachment(TopDownCameraComp);
 
 	// 미니맵 캡처 기본 설정
 	MinimapCaptureComponent->SetAbsolute(false, true, false); // 순서대로: 위치, 회전, 스케일
@@ -1400,6 +1400,7 @@ void ABaseCharacter::Revive(FVector RespawnLocation)
 		AS = ERPS->GetAttributeSet();
 		ERPS->bIsDead = false;
 		ERPS->CurrentRestrictedTime = 10.0f;
+		ERPS->setUI_RestrictedTime();
 		ERPS->ForceNetUpdate();
 
 	}
@@ -1543,6 +1544,7 @@ void ABaseCharacter::Multicast_Death_Implementation()
 		GetMesh()->SetCollisionResponseToAllChannels(ECR_Ignore);
 		GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 		GetMesh()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);  // 플레이어 통과 가능
+		GetMesh()->SetCollisionResponseToChannel(ECC_GameTraceChannel5, ECR_Block);  // 커서 클릭 가능
 	}
 
 	// 이동 정지 및 기능 비활성화
@@ -1603,8 +1605,6 @@ void ABaseCharacter::InitUI()
 		
 			// 팀원 UI 오픈
 			ETeamType MyTeam = GetTeamType();
-
-			// UE_LOG(LogTemp, Error, TEXT("My Team : %d"), MyTeam);
 
 			if (AGameStateBase* GS = GetWorld()->GetGameState())
 			{
@@ -1884,7 +1884,15 @@ EVisionChannel ABaseCharacter::GetVisionChannelFromVisionPlayerStateComp()
 void ABaseCharacter::InitPlayer()
 {
 	// UI 초기화 (로컬 플레이어 전용 로직이 내부에 있음)
-	InitUI();
+	//InitUI();
+
+	// 일단 임시로 2초 뒤에 로딩하도록
+	GetWorld()->GetTimerManager().SetTimer(
+	UILoadTimerHandle,
+    this,
+    &ABaseCharacter::InitUI,
+    2.0f,
+    false);
 
 	// Camera Setting for local player pawn
 	if (TopDownCameraComp)

@@ -163,7 +163,12 @@ void UER_PhaseSubsystem::OnPeriodicCheckTick()
                             if (ERPS->CurrentRestrictedTime >= 1.0f)
                             {
                                 ERPS->CurrentRestrictedTime -= 1.0f;
+                                ERPS->setUI_RestrictedTime();   // << UI 처리
                                 UE_LOG(LogTemp, Log, TEXT("[PS] CurrentRestrictedTime: %f"), ERPS->CurrentRestrictedTime);
+                            }
+                            else
+                            {
+                                ERPS->setUI_RestrictedTime(); // 0초처리용
                             }
                         }
 

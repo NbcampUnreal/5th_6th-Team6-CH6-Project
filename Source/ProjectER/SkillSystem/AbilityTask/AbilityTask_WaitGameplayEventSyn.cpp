@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "SkillSystem/AbilityTask/AbilityTask_WaitGameplayEventSyn.h"
@@ -26,13 +26,13 @@ void UAbilityTask_WaitGameplayEventSyn::Activate()
 
     if (bIsAuthority)
     {
-        UE_LOG(LogTemp, Warning, TEXT("WaitEventTask [%s] on [%s]: Registering Server Local Callback"), *TagToWait.ToString(), *GetOwnerActor()->GetName());
+        //UE_LOG(LogTemp, Warning, TEXT("WaitEventTask [%s] on [%s]: Registering Server Local Callback"), *TagToWait.ToString(), *GetOwnerActor()->GetName());
         ASC->GenericGameplayEventCallbacks.FindOrAdd(TagToWait).AddUObject(this, &UAbilityTask_WaitGameplayEventSyn::OnEventTriggeredOnServer);
 
         // 원격 클라이언트 플레이어인 경우에만 TargetData 대기
         if (!bIsLocallyControlled)
         {
-            UE_LOG(LogTemp, Warning, TEXT("WaitEventTask [%s]: Registering TargetData Callback (Remote Player)"), *TagToWait.ToString());
+            //UE_LOG(LogTemp, Warning, TEXT("WaitEventTask [%s]: Registering TargetData Callback (Remote Player)"), *TagToWait.ToString());
             FGameplayAbilitySpecHandle SpecHandle = GetAbilitySpecHandle();
             FPredictionKey ActivationKey = GetActivationPredictionKey();
             TargetDataDelegateHandle = ASC->AbilityTargetDataSetDelegate(SpecHandle, ActivationKey).AddUObject(this, &UAbilityTask_WaitGameplayEventSyn::OnTargetDataReplicated);
@@ -41,7 +41,7 @@ void UAbilityTask_WaitGameplayEventSyn::Activate()
     }
     else
     {
-        UE_LOG(LogTemp, Warning, TEXT("WaitEventTask [%s]: Registering Client Local Callback"), *TagToWait.ToString());
+        //UE_LOG(LogTemp, Warning, TEXT("WaitEventTask [%s]: Registering Client Local Callback"), *TagToWait.ToString());
         ASC->GenericGameplayEventCallbacks.FindOrAdd(TagToWait).AddUObject(this, &UAbilityTask_WaitGameplayEventSyn::OnEventTriggeredOnClient);
     }
 
@@ -50,12 +50,11 @@ void UAbilityTask_WaitGameplayEventSyn::Activate()
 
 void UAbilityTask_WaitGameplayEventSyn::OnEventTriggeredOnServer(const FGameplayEventData* EventData)
 {
-    UE_LOG(LogTemp, Warning, TEXT("WaitEventTask [%p] on [%s] - Tag [%s]: Server Local Event Detected. bClientDataPending: %d"), 
-        this, *GetOwnerActor()->GetName(), *TagToWait.ToString(), bClientDataPending);
+    //UE_LOG(LogTemp, Warning, TEXT("WaitEventTask [%p] on [%s] - Tag [%s]: Server Local Event Detected. bClientDataPending: %d"), this, *GetOwnerActor()->GetName(), *TagToWait.ToString(), bClientDataPending);
 
     if (bClientDataPending)
     {
-        UE_LOG(LogTemp, Display, TEXT("WaitEventTask [%s]: Server Local Event Ignored (Already handled by Client Nudge)"), *TagToWait.ToString());
+        //UE_LOG(LogTemp, Display, TEXT("WaitEventTask [%s]: Server Local Event Ignored (Already handled by Client Nudge)"), *TagToWait.ToString());
         bClientDataPending = false;
         return;
     }
@@ -69,7 +68,7 @@ void UAbilityTask_WaitGameplayEventSyn::OnEventTriggeredOnClient(const FGameplay
     UAbilitySystemComponent* ASC = AbilitySystemComponent.Get();
     if (IsValid(ASC) == false) return;
 
-    UE_LOG(LogTemp, Warning, TEXT("WaitEventTask [%s]: Client Local Event Detected. Sending Nudge to Server."), *TagToWait.ToString());
+    //UE_LOG(LogTemp, Warning, TEXT("WaitEventTask [%s]: Client Local Event Detected. Sending Nudge to Server."), *TagToWait.ToString());
 
     // 실제 데이터를 TargetData에 담아 전송
     FGameplayAbilityTargetDataHandle DataHandle;
@@ -90,7 +89,7 @@ void UAbilityTask_WaitGameplayEventSyn::OnTargetDataReplicated(const FGameplayAb
     if (IsValid(ASC) == false) return;
     if (ActivationTag != TagToWait) return;
 
-    UE_LOG(LogTemp, Warning, TEXT("WaitEventTask [%s]: Client Nudge Received on Server. bHandledByServer: %d"), *TagToWait.ToString(), bHandledByServer);
+    //UE_LOG(LogTemp, Warning, TEXT("WaitEventTask [%s]: Client Nudge Received on Server. bHandledByServer: %d"), *TagToWait.ToString(), bHandledByServer);
 
     ASC->ConsumeClientReplicatedTargetData(GetAbilitySpecHandle(), GetActivationPredictionKey());
 
@@ -100,7 +99,7 @@ void UAbilityTask_WaitGameplayEventSyn::OnTargetDataReplicated(const FGameplayAb
 
     if (bHandledByServer)
     {
-        UE_LOG(LogTemp, Display, TEXT("WaitEventTask [%s]: Client Nudge Ignored (Already handled by Server Local)"), *TagToWait.ToString());
+        //UE_LOG(LogTemp, Display, TEXT("WaitEventTask [%s]: Client Nudge Ignored (Already handled by Server Local)"), *TagToWait.ToString());
         bHandledByServer = false;
         return;
     }
@@ -125,7 +124,7 @@ void UAbilityTask_WaitGameplayEventSyn::OnTargetDataReplicated(const FGameplayAb
 
 void UAbilityTask_WaitGameplayEventSyn::OnDestroy(bool bInOwnerFinished)
 {
-    UE_LOG(LogTemp, Warning, TEXT("WaitEventTask [%s] on [%s]: Task Destroyed"), *TagToWait.ToString(), *GetOwnerActor()->GetName());
+    //UE_LOG(LogTemp, Warning, TEXT("WaitEventTask [%s] on [%s]: Task Destroyed"), *TagToWait.ToString(), *GetOwnerActor()->GetName());
     UAbilitySystemComponent* ASC = AbilitySystemComponent.Get();
     if (ASC)
     {
