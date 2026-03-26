@@ -1,5 +1,5 @@
 #include "SkillSystem/GameplayEffectComponent/AdditionalEffectGEC.h"
-#include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
+#include "SkillSystem/GameplayEffect/SkillEffectDataAsset.h"
 #include "SkillSystem/SkillNiagaraSpawnConfig.h"
 #include "SkillSystem/SkillSoundSpawnConfig.h"
 #include "AbilitySystemComponent.h"

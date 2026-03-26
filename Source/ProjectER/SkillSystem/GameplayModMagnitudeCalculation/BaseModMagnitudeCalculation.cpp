@@ -3,7 +3,7 @@
 
 #include "SkillSystem/GameplayModMagnitudeCalculation/BaseModMagnitudeCalculation.h"
 #include "SkillSystem/SkillDataAsset.h"
-#include "SkillSystem/GameplyeEffect/SkillEffectDataAsset.h"
+#include "SkillSystem/GameplayEffect/SkillEffectDataAsset.h"
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "GameplayEffectExecutionCalculation.h" // GAS Attribute Capture macros (DECLARE_ATTRIBUTE_CAPTUREDEF, etc.)
 

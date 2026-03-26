@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "SkillSystem/SkillDataAsset.h"
@@ -37,7 +37,7 @@ FSkillTooltipData USkillDataAsset::GetSkillTooltipData(int32 InLevel) const
 	Result.DetailedDescription = DetailedDescription;
 
 	TArray<FString> EffectDescriptions;
-	for (USkillEffectDataAsset* EffectDataAsset : SkillConfig->GetExcutionEffects())
+	for (USkillEffectDataAsset* EffectDataAsset : SkillConfig->GetExecutionEffects())
 	{
 		if (!IsValid(EffectDataAsset))
 		{
