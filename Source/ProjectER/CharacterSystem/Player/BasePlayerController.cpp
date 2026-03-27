@@ -228,23 +228,6 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 	
 }
 
-void ABasePlayerController::OnRep_Pawn()
-{
-	Super::OnRep_Pawn();
-	ControlledBaseChar = Cast<ABaseCharacter>(GetPawn());
-
-	if (ControlledBaseChar)
-	{
-		if (IsLocalController())
-		{
-			if (PlayerCameraManager)
-			{
-				SetAudioListenerOverride(ControlledBaseChar->GetMesh(), FVector::Zero(), PlayerCameraManager->GetCameraRotation());
-			}
-		}
-	}
-}
-
 void ABasePlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
@@ -416,6 +399,13 @@ void ABasePlayerController::OnRep_Pawn()
 	{
 		TopDownCameraComp = ControlledBaseChar->GetComponentByClass<UTopDownCameraComp>();
 
+		if (IsLocalController())
+		{
+			if (PlayerCameraManager)
+			{
+				SetAudioListenerOverride(ControlledBaseChar->GetMesh(), FVector::Zero(), PlayerCameraManager->GetCameraRotation());
+			}
+		}
 		// 클라이언트에서도 인벤토리 델리게이트 바인딩
 		if (UBaseInventoryComponent* InvComp = ControlledBaseChar->GetComponentByClass<UBaseInventoryComponent>())
 		{
