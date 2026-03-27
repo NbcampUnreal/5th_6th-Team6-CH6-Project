@@ -133,6 +133,31 @@ void ABasePlayerController::BeginPlay()
 			}
 		}
 	}
+
+
+	if (ChatWidgetClass)
+	{
+		if (!ChatWidgetClass) return;
+
+		ChatWidgetInstance = CreateWidget<UUI_ChatSystem>(this, ChatWidgetClass);
+		if (ChatWidgetInstance)
+		{
+			ChatWidgetInstance->AddToViewport();
+
+			AER_PlayerState* MyPS = GetPlayerState<AER_PlayerState>();
+			if (MyPS)
+			{
+				ChatWidgetInstance->setPlayerState(MyPS);
+			}
+		}
+	}
+
+	// 미니맵 액터 찾기
+	for (TActorIterator<AUI_AMiniMapCapture> It(GetWorld()); It; ++It)
+	{
+		CachedMiniMapActor = *It;
+		break; // 하나만 찾으면 중단
+	}
 }
 
 void ABasePlayerController::OnPossess(APawn* InPawn)
@@ -166,36 +191,6 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 		// UE_LOG(LogTemp, Warning, TEXT("OnPossess: ControlledBaseChar is Null!"));
 	}
 
-
-
-	if (IsLocalPlayerController() && ChatWidgetClass)
-	{
-		if (!ChatWidgetClass) return;
-
-		ChatWidgetInstance = CreateWidget<UUI_ChatSystem>(this, ChatWidgetClass);
-		if (ChatWidgetInstance)
-		{
-			ChatWidgetInstance->AddToViewport();
-
-			AER_PlayerState* MyPS = GetPlayerState<AER_PlayerState>();
-			if (MyPS)
-			{
-				ChatWidgetInstance->setPlayerState(MyPS);
-			}
-
-			//FInputModeGameAndUI InputMode;
-			//InputMode.SetWidgetToFocus(ChatWidgetInstance->TakeWidget());
-			//SetInputMode(InputMode);
-		}
-	}
-
-	// 미니맵 액터 찾기
-	for (TActorIterator<AUI_AMiniMapCapture> It(GetWorld()); It; ++It)
-	{
-		CachedMiniMapActor = *It;
-		break; // 하나만 찾으면 중단
-	}
-	
 }
 
 void ABasePlayerController::SetupInputComponent()
