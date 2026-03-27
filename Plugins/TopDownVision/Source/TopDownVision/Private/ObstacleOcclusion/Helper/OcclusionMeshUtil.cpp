@@ -387,7 +387,7 @@ void UOcclusionMeshUtil::AcquireMaterials(
         }
     }
 
-    UE_LOG(OcclusionMeshHelper, Log,
+    UE_LOG(OcclusionMeshHelper, Verbose,
         TEXT("UOcclusionMeshUtil::AcquireMaterials>> %d slots acquired (%s)"),
         OutSlots.Num(), Pool ? TEXT("pooled") : TEXT("created"));
 }
