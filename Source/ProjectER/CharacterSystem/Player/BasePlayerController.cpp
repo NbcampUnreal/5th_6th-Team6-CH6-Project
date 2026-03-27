@@ -165,6 +165,36 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 	{
 		// UE_LOG(LogTemp, Warning, TEXT("OnPossess: ControlledBaseChar is Null!"));
 	}
+
+
+
+	if (IsLocalPlayerController() && ChatWidgetClass)
+	{
+		if (!ChatWidgetClass) return;
+
+		ChatWidgetInstance = CreateWidget<UUI_ChatSystem>(this, ChatWidgetClass);
+		if (ChatWidgetInstance)
+		{
+			ChatWidgetInstance->AddToViewport();
+
+			AER_PlayerState* MyPS = GetPlayerState<AER_PlayerState>();
+			if (MyPS)
+			{
+				ChatWidgetInstance->setPlayerState(MyPS);
+			}
+
+			//FInputModeGameAndUI InputMode;
+			//InputMode.SetWidgetToFocus(ChatWidgetInstance->TakeWidget());
+			//SetInputMode(InputMode);
+		}
+	}
+
+	// 미니맵 액터 찾기
+	for (TActorIterator<AUI_AMiniMapCapture> It(GetWorld()); It; ++It)
+	{
+		CachedMiniMapActor = *It;
+		break; // 하나만 찾으면 중단
+	}
 	
 }
 
@@ -358,7 +388,6 @@ void ABasePlayerController::OnRep_Pawn()
 			UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] Inventory delegate bound (Client)!"));
 		}
 	}
-
 }
 
 void ABasePlayerController::CheckHoveredActor()
@@ -1851,8 +1880,11 @@ void ABasePlayerController::setChatMessage(const FString& Message)
 
 void ABasePlayerController::OnEnterPressed()
 {
+	UE_LOG(LogTemp, Error, TEXT("1"));
+
 	if (ChatWidgetInstance)
 	{
+		UE_LOG(LogTemp, Error, TEXT("OnEnterPressed: Showing chat input"));
 		ChatWidgetInstance->SetChatInputVisible(true);		
 
 		// 입력 모드를 UI로 변경
@@ -1918,38 +1950,6 @@ void ABasePlayerController::PawnLeavingGame()
         *GetNameSafe(GetPawn()));
 }
 
-void ABasePlayerController::OnRep_PlayerState()
-{
-	Super::OnRep_PlayerState();
-
-	if (IsLocalController() && ChatWidgetClass)
-	{
-		if (!ChatWidgetClass) return;
-
-		ChatWidgetInstance = CreateWidget<UUI_ChatSystem>(this, ChatWidgetClass);
-		if (ChatWidgetInstance)
-		{
-			ChatWidgetInstance->AddToViewport();
-
-			AER_PlayerState* MyPS = GetPlayerState<AER_PlayerState>();
-			if (MyPS)
-			{
-				ChatWidgetInstance->setPlayerState(MyPS);
-			}
-
-			FInputModeGameAndUI InputMode;
-			InputMode.SetWidgetToFocus(ChatWidgetInstance->TakeWidget());
-			SetInputMode(InputMode);
-		}
-	}
-
-	// 미니맵 액터 찾기
-	for (TActorIterator<AUI_AMiniMapCapture> It(GetWorld()); It; ++It)
-	{
-		CachedMiniMapActor = *It;
-		break; // 하나만 찾으면 중단
-	}
-}
 
 void ABasePlayerController::Server_RequestCharacterSelection_Implementation()
 {
