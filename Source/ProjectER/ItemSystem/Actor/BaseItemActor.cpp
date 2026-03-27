@@ -87,10 +87,6 @@ void ABaseItemActor::RefreshVisualFromItemData()
 
 void ABaseItemActor::ApplyWorldItemCollisionSettings()
 {
-	// -------------------------------------------------
-	// ItemMesh:
-	// 실제 바닥 충돌/길막/끼임을 만들던 원인이므로 완전히 비활성화
-	// -------------------------------------------------
 	if (ItemMesh)
 	{
 		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -100,19 +96,21 @@ void ABaseItemActor::ApplyWorldItemCollisionSettings()
 		ItemMesh->SetCanEverAffectNavigation(false);
 	}
 
-	// -------------------------------------------------
-	// InteractionSphere:
-	// 1) 자동 줍기용 Pawn Overlap 유지
-	// 2) 수동 클릭/마우스 hover용 Visibility Block 유지
-	// 3) 물리 충돌은 하지 않음(QueryOnly)
-	// -------------------------------------------------
 	if (InteractionSphere)
 	{
 		InteractionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		InteractionSphere->SetCollisionObjectType(ECC_WorldDynamic);
 		InteractionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+
+		// 자동 줍기
 		InteractionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+
+		// 기본 마우스 트레이스
 		InteractionSphere->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+
+		// 프로젝트에서 실제 사용하는 CursorTrace 채널 번호로 바꿔야 함
+		InteractionSphere->SetCollisionResponseToChannel(ECC_GameTraceChannel5, ECR_Block);
+
 		InteractionSphere->SetGenerateOverlapEvents(true);
 		InteractionSphere->CanCharacterStepUpOn = ECB_No;
 		InteractionSphere->SetCanEverAffectNavigation(false);

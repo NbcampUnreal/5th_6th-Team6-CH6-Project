@@ -77,7 +77,7 @@ void UOcclusionMeshUtil::DiscoverChildMeshes(
         return;
     }
 
-    UE_LOG(OcclusionMeshHelper, Log,
+    UE_LOG(OcclusionMeshHelper, Verbose,
         TEXT("UOcclusionMeshUtil::DiscoverChildMeshes>> Scanning children of %s"),
         *Root->GetOwner()->GetName());
 
@@ -95,20 +95,20 @@ void UOcclusionMeshUtil::DiscoverChildMeshes(
         if (NormalTag != NAME_None && Mesh->ComponentHasTag(NormalTag))
         {
             OutNormalMeshes.Add(Mesh);
-            UE_LOG(OcclusionMeshHelper, Log,
+            UE_LOG(OcclusionMeshHelper, Verbose,
                 TEXT("UOcclusionMeshUtil::DiscoverChildMeshes>> NormalMesh: %s (%s)"),
                 *Mesh->GetName(), *Mesh->GetClass()->GetName());
         }
         else if (OccludedTag != NAME_None && Mesh->ComponentHasTag(OccludedTag))
         {
             OutOccludedMeshes.Add(Mesh);
-            UE_LOG(OcclusionMeshHelper, Log,
+            UE_LOG(OcclusionMeshHelper, Verbose,
                 TEXT("UOcclusionMeshUtil::DiscoverChildMeshes>> OccludedMesh: %s (%s)"),
                 *Mesh->GetName(), *Mesh->GetClass()->GetName());
         }
     }
 
-    UE_LOG(OcclusionMeshHelper, Log,
+    UE_LOG(OcclusionMeshHelper, Verbose,
         TEXT("UOcclusionMeshUtil::DiscoverChildMeshes>> Normal: %d | Occluded: %d"),
         OutNormalMeshes.Num(), OutOccludedMeshes.Num());
 
@@ -142,7 +142,7 @@ static void CreateMIDsForMeshType(
 
         const int32 MaterialCount = Mesh->GetNumMaterials();
 
-        UE_LOG(OcclusionMeshHelper, Log,
+        UE_LOG(OcclusionMeshHelper, Verbose,
             TEXT("UOcclusionMeshUtil::CreateMIDsForMeshType>> %s has %d material slots [%s]"),
             *Mesh->GetName(), MaterialCount, bStaticOnly ? TEXT("Static") : TEXT("Skeletal"));
 
@@ -161,7 +161,7 @@ static void CreateMIDsForMeshType(
             if (MID)
             {
                 OutMIDs.Add(MID);
-                UE_LOG(OcclusionMeshHelper, Log,
+                UE_LOG(OcclusionMeshHelper, Verbose,
                     TEXT("UOcclusionMeshUtil::CreateMIDsForMeshType>> MID created — %s slot %d"),
                     *Mesh->GetName(), i);
             }
@@ -174,7 +174,7 @@ static void CreateMIDsForMeshType(
         }
     }
 
-    UE_LOG(OcclusionMeshHelper, Log,
+    UE_LOG(OcclusionMeshHelper, Verbose,
         TEXT("UOcclusionMeshUtil::CreateMIDsForMeshType>> Total MIDs [%s]: %d"),
         bStaticOnly ? TEXT("Static") : TEXT("Skeletal"), OutMIDs.Num());
 }
@@ -432,7 +432,7 @@ void UOcclusionMeshUtil::GenerateShadowProxyMeshes(
 
         if (NoShadowTag != NAME_None && SourceMesh->ComponentHasTag(NoShadowTag))
         {
-            UE_LOG(OcclusionMeshHelper, Log,
+            UE_LOG(OcclusionMeshHelper, Verbose,
                 TEXT("UOcclusionMeshUtil::GenerateShadowProxyMeshes>> %s skipped — has NoShadowTag '%s'"),
                 *SourceMesh->GetName(), *NoShadowTag.ToString());
             continue;
@@ -465,7 +465,7 @@ void UOcclusionMeshUtil::GenerateShadowProxyMeshes(
             Owner->AddInstanceComponent(Proxy);
             OutStaticProxies.Add(Proxy);
 
-            UE_LOG(OcclusionMeshHelper, Log,
+            UE_LOG(OcclusionMeshHelper, Verbose,
                 TEXT("UOcclusionMeshUtil::GenerateShadowProxyMeshes>> Static proxy created for %s"),
                 *SourceStatic->GetName());
         }
@@ -497,13 +497,13 @@ void UOcclusionMeshUtil::GenerateShadowProxyMeshes(
             Owner->AddInstanceComponent(Proxy);
             OutSkeletalProxies.Add(Proxy);
 
-            UE_LOG(OcclusionMeshHelper, Log,
+            UE_LOG(OcclusionMeshHelper, Verbose,
                 TEXT("UOcclusionMeshUtil::GenerateShadowProxyMeshes>> Skeletal proxy created for %s"),
                 *SourceSkeletal->GetName());
         }
     }
 
-    UE_LOG(OcclusionMeshHelper, Log,
+    UE_LOG(OcclusionMeshHelper, Verbose,
         TEXT("UOcclusionMeshUtil::GenerateShadowProxyMeshes>> Done for %s — Static: %d | Skeletal: %d"),
         *Owner->GetName(), OutStaticProxies.Num(), OutSkeletalProxies.Num());
 }
