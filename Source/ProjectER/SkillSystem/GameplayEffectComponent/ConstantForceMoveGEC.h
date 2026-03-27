@@ -25,7 +25,7 @@ public:
 	UConstantForceMoveGEC();
 	virtual TSubclassOf<UBaseGECConfig> GetRequiredConfigClass() const override;
 
-	virtual float CalculateMoveDuration(const AActor* Instigator, const FVector& Direction, const UMoveBaseConfig* Config) const override;
+	virtual float CalculateMoveDuration(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const FVector& Direction, const UMoveBaseConfig* Config) const override;
 
 protected:
 	virtual void Execute(AActor* Instigator, const FVector& Direction, const UMoveBaseConfig* Config, const FGameplayEffectSpec& GESpec) const override;
