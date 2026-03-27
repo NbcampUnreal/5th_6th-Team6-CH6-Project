@@ -1563,7 +1563,7 @@ void UUI_MainHUD::RefreshInventoryGridLayout()
     }
 }
 
-float UUI_MainHUD::getSkillLevel(FGameplayTag SkillTag, bool levelUp)
+int32 UUI_MainHUD::getSkillLevel(FGameplayTag SkillTag, bool levelUp)
 {
     if (levelUp)
     {
@@ -1612,12 +1612,13 @@ float UUI_MainHUD::getSkillLevel(FGameplayTag SkillTag, bool levelUp)
             if (Spec.GetDynamicSpecSourceTags().HasTagExact(SkillTag) ||
                 Spec.Ability->GetAssetTags().HasTagExact(SkillTag))
             {
-                TargetSpec = &Spec;
-                break;
+                //TargetSpec = &Spec;
+                //break;
+                return Spec.Level;
             }
         }
         
-        return TargetSpec->Level;
+        //return TargetSpec->Level;
+        return -1;
     }
-    return -1;
 }
