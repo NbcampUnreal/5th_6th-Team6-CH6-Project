@@ -14,6 +14,27 @@ class UNiagaraSystem;
 class USkillDataAsset;
 class ABaseProjectile;
 
+USTRUCT(BlueprintType)
+struct FWeaponVisualData
+{
+	GENERATED_BODY()
+	// 무기 메시 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TSoftObjectPtr<UStaticMesh> WeaponMesh;
+	
+	// 장착할 소켓 이름 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	FName AttachSocketName = FName("hand_R"); // 기본값 지정 (수정 가능)
+	
+	// 소켓 기준 위치/회전 오프셋 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	FTransform AttachOffset = FTransform::Identity;
+	
+	// 무기 스케일
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	FVector WeaponScale = FVector(1.0f);
+};
+
 UCLASS(BlueprintType, Const)
 class PROJECTER_API UCharacterData : public UPrimaryDataAsset
 {
@@ -24,7 +45,11 @@ public:
 	// 캐릭터 Mesh
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
 	TSoftObjectPtr<USkeletalMesh> Mesh;
-
+	
+	// 무기(Weapon) Mesh
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual|Weapon")
+	TArray<FWeaponVisualData> DefaultWeapons;
+	
 	//Detection Shape Information
 
 	/*UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")

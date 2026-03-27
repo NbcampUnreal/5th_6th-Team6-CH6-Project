@@ -200,7 +200,7 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 	Super::OnPossess(InPawn);
 
 	ControlledBaseChar = Cast<ABaseCharacter>(InPawn);
-
+	SetAudioListenerOverride(ControlledBaseChar->GetMesh(), FVector::Zero(), PlayerCameraManager->GetCameraRotation());
 	if (ControlledBaseChar)
 	{
 		// 포제스 할 때 캐릭터의 TopDownCameraComp를 가져오는 게 없었음 그래서 추가
