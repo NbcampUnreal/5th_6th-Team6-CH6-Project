@@ -278,6 +278,57 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ABaseCharacter, TeamID);
 }
 
+void ABaseCharacter::InitWeapons()
+{
+	// 기존 무기 정리
+	DetachAllWeapons();
+	
+	for (const FWeaponVisualData& WeaponData : HeroData->DefaultWeapons)
+	{
+		AttachWeapon(WeaponData); // 무기 장착
+	}
+}
+
+void ABaseCharacter::AttachWeapon(const FWeaponVisualData& WeaponData)
+{
+	if (WeaponData.WeaponMesh.IsNull()) return;
+	
+	UStaticMesh* LoadedMesh = WeaponData.WeaponMesh.LoadSynchronous();
+	if (!LoadedMesh) return;
+	
+	// 동적 컴포넌트 생성
+	// NewObject + RegisterComponent() 런타임 동적 생성
+	// 생성자에서 CreateDefaultSubobject와 달리, 게임 진행 중 자유롭게 추가/제거 가능
+	UStaticMeshComponent* WeaponComp = NewObject<UStaticMeshComponent>(this);
+	WeaponComp->SetStaticMesh(LoadedMesh);
+	WeaponComp->SetRelativeTransform(WeaponData.AttachOffset);
+	WeaponComp->SetWorldScale3D(WeaponData.WeaponScale);
+	WeaponComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	WeaponComp->RegisterComponent();
+	
+	// 소켓에 부착
+	WeaponComp->AttachToComponent(
+		GetMesh(),
+		FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+		WeaponData.AttachSocketName
+	);
+	
+	WeaponMeshComponents.Add(WeaponComp);
+}
+
+void ABaseCharacter::DetachAllWeapons()
+{
+	for (UStaticMeshComponent* Comp : WeaponMeshComponents)
+	{
+		if (IsValid(Comp))
+		{
+			Comp->DestroyComponent();
+		}
+	}
+	
+	WeaponMeshComponents.Empty();
+}
+
 ETeamType ABaseCharacter::GetTeamType() const
 {
 	if (AER_PlayerState* PS = GetPlayerState<AER_PlayerState>())
@@ -800,6 +851,9 @@ void ABaseCharacter::InitVisuals()
 			GetMesh()->SetAnimInstanceClass(LoadedAnimClass);
 		}
 	}
+	
+	// 무기 장착
+	InitWeapons();
 }
 
 void ABaseCharacter::Server_MoveToLocation_Implementation(FVector TargetLocation)
