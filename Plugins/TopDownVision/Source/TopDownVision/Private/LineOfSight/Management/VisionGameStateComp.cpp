@@ -79,7 +79,7 @@ void UVisionGameStateComp::SetActorVisibleToTeam(AActor* Target, EVisionChannel 
     // Fire locally — PostReplicatedAdd only runs on remote clients
     OnTargetBecameVisible(Target, Team);
 
-    UE_LOG(VisionGameStateComp, Log,
+    UE_LOG(VisionGameStateComp, Verbose,
         TEXT("SetActorVisibleToTeam >> %s visible to team [%s]"),
         *Target->GetName(), *UEnum::GetValueAsString(Team));
 }
@@ -102,7 +102,7 @@ void UVisionGameStateComp::ClearActorVisibleToTeam(AActor* Target, EVisionChanne
 
             OnTargetBecameHidden(Target, Team);
 
-            UE_LOG(VisionGameStateComp, Log,
+            UE_LOG(VisionGameStateComp, Verbose,
                 TEXT("ClearActorVisibleToTeam >> %s hidden from team [%s]"),
                 *Target->GetName(), *UEnum::GetValueAsString(Team));
             return;
@@ -178,7 +178,7 @@ void UVisionGameStateComp::OnTargetBecameVisible(AActor* Target, EVisionChannel 
         return;
     }
 
-    UE_LOG(VisionGameStateComp, Log,
+    UE_LOG(VisionGameStateComp, Verbose,
         TEXT("OnTargetBecameVisible >> Pushing visible [%s] to VisionPS"),
         *Target->GetName());
 
@@ -196,7 +196,7 @@ void UVisionGameStateComp::OnTargetBecameHidden(AActor* Target, EVisionChannel T
         return;
     }
 
-    UE_LOG(VisionGameStateComp, Log,
+    UE_LOG(VisionGameStateComp, Verbose,
         TEXT("OnTargetBecameHidden >> Pushing hidden [%s] to VisionPS"),
         *Target->GetName());
 
@@ -212,7 +212,7 @@ void UVisionGameStateComp::FlushPendingReveals(UVisionPlayerStateComp* VisionPS)
     if (!VisionPS || PendingReveals.IsEmpty())
         return;
 
-    UE_LOG(VisionGameStateComp, Log,
+    UE_LOG(VisionGameStateComp, Verbose,
         TEXT("FlushPendingReveals >> Flushing %d queued entries"), PendingReveals.Num());
 
     for (const FPendingVisibilityEntry& Entry : PendingReveals)

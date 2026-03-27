@@ -51,7 +51,7 @@ void UVisibilityMeshComp::FindMeshesByTag()
 
         SkeletalMeshTargets.Add(TSoftObjectPtr<USkeletalMeshComponent>(Mesh));
 
-        UE_LOG(VisibilityMeshComp, Log,
+        UE_LOG(VisibilityMeshComp, Verbose,
             TEXT("UVisibilityMeshComp::FindMeshesByTag >> Skeletal: %s (%d slots)"),
             *Mesh->GetFName().ToString(), Mesh->GetNumMaterials());
     }
@@ -65,12 +65,12 @@ void UVisibilityMeshComp::FindMeshesByTag()
 
         StaticMeshTargets.Add(TSoftObjectPtr<UStaticMeshComponent>(Mesh));
 
-        UE_LOG(VisibilityMeshComp, Log,
+        UE_LOG(VisibilityMeshComp, Verbose,
             TEXT("UVisibilityMeshComp::FindMeshesByName >> Static: %s (%d slots)"),
             *Mesh->GetFName().ToString(), Mesh->GetNumMaterials());
     }
 
-    UE_LOG(VisibilityMeshComp, Log,
+    UE_LOG(VisibilityMeshComp, Verbose,
         TEXT("UVisibilityMeshComp::FindMeshesByName >> Resolved %d skeletal, %d static"),
         SkeletalMeshTargets.Num(), StaticMeshTargets.Num());
 }
@@ -132,7 +132,7 @@ void UVisibilityMeshComp::Initialize()
             {
                 MIDs.Add(MID);
 
-                UE_LOG(VisibilityMeshComp, Log,
+                UE_LOG(VisibilityMeshComp, Verbose,
                     TEXT("[%s] UVisibilityMeshComp::Initialize >> %s slot[%d] MID created"),
                     *TopDownVisionDebug::GetClientDebugName(GetOwner()),
                     *Mesh->GetFName().ToString(), i);
@@ -168,7 +168,7 @@ void UVisibilityMeshComp::Initialize()
     
     UpdateVisibility(0.f);
 
-    UE_LOG(VisibilityMeshComp, Log,
+    UE_LOG(VisibilityMeshComp, Verbose,
         TEXT("[%s] UVisibilityMeshComp::Initialize >> %d MIDs created total"),
         *TopDownVisionDebug::GetClientDebugName(GetOwner()),
         MIDs.Num());

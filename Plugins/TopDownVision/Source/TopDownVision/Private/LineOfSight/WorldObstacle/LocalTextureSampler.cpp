@@ -188,7 +188,7 @@ void ULocalTextureSampler::SetLocationRoot(USceneComponent* NewRoot)
     }
 
     SourceRoot = NewRoot;
-    UE_LOG(LOSVision, Log,
+    UE_LOG(LOSVision, Verbose,
         TEXT("ULocalTextureSampler::SetLocationRoot >> Root Settled"));
 }
 

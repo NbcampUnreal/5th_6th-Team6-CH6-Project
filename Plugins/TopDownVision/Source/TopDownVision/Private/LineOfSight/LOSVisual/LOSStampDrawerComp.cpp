@@ -38,7 +38,7 @@ void ULOSStampDrawerComp::CreateResources()
 
         if (LOSMaterialMID)
         {
-            UE_LOG(LOSVision, Log,
+            UE_LOG(LOSVision, Verbose,
                 TEXT("[%s] ULOSStampDrawerComp::CreateResources >> MID: %s (%p)"),
                 *TopDownVisionDebug::GetClientDebugName(GetOwner()),
                 *LOSMaterialMID->GetName(), LOSMaterialMID);

@@ -634,7 +634,7 @@ void UTopDownCameraComp::UpdateCameraCurveValues(float RadialCurveStrength)
 		return;
 	}
 
-	UE_LOG(MainCameraComp, Log,
+	UE_LOG(MainCameraComp, Verbose,
 		TEXT("%s UTopDownCameraComp::UpdateCameraCurveValues >> Applying RadialCurveStrength:%f"),
 		*DebugLogHelper::GetClientDebugName(this),
 		RadialCurveStrength);
