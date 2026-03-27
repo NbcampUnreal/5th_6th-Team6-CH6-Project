@@ -1,4 +1,4 @@
-﻿#include "CharacterSystem/Character/BaseCharacter.h"
+#include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Player/BasePlayerState.h"
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -828,6 +828,20 @@ void ABaseCharacter::InitAttributes()
 			}
 		}
 	}
+	
+	// BaseAttackSpeed 캐싱 — CurveTable Level 1 기준값 자동 추출
+	if (HeroData)
+	{
+		UCurveTable* ASTable = HeroData->StatCurveTable.LoadSynchronous();
+		if (ASTable)
+		{
+			FName ASRowName = FName(*HeroData->StatusRowName.ToString().Append("_AttackSpeed"));
+			if (FRealCurve* ASCurve = ASTable->FindCurve(ASRowName, FString()))
+			{
+				CachedBaseAttackSpeed = ASCurve->Eval(1.0f);
+			}
+		}
+	}
 }
 
 void ABaseCharacter::InitVisuals()
@@ -1260,6 +1274,45 @@ FName ABaseCharacter::GetNextAutoAttackSectionName()
 	AutoAttackIndex = (AutoAttackIndex + 1) % 3;
 
 	return SectionName;
+}
+
+float ABaseCharacter::GetAttackPlayRate() const
+{
+	if (CachedBaseAttackSpeed <= 0.0f) return 1.0f;
+	
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
+	if (!ASC) return 1.0f;
+	
+	// 현재 APS (= CurveTable + 아이템/버프가 반영된 최종 AttackSpeed 값)
+	float CurrentAPS = ASC->GetNumericAttribute(UBaseAttributeSet::GetAttackSpeedAttribute());
+	if (CurrentAPS <= 0.0f) return 1.0f;
+	
+	// PlayRate = 현재APS / 기본APS
+	// 기본 상태에서는 1.0x, 공격속도가 올라갈수록 비례 증가
+	return CurrentAPS / CachedBaseAttackSpeed;
+}
+
+float ABaseCharacter::GetAttackCooldown() const
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
+	if (!ASC) return 1.0f;
+	
+	float CurrentAPS = ASC->GetNumericAttribute(UBaseAttributeSet::GetAttackSpeedAttribute());
+	if (CurrentAPS <= 0.0f) return 1.0f;
+	
+	// 공격 주기 = 1 / APS
+	return 1.0f / CurrentAPS;
+}
+
+float ABaseCharacter::GetCurrentAttackSectionDuration(UAnimMontage* Montage, FName SectionName) const
+{
+	if (!Montage) return 1.0f;
+	
+	int32 SectionIndex = Montage->GetSectionIndex(SectionName);
+	if (SectionIndex == INDEX_NONE) return 1.0f;
+	
+	// 해당 섹션의 원본 재생 시간(초) 반환
+	return Montage->GetSectionLength(SectionIndex);
 }
 
 void ABaseCharacter::OnRep_TargetActor()

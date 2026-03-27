@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -265,6 +265,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat|Combo")
 	FName GetNextAutoAttackSectionName();
 	
+	// 현재 공격 몽타주의 재생 속도 (PlayRate) 반환
+	// = 현재APS / 기본APS = 공격속도 증가 비율
+	UFUNCTION(BlueprintCallable, Category = "Combat|AttackSpeed")
+	float GetAttackPlayRate() const;
+	
+	// 현재 공격 주기(초) 반환 = 1 / 실제APS
+	UFUNCTION(BlueprintCallable, Category = "Combat|AttackSpeed")
+	float GetAttackCooldown() const;
+	
+	// 지정된 몽타주 섹션의 실제 재생 시간(초) 반환
+	UFUNCTION(BlueprintCallable, Category = "Combat|AttackSpeed")
+	float GetCurrentAttackSectionDuration(UAnimMontage* Montage, FName SectionName) const;
+	
 protected:
 	UFUNCTION()
 	void OnRep_TargetActor();
@@ -286,6 +299,10 @@ protected:
 	// 평타 순환용 인덱스 (0, 1, 2)
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Combat|Combo")
 	int32 AutoAttackIndex = 0;
+	
+	// 기본 공격속도 (CurveTable Level 1 기준값, InitAttributes에서 자동 캐싱)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat|AttackSpeed")
+	float CachedBaseAttackSpeed = 0.625f;
 	
 	// 피격 이펙트 캐싱용 변수
 	UPROPERTY(Transient)
