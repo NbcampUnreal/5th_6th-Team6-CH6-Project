@@ -57,7 +57,7 @@ void UOcclusionTracerComponent::SetCameraComponent(UCameraComponent* InCamera)
 
     bCameraReady = true;
 
-    UE_LOG(Occlusion, Log,
+    UE_LOG(Occlusion, Verbose,
         TEXT("UOcclusionTracerComponent::SetCameraComponent>> Set on %s"),
         *GetOwner()->GetName());
 }
@@ -75,7 +75,7 @@ void UOcclusionTracerComponent::SetCameraManager(APlayerCameraManager* InCameraM
 
     bCameraReady = true;
 
-    UE_LOG(Occlusion, Log,
+    UE_LOG(Occlusion, Verbose,
         TEXT("UOcclusionTracerComponent::SetCameraManager>> Set on %s"),
         *GetOwner()->GetName());
 }
@@ -106,7 +106,7 @@ void UOcclusionTracerComponent::OnOwnerBecameVisible()
 
     OnTracerActivated();
 
-    UE_LOG(Occlusion, Log,
+    UE_LOG(Occlusion, Verbose,
         TEXT("UOcclusionTracerComponent::OnBecameVisible>> Tracer started on %s"),
         *GetOwner()->GetName());
 }
@@ -127,7 +127,7 @@ void UOcclusionTracerComponent::OnOwnerBecameHidden()
 
     OnTracerDeactivated();
 
-    UE_LOG(Occlusion, Log,
+    UE_LOG(Occlusion, Verbose,
         TEXT("UOcclusionTracerComponent::OnBecameHidden>> Tracer stopped on %s"),
         *GetOwner()->GetName());
 }
