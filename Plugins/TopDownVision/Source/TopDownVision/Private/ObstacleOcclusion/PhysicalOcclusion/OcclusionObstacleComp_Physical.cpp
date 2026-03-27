@@ -90,7 +90,7 @@ void UOcclusionObstacleComp_Physical::OnOcclusionEnter_Implementation(UObject* S
 
     SetComponentTickEnabled(true);
 
-    UE_LOG(Occlusion, Log,
+    UE_LOG(Occlusion, Verbose,
         TEXT("UOcclusionObstacleComp_Physical::OnOcclusionEnter>> %s | ActiveOverlaps: %d"),
         *GetOwner()->GetName(), ActiveOverlaps.Num());
 }
@@ -106,7 +106,7 @@ void UOcclusionObstacleComp_Physical::OnOcclusionExit_Implementation(UObject* So
 
     SetComponentTickEnabled(true);
 
-    UE_LOG(Occlusion, Log,
+    UE_LOG(Occlusion, Verbose,
         TEXT("UOcclusionObstacleComp_Physical::OnOcclusionExit>> %s | ActiveOverlaps: %d"),
         *GetOwner()->GetName(), ActiveOverlaps.Num());
 }
@@ -121,7 +121,7 @@ void UOcclusionObstacleComp_Physical::ForceOcclude_Implementation(bool bForce)
 
     SetComponentTickEnabled(true);
 
-    UE_LOG(Occlusion, Log,
+    UE_LOG(Occlusion, Verbose,
         TEXT("UOcclusionObstacleComp_Physical::ForceOcclude>> %s | bForce: %s"),
         *GetOwner()->GetName(), bForce ? TEXT("true") : TEXT("false"));
 }
@@ -146,12 +146,12 @@ void UOcclusionObstacleComp_Physical::SetupOcclusionMeshes()
             if (Proxy) Proxy->DestroyComponent();
         SkeletalShadowProxies.Empty();
 
-        UE_LOG(Occlusion, Log,
+        UE_LOG(Occlusion, Verbose,
             TEXT("UOcclusionObstacleComp_Physical::SetupOcclusionMeshes>> Shadow proxies removed for %s"),
             *GetOwner()->GetName());
     }
 
-    UE_LOG(Occlusion, Log,
+    UE_LOG(Occlusion, Verbose,
         TEXT("UOcclusionObstacleComp_Physical::SetupOcclusionMeshes>> Completed for %s"),
         *GetOwner()->GetName());
 }
@@ -199,7 +199,7 @@ void UOcclusionObstacleComp_Physical::InitializeMaterials()
     UOcclusionMeshUtil::AcquireMaterials(NormalMeshes,   { AlphaParam }, NormalSlots);
     UOcclusionMeshUtil::AcquireMaterials(OccludedMeshes, { AlphaParam }, OccludedSlots);
 
-    UE_LOG(Occlusion, Log,
+    UE_LOG(Occlusion, Verbose,
         TEXT("UOcclusionObstacleComp_Physical::InitializeMaterials>> Normal:%d Occluded:%d"),
         NormalSlots.Num(), OccludedSlots.Num());
 }
@@ -222,7 +222,7 @@ void UOcclusionObstacleComp_Physical::AcquireMIDs()
 
     UpdateMaterialAlpha();
 
-    UE_LOG(Occlusion, Log,
+    UE_LOG(Occlusion, Verbose,
         TEXT("UOcclusionObstacleComp_Physical::AcquireMIDs>> %s | Normal:%d Occluded:%d"),
         *GetOwner()->GetName(), NormalSlots.Num(), OccludedSlots.Num());
 }
@@ -236,7 +236,7 @@ void UOcclusionObstacleComp_Physical::ReleaseMIDs()
     UOcclusionMeshUtil::ReturnMaterials(NormalSlots,   Sub);
     UOcclusionMeshUtil::ReturnMaterials(OccludedSlots, Sub);
 
-    UE_LOG(Occlusion, Log,
+    UE_LOG(Occlusion, Verbose,
         TEXT("UOcclusionObstacleComp_Physical::ReleaseMIDs>> %s"), *GetOwner()->GetName());
 }
 
@@ -278,7 +278,7 @@ void UOcclusionObstacleComp_Physical::DiscoverChildMeshes()
         NormalMeshes,
         OccludedMeshes);
 
-    UE_LOG(Occlusion, Log,
+    UE_LOG(Occlusion, Verbose,
         TEXT("UOcclusionObstacleComp_Physical::DiscoverChildMeshes>> Normal: %d | Occluded: %d"),
         NormalMeshes.Num(), OccludedMeshes.Num());
 
@@ -308,7 +308,7 @@ void UOcclusionObstacleComp_Physical::CleanupInvalidOverlaps()
         if (!It->IsValid()) { It.RemoveCurrent(); RemovedCount++; }
 
     if (RemovedCount > 0)
-        UE_LOG(Occlusion, Log,
+        UE_LOG(Occlusion, Verbose,
             TEXT("UOcclusionObstacleComp_Physical::CleanupInvalidOverlaps>> Removed %d stale entries"),
             RemovedCount);
 }

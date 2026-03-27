@@ -15,24 +15,19 @@
     DECLARE_ATTRIBUTE_CAPTUREDEF(AttributeName##Target);
 
 #define DEFINE_ST_CAPTUREDEF(AttributeName) \
-    AttributeName##SourceDef = FGameplayEffectAttributeCaptureDefinition(ATTRIBUTE_CLASS::Get##AttributeName##Attribute(), EGameplayEffectAttributeCaptureSource::Source, false); \
-    AttributeName##TargetDef = FGameplayEffectAttributeCaptureDefinition(ATTRIBUTE_CLASS::Get##AttributeName##Attribute(), EGameplayEffectAttributeCaptureSource::Target, false); \
+    AttributeName##SourceDef = FGameplayEffectAttributeCaptureDefinition(ATTRIBUTE_CLASS::Get##AttributeName##Attribute(), EGameplayEffectAttributeCaptureSource::Source, true); \
+    AttributeName##TargetDef = FGameplayEffectAttributeCaptureDefinition(ATTRIBUTE_CLASS::Get##AttributeName##Attribute(), EGameplayEffectAttributeCaptureSource::Target, true); \
     SourceAttributeMap.Add(ATTRIBUTE_CLASS::Get##AttributeName##Attribute(), AttributeName##SourceDef); \
     TargetAttributeMap.Add(ATTRIBUTE_CLASS::Get##AttributeName##Attribute(), AttributeName##TargetDef);
 
 struct FMMCAttributeStatics
 {
-    DECLARE_ST_CAPTUREDEF(Level);
-    DECLARE_ST_CAPTUREDEF(MaxLevel);
-    DECLARE_ST_CAPTUREDEF(XP);
-    DECLARE_ST_CAPTUREDEF(MaxXP);
+    // Vital
     DECLARE_ST_CAPTUREDEF(Health);
     DECLARE_ST_CAPTUREDEF(MaxHealth);
-    DECLARE_ST_CAPTUREDEF(HealthRegen);
-    DECLARE_ST_CAPTUREDEF(Stamina);
     DECLARE_ST_CAPTUREDEF(MaxStamina);
-    DECLARE_ST_CAPTUREDEF(StaminaRegen);
 
+    // Combat (핵심 전투 스탯)
     DECLARE_ST_CAPTUREDEF(AttackPower);
     DECLARE_ST_CAPTUREDEF(AttackSpeed);
     DECLARE_ST_CAPTUREDEF(AttackRange);
@@ -49,13 +44,12 @@ struct FMMCAttributeStatics
 
     FMMCAttributeStatics()
     {
+        // Vital
         DEFINE_ST_CAPTUREDEF(Health);
         DEFINE_ST_CAPTUREDEF(MaxHealth);
-        DEFINE_ST_CAPTUREDEF(HealthRegen);
-        DEFINE_ST_CAPTUREDEF(Stamina);
         DEFINE_ST_CAPTUREDEF(MaxStamina);
-        DEFINE_ST_CAPTUREDEF(StaminaRegen);
 
+        // Combat
         DEFINE_ST_CAPTUREDEF(AttackPower);
         DEFINE_ST_CAPTUREDEF(AttackSpeed);
         DEFINE_ST_CAPTUREDEF(AttackRange);

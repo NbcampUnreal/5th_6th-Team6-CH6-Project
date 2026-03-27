@@ -138,9 +138,7 @@ void UMainOcclusionPainter::DrawProviderArea()
         if (!Target.IsValid()) continue;
 
         if (!Target.IsMIDReady())
-        {
             Target.InitializeMID(this, DefaultBrushMaterial);
-        }
 
         if (!Target.IsMIDReady()) continue;
 
@@ -151,11 +149,10 @@ void UMainOcclusionPainter::DrawProviderArea()
         if (!PlayerController->ProjectWorldLocationToScreen(WorldPos, ScreenPos))
             continue;
 
-        const FVector2D ScreenUV = ScreenPos / FVector2D(VPX, VPY);
-
         const float TargetDistance = FVector::Dist(FrustumParams.CameraLocation, WorldPos);
         if (TargetDistance <= KINDA_SMALL_NUMBER) continue;
 
+        // Compute size first so we can use it for the bounds margin
         const float NormalizedRadius = VisibleRadius /
             (FMath::Tan(FrustumParams.FrustumHalfAngleRad) * TargetDistance);
 
@@ -164,13 +161,21 @@ void UMainOcclusionPainter::DrawProviderArea()
 
         if (BrushSizeRT_Y <= 0.f) continue;
 
+        // Cull targets whose brush rect is fully outside the RT
+        const FVector2D ScreenUV = ScreenPos / FVector2D(VPX, VPY);
+        const float MarginX = BrushSizeRT_X / RTWidth;
+        const float MarginY = BrushSizeRT_Y / RTHeight;
+
+        if (ScreenUV.X + MarginX < 0.f || ScreenUV.X - MarginX > 1.f ||
+            ScreenUV.Y + MarginY < 0.f || ScreenUV.Y - MarginY > 1.f)
+            continue;
+
         const FVector2D BrushPos(
             ScreenUV.X * RTWidth  - BrushSizeRT_X * 0.5f,
             ScreenUV.Y * RTHeight - BrushSizeRT_Y * 0.5f);
 
         Target.BrushMID->SetScalarParameterValue(RevealAlphaParam, Target.RevealAlpha);
 
-        // Normalize tile rect into RT 0-1 space to match TexCoord[0]
         Target.BrushMID->SetVectorParameterValue(
             TEXT("TilePos"),
             FLinearColor(BrushPos.X / RTWidth, BrushPos.Y / RTHeight, 0.f, 0.f));
@@ -181,7 +186,6 @@ void UMainOcclusionPainter::DrawProviderArea()
         const FMaterialRenderProxy* RenderProxy = Target.BrushMID->GetRenderProxy();
         if (!RenderProxy) continue;
 
-        // Use material-direct constructor — avoids GWhiteTexture overriding material path
         FCanvasTileItem TileItem(
             BrushPos,
             RenderProxy,

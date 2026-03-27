@@ -97,7 +97,7 @@ void AOcclusionBinder::OnOcclusionEnter_Implementation(UObject* SourceTracer)
 
     SetActorTickEnabled(true);
 
-    UE_LOG(OcclusionBinder, Log,
+    UE_LOG(OcclusionBinder, Verbose,
         TEXT("AOcclusionBinder::OnOcclusionEnter>> %s | ActiveOverlaps: %d"),
         *GetName(), ActiveOverlaps.Num());
 }
@@ -115,7 +115,7 @@ void AOcclusionBinder::OnOcclusionExit_Implementation(UObject* SourceTracer)
 
     SetActorTickEnabled(true);
 
-    UE_LOG(OcclusionBinder, Log,
+    UE_LOG(OcclusionBinder, Verbose,
         TEXT("AOcclusionBinder::OnOcclusionExit>> %s | ActiveOverlaps: %d"),
         *GetName(), ActiveOverlaps.Num());
 }
@@ -132,7 +132,7 @@ void AOcclusionBinder::ForceOcclude_Implementation(bool bForce)
     
     SetActorTickEnabled(true);
 
-    UE_LOG(OcclusionBinder, Log,
+    UE_LOG(OcclusionBinder, Verbose,
         TEXT("AOcclusionBinder::ForceOcclude>> %s | bForce: %s"),
         *GetName(), bForce ? TEXT("true") : TEXT("false"));
 }
@@ -161,7 +161,7 @@ void AOcclusionBinder::InitializeMaterials()
         { AlphaParam, ForceParam },
         RTSlots);
 
-    UE_LOG(OcclusionBinder, Log,
+    UE_LOG(OcclusionBinder, Verbose,
         TEXT("AOcclusionBinder::InitializeMaterials>> %s | Normal:%d Occluded:%d RT:%d"),
         *GetName(), NormalSlots.Num(), OccludedSlots.Num(), RTSlots.Num());
 }
@@ -200,7 +200,7 @@ void AOcclusionBinder::AcquireMIDs()
 
     UpdateMaterialAlpha();
 
-    UE_LOG(OcclusionBinder, Log,
+    UE_LOG(OcclusionBinder, Verbose,
         TEXT("AOcclusionBinder::AcquireMIDs>> %s | Normal:%d Occluded:%d RT:%d"),
         *GetName(), NormalSlots.Num(), OccludedSlots.Num(), RTSlots.Num());
 }
@@ -243,7 +243,7 @@ void AOcclusionBinder::ReleaseMIDs()
     UOcclusionMeshUtil::ReturnMaterials(OccludedSlots, Sub);
     UOcclusionMeshUtil::ReturnMaterials(RTSlots,       Sub);
 
-    UE_LOG(OcclusionBinder, Log,
+    UE_LOG(OcclusionBinder, Verbose,
         TEXT("AOcclusionBinder::ReleaseMIDs>> %s"), *GetName());
 }
 
@@ -333,7 +333,7 @@ void AOcclusionBinder::SetupBoundActors()
                     StaticMesh->SetCollisionResponseToChannel(CachedOcclusionChannel, ECR_Block);
                     StaticMesh->SetCollisionResponseToChannel(CachedMouseChannel, ECR_Ignore);
 
-                    UE_LOG(OcclusionBinder, Log,
+                    UE_LOG(OcclusionBinder, Verbose,
                         TEXT("AOcclusionBinder::SetupBoundActors>> Set occlusion collision on %s from %s"),
                         *StaticMesh->GetName(), *Actor->GetName());
                 }
@@ -342,7 +342,7 @@ void AOcclusionBinder::SetupBoundActors()
                     StaticMesh->Modify();
                     StaticMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-                    UE_LOG(OcclusionBinder, Log,
+                    UE_LOG(OcclusionBinder, Verbose,
                         TEXT("AOcclusionBinder::SetupBoundActors>> Set no collision on occluded mesh %s from %s"),
                         *StaticMesh->GetName(), *Actor->GetName());
                 }
@@ -360,7 +360,7 @@ void AOcclusionBinder::SetupBoundActors()
                         SplineMesh->SetCollisionResponseToChannel(CachedOcclusionChannel, ECR_Block);
                         SplineMesh->SetCollisionResponseToChannel(CachedMouseChannel, ECR_Ignore);
 
-                        UE_LOG(OcclusionBinder, Log,
+                        UE_LOG(OcclusionBinder, Verbose,
                             TEXT("AOcclusionBinder::SetupBoundActors>> Set occlusion collision on SplineMesh %s from %s"),
                             *SplineMesh->GetName(), *Actor->GetName());
                     }
@@ -378,7 +378,7 @@ void AOcclusionBinder::SetupBoundActors()
     DiscoverMeshes();
     GenerateShadowProxies();
 
-    UE_LOG(OcclusionBinder, Log,
+    UE_LOG(OcclusionBinder, Verbose,
         TEXT("AOcclusionBinder::SetupBoundActors>> Setup complete for %s | Normal: %d | Occluded: %d | RT: %d"),
         *GetName(), NormalMeshes.Num(), OccludedMeshes.Num(), RTMeshes.Num());
 }
@@ -425,7 +425,7 @@ void AOcclusionBinder::DiscoverMeshes()
 
     Modify();
 
-    UE_LOG(OcclusionBinder, Log,
+    UE_LOG(OcclusionBinder, Verbose,
         TEXT("AOcclusionBinder::DiscoverMeshes>> %s | Normal: %d | Occluded: %d | RT: %d"),
         *GetName(), NormalMeshes.Num(), OccludedMeshes.Num(), RTMeshes.Num());
 }
@@ -444,7 +444,7 @@ void AOcclusionBinder::RegisterToSubsystem()
             Sub->RegisterBinderPrimitive(Prim, this);
     }
 
-    UE_LOG(OcclusionBinder, Log,
+    UE_LOG(OcclusionBinder, Verbose,
         TEXT("AOcclusionBinder::RegisterToSubsystem>> %s | Registered: %d"),
         *GetName(), NormalMeshes.Num());
 }
@@ -484,7 +484,7 @@ void AOcclusionBinder::GenerateShadowProxies()
         SkeletalShadowProxies.Append(TempSkeletal);
     }
 
-    UE_LOG(OcclusionBinder, Log,
+    UE_LOG(OcclusionBinder, Verbose,
         TEXT("AOcclusionBinder::GenerateShadowProxies>> %s | Static: %d | Skeletal: %d"),
         *GetName(), StaticShadowProxies.Num(), SkeletalShadowProxies.Num());
 }

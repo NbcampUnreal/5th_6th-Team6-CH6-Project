@@ -101,6 +101,7 @@ void ULocalTextureSampler::UpdateLocalTexture()
     }
 
     const FVector WorldCenter = SourceRoot->GetComponentLocation();
+
     LastSampleCenter = WorldCenter;
 
     UE_LOG(LOSVision, Verbose,
@@ -118,13 +119,20 @@ void ULocalTextureSampler::UpdateLocalTexture()
 
 void ULocalTextureSampler::SetWorldSampleRadius(float NewRadius)
 {
-    if (!FMath::IsNearlyEqual(WorldSampleRadius, NewRadius))
+    /*if (!FMath::IsNearlyEqual(WorldSampleRadius, NewRadius))
     {
         WorldSampleRadius = NewRadius;
         UE_LOG(LOSVision, Log,
             TEXT("ULocalTextureSampler::SetWorldSampleRadius >> New radius: %f"),
             WorldSampleRadius);
 
+        UpdateLocalTexture();
+    }*/
+
+    if (!FMath::IsNearlyEqual(WorldSampleRadius, NewRadius))
+    {
+        WorldSampleRadius = NewRadius;
+        LastSampleCenter = FVector(FLT_MAX); // force redraw regardless of distance
         UpdateLocalTexture();
     }
 }
@@ -152,6 +160,22 @@ void ULocalTextureSampler::SetLocalRenderTarget(UTextureRenderTarget2D* InRT)
 
     // Force rebuild when RT is assigned
     UpdateLocalTexture();
+}
+
+void ULocalTextureSampler::SetLocalRenderTargetOnly(UTextureRenderTarget2D* InRT)
+{
+    if (LocalMaskRT == InRT)
+        return;
+
+    LocalMaskRT = InRT;
+
+    if (!InRT)
+    {
+        UE_LOG(LOSVision, Warning,
+            TEXT("ULocalTextureSampler::SetLocalRenderTargetOnly >> RT is null"));
+    }
+
+    // this is only for the setting, no update
 }
 
 void ULocalTextureSampler::SetLocationRoot(USceneComponent* NewRoot)
