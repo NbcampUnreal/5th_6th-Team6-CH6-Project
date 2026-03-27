@@ -650,11 +650,23 @@ void ABasePlayerController::MoveToMouseCursor()
 			}*/
 
 			bool bShouldMoveToApproachLocation = false;
+			FVector DesiredMoveLocation = Hit.Location;
+
 
 			//2026/03/01 no safety check for the hit actor being nullptr. added the safety net
 			if (IsValid(HitActor))
 			{
-				if (HitActor->FindComponentByClass<ULootableComponent>())
+				// 바닥 아이템은 bounds 기반 접근을 쓰면 InteractionSphere 때문에 너무 일찍 멈출 수 있으므로
+				// 별도로 actor 중심으로 이동시킨다
+				if (ABaseItemActor* ItemActor = Cast<ABaseItemActor>(HitActor))
+				{
+					InteractionTargetDistance =
+						FVector::Dist2D(ControlledBaseChar->GetActorLocation(), ItemActor->GetActorLocation());
+					InteractionTarget = ItemActor;
+					bShouldMoveToApproachLocation = false;
+					DesiredMoveLocation = ItemActor->GetActorLocation();
+				}
+				else if (HitActor->FindComponentByClass<ULootableComponent>())
 				{
 					InteractionTargetDistance =
 						GetDistanceToActorBounds2D(HitActor, ControlledBaseChar->GetActorLocation());
@@ -696,7 +708,6 @@ void ABasePlayerController::MoveToMouseCursor()
 
 			ControlledBaseChar->SetTarget(nullptr);
 
-			// SpawnDestinationEffect(Hit.Location);
 			if (bShouldMoveToApproachLocation && IsValid(HitActor))
 			{
 				ControlledBaseChar->MoveToLocation(
@@ -704,7 +715,7 @@ void ABasePlayerController::MoveToMouseCursor()
 			}
 			else
 			{
-				ControlledBaseChar->MoveToLocation(Hit.Location);
+				ControlledBaseChar->MoveToLocation(DesiredMoveLocation);
 			}
 		}
 		else
@@ -796,7 +807,26 @@ void ABasePlayerController::CheckInteractionDistance()
 		return;
 	}
 
-	const float CurrentDistance = GetDistanceToActorBounds2D(InteractionTarget, ControlledBaseChar->GetActorLocation());
+	// 바닥 아이템은 bounds 기준이 아니라 actor 중심 기준 200으로 체크
+	if (ABaseItemActor* ItemActor = Cast<ABaseItemActor>(InteractionTarget))
+	{
+		constexpr float ItemPickupDistance = 200.f;
+		const float CurrentDistance =
+			FVector::Dist2D(ControlledBaseChar->GetActorLocation(), ItemActor->GetActorLocation());
+
+		if (CurrentDistance > ItemPickupDistance)
+		{
+			return;
+		}
+
+		ControlledBaseChar->StopMove();
+		Server_RequestPickup(ItemActor);
+		InteractionTarget = nullptr;
+		return;
+	}
+
+	const float CurrentDistance =
+		GetDistanceToActorBounds2D(InteractionTarget, ControlledBaseChar->GetActorLocation());
 
 	if (CurrentDistance > LootInteractDistance)
 	{
