@@ -8,6 +8,8 @@
 #include "LineOfSight/VisionData.h"
 #include "BaseCharacter.generated.h"
 
+struct FWeaponVisualData;
+
 class UCameraComponent;
 class USpringArmComponent;
 class UNiagaraSystem;
@@ -63,6 +65,23 @@ protected:
 	
 #pragma endregion
 
+#pragma region Weapon
+protected:
+	// 무기 장착 (InitVisuals에서 호출)
+	void InitWeapons();
+	
+	// 무기 교체 (아이템 시스템 연동 시 사용)
+	void AttachWeapon(const FWeaponVisualData& WeaponData);
+	
+	// 전체 무기 해제
+	void DetachAllWeapons();
+	
+protected:
+	// 현재 장착 중인 무기 메시 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
+	TArray<TObjectPtr<UStaticMeshComponent>> WeaponMeshComponents;
+#pragma endregion
+	
 #pragma region TargetableInterface
 public:
 	// 팀 정보 반환
