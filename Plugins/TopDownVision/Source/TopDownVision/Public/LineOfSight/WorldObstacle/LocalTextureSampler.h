@@ -49,6 +49,9 @@ public:
     void SetLocalRenderTarget(UTextureRenderTarget2D* InRT);
 
     UFUNCTION(BlueprintCallable, Category="LocalSampler")
+    void SetLocalRenderTargetOnly(UTextureRenderTarget2D* InRT);
+
+    UFUNCTION(BlueprintCallable, Category="LocalSampler")
     UTextureRenderTarget2D* GetLocalRenderTarget() const { return LocalMaskRT; }
 
     void SetLocationRoot(USceneComponent* NewRoot);
@@ -82,6 +85,9 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Settings")
     int32 LocalResolution = 256;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LocalSampler|Settings")
+    float RedrawDistanceThreshold = 50.f;// for only drawn when the owner root moves
+
     UPROPERTY(Transient)
     FVector LastSampleCenter = FVector::ZeroVector;
 
@@ -90,6 +96,7 @@ protected:
 
     UPROPERTY(Transient)
     TArray<int32> ActiveTileIndices;
+    
 
 private:
     void RebuildLocalBounds(const FVector& WorldCenter);

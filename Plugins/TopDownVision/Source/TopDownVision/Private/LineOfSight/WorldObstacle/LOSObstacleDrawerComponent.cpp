@@ -90,7 +90,8 @@ void ULOSObstacleDrawerComponent::CreateResources()
         ObstacleRenderTarget->ClearColor        = FLinearColor::Black;
         //ObstacleRenderTarget->RenderTargetFormat = RTF_R8;
         ObstacleRenderTarget->RenderTargetFormat = RTF_RGBA8;
-        ObstacleRenderTarget->UpdateResourceImmediate();
+        //ObstacleRenderTarget->UpdateResourceImmediate(); // not necessary. this was causing lag
+        ObstacleRenderTarget->UpdateResource();// just update, no forced update
 
         UE_LOG(LOSVision, Log,
             TEXT("[%s] ULOSObstacleDrawerComponent::CreateResources >> RT created: %s (%p)"),
