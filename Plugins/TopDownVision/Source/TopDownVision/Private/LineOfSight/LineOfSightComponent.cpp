@@ -50,7 +50,7 @@ void ULineOfSightComponent::BeginPlay()
     Super::BeginPlay();
 
     //Degug
-    UE_LOG(LOSVision, Log,
+    UE_LOG(LOSVision, Verbose,
     TEXT("[%s] LOS BeginPlay | Owner=%s | Role=%d | RemoteRole=%d | IsLocallyControlled=%d"),
     *TopDownVisionDebug::GetClientDebugName(GetOwner()),
     *GetOwner()->GetName(),
@@ -151,7 +151,7 @@ void ULineOfSightComponent::CreateResources()
         LOSRenderTarget->ClearColor = FLinearColor::Black;
         LOSRenderTarget->RenderTargetFormat = RTF_R8;
 
-        UE_LOG(LOSVision, Log,
+        UE_LOG(LOSVision, Verbose,
             TEXT("[%s] Created unique RT: %s (Address: %p)"),
             *TopDownVisionDebug::GetClientDebugName(GetOwner()),
             *LOSRenderTarget->GetName(),
@@ -184,7 +184,7 @@ void ULineOfSightComponent::CreateResources()
             LOSMaterialMID->SetTextureParameterValue(MIDTextureParam, LOSRenderTarget);
             LOSMaterialMID->SetScalarParameterValue(MIDVisibleRangeParam, VisionRange / MaxVisionRange / 2.f);
             
-            UE_LOG(LOSVision, Log,
+            UE_LOG(LOSVision, Verbose,
                 TEXT("[%s] Created unique MID: %s (Address: %p)"),
                 *TopDownVisionDebug::GetClientDebugName(GetOwner()),
                 *LOSMaterialMID->GetName(),
@@ -192,7 +192,7 @@ void ULineOfSightComponent::CreateResources()
         }
     }
     
-    UE_LOG(LOSVision, Log,
+    UE_LOG(LOSVision, Verbose,
           TEXT("[%s] ULineOfSightComponent::CreateResources >> | RT=%s (%p) | MID=%s (%p)"),
           *TopDownVisionDebug::GetClientDebugName(GetOwner()),
           LOSRenderTarget ? *LOSRenderTarget->GetName() : TEXT("NULL"),

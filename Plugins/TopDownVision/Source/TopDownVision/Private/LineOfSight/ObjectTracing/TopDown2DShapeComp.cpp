@@ -40,7 +40,7 @@ void UTopDown2DShapeComp::GenerateSamplePoints()
         return;
     }
 
-    UE_LOG(TopDown2DShape, Log,
+    UE_LOG(TopDown2DShape, Verbose,
         TEXT("[%s] GenerateSamplePoints >> Inner: %d, Outline: %d"),
         *GetOwner()->GetName(),
         InnerSamplePoints.Num(),

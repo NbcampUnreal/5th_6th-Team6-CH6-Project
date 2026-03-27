@@ -72,7 +72,7 @@ void UVision_EvaluatorComp::PrepareDetectionSphere()
             if (Comp && Comp->ComponentHasTag(TargetTag))
             {
                 OverlappingTargets.Add(Actor);
-                UE_LOG(LOSVision, Log,
+                UE_LOG(LOSVision, Verbose,
                     TEXT("[%s] PrepareDetectionSphere >> Pre-existing target: %s"),
                     *TopDownVisionDebug::GetClientDebugName(GetOwner()),
                     *Actor->GetName());
@@ -91,7 +91,7 @@ void UVision_EvaluatorComp::InitializeEvaluator(UVision_VisualComp* DirectParamC
     APawn* OwnerPawn = Cast<APawn>(GetOwner());
     if (!OwnerPawn || !OwnerPawn->IsLocallyControlled())
     {
-        UE_LOG(LOSVision, Log,
+        UE_LOG(LOSVision, Verbose,
             TEXT("[%s] InitializeEvaluator >> Skipped — not locally controlled"),
             *TopDownVisionDebug::GetClientDebugName(GetOwner()));
         return;
@@ -119,7 +119,7 @@ void UVision_EvaluatorComp::DirectCacheVisualComp(UVision_VisualComp* DirectPara
     }
 
     CachedVisualComp = DirectParamComp;
-    UE_LOG(LOSVision, Log,
+    UE_LOG(LOSVision, Verbose,
         TEXT("[%s] DirectCacheVisualComp >> Cached VisualComp directly"),
         *TopDownVisionDebug::GetClientDebugName(GetOwner()));
 }
@@ -136,7 +136,7 @@ void UVision_EvaluatorComp::FindAndCacheVisualComp()
     }
 
     CachedVisualComp = VisualComp;
-    UE_LOG(LOSVision, Log,
+    UE_LOG(LOSVision, Verbose,
         TEXT("[%s] FindAndCacheVisualComp >> VisualComp cached successfully"),
         *TopDownVisionDebug::GetClientDebugName(GetOwner()));
 }
@@ -202,7 +202,7 @@ void UVision_EvaluatorComp::OnDetectionSphereBeginOverlap(
 
     OverlappingTargets.Add(OtherActor);
 
-    UE_LOG(LOSVision, Log,
+    UE_LOG(LOSVision, Verbose,
         TEXT("[%s] OnBeginOverlap >> Target entered: %s"),
         *TopDownVisionDebug::GetClientDebugName(GetOwner()),
         *OtherActor->GetName());
@@ -226,7 +226,7 @@ void UVision_EvaluatorComp::OnDetectionSphereEndOverlap(
     OverlappingTargets.Remove(OtherActor);
     LastReportedVisibility.Remove(OtherActor);
 
-    UE_LOG(LOSVision, Log,
+    UE_LOG(LOSVision, Verbose,
         TEXT("[%s] OnEndOverlap >> Target left: %s"),
         *TopDownVisionDebug::GetClientDebugName(GetOwner()),
         *OtherActor->GetName());

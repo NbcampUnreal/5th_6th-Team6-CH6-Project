@@ -166,7 +166,7 @@ void UVisionPlayerStateComp::RefreshVisibility()
     // Drain anything that arrived before we were ready
     GSComp->FlushPendingReveals(this);
 
-    UE_LOG(VisionPlayerStateComp, Log,
+    UE_LOG(VisionPlayerStateComp, Verbose,
         TEXT("[%s] RefreshVisibility >> %d actors | Team:%d | AllReveal:%d"),
         *GetOwner()->GetName(),
         GSComp->GetVisibleActors().Num(),
