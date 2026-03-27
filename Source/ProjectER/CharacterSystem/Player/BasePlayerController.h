@@ -412,6 +412,11 @@ private:
 		bool bTraceComplex,
 		FHitResult& OutHitResult);
 
+	UPROPERTY()
+	class AUI_AMiniMapCapture* CachedMiniMapActor;
+
+	bool NoShowScoreBoard = false;
+
 
 
 private:
@@ -488,4 +493,22 @@ private:
 
 public:
 	void UseInventoryForUI(int32 _ind);
+
+	// Chat System
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI|Chat")
+	TSubclassOf<class UUI_ChatSystem> ChatWidgetClass;
+
+	UPROPERTY()
+	class UUI_ChatSystem* ChatWidgetInstance;
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_SendMessage(const FString& Message);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_DisplayMessage(const FString& Message);
+
+protected:
+	void OnEnterPressed();
 };

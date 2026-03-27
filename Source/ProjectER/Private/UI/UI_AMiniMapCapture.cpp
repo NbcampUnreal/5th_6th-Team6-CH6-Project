@@ -17,9 +17,6 @@ AUI_AMiniMapCapture::AUI_AMiniMapCapture()
     // 기본 설정 (블루프린트에서 수정 가능하도록 최소화)
     CaptureComponent->ProjectionType = ECameraProjectionMode::Orthographic;
     CaptureComponent->CaptureSource = ESceneCaptureSource::SCS_FinalColorLDR;
-    CaptureComponent->bCaptureEveryFrame = true;
-    CaptureComponent->bCaptureOnMovement = false;
-
 
 
     CaptureComponent->SetAbsolute(false, true, false);
@@ -28,8 +25,18 @@ AUI_AMiniMapCapture::AUI_AMiniMapCapture()
 
     CaptureComponent->ShowFlags.SetDynamicShadows(false); // 동적 그림자
     CaptureComponent->ShowFlags.SetGlobalIllumination(false); // 루멘
+
+    // 생성자나 BeginPlay에서 설정
+    CaptureComponent->bCaptureEveryFrame = false; // 매 프레임 캡처 중지
+    CaptureComponent->bCaptureOnMovement = false; // 움직일 때마다 캡처 중지
+
     //CaptureComponent->ShowFlags.SetMotionBlur(false); // 잔상 제거용
     //CaptureComponent->CaptureSource = ESceneCaptureSource::SCS_BaseColor; // 포스트 프로세싱 무효화
+}
+
+void AUI_AMiniMapCapture::UpdateMiniMap()
+{
+    CaptureComponent->CaptureScene();
 }
 
 // Called when the game starts or when spawned

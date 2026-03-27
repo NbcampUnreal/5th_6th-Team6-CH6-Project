@@ -43,8 +43,11 @@
 #include "Camera/TopDownCameraComp.h"
 
 // UI System
+#include "EngineUtils.h"
 #include "UI/UI_MainHUD.h"
 #include "UI/UI_Scoreboard.h"
+#include "UI/UI_AMiniMapCapture.h"
+#include "UI/UI_ChatSystem.h"
 
 
 //Log
@@ -192,6 +195,30 @@ void ABasePlayerController::BeginPlay()
 				ScoreboardWidget->SetVisibility(ESlateVisibility::Collapsed);
 			}
 		}
+	}
+
+	if (IsLocalPlayerController() && ChatWidgetClass)
+	{
+		
+		ChatWidgetInstance = CreateWidget<UUI_ChatSystem>(this, ChatWidgetClass);
+
+		if (ChatWidgetInstance)
+		{			
+			ChatWidgetInstance->AddToViewport();
+			ChatWidgetInstance->setPlayerState(Cast<AER_PlayerState>(PlayerState));
+
+			FInputModeGameAndUI InputMode;
+			InputMode.SetWidgetToFocus(ChatWidgetInstance->TakeWidget());
+			SetInputMode(InputMode);
+			// bShowMouseCursor = true;
+		}
+	}
+
+	// 미니맵 액터 찾기
+	for (TActorIterator<AUI_AMiniMapCapture> It(GetWorld()); It; ++It)
+	{
+		CachedMiniMapActor = *It;
+		break; // 하나만 찾으면 중단
 	}
 }
 
@@ -344,6 +371,10 @@ void ABasePlayerController::SetupInputComponent()
 			EnhancedInputComponent->BindAction(InputConfig->ScoreBoardKey, ETriggerEvent::Triggered, this, &ABasePlayerController::ShowScoreboard);
 			EnhancedInputComponent->BindAction(InputConfig->ScoreBoardKey, ETriggerEvent::Completed, this, &ABasePlayerController::HideScoreboard);
 		}
+		if (InputConfig->ChatEnterKey)
+		{
+			EnhancedInputComponent->BindAction(InputConfig->ChatEnterKey, ETriggerEvent::Started, this, &ABasePlayerController::OnEnterPressed);
+		}		
 	}
 }
 
@@ -1707,11 +1738,20 @@ void ABasePlayerController::UI_AssistCountUpdate_Implementation(int32 AssistCoun
 
 void ABasePlayerController::ShowScoreboard()
 {
-	if (IsValid(ScoreboardWidget))
+	if (!NoShowScoreBoard)
 	{
-		ScoreboardWidget->SetVisibility(ESlateVisibility::Visible);
-		// 실시간 데이터 갱신 함수 호출 추가? 해야 됨?
-		ScoreboardWidget->UpdateScoreboard();
+		NoShowScoreBoard = true;
+		if (IsValid(ScoreboardWidget))
+		{
+			if (CachedMiniMapActor)
+			{
+				CachedMiniMapActor->UpdateMiniMap();
+			}
+
+			ScoreboardWidget->SetVisibility(ESlateVisibility::Visible);
+			// 실시간 데이터 갱신 함수 호출 추가? 해야 됨?
+			ScoreboardWidget->UpdateScoreboard();
+		}
 	}
 }
 
@@ -1721,6 +1761,7 @@ void ABasePlayerController::HideScoreboard()
 	{
 		ScoreboardWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
+	NoShowScoreBoard = false;
 }
 
 void ABasePlayerController::ShowWinUI()
@@ -1856,7 +1897,46 @@ void ABasePlayerController::UseInventoryForUI(int32 _ind)
 {
 	UseInventorySlot(_ind);
 }
-;
+
+void ABasePlayerController::OnEnterPressed()
+{
+	if (ChatWidgetInstance)
+	{
+		// UI를 보이게 설정
+		if (AER_PlayerState* ER_PS = GetPlayerState<AER_PlayerState>())
+		{
+
+			ChatWidgetInstance->SetChatInputVisible(true);
+		}
+		
+
+		// 입력 모드를 UI로 변경
+		//FInputModeGameAndUI InputMode;
+		//InputMode.SetWidgetToFocus(ChatWidgetInstance->TakeWidget());
+		//InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+
+		//SetInputMode(InputMode);
+		// bShowMouseCursor = true; // 필요에 따라 설정
+	}
+}
+
+bool ABasePlayerController::Server_SendMessage_Validate(const FString& Message)
+{
+	return !Message.IsEmpty() && Message.Len() < 200;
+}
+void ABasePlayerController::Multicast_DisplayMessage_Implementation(const FString& Message)
+{
+	if (ChatWidgetInstance)
+	{
+		ChatWidgetInstance->AddMessageToScrollBox(Message);
+	}
+	// UE_LOG(LogTemp, Log, TEXT("Multicast_DisplayMessage: %s"), *Message);
+}
+void ABasePlayerController::Server_SendMessage_Implementation(const FString& Message)
+{
+	Multicast_DisplayMessage(Message);
+}
+
 
 void ABasePlayerController::PawnLeavingGame()
 {
