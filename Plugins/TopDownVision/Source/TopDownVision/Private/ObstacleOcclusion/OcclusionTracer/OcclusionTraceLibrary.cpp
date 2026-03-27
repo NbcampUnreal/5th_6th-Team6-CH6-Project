@@ -288,7 +288,7 @@ void FOcclusionTraceLibrary::NotifyEnter(UObject* OcclusionObject, UObject* Trac
     // covers UActorComponent (existing comps) and AActor (binder)
     IOcclusionInterface::Execute_OnOcclusionEnter(OcclusionObject, TracerIdentity);
 
-    UE_LOG(Occlusion, Log,
+    UE_LOG(Occlusion, Verbose,
         TEXT("FOcclusionTraceLibrary::NotifyEnter>> %s"),
         *OcclusionObject->GetName());
 }
@@ -299,7 +299,7 @@ void FOcclusionTraceLibrary::NotifyExit(UObject* OcclusionObject, UObject* Trace
 
     IOcclusionInterface::Execute_OnOcclusionExit(OcclusionObject, TracerIdentity);
 
-    UE_LOG(Occlusion, Log,
+    UE_LOG(Occlusion, Verbose,
         TEXT("FOcclusionTraceLibrary::NotifyExit>> %s"),
         *OcclusionObject->GetName());
 }

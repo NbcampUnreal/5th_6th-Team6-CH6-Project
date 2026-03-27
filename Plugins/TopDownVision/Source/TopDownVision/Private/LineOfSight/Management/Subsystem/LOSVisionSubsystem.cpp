@@ -74,7 +74,7 @@ bool ULOSVisionSubsystem::RegisterProvider(UVision_VisualComp* Provider, EVision
 
     ChannelEntry.RegisteredList.Add(Provider);
 
-    UE_LOG(LOSVisionSubsystem, Log,
+    UE_LOG(LOSVisionSubsystem, Verbose,
         TEXT("RegisterProvider >> %s registered on channel %d"),
         *Provider->GetOwner()->GetName(), (uint8)InVisionChannel);
 
@@ -97,7 +97,7 @@ void ULOSVisionSubsystem::UnregisterProvider(UVision_VisualComp* Provider, EVisi
     {
         if (ChannelEntry->RegisteredList.Remove(Provider) > 0)
         {
-            UE_LOG(LOSVisionSubsystem, Log,
+            UE_LOG(LOSVisionSubsystem, Verbose,
                 TEXT("UnregisterProvider >> %s unregistered from channel %d"),
                 *Provider->GetOwner()->GetName(), (uint8)InVisionChannel);
             return;
@@ -152,7 +152,7 @@ void ULOSVisionSubsystem::HandleProviderRegistered(UVision_VisualComp* NewProvid
 
         GSComp->SetActorVisibleToTeam(Existing->GetOwner(), Channel);
 
-        UE_LOG(LOSVisionSubsystem, Log,
+        UE_LOG(LOSVisionSubsystem, Verbose,
             TEXT("HandleProviderRegistered >> Revealed %s to channel [%s]"),
             *Existing->GetOwner()->GetName(), *UEnum::GetValueAsString(Channel));
     }
@@ -162,7 +162,7 @@ void ULOSVisionSubsystem::HandleProviderRegistered(UVision_VisualComp* NewProvid
     // schedules RefreshVisibility for next tick — that path is the safety net.
     if (UVisionPlayerStateComp* VisionPS = GetLocalVisionPS(GetWorld()))
     {
-        UE_LOG(LOSVisionSubsystem, Log,
+        UE_LOG(LOSVisionSubsystem, Verbose,
             TEXT("HandleProviderRegistered >> VisionPS ready, calling RefreshVisibility"));
         VisionPS->RefreshVisibility();
     }

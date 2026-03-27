@@ -40,50 +40,61 @@ ABaseMonster::ABaseMonster()
 	SetReplicateMovement(true);
 
 	//Tick 설정
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 	PrimaryActorTick.bStartWithTickEnabled = false;
 
 	// Collision 설정
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GetMesh()->VisibilityBasedAnimTickOption 
+		= EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
+
+	GetCharacterMovement()->SetComponentTickEnabled(false);
+	GetCharacterMovement()->bOrientRotationToMovement = true;;
 
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Spectator"));
+	GetCapsuleComponent()->SetComponentTickEnabled(false);
 
 	HitBoxComp = CreateDefaultSubobject<UBoxComponent>(TEXT("HitBoxComponent"));
+	HitBoxComp->SetComponentTickEnabled(false);
 	HitBoxComp->SetupAttachment(RootComponent);
 	HitBoxComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	HitBoxComp->SetCollisionProfileName(TEXT("Spectator"));
 
 	// ASC 복제, 데이터 Minimal로 되는지 확인 필요
 	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	ASC->SetComponentTickEnabled(false);
 	ASC->SetIsReplicated(true);
 	ASC->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
 	
 	AttributeSet = CreateDefaultSubobject<UBaseMonsterAttributeSet>(TEXT("AttributeSet"));
-	
+
 	// StateTree은 각 클라에서 실행
 	StateTreeComp = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTree"));
+	StateTreeComp->SetComponentTickEnabled(false);
 	StateTreeComp->SetStartLogicAutomatically(false);
 
 	// 주변 플레이어 감지용 컴포넌트
 	MonsterRangeComp = CreateDefaultSubobject<UMonsterRangeComponent>(TEXT("MonsterRangeComponent"));	
-	MonsterRangeComp->SetIsReplicated(true);
 	MonsterRangeComp->SetComponentTickEnabled(false);
+	MonsterRangeComp->SetIsReplicated(true);
 
 	//UI Component
 	HPBarWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComponent"));
+	HPBarWidgetComp->SetComponentTickEnabled(false);
 	HPBarWidgetComp->SetupAttachment(GetMesh());
 	HPBarWidgetComp->SetWidgetSpace(EWidgetSpace::Screen); // 체력바 크기가 일정할거같으니까?
 	HPBarWidgetComp->SetVisibility(false);
-	HPBarWidgetComp->SetComponentTickEnabled(false);
 
 	SoundComp = CreateDefaultSubobject<UAudioComponent>(TEXT("AudioComponent"));
+	SoundComp->SetComponentTickEnabled(false);
 	SoundComp->SetupAttachment(RootComponent);
 
 	TeamID = ETeamType::Neutral;
 
 	//ItemBox
 	LootableComp = CreateDefaultSubobject<ULootableComponent>(TEXT("LootableComponent"));
+	LootableComp->SetComponentTickEnabled(false);
 }
 
 UAbilitySystemComponent* ABaseMonster::GetAbilitySystemComponent() const
@@ -156,11 +167,6 @@ void ABaseMonster::BeginPlay()
 	}
 }
 
-void ABaseMonster::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-}
 
 void ABaseMonster::InitMonsterData(FPrimaryAssetId MonsterAssetId, float Level)
 {

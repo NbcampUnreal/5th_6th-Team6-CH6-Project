@@ -20,7 +20,7 @@ void UOcclusionObstacleComp_Material::BeginPlay()
 {
     Super::BeginPlay();
 
-    UE_LOG(LogMaterialOcclusion, Log,
+    UE_LOG(LogMaterialOcclusion, Verbose,
         TEXT("UOcclusionObstacleComp_Material::BeginPlay>> %s"),
         *GetOwner()->GetName());
 
@@ -122,7 +122,7 @@ void UOcclusionObstacleComp_Material::ForceOcclude_Implementation(bool bForce)
 
     SetComponentTickEnabled(true);
 
-    UE_LOG(LogMaterialOcclusion, Log,
+    UE_LOG(LogMaterialOcclusion, Verbose,
         TEXT("UOcclusionObstacleComp_Material::ForceOcclude>> %s | bForce: %s"),
         *GetOwner()->GetName(), bForce ? TEXT("true") : TEXT("false"));
 }
@@ -147,12 +147,12 @@ void UOcclusionObstacleComp_Material::SetupOcclusionMeshes()
             if (Proxy) Proxy->DestroyComponent();
         SkeletalShadowProxies.Empty();
 
-        UE_LOG(LogMaterialOcclusion, Log,
+        UE_LOG(LogMaterialOcclusion, Verbose,
             TEXT("UOcclusionObstacleComp_Material::SetupOcclusionMeshes>> Shadow proxies removed for %s"),
             *GetOwner()->GetName());
     }
 
-    UE_LOG(LogMaterialOcclusion, Log,
+    UE_LOG(LogMaterialOcclusion, Verbose,
         TEXT("UOcclusionObstacleComp_Material::SetupOcclusionMeshes>> Completed for %s"),
         *GetOwner()->GetName());
 }
@@ -173,7 +173,7 @@ void UOcclusionObstacleComp_Material::InitializeCollisionAndShadow()
             StaticMesh->SetCollisionResponseToChannel(OcclusionCh, ECR_Block);
             StaticMesh->SetCollisionResponseToChannel(MouseCh, ECR_Ignore);
 
-            UE_LOG(LogMaterialOcclusion, Log,
+            UE_LOG(LogMaterialOcclusion, Verbose,
                 TEXT("UOcclusionObstacleComp_Material::InitializeCollisionAndShadow>> ECR_Block set on %s"),
                 *StaticMesh->GetName());
         }
@@ -196,7 +196,7 @@ void UOcclusionObstacleComp_Material::InitializeMaterials()
         { AlphaParam, ForceParam },
         TargetSlots);
 
-    UE_LOG(LogMaterialOcclusion, Log,
+    UE_LOG(LogMaterialOcclusion, Verbose,
         TEXT("UOcclusionObstacleComp_Material::InitializeMaterials>> Slots: %d"),
         TargetSlots.Num());
 }
@@ -220,7 +220,7 @@ void UOcclusionObstacleComp_Material::AcquireMIDs()
 
     UpdateMaterialAlpha();
 
-    UE_LOG(LogMaterialOcclusion, Log,
+    UE_LOG(LogMaterialOcclusion, Verbose,
         TEXT("UOcclusionObstacleComp_Material::AcquireMIDs>> %s | Total slots: %d"),
         *GetOwner()->GetName(), TargetSlots.Num());
 }
@@ -233,7 +233,7 @@ void UOcclusionObstacleComp_Material::ReleaseMIDs()
     // Only pooled slots are returned — non-pooled stay untouched
     UOcclusionMeshUtil::ReturnMaterials(TargetSlots, Sub);
 
-    UE_LOG(LogMaterialOcclusion, Log,
+    UE_LOG(LogMaterialOcclusion, Verbose,
         TEXT("UOcclusionObstacleComp_Material::ReleaseMIDs>> %s"), *GetOwner()->GetName());
 }
 
@@ -257,7 +257,7 @@ void UOcclusionObstacleComp_Material::DiscoverChildMeshes()
         TargetMeshes,
         Dummy);
 
-    UE_LOG(LogMaterialOcclusion, Log,
+    UE_LOG(LogMaterialOcclusion, Verbose,
         TEXT("UOcclusionObstacleComp_Material::DiscoverChildMeshes>> Found %d meshes for %s"),
         TargetMeshes.Num(), *GetOwner()->GetName());
 }
