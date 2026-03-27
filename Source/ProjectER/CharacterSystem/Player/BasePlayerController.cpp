@@ -40,6 +40,8 @@
 #include "Blueprint/UserWidget.h"
 #include "CharacterSystem/Data/CharacterData.h"
 
+#include "GlobalUtil/StaticGlobalUtils.h"
+
 //Camera comp added
 #include "Camera/TopDownCameraComp.h"
 
@@ -53,72 +55,6 @@
 
 //Log
 DEFINE_LOG_CATEGORY(Controller_Camera);
-
-namespace
-{
-	constexpr float LootInteractDistance = 300.f;
-
-	static float GetDistanceToActorBounds2D(const AActor* TargetActor, const FVector& FromLocation)
-	{
-		if (!IsValid(TargetActor))
-		{
-			return TNumericLimits<float>::Max();
-		}
-
-		const FBox Bounds = TargetActor->GetComponentsBoundingBox(true);
-		if (!Bounds.IsValid)
-		{
-			return FVector::Dist2D(FromLocation, TargetActor->GetActorLocation());
-		}
-
-		const FVector ClosestPoint(
-			FMath::Clamp(FromLocation.X, Bounds.Min.X, Bounds.Max.X),
-			FMath::Clamp(FromLocation.Y, Bounds.Min.Y, Bounds.Max.Y),
-			FMath::Clamp(FromLocation.Z, Bounds.Min.Z, Bounds.Max.Z)
-		);
-
-		return FVector::Dist2D(FromLocation, ClosestPoint);
-	}
-
-	static FVector GetApproachLocationForActor(UWorld* World, const AActor* TargetActor, const FVector& FromLocation)
-	{
-		if (!IsValid(TargetActor))
-		{
-			return FromLocation;
-		}
-
-		const FBox Bounds = TargetActor->GetComponentsBoundingBox(true);
-		if (!Bounds.IsValid)
-		{
-			return TargetActor->GetActorLocation();
-		}
-
-		const FVector Center = Bounds.GetCenter();
-		FVector Direction = (FromLocation - Center);
-		Direction.Z = 0.f;
-		Direction = Direction.GetSafeNormal();
-
-		if (Direction.IsNearlyZero())
-		{
-			Direction = FVector(1.f, 0.f, 0.f);
-		}
-
-		const float StandOff = FMath::Max(Bounds.GetExtent().Size2D(), 80.f) + 100.f;
-		FVector DesiredLocation = Center + Direction * StandOff;
-		DesiredLocation.Z = FromLocation.Z;
-
-		if (UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World))
-		{
-			FNavLocation Projected;
-			if (NavSys->ProjectPointToNavigation(DesiredLocation, Projected, FVector(100.f, 100.f, 300.f)))
-			{
-				return Projected.Location;
-			}
-		}
-
-		return DesiredLocation;
-	}
-}
 
 ABasePlayerController::ABasePlayerController()
 {
@@ -695,28 +631,40 @@ void ABasePlayerController::MoveToMouseCursor()
 			}*/
 
 			bool bShouldMoveToApproachLocation = false;
+			FVector DesiredMoveLocation = Hit.Location;
+
 
 			//2026/03/01 no safety check for the hit actor being nullptr. added the safety net
 			if (IsValid(HitActor))
 			{
-				if (HitActor->FindComponentByClass<ULootableComponent>())
+				// 바닥 아이템은 bounds 기반 접근을 쓰면 InteractionSphere 때문에 너무 일찍 멈출 수 있으므로
+				// 별도로 actor 중심으로 이동시킨다
+				if (ABaseItemActor* ItemActor = Cast<ABaseItemActor>(HitActor))
 				{
 					InteractionTargetDistance =
-						GetDistanceToActorBounds2D(HitActor, ControlledBaseChar->GetActorLocation());
+						FVector::Dist2D(ControlledBaseChar->GetActorLocation(), ItemActor->GetActorLocation());
+					InteractionTarget = ItemActor;
+					bShouldMoveToApproachLocation = false;
+					DesiredMoveLocation = ItemActor->GetActorLocation();
+				}
+				else if (HitActor->FindComponentByClass<ULootableComponent>())
+				{
+					InteractionTargetDistance =
+						UStaticGlobalUtils::GetDistanceToActorBounds2D(HitActor, ControlledBaseChar->GetActorLocation());
 					InteractionTarget = HitActor;
 					bShouldMoveToApproachLocation = true;
 				}
 				else if (HitActor->FindComponentByClass<UER_TeleportComponent>())
 				{
 					InteractionTargetDistance =
-						GetDistanceToActorBounds2D(HitActor, ControlledBaseChar->GetActorLocation());
+						UStaticGlobalUtils::GetDistanceToActorBounds2D(HitActor, ControlledBaseChar->GetActorLocation());
 					InteractionTarget = HitActor;
 					bShouldMoveToApproachLocation = true;
 				}
 				else if (HitActor->GetClass()->ImplementsInterface(UI_ItemInteractable::StaticClass()))
 				{
 					InteractionTargetDistance =
-						GetDistanceToActorBounds2D(HitActor, ControlledBaseChar->GetActorLocation());
+						UStaticGlobalUtils::GetDistanceToActorBounds2D(HitActor, ControlledBaseChar->GetActorLocation());
 					InteractionTarget = HitActor;
 					bShouldMoveToApproachLocation = true;
 				}
@@ -741,15 +689,14 @@ void ABasePlayerController::MoveToMouseCursor()
 
 			ControlledBaseChar->SetTarget(nullptr);
 
-			// SpawnDestinationEffect(Hit.Location);
 			if (bShouldMoveToApproachLocation && IsValid(HitActor))
 			{
 				ControlledBaseChar->MoveToLocation(
-					GetApproachLocationForActor(GetWorld(), HitActor, ControlledBaseChar->GetActorLocation()));
+					UStaticGlobalUtils::GetApproachLocationForActor(GetWorld(), HitActor, ControlledBaseChar->GetActorLocation()));
 			}
 			else
 			{
-				ControlledBaseChar->MoveToLocation(Hit.Location);
+				ControlledBaseChar->MoveToLocation(DesiredMoveLocation);
 			}
 		}
 		else
@@ -841,9 +788,28 @@ void ABasePlayerController::CheckInteractionDistance()
 		return;
 	}
 
-	const float CurrentDistance = GetDistanceToActorBounds2D(InteractionTarget, ControlledBaseChar->GetActorLocation());
+	// 바닥 아이템은 bounds 기준이 아니라 actor 중심 기준 200으로 체크
+	if (ABaseItemActor* ItemActor = Cast<ABaseItemActor>(InteractionTarget))
+	{
+		constexpr float ItemPickupDistance = 200.f;
+		const float CurrentDistance =
+			FVector::Dist2D(ControlledBaseChar->GetActorLocation(), ItemActor->GetActorLocation());
 
-	if (CurrentDistance > LootInteractDistance)
+		if (CurrentDistance > ItemPickupDistance)
+		{
+			return;
+		}
+
+		ControlledBaseChar->StopMove();
+		Server_RequestPickup(ItemActor);
+		InteractionTarget = nullptr;
+		return;
+	}
+
+	const float CurrentDistance =
+		UStaticGlobalUtils::GetDistanceToActorBounds2D(InteractionTarget, ControlledBaseChar->GetActorLocation());
+
+	if (CurrentDistance > LOOT_INTERACT_DISTANCE)
 	{
 		return;
 	}
@@ -1364,8 +1330,8 @@ void ABasePlayerController::Server_BeginLoot_Implementation(AActor* Actor)
 	AER_PlayerState* PS = GetPlayerState<AER_PlayerState>();
 	if (!PS) return;
 
-	const float Dist = GetDistanceToActorBounds2D(Actor, Char->GetActorLocation());
-	if (Dist > LootInteractDistance) return;
+	const float Dist = UStaticGlobalUtils::GetDistanceToActorBounds2D(Actor, Char->GetActorLocation());
+	if (Dist > LOOT_INTERACT_DISTANCE) return;
 
 	// 루팅 시작 시 캐릭터 정지
 	Char->StopMove();
@@ -1650,8 +1616,8 @@ void ABasePlayerController::Server_BeginLootFromActor_Implementation(AActor* Tar
 		return;
 	}
 
-	const float Dist = GetDistanceToActorBounds2D(TargetActor, Char->GetActorLocation());
-	if (Dist > LootInteractDistance)
+	const float Dist = UStaticGlobalUtils::GetDistanceToActorBounds2D(TargetActor, Char->GetActorLocation());
+	if (Dist > LOOT_INTERACT_DISTANCE)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Server_BeginLootFromActor: Too far (%.1f)"), Dist);
 		return;
