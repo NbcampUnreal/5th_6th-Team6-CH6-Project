@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
@@ -65,6 +65,11 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_Phase)
 	int32 CurrentPhase = 0;
+
+// chat
+public:
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_BroadcastChatMessage(const FString& Message);
 
 };
 

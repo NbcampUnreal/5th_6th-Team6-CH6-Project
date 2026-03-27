@@ -101,4 +101,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
 	TObjectPtr<UInputAction> ScoreBoardKey;
 
+	// 채팅 온오프용
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	TObjectPtr<UInputAction> ChatEnterKey;
 };
