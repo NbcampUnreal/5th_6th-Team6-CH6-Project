@@ -21,12 +21,14 @@ TSubclassOf<UBaseGECConfig> UConstantForceMoveGEC::GetRequiredConfigClass() cons
 	return UConstantForceMoveGECConfig::StaticClass();
 }
 
-float UConstantForceMoveGEC::CalculateMoveDuration(const AActor* Instigator, const FVector& Direction, const UMoveBaseConfig* Config) const
+float UConstantForceMoveGEC::CalculateMoveDuration(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const FVector& Direction, const UMoveBaseConfig* Config) const
 {
 	const UConstantForceMoveGECConfig* const CFConfig = Cast<UConstantForceMoveGECConfig>(Config);
 	if (IsValid(CFConfig) && CFConfig->MoveSpeed > 0.0f)
 	{
-		return CFConfig->MoveDistance / CFConfig->MoveSpeed;
+		const FVector TargetLoc = CalculateTargetLocation(GESpec, Instigator, CFConfig);
+		const float Distance = FVector::Dist(Instigator->GetActorLocation(), TargetLoc);
+		return Distance / CFConfig->MoveSpeed;
 	}
 	return 0.2f;
 }
@@ -46,8 +48,10 @@ void UConstantForceMoveGEC::Execute(AActor* Instigator, const FVector& Direction
 		return;
 	}
 
+	const FVector TargetLoc = CalculateTargetLocation(GESpec, Instigator, CFConfig);
+	const float Distance = FVector::Dist(Instigator->GetActorLocation(), TargetLoc);
 	const float Duration = (CFConfig->MoveSpeed > 0.0f)
-		? (CFConfig->MoveDistance / CFConfig->MoveSpeed)
+		? (Distance / CFConfig->MoveSpeed)
 		: 0.2f;
 
 	TSharedPtr<FRootMotionSource_ConstantForce> ConstantForce = MakeShared<FRootMotionSource_ConstantForce>();
@@ -66,7 +70,7 @@ void UConstantForceMoveGEC::Execute(AActor* Instigator, const FVector& Direction
 	}
 
 	const FVector StartLoc = Instigator->GetActorLocation();
-	const FVector ExpectedEndLoc = StartLoc + Direction * CFConfig->MoveDistance;
+	const FVector ExpectedEndLoc = TargetLoc;
 
 	TWeakObjectPtr<UConstantForceMoveGEC const> WeakThis = this;
 	TWeakObjectPtr<AActor> WeakInstigator = Instigator;
