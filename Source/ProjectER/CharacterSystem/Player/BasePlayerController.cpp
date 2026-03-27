@@ -214,6 +214,12 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 			UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController] Inventory delegate bound (Server)!"));
 			OnInventoryUpdated();
 		}
+
+		//리슨서버 컨트롤러 설정하고 OnRep_Pawn() 으로 클라이언트 설정
+		if (IsLocalController())
+		{
+			SetAudioListenerOverride(ControlledBaseChar->GetMesh(), FVector::Zero(), PlayerCameraManager->GetCameraRotation());
+		}
 	}
 	else
 	{
@@ -393,6 +399,13 @@ void ABasePlayerController::OnRep_Pawn()
 	{
 		TopDownCameraComp = ControlledBaseChar->GetComponentByClass<UTopDownCameraComp>();
 
+		if (IsLocalController())
+		{
+			if (PlayerCameraManager)
+			{
+				SetAudioListenerOverride(ControlledBaseChar->GetMesh(), FVector::Zero(), PlayerCameraManager->GetCameraRotation());
+			}
+		}
 		// 클라이언트에서도 인벤토리 델리게이트 바인딩
 		if (UBaseInventoryComponent* InvComp = ControlledBaseChar->GetComponentByClass<UBaseInventoryComponent>())
 		{

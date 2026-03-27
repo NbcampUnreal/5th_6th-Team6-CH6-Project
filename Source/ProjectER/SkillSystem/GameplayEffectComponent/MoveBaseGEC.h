@@ -50,6 +50,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Move|Safety")
 	bool bIgnoreUnitCollision = false;
 
+	// 컨텍스트(TargetData 등) 위치가 존재하고 이동 거리 이내라면 해당 위치를 우선 사용
+	UPROPERTY(EditDefaultsOnly, Category = "Move|Safety")
+	bool bPreferContextLocation = true;
+
 	// 지면 추적 거리 고정 (에디터 수정 불가)
 	UPROPERTY(VisibleDefaultsOnly, Category = "Move|Safety")
 	float GroundTraceDistance = 500.0f;
@@ -120,12 +124,15 @@ protected:
 	virtual void Execute(AActor* Instigator, const FVector& Direction, const UMoveBaseConfig* Config, const FGameplayEffectSpec& GESpec) const PURE_VIRTUAL(UMoveBaseGEC::Execute, );
 
 	// 이동 소요 시간 반환 (애니메이션 동기화용)
-	virtual float CalculateMoveDuration(const AActor* Instigator, const FVector& Direction, const UMoveBaseConfig* Config) const PURE_VIRTUAL(UMoveBaseGEC::CalculateMoveDuration, return 0.15f;);
+	virtual float CalculateMoveDuration(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const FVector& Direction, const UMoveBaseConfig* Config) const PURE_VIRTUAL(UMoveBaseGEC::CalculateMoveDuration, return 0.15f;);
 
 	// 공통 유틸리티 함수
 	bool IsRootMotionActive(const AActor* Actor) const;
 
 	FVector CalculateMoveDirection(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const UMoveBaseConfig* Config) const;
+
+	// 컨텍스트 위치와 MoveDistance를 고려한 최종 타겟 위치 계산
+	FVector CalculateTargetLocation(const FGameplayEffectSpec& GESpec, const AActor* Instigator, const UMoveBaseConfig* Config) const;
 
 	void HandleWallHit(AActor* Instigator, const FHitResult& Hit, const UMoveBaseConfig* Config, const FGameplayEffectSpec& GESpec) const;
 
