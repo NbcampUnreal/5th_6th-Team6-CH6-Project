@@ -13,6 +13,9 @@ class PROJECTER_API AUI_AMiniMapCapture : public AActor
 	
 public:
     AUI_AMiniMapCapture();
+    
+    UFUNCTION()
+    void UpdateMiniMap();
 
 protected:
     virtual void BeginPlay() override;

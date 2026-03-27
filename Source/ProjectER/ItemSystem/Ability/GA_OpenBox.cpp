@@ -10,30 +10,7 @@
 #include "CharacterSystem/Player/BasePlayerController.h"
 #include "ItemSystem/Component/LootableComponent.h"
 
-namespace
-{
-    static float GetDistanceToActorBounds2D(const AActor* TargetActor, const FVector& FromLocation)
-    {
-        if (!IsValid(TargetActor))
-        {
-            return TNumericLimits<float>::Max();
-        }
-
-        const FBox Bounds = TargetActor->GetComponentsBoundingBox(true);
-        if (!Bounds.IsValid)
-        {
-            return FVector::Dist2D(FromLocation, TargetActor->GetActorLocation());
-        }
-
-        const FVector ClosestPoint(
-            FMath::Clamp(FromLocation.X, Bounds.Min.X, Bounds.Max.X),
-            FMath::Clamp(FromLocation.Y, Bounds.Min.Y, Bounds.Max.Y),
-            FMath::Clamp(FromLocation.Z, Bounds.Min.Z, Bounds.Max.Z)
-        );
-
-        return FVector::Dist2D(FromLocation, ClosestPoint);
-    }
-}
+#include "GlobalUtil/StaticGlobalUtils.h"
 
 UGA_OpenBox::UGA_OpenBox()
 {
@@ -143,7 +120,7 @@ void UGA_OpenBox::TickDistanceCheck()
         return;
     }
 
-    const float Dist = GetDistanceToActorBounds2D(Box, Avatar->GetActorLocation());
+    const float Dist = UStaticGlobalUtils::GetDistanceToActorBounds2D(Box, Avatar->GetActorLocation());
     if (Dist > MaxLootDistance)
     {
         if (ABasePlayerController* PC = Cast<ABasePlayerController>(ActorInfo->PlayerController.Get()))

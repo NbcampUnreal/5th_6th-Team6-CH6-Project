@@ -125,7 +125,7 @@ public:
     
 private:
     bool ShouldRunClientLogic() const;
-    void UpdateVisibilityFade();
+    void UpdateVisibilityFade(float DeltaTime);
 
 
 
@@ -169,12 +169,22 @@ private:
 
     
     // --- Dynamic Fade --- //
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
+    float FadeTickInterval = 0.1;
+    
     UPROPERTY(EditAnywhere, Category="Vision", meta=(AllowPrivateAccess="true"))
     float FadeSpeed = 5.0f;
 
     float VisibilityAlpha = 0.0f;
     float TargetVisibilityAlpha = 0.0f;
     FTimerHandle FadeTimerHandle;
+
+
+    // --- Movement Threshold for the update filter --- //
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
+    float ObstacleRedrawThreshold = 50.f;
+
+    FVector LastObstacleDrawLocation = FVector(FLT_MAX);
 
 private:
     
@@ -186,4 +196,7 @@ private:
     //Cached Evaluator comp
     UPROPERTY(Transient)
     UVision_EvaluatorComp* CachedEvaluatorComp = nullptr;
+
+    // --- Occlusion --- //
+    int32 OcclusionTargetIndex = INDEX_NONE;// the registered index
 };
