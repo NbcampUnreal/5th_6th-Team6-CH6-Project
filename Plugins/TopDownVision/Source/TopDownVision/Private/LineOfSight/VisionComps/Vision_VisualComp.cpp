@@ -11,15 +11,13 @@
 
 //Debug
 #include "TopDownVisionDebug.h"
-#include "Components/BoxComponent.h"
-#include "Components/CapsuleComponent.h"
-#include "Components/SphereComponent.h"
+
+
 #include "GameFramework/GameStateBase.h"
-#include "GameFramework/PlayerState.h"
 #include "LineOfSight/Management/VisionGameStateComp.h"
-#include "LineOfSight/Management/VisionPlayerStateComp.h"
 #include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
 #include "LineOfSight/VisionComps/Vision_EvaluatorComp.h"
+#include "ObstacleOcclusion/Manager/OcclusionSubsystem.h"
 
 
 UVision_VisualComp::UVision_VisualComp()
@@ -70,9 +68,19 @@ void UVision_VisualComp::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     Super::EndPlay(EndPlayReason);
 
-    //Clean up!
     if (ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>())
         Subsystem->UnregisterProvider(this, VisionChannel);
+
+    // Unregister from occlusion subsystem
+    if (OcclusionTargetIndex != INDEX_NONE)
+    {
+        if (UOcclusionSubsystem* OccSub = GetWorld()->GetSubsystem<UOcclusionSubsystem>())
+        {
+            if (UPrimitiveComponent* Root = Cast<UPrimitiveComponent>(GetOwner()->GetRootComponent()))
+                OccSub->UnregisterTarget(Root);
+        }
+        OcclusionTargetIndex = INDEX_NONE;
+    }
 }
 
 void UVision_VisualComp::OnRegister()
@@ -85,14 +93,11 @@ void UVision_VisualComp::OnRegister()
 
 void UVision_VisualComp::Initialize()
 {
-    
     AActor* DebugCheckingActor = GetOwner();
 
     if (!ShouldRunClientLogic())
         return;
 
-    // Must happen before ObstacleDrawer and StampDrawer initialize
-    // so RT size and UV params are built at the correct range from the start
     if (!IsSharedVisionChannel() && IndicatorRange > 0.f)
     {
         VisionRange    = IndicatorRange;
@@ -103,7 +108,6 @@ void UVision_VisualComp::Initialize()
             *GetOwner()->GetName(), IndicatorRange);
     }
 
-    // Now builds RT and UV at whatever range was set above
     if (ObstacleDrawer)
         ObstacleDrawer->Initialize(MaxVisionRange);
 
@@ -128,6 +132,15 @@ void UVision_VisualComp::Initialize()
             TEXT("[%s] Initialize >> LOSVisionSubsystem not found"),
             *GetOwner()->GetName());
     }
+
+    // Register with occlusion subsystem — store index for alpha updates
+    if (UOcclusionSubsystem* OccSub = GetWorld()->GetSubsystem<UOcclusionSubsystem>())
+    {
+        if (UPrimitiveComponent* Root = Cast<UPrimitiveComponent>(GetOwner()->GetRootComponent()))
+        {
+            OcclusionTargetIndex = OccSub->RegisterTarget(Root, nullptr, VisionRange);
+        }
+    }
 }
 
 void UVision_VisualComp::SetIndicatorRange(float NewIndicatorRange)
@@ -147,12 +160,21 @@ void UVision_VisualComp::UpdateVision()
         return;
 
     if (ObstacleDrawer)
-        ObstacleDrawer->UpdateObstacleTexture();
+    {
+        const FVector CurrentLocation = GetOwner()->GetActorLocation();
+        const float MoveDelta = FVector::Dist2D(CurrentLocation, LastObstacleDrawLocation);
+
+        if (MoveDelta >= ObstacleRedrawThreshold)
+        {
+            LastObstacleDrawLocation = CurrentLocation;
+            ObstacleDrawer->UpdateObstacleTexture();
+        }
+    }
 
     if (StampDrawer)
     {
         StampDrawer->SetVisionAlpha(VisibilityAlpha);
-        StampDrawer->UpdateLOSStamp( ObstacleDrawer ? ObstacleDrawer->GetObstacleRenderTarget() : nullptr);
+        StampDrawer->UpdateLOSStamp(ObstacleDrawer ? ObstacleDrawer->GetObstacleRenderTarget() : nullptr);
     }
        
 }
@@ -193,22 +215,35 @@ void UVision_VisualComp::SetVisible(bool bVisible, bool bInstant)
     if (!GetWorld()->GetTimerManager().IsTimerActive(FadeTimerHandle))
     {
         GetWorld()->GetTimerManager().SetTimer(
-            FadeTimerHandle, this,
-            &UVision_VisualComp::UpdateVisibilityFade,
-            0.016f, true);
+            FadeTimerHandle,
+            FTimerDelegate::CreateUObject(this, &UVision_VisualComp::UpdateVisibilityFade, FadeTickInterval),
+            FadeTickInterval, true);
     }
 }
 
-void UVision_VisualComp::UpdateVisibilityFade()
+void UVision_VisualComp::UpdateVisibilityFade(float DeltaTime)
 {
-    VisibilityAlpha = FMath::FInterpTo(VisibilityAlpha, TargetVisibilityAlpha, 0.016f, FadeSpeed);
+    VisibilityAlpha = FMath::FInterpTo(VisibilityAlpha, TargetVisibilityAlpha, DeltaTime, FadeSpeed);
 
     if (VisibilityMesh)
         VisibilityMesh->UpdateVisibility(VisibilityAlpha);
 
+    if (OcclusionTargetIndex != INDEX_NONE)
+    {
+        if (UOcclusionSubsystem* OccSub = GetWorld()->GetSubsystem<UOcclusionSubsystem>())
+            OccSub->UpdateTargetByIndex(OcclusionTargetIndex, VisibilityAlpha, -1.f);
+    }
+
     if (FMath::IsNearlyEqual(VisibilityAlpha, TargetVisibilityAlpha, 0.005f))
     {
         VisibilityAlpha = TargetVisibilityAlpha;
+
+        if (OcclusionTargetIndex != INDEX_NONE)
+        {
+            if (UOcclusionSubsystem* OccSub = GetWorld()->GetSubsystem<UOcclusionSubsystem>())
+                OccSub->UpdateTargetByIndex(OcclusionTargetIndex, VisibilityAlpha, -1.f);
+        }
+
         GetWorld()->GetTimerManager().ClearTimer(FadeTimerHandle);
 
         UE_LOG(LOSVision, Verbose,

@@ -52,6 +52,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category="CameraComp")
 	void InitializeCompRequirements();
 
+	//Draw function for custom tick
+	UFUNCTION(BlueprintCallable, Category="CameraComp")
+	void DrawUpdates(float DeltaSecond);
+
 	// Getters
 	FVector GetCameraWorldLocation() const { return GetComponentLocation(); }
 	UCameraComponent* GetCameraComp() const { return CameraComp; }

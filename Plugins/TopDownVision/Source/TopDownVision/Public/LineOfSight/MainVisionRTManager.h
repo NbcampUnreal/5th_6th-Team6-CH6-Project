@@ -196,4 +196,9 @@ private:
 	UPROPERTY(Transient)
 	AActor* ObservedActor = nullptr;
 
+private:
+	// Cached per-frame provider list — populated in UpdateCameraLOS, consumed in DrawLOS_CPU
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UVision_VisualComp>> CachedValidProviders;
+
 };

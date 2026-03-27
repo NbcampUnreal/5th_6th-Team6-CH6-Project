@@ -43,7 +43,7 @@ void UWorldObstacleSubsystem::RequestObstacleBake(EObstacleBakeRequest Request)
 	if (OnObstacleBakeRequested.IsBound())
 	{
 		OnObstacleBakeRequested.Broadcast(Request);
-		UE_LOG(ObstacleSubsystem, Log,
+		UE_LOG(ObstacleSubsystem, Verbose,
 			TEXT(" UWorldObstacleSubsystem::RequestObstacleBake >> Broadcasted request %d"),
 			static_cast<int32>(Request));
 	}
@@ -67,7 +67,7 @@ void UWorldObstacleSubsystem::RegisterObstacleTile(FObstacleMaskTile NewTile)
 	// Add tile to array
 	WorldTiles.Add(NewTile);
 
-	UE_LOG(ObstacleSubsystem, Log,
+	UE_LOG(ObstacleSubsystem, Verbose,
 		TEXT("UWorldObstacleSubsystem::RegisterObstacleTile >> "
 	   "Registered tile at bounds Min=(%.1f, %.1f) Max=(%.1f, %.1f)"),
 		NewTile.WorldBounds.Min.X,
@@ -81,7 +81,7 @@ void UWorldObstacleSubsystem::ClearObstacleTiles()
 	const int32 NumTiles = WorldTiles.Num();
 	WorldTiles.Reset();
 
-	UE_LOG(ObstacleSubsystem, Log,
+	UE_LOG(ObstacleSubsystem, Verbose,
 		TEXT("UWorldObstacleSubsystem::ClearObstacleTiles >> Cleared %d obstacle tiles"), NumTiles);
 }
 
@@ -100,7 +100,7 @@ void UWorldObstacleSubsystem::InitializeTilesFromDataAsset(ULevelObstacleData* T
 	{
 		WorldTiles.Add(Tile);
 
-		UE_LOG(ObstacleSubsystem, Log,
+		UE_LOG(ObstacleSubsystem, Verbose,
 			TEXT("UWorldObstacleSubsystem::InitializeTilesFromDataAsset >> Loaded tile at bounds Min=(%.1f, %.1f) Max=(%.1f, %.1f)"),
 			Tile.WorldBounds.Min.X, Tile.WorldBounds.Min.Y,
 			Tile.WorldBounds.Max.X, Tile.WorldBounds.Max.Y);
