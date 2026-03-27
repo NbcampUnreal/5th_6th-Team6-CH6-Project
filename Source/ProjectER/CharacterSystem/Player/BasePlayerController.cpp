@@ -35,6 +35,7 @@
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/GameMode/ER_OutGameMode.h"
 #include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Preload/ER_AssetPreloadSubsystem.h"
 #include "Blueprint/UserWidget.h"
 #include "CharacterSystem/Data/CharacterData.h"
@@ -205,7 +206,7 @@ void ABasePlayerController::BeginPlay()
 		if (ChatWidgetInstance)
 		{			
 			ChatWidgetInstance->AddToViewport();
-			ChatWidgetInstance->setPlayerState(Cast<AER_PlayerState>(PlayerState));
+			ChatWidgetInstance->setPlayerState(GetPlayerState<AER_PlayerState>());
 
 			FInputModeGameAndUI InputMode;
 			InputMode.SetWidgetToFocus(ChatWidgetInstance->TakeWidget());
@@ -1898,17 +1899,19 @@ void ABasePlayerController::UseInventoryForUI(int32 _ind)
 	UseInventorySlot(_ind);
 }
 
+void ABasePlayerController::setChatMessage(const FString& Message)
+{
+	if (ChatWidgetInstance)
+	{
+		ChatWidgetInstance->AddMessageToScrollBox(Message);
+	}
+}
+
 void ABasePlayerController::OnEnterPressed()
 {
 	if (ChatWidgetInstance)
 	{
-		// UI를 보이게 설정
-		if (AER_PlayerState* ER_PS = GetPlayerState<AER_PlayerState>())
-		{
-
-			ChatWidgetInstance->SetChatInputVisible(true);
-		}
-		
+		ChatWidgetInstance->SetChatInputVisible(true);		
 
 		// 입력 모드를 UI로 변경
 		//FInputModeGameAndUI InputMode;
@@ -1926,15 +1929,31 @@ bool ABasePlayerController::Server_SendMessage_Validate(const FString& Message)
 }
 void ABasePlayerController::Multicast_DisplayMessage_Implementation(const FString& Message)
 {
-	if (ChatWidgetInstance)
-	{
-		ChatWidgetInstance->AddMessageToScrollBox(Message);
-	}
-	// UE_LOG(LogTemp, Log, TEXT("Multicast_DisplayMessage: %s"), *Message);
+	//if (ChatWidgetInstance)
+	//{
+	//	ChatWidgetInstance->AddMessageToScrollBox(Message);
+	//}
+	//// UE_LOG(LogTemp, Log, TEXT("Multicast_DisplayMessage: %s"), *Message);
+
+	//if (AER_GameState* GS = GetWorld()->GetGameState<AER_GameState>())
+	//{
+	//	GS->Multicast_BroadcastChatMessage(Message);
+	//}
 }
 void ABasePlayerController::Server_SendMessage_Implementation(const FString& Message)
 {
 	Multicast_DisplayMessage(Message);
+
+	//if (ChatWidgetInstance)
+	//{
+	//	ChatWidgetInstance->AddMessageToScrollBox(Message);
+	//}
+	// UE_LOG(LogTemp, Log, TEXT("Multicast_DisplayMessage: %s"), *Message);
+
+	if (AER_GameState* GS = GetWorld()->GetGameState<AER_GameState>())
+	{
+		GS->Multicast_BroadcastChatMessage(Message);
+	}
 }
 
 

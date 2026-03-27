@@ -509,6 +509,9 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_DisplayMessage(const FString& Message);
 
+	UFUNCTION()
+	void setChatMessage(const FString& Message);
+
 protected:
 	void OnEnterPressed();
 };

@@ -40,6 +40,9 @@ public:
 	UFUNCTION()
 	void setPlayerState(class AER_PlayerState* InPS) { MyPS = InPS; }
 
+	UFUNCTION()
+	AER_PlayerState* getPlayerState() const { return MyPS; }
+
 private:
 	class AER_PlayerState* MyPS;
 
