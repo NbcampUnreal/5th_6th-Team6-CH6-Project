@@ -19,23 +19,20 @@ public:
 		CategoryName = TEXT("TopDownVision");
 		SectionName  = TEXT("Occlusion MID Pool");
 
-		MaxPooledMIDsPerMaterial = 50;
-		PreWarmCountPerMaterial  = 20;
+		MaxPooledMIDsPerMaterial = 30;
+		PreWarmCountPerMaterial  = 10;
 	}
 
-	UPROPERTY(config, EditAnywhere, BlueprintReadOnly, Category="Pool",
-		meta=(ClampMin=1, ClampMax=64))
+	UPROPERTY(config, EditAnywhere, BlueprintReadOnly, Category="Pool", meta=(ClampMin=1, ClampMax=64))
 	int32 MaxPooledMIDsPerMaterial;
 
-	UPROPERTY(config, EditAnywhere, BlueprintReadOnly, Category="Pool",
-		meta=(ClampMin=0, ClampMax=64))
+	UPROPERTY(config, EditAnywhere, BlueprintReadOnly, Category="Pool", meta=(ClampMin=0, ClampMax=64))
 	int32 PreWarmCountPerMaterial;
 
 	UPROPERTY(config, EditAnywhere, BlueprintReadOnly, Category="Pool|PreWarm")
 	TArray<TSoftObjectPtr<UMaterialInterface>> PreWarmMaterials;
 
-	UPROPERTY(config, EditAnywhere, BlueprintReadOnly, Category="Pool",
-	meta=(ClampMin=1.f))
+	UPROPERTY(config, EditAnywhere, BlueprintReadOnly, Category="Pool", meta=(ClampMin=1.f))
 	float OverflowTrimInterval = 60.f;
 };
 

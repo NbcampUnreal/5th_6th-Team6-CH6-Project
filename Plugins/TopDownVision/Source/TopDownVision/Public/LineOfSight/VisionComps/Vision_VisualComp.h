@@ -170,7 +170,7 @@ private:
     
     // --- Dynamic Fade --- //
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
-    float FadeTickInterval = 0.1;
+    float FadeTickInterval = 0.033333f;
     
     UPROPERTY(EditAnywhere, Category="Vision", meta=(AllowPrivateAccess="true"))
     float FadeSpeed = 5.0f;
