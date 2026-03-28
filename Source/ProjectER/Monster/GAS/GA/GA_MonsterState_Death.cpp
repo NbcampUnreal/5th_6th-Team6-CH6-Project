@@ -1,7 +1,6 @@
 ﻿#include "Monster/GAS/GA/GA_MonsterState_Death.h"
 #include "Monster/BaseMonster.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Components/CapsuleComponent.h"
 
 UGA_MonsterState_Death::UGA_MonsterState_Death()
 {
@@ -25,14 +24,24 @@ void UGA_MonsterState_Death::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
 	ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActorFromActorInfo());
-	if (IsValid(Monster))
+	if (IsValid(Monster) == false || IsValid(Monster->MonsterData) == false)
 	{
-		if (UCharacterMovementComponent* MoveComp = Monster->GetCharacterMovement())
-		{
-			MoveComp->StopMovementImmediately();
-			MoveComp->DisableMovement();
-		}
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
 
+	UCharacterMovementComponent* MoveComp = Monster->GetCharacterMovement();
+	if (IsValid(MoveComp) == false)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
+	MoveComp->StopMovementImmediately();
+	MoveComp->DisableMovement();
+	
+	if (Monster->HasAuthority())
+	{
 		Monster->Multicast_SetCollisionProfileName(FName("Spectator"));
 	}
 }
@@ -43,27 +52,6 @@ void UGA_MonsterState_Death::EndAbility(const FGameplayAbilitySpecHandle Handle,
 
 }
 
-void UGA_MonsterState_Death::OnMontageCompleted()
-{
-}
 
-void UGA_MonsterState_Death::OnMontageBlendIn()
-{
-}
 
-void UGA_MonsterState_Death::OnMontageBlendOut()
-{
-}
-
-void UGA_MonsterState_Death::OnMontageInterrupt()
-{
-}
-
-void UGA_MonsterState_Death::OnMontageCancel()
-{
-}
-
-void UGA_MonsterState_Death::OnTagRemoved()
-{
-}
 

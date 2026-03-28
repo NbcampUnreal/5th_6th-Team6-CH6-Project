@@ -1,10 +1,10 @@
-#include "Monster/GAS/GA/GA_MonsterState_Attack.h"
+﻿#include "Monster/GAS/GA/GA_MonsterState_Attack.h"
 #include "Monster/BaseMonster.h"
 #include "Monster/GAS/AttributeSet/BaseMonsterAttributeSet.h"
-#include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 
 UGA_MonsterState_Attack::UGA_MonsterState_Attack()
 {
@@ -13,7 +13,7 @@ UGA_MonsterState_Attack::UGA_MonsterState_Attack()
 	StateInitData.NiagaraCueTag = FGameplayTag::RequestGameplayTag("GameplayCue.Particle.Skill.AutoAttack");
 	StateInitData.SoundCueTag = FGameplayTag::RequestGameplayTag("GameplayCue.Sound.Skill.AutoAttack");
 	StateInitData.WaitTag = FGameplayTag::RequestGameplayTag("State.Action.Attack");
-
+	bIsUseWaitTag = false;
 	SetAssetTags(StateInitData.MonsterAssetTags);
 }
 
@@ -27,76 +27,60 @@ void UGA_MonsterState_Attack::ActivateAbility(const FGameplayAbilitySpecHandle H
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
 	ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActorFromActorInfo());
-	if (IsValid(Monster))
+	if (IsValid(Monster) == false || IsValid(Monster->MonsterData) == false)
 	{
-		AActor* Target = Monster->GetTargetPlayer();
-		if (IsValid(Target))
-		{
-			UBaseAttributeSet* AS = Monster->GetAttributeSet();
-			if (AS)
-			{
-				bool bIsDead = false;
-				if (AS->GetHealth() <= 0.0f)
-				{
-					bIsDead = true;
-				}
-
-				if (bIsDead)
-				{
-					Monster->SetTargetPlayer(nullptr);
-					EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-					return;
-				}
-			}
-
-			FVector Direction = Target->GetActorLocation() - Monster->GetActorLocation();
-			Direction.Z = 0.0f;
-			Monster->SetActorRotation(Direction.Rotation());
-
-			FGameplayTag CooldownTag = FGameplayTag::RequestGameplayTag("Cooldown.AutoAttack");
-			Monster->OnCooldown(CooldownTag, AS->GetAttackSpeed());
-		}
-		else
-		{
-			EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-			return;
-		}
-
-		UAbilityTask_WaitGameplayEvent* WaitEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, FGameplayTag::RequestGameplayTag("Event.Montage.AttackHit"));
-		WaitEventTask->EventReceived.AddDynamic(this, &UGA_MonsterState_Attack::OnAttackHitEventReceived);
-		WaitEventTask->ReadyForActivation();
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
 	}
 
-	
+	UAbilityTask_WaitGameplayEvent* WaitEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, FGameplayTag::RequestGameplayTag("Event.Montage.AttackHit"));
+	WaitEventTask->EventReceived.AddDynamic(this, &UGA_MonsterState_Attack::OnAttackHitEventReceived);
+	WaitEventTask->ReadyForActivation();
+
+	AActor* Target = Monster->GetTargetPlayer();
+	if (IsValid(Target))
+	{
+		UBaseAttributeSet* AS = Monster->GetAttributeSet();
+		if (IsValid(AS))
+		{
+			bool bIsDead = false;
+			if (AS->GetHealth() <= 0.0f)
+			{
+				bIsDead = true;
+			}
+
+			if (bIsDead)
+			{
+				Monster->SetTargetPlayer(nullptr);
+				EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+				return;
+			}
+		}
+
+		FVector Direction = Target->GetActorLocation() - Monster->GetActorLocation();
+		Direction.Z = 0.0f;
+		Monster->SetActorRotation(Direction.Rotation());
+
+		FGameplayTag CooldownTag = FGameplayTag::RequestGameplayTag("Cooldown.AutoAttack");
+		Monster->OnCooldown(CooldownTag, AS->GetAttackSpeed());
+
+		if (!Monster->GetIsFirstAttack())
+		{
+			Monster->SetIsFirstAttack(true);
+		}
+		Monster->SetAttackCount(Monster->GetAttackCount() + 1);
+	}
+	else
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
 }
 
 void UGA_MonsterState_Attack::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
-}
-
-void UGA_MonsterState_Attack::OnMontageCompleted()
-{
-}
-
-void UGA_MonsterState_Attack::OnMontageBlendIn()
-{
-}
-
-void UGA_MonsterState_Attack::OnMontageBlendOut()
-{
-}
-
-void UGA_MonsterState_Attack::OnMontageInterrupt()
-{
-}
-
-void UGA_MonsterState_Attack::OnMontageCancel()
-{
-}
-
-void UGA_MonsterState_Attack::OnTagRemoved()
-{
 }
 
 void UGA_MonsterState_Attack::OnAttackHitEventReceived(FGameplayEventData Payload)
@@ -115,13 +99,27 @@ void UGA_MonsterState_Attack::OnAttackHitEventReceived(FGameplayEventData Payloa
 			if (SpecHandle.IsValid())
 			{
 				ASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Target));
-				
-				if (!Monster->GetIsFirstAttack())
-				{
-					Monster->SetIsFirstAttack(true);
-				}
-				Monster->SetAttackCount(Monster->GetAttackCount() + 1);
 			}
 		}
 	}
+}
+
+void UGA_MonsterState_Attack::OnMontageCompleted()
+{
+	Super::EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+}
+
+void UGA_MonsterState_Attack::OnMontageBlendOut()
+{
+	Super::EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+}
+
+void UGA_MonsterState_Attack::OnMontageInterrupt()
+{
+	Super::EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+}
+
+void UGA_MonsterState_Attack::OnMontageCancel()
+{
+	Super::EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 }
