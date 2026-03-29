@@ -1,4 +1,4 @@
-﻿#include "ER_GameState.h"
+#include "ER_GameState.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "Net/UnrealNetwork.h"
 #include "CharacterSystem/Data/CharacterData.h"
@@ -35,7 +35,13 @@ void AER_GameState::BuildTeamCache()
 			if (!TeamCache.IsValidIndex(TeamIdx))
 				continue;
 
-			TeamCache[TeamIdx].AddUnique(ERPS);
+			const FUniqueNetIdRepl UniqueId = ERPS->GetUniqueId();
+			FString UniqueIdStr = UniqueId.IsValid() ? UniqueId->ToString() : ERPS->GetPlayerName();
+
+			if (!UniqueIdStr.IsEmpty())
+			{
+				TeamCache[TeamIdx].AddUnique(UniqueIdStr);
+			}
 
 			TeamElimination.FindOrAdd(TeamIdx) = false;
 		}
@@ -48,7 +54,10 @@ void AER_GameState::BuildTeamCache()
 
 		for (auto& it : TeamCache[TeamIdx])
 		{
-			UE_LOG(LogTemp, Log, TEXT("TeamIdx : %d | %s"), TeamIdx, *it->GetPlayerName());
+			if (AER_PlayerState* TryPS = GetPlayerStateByUniqueId(it))
+			{
+				UE_LOG(LogTemp, Log, TEXT("TeamIdx : %d | %s (ID: %s)"), TeamIdx, *TryPS->GetPlayerName(), *it);
+			}
 		}
 	}
 
@@ -81,7 +90,7 @@ void AER_GameState::RemoveTeamCache()
 	TeamElimination.Reset();
 }
 
-TArray<TWeakObjectPtr<AER_PlayerState>>& AER_GameState::GetTeamArray(int32 TeamIdx)
+TArray<FString>& AER_GameState::GetTeamArray(int32 TeamIdx)
 {
 	return TeamCache[TeamIdx];
 }
@@ -94,9 +103,9 @@ bool AER_GameState::GetTeamEliminate(int32 idx)
 
 	if (TeamCache.IsValidIndex(idx))
 	{
-		for (auto& WeakPS : TeamCache[idx])
+		for (auto& UniqueIdStr : TeamCache[idx])
 		{
-			AER_PlayerState* PS = WeakPS.Get();
+			AER_PlayerState* PS = GetPlayerStateByUniqueId(UniqueIdStr);
 			if (PS && !PS->bIsDead)
 			{
 				++AliveCount;
@@ -165,5 +174,27 @@ void AER_GameState::Multicast_BroadcastChatMessage_Implementation(const FString&
 			BasePC->setChatMessage(Message);
 		}		
 	}
+}
+
+AER_PlayerState* AER_GameState::GetPlayerStateByUniqueId(const FString& InUniqueIdStr) const
+{
+	if (InUniqueIdStr.IsEmpty())
+	{
+		return nullptr;
+	}
+
+	for (APlayerState* PS : PlayerArray)
+	{
+		if (PS)
+		{
+			const FUniqueNetIdRepl UID = PS->GetUniqueId();
+			FString CurrentIDStr = UID.IsValid() ? UID->ToString() : PS->GetPlayerName();
+			if (CurrentIDStr == InUniqueIdStr)
+			{
+				return Cast<AER_PlayerState>(PS);
+			}
+		}
+	}
+	return nullptr;
 }
 
