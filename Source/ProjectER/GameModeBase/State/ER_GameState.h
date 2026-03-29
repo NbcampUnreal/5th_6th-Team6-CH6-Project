@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
@@ -21,7 +21,11 @@ public:
 	void BuildTeamCache();
 	void RemoveTeamCache();
 
-	TArray<TWeakObjectPtr<AER_PlayerState>>& GetTeamArray(int32 TeamIdx);
+	TArray<FString>& GetTeamArray(int32 TeamIdx);
+
+	// 재접속 호환: UniqueId 문자열로 PlayerState 찾기
+	UFUNCTION(BlueprintPure)
+	AER_PlayerState* GetPlayerStateByUniqueId(const FString& InUniqueIdStr) const;
 
 	bool GetTeamEliminate(int32 idx);
 
@@ -61,7 +65,7 @@ protected:
 	TArray<TSoftObjectPtr<UCharacterData>> AvailableCharacterData;
 
 private:
-	TArray<TArray<TWeakObjectPtr<AER_PlayerState>>> TeamCache;
+	TArray<TArray<FString>> TeamCache;
 
 	UPROPERTY(ReplicatedUsing = OnRep_Phase)
 	int32 CurrentPhase = 0;
