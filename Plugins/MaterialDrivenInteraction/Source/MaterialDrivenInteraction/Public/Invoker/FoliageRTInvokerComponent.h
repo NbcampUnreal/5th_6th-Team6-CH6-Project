@@ -23,70 +23,48 @@ public:
     virtual void TickComponent(float DeltaTime, ELevelTick TickType,
                                FActorComponentTickFunction* ThisTickFunction) override;
 
-    // ── Brush assets ──────────────────────────────────────────────────────────
-
-    /** Material drawn into ContinuousRT every draw cycle. */
+    /** Single interaction brush material.
+     *  Outputs RGBA16f packed: R=Pack(PushDirX,VelX) G=Pack(PushDirY,VelY) B=Pack(HeightMask,Progression) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage RT|Brush")
-    TObjectPtr<UMaterialInterface> BrushMaterial_Continuous;
-
-    /** Material drawn into ImpulseRT every draw cycle via SE_BLEND_MAX.
-     *  Writes velocity RG + frac(GameTime/Period) to A every tick.
-     *  A freezes on exit — consumer reads age = frac(CurrentTime - A). */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage RT|Brush")
-    TObjectPtr<UMaterialInterface> BrushMaterial_Impulse;
+    TObjectPtr<UMaterialInterface> BrushMaterial;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage RT|Brush",
         meta = (ClampMin = 1.f))
     float BrushRadius = 60.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage RT|Brush",
-        meta = (ClampMin = 1.f))
-    float MaxVelocity = 1200.f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage RT|Brush",
         meta = (ClampMin = 0.f, ClampMax = 1.f))
     float BrushWeight = 1.f;
 
-    /** Period for frac(GameTime/Period) timestamp encoding.
-     *  Consumer spring decay must complete within this window. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage RT|Brush",
-        meta = (ClampMin = 1.f))
-    float TimestampPeriod = 60.f;
-
-    // ── Frame data ────────────────────────────────────────────────────────────
+        meta = (ClampMin = 0.f, ClampMax = 1.f))
+    float BrushSoftness = 0.5f;
+    
 
     FRTInvokerFrameData GetFrameData(int32 SlotIndex, FVector2D CellOriginWS, float CellSize) const;
 
-    // ── Runtime read-outs ─────────────────────────────────────────────────────
+    UFUNCTION(BlueprintPure, Category = "Foliage RT")
+    UMaterialInstanceDynamic* GetMID_Interaction() const { return MID_Interaction; }
 
     UPROPERTY(BlueprintReadOnly, Category = "Foliage RT|State")
     FVector2D EncodedVelocity = FVector2D(0.5f, 0.5f);
-
-    // ── Blueprint extension points ────────────────────────────────────────────
-
-    UFUNCTION(BlueprintImplementableEvent, Category = "Foliage RT|Events")
-    void OnContinuousPaint(FVector2D CellUV, float UVRadius);
-
-    UFUNCTION(BlueprintImplementableEvent, Category = "Foliage RT|Events")
-    void OnImpulsePaint(FVector2D CellUV, float UVRadius);
 
 private:
 
     FVector2D ComputeVelocity(float DeltaTime) const;
     float     EncodeVelocityAxis(float WorldVelAxis) const;
 
-    // PrevImpulseTexelMap removed — impulse drawn every tick, no stamp gating
-    // HasMovedToNewPixel removed
-
-    UPROPERTY()
+    UPROPERTY(Transient)
     TObjectPtr<URTPoolManager> PoolManager;
 
-    UPROPERTY()
-    TObjectPtr<UMaterialInstanceDynamic> MID_Continuous;
-
-    UPROPERTY()
-    TObjectPtr<UMaterialInstanceDynamic> MID_Impulse;
+    UPROPERTY(Transient)
+    TObjectPtr<UMaterialInstanceDynamic> MID_Interaction;
 
     FVector PrevWorldLocation = FVector::ZeroVector;
     bool    bFirstTick        = true;
+
+    // Cached from settings at BeginPlay — shared across all invokers
+    float CachedMaxVelocity = 1200.f;
+
+    float CachedDecayRate   = 0.95f;
 };
