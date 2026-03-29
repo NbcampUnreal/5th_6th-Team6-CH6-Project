@@ -41,9 +41,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Niagara|Transform")
 	FRotator RotationOffset = FRotator::ZeroRotator;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Niagara|Transform")
-	FVector Scale = FVector::OneVector;
-
 	UPROPERTY(EditDefaultsOnly, Category = "Niagara|GameplayCue", meta = (Categories = "GameplayCue"))
 	FGameplayTag CueTag;
 
@@ -72,7 +69,6 @@ public:
 		S.LocationOffset = LocationOffset;
 		S.RotationMode = RotationMode;
 		S.RotationOffset = RotationOffset;
-		S.Scale = Scale;
 		S.CueTag = CueTag;
 		S.FloatParameters = FloatParameters;
 		S.VectorParameters = VectorParameters;
