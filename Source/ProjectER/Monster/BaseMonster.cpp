@@ -45,8 +45,8 @@ ABaseMonster::ABaseMonster()
 
 	// Collision 설정
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	GetMesh()->VisibilityBasedAnimTickOption 
-		= EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
+	GetMesh()->VisibilityBasedAnimTickOption
+		= EVisibilityBasedAnimTickOption::OnlyTickMontagesWhenNotRendered;
 
 	GetCharacterMovement()->SetComponentTickEnabled(false);
 	GetCharacterMovement()->bOrientRotationToMovement = true;;
@@ -145,7 +145,7 @@ void ABaseMonster::PossessedBy(AController* newController)
 			).AddUObject(this, &ABaseMonster::OnCCChanged);
 		ASC->RegisterGameplayTagEvent(
 			FGameplayTag::RequestGameplayTag("State.Debuff.Hard.Stun"),
-			EGameplayTagEventType::AnyCountChange
+			EGameplayTagEventType::NewOrRemoved
 			).AddUObject(this, &ABaseMonster::OnCCChanged);
 	}
 }
@@ -354,10 +354,11 @@ void ABaseMonster::InitStateTree()
 
 void ABaseMonster::OnRep_IsCombat()
 {
-	if (HPBarWidgetComp)
-	{
-		HPBarWidgetComp->SetVisibility(bIsCombat);
-	}
+	// BP_BaseMonster Eventgraph에서 하는중
+	//if (HPBarWidgetComp)
+	//{
+	//	HPBarWidgetComp->SetVisibility(bIsCombat);
+	//}
 }
 
 void ABaseMonster::OnRep_IsDead()

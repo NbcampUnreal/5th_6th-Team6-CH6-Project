@@ -13,7 +13,7 @@ UGA_MonsterState_Attack::UGA_MonsterState_Attack()
 	StateInitData.NiagaraCueTag = FGameplayTag::RequestGameplayTag("GameplayCue.Particle.Skill.AutoAttack");
 	StateInitData.SoundCueTag = FGameplayTag::RequestGameplayTag("GameplayCue.Sound.Skill.AutoAttack");
 	StateInitData.WaitTag = FGameplayTag::RequestGameplayTag("State.Action.Attack");
-	bIsUseWaitTag = false;
+	bIsUseWaitTag = true;
 	SetAssetTags(StateInitData.MonsterAssetTags);
 }
 
