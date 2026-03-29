@@ -4,6 +4,7 @@
 
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "TopDownVisionDebug.h"
 
@@ -21,15 +22,6 @@ UVisibilityMeshComp::UVisibilityMeshComp()
 
 void UVisibilityMeshComp::FindMeshesByTag()
 {
-    /*// This comp is owned by VisionTargetComp which is owned by the actor
-    AActor* Actor = GetOwner() ? Cast<AActor>(GetOwner()->GetOwner()) : nullptr;
-    if (!Actor)
-    {
-        UE_LOG(VisibilityMeshComp, Warning,
-            TEXT("UVisibilityMeshComp::FindMeshesByTag >> Could not resolve actor (owner's owner)"));
-        return;
-    }*/
-
     AActor* Actor = GetOwner();
     if (!Actor)
     {
@@ -38,7 +30,6 @@ void UVisibilityMeshComp::FindMeshesByTag()
         return;
     }
 
-    //reset
     SkeletalMeshTargets.Empty();
     StaticMeshTargets.Empty();
 
@@ -66,13 +57,16 @@ void UVisibilityMeshComp::FindMeshesByTag()
         StaticMeshTargets.Add(TSoftObjectPtr<UStaticMeshComponent>(Mesh));
 
         UE_LOG(VisibilityMeshComp, Verbose,
-            TEXT("UVisibilityMeshComp::FindMeshesByName >> Static: %s (%d slots)"),
+            TEXT("UVisibilityMeshComp::FindMeshesByTag >> Static: %s (%d slots)"),
             *Mesh->GetFName().ToString(), Mesh->GetNumMaterials());
     }
 
     UE_LOG(VisibilityMeshComp, Verbose,
-        TEXT("UVisibilityMeshComp::FindMeshesByName >> Resolved %d skeletal, %d static"),
+        TEXT("UVisibilityMeshComp::FindMeshesByTag >> Resolved %d skeletal, %d static"),
         SkeletalMeshTargets.Num(), StaticMeshTargets.Num());
+
+    // Cache originals immediately — before any SetMaterial call
+    CacheOriginalMaterials();
 }
 
 // -------------------------------------------------------------------------- //
@@ -88,8 +82,8 @@ void UVisibilityMeshComp::AddMesh(TSoftObjectPtr<USkeletalMeshComponent> Mesh)
             *TopDownVisionDebug::GetClientDebugName(GetOwner()));
         return;
     }
-
     SkeletalMeshTargets.AddUnique(Mesh);
+    CacheOriginalMaterials();
 }
 
 void UVisibilityMeshComp::AddMesh(TSoftObjectPtr<UStaticMeshComponent> Mesh)
@@ -101,12 +95,38 @@ void UVisibilityMeshComp::AddMesh(TSoftObjectPtr<UStaticMeshComponent> Mesh)
             *TopDownVisionDebug::GetClientDebugName(GetOwner()));
         return;
     }
-
     StaticMeshTargets.AddUnique(Mesh);
+    CacheOriginalMaterials();
 }
 
 // -------------------------------------------------------------------------- //
-//  Initialize — called by VisionTargetComp::BeginPlay
+//  CacheOriginalMaterials
+// -------------------------------------------------------------------------- //
+
+void UVisibilityMeshComp::CacheOriginalMaterials()
+{
+    OriginalMaterials.Empty();
+
+    auto Cache = [&](UMeshComponent* Mesh)
+    {
+        if (!Mesh) return;
+        for (int32 i = 0; i < Mesh->GetNumMaterials(); ++i)
+            OriginalMaterials.Add(Mesh->GetMaterial(i));
+    };
+
+    for (TSoftObjectPtr<USkeletalMeshComponent>& SoftMesh : SkeletalMeshTargets)
+        if (SoftMesh.Get()) Cache(SoftMesh.Get());
+
+    for (TSoftObjectPtr<UStaticMeshComponent>& SoftMesh : StaticMeshTargets)
+        if (SoftMesh.Get()) Cache(SoftMesh.Get());
+
+    UE_LOG(VisibilityMeshComp, Verbose,
+        TEXT("[%s] UVisibilityMeshComp::CacheOriginalMaterials >> Cached %d materials"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()), OriginalMaterials.Num());
+}
+
+// -------------------------------------------------------------------------- //
+//  Initialize — owned mode
 // -------------------------------------------------------------------------- //
 
 void UVisibilityMeshComp::Initialize()
@@ -114,18 +134,20 @@ void UVisibilityMeshComp::Initialize()
     if (SkeletalMeshTargets.IsEmpty() && StaticMeshTargets.IsEmpty())
     {
         UE_LOG(VisibilityMeshComp, Warning,
-            TEXT("[%s] UVisibilityMeshComp::Initialize >> MeshTargets empty. Run FindMeshesByName in editor or call AddMesh before Initialize."),
+            TEXT("[%s] UVisibilityMeshComp::Initialize >> No mesh targets. Run FindMeshesByTag or call AddMesh first."),
             *TopDownVisionDebug::GetClientDebugName(GetOwner()));
         return;
     }
+
+    // Safety — in case FindMeshesByTag wasn't called in editor
+    if (OriginalMaterials.IsEmpty())
+        CacheOriginalMaterials();
 
     MIDs.Empty();
 
     auto ProcessMesh = [&](UMeshComponent* Mesh)
     {
-        if (!Mesh)
-            return;
-
+        if (!Mesh) return;
         for (int32 i = 0; i < Mesh->GetNumMaterials(); ++i)
         {
             if (UMaterialInstanceDynamic* MID = Mesh->CreateDynamicMaterialInstance(i))
@@ -164,16 +186,128 @@ void UVisibilityMeshComp::Initialize()
         ProcessMesh(SoftMesh.Get());
     }
 
-    //now set the visibility as 0 for default
-    
     UpdateVisibility(0.f);
 
     UE_LOG(VisibilityMeshComp, Verbose,
-        TEXT("[%s] UVisibilityMeshComp::Initialize >> %d MIDs created total"),
-        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-        MIDs.Num());
+        TEXT("[%s] UVisibilityMeshComp::Initialize >> %d MIDs created (owned mode)"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()), MIDs.Num());
 }
 
+// -------------------------------------------------------------------------- //
+//  SetMIDs — pool mode
+// -------------------------------------------------------------------------- //
+
+void UVisibilityMeshComp::SetMIDs(const TArray<TObjectPtr<UMaterialInstanceDynamic>>& InMIDs)
+{
+    // Safety — build cache before first SetMaterial if FindMeshesByTag wasn't called
+    if (OriginalMaterials.IsEmpty() && !InMIDs.IsEmpty())
+    {
+        UE_LOG(VisibilityMeshComp, Warning,
+            TEXT("[%s] UVisibilityMeshComp::SetMIDs >> OriginalMaterials cache empty — building now. Run FindMeshesByTag in editor to avoid this."),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+        CacheOriginalMaterials();
+    }
+
+    MIDs = InMIDs;
+    ApplyMIDsToMeshes(MIDs);
+
+    if (MIDs.IsEmpty())
+    {
+        UE_LOG(VisibilityMeshComp, Verbose,
+            TEXT("[%s] UVisibilityMeshComp::SetMIDs >> Originals restored (slot released)"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+    }
+    else
+    {
+        UpdateVisibility(0.f);
+
+        UE_LOG(VisibilityMeshComp, Verbose,
+            TEXT("[%s] UVisibilityMeshComp::SetMIDs >> %d MIDs bound (pool mode)"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()), MIDs.Num());
+    }
+}
+
+// -------------------------------------------------------------------------- //
+//  ApplyMIDsToMeshes
+// -------------------------------------------------------------------------- //
+
+void UVisibilityMeshComp::ApplyMIDsToMeshes(const TArray<TObjectPtr<UMaterialInstanceDynamic>>& InMIDs)
+{
+    if (InMIDs.IsEmpty())
+    {
+        RestoreOriginalMaterials();
+        return;
+    }
+
+    int32 MIDIndex = 0;
+
+    auto Apply = [&](UMeshComponent* Mesh)
+    {
+        if (!Mesh) return;
+        for (int32 SlotIndex = 0; SlotIndex < Mesh->GetNumMaterials(); ++SlotIndex)
+        {
+            if (InMIDs.IsValidIndex(MIDIndex))
+            {
+                Mesh->SetMaterial(SlotIndex, InMIDs[MIDIndex]);
+            }
+            else
+            {
+                UE_LOG(VisibilityMeshComp, Warning,
+                    TEXT("[%s] UVisibilityMeshComp::ApplyMIDsToMeshes >> MID index %d out of range for %s slot %d — check settings material count"),
+                    *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+                    MIDIndex, *Mesh->GetFName().ToString(), SlotIndex);
+            }
+            ++MIDIndex;
+        }
+    };
+
+    for (TSoftObjectPtr<USkeletalMeshComponent>& SoftMesh : SkeletalMeshTargets)
+        if (SoftMesh.Get()) Apply(SoftMesh.Get());
+
+    for (TSoftObjectPtr<UStaticMeshComponent>& SoftMesh : StaticMeshTargets)
+        if (SoftMesh.Get()) Apply(SoftMesh.Get());
+}
+
+// -------------------------------------------------------------------------- //
+//  RestoreOriginalMaterials
+// -------------------------------------------------------------------------- //
+
+void UVisibilityMeshComp::RestoreOriginalMaterials()
+{
+    if (OriginalMaterials.IsEmpty())
+    {
+        UE_LOG(VisibilityMeshComp, Warning,
+            TEXT("[%s] UVisibilityMeshComp::RestoreOriginalMaterials >> Cache empty — was CacheOriginalMaterials called before SetMaterial?"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+        return;
+    }
+
+    int32 OriginalIndex = 0;
+
+    auto Restore = [&](UMeshComponent* Mesh)
+    {
+        if (!Mesh) return;
+        for (int32 SlotIndex = 0; SlotIndex < Mesh->GetNumMaterials(); ++SlotIndex)
+        {
+            if (OriginalMaterials.IsValidIndex(OriginalIndex))
+                Mesh->SetMaterial(SlotIndex, OriginalMaterials[OriginalIndex]);
+            ++OriginalIndex;
+        }
+    };
+
+    for (TSoftObjectPtr<USkeletalMeshComponent>& SoftMesh : SkeletalMeshTargets)
+        if (SoftMesh.Get()) Restore(SoftMesh.Get());
+
+    for (TSoftObjectPtr<UStaticMeshComponent>& SoftMesh : StaticMeshTargets)
+        if (SoftMesh.Get()) Restore(SoftMesh.Get());
+
+    UE_LOG(VisibilityMeshComp, Verbose,
+        TEXT("[%s] UVisibilityMeshComp::RestoreOriginalMaterials >> Restored %d slots"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()), OriginalIndex);
+}
+
+// -------------------------------------------------------------------------- //
+//  UpdateVisibility
 // -------------------------------------------------------------------------- //
 
 void UVisibilityMeshComp::UpdateVisibility(float Alpha)
@@ -188,7 +322,7 @@ void UVisibilityMeshComp::UpdateVisibility(float Alpha)
 
     const float Clamped = FMath::Clamp(Alpha, 0.f, 1.f);
 
-    for (UMaterialInstanceDynamic* MID : MIDs)
+    for (TObjectPtr<UMaterialInstanceDynamic>& MID : MIDs)
     {
         if (MID)
             MID->SetScalarParameterValue(VisibilityParam, Clamped);

@@ -3,22 +3,24 @@
 #include "LineOfSight/MainVisionRTManager.h"
 
 #include "RenderGraphUtils.h"
-#include "TopDownVision/Public/LineOfSight/VisionComps/Vision_VisualComp.h"
 #include "Engine/World.h"
 #include "Engine/Canvas.h"
 #include "Kismet/KismetRenderingLibrary.h"
 #include "Materials/MaterialParameterCollectionInstance.h"
-#include "TopDownVisionDebug.h"
 #include "GameFramework/GameStateBase.h"
+
+#include "TopDownVision/Public/LineOfSight/VisionComps/Vision_VisualComp.h"
 #include "LineOfSight/GPU/LOSStampPass.h"
 #include "LineOfSight/Management/VisionGameStateComp.h"
 #include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
+#include "LineOfSight/Management/Subsystem/LOSRequirementPoolSubsystem.h"
+#include "TopDownVisionDebug.h"
 
 
 UMainVisionRTManager::UMainVisionRTManager()
 {
 	PrimaryComponentTick.bCanEverTick = false;
-	
+
 	UE_LOG(LOSVision, Log,
 		TEXT("UMainVisionRTManager::Constructor >> Component constructed"));
 }
@@ -28,6 +30,10 @@ void UMainVisionRTManager::BeginPlay()
 	Super::BeginPlay();
 	UE_LOG(LOSVision, Log, TEXT("UMainVisionRTManager::BeginPlay >> BeginPlay called"));
 }
+
+// -------------------------------------------------------------------------- //
+//  Initialize
+// -------------------------------------------------------------------------- //
 
 void UMainVisionRTManager::InitializeMainVisionRTComp()
 {
@@ -43,7 +49,6 @@ void UMainVisionRTManager::InitializeMainVisionRTComp()
 
 	if (bUseCPU)
 	{
-		// Bind DrawLOS_CPU as callback — fires whenever CameraLocalRT->UpdateResource() is called
 		CameraLocalRT->OnCanvasRenderTargetUpdate.AddDynamic(this, &UMainVisionRTManager::DrawLOS_CPU);
 		CameraLocalRT->UpdateResource();
 
@@ -66,7 +71,6 @@ void UMainVisionRTManager::InitializeMainVisionRTComp()
 		LayeredLOSInterfaceMID = UMaterialInstanceDynamic::Create(LayeredLOSInterfaceMaterial, this);
 		if (LayeredLOSInterfaceMID)
 		{
-			// Bind the feathered RT if available, otherwise fall back to raw stamps RT
 			UTexture* BindTarget = FeatheredRT ? (UTexture*)FeatheredRT : (UTexture*)CameraLocalRT;
 			LayeredLOSInterfaceMID->SetTextureParameterValue(LayeredLOSTextureParam, BindTarget);
 		}
@@ -77,7 +81,6 @@ void UMainVisionRTManager::InitializeMainVisionRTComp()
 		FeatherMID = UMaterialInstanceDynamic::Create(FeatherOutMaterial, this);
 		if (FeatherMID)
 		{
-			// Feather material reads from the raw stamps RT
 			FeatherMID->SetTextureParameterValue(TEXT("InputTexture"), CameraLocalRT);
 		}
 		else
@@ -93,7 +96,6 @@ void UMainVisionRTManager::InitializeMainVisionRTComp()
 	}
 
 	Activate();
-	
 }
 
 // -------------------------------------------------------------------------- //
@@ -108,111 +110,136 @@ static bool RectOverlapsWorld(
 	);
 }
 
+// -------------------------------------------------------------------------- //
+//  Update
+// -------------------------------------------------------------------------- //
+
 void UMainVisionRTManager::UpdateCameraLOS()
 {
-    if (!ShouldRunClientLogic())
-        return;
+	if (!ShouldRunClientLogic())
+		return;
 
-    if (!CameraLocalRT)
-    {
-        UE_LOG(LOSVision, Error,
-            TEXT("UMainVisionRTManager::UpdateCameraLOS >> CameraLocalRT is null!"));
-        return;
-    }
+	if (!CameraLocalRT)
+	{
+		UE_LOG(LOSVision, Error,
+			TEXT("UMainVisionRTManager::UpdateCameraLOS >> CameraLocalRT is null!"));
+		return;
+	}
 
-    TArray<UVision_VisualComp*> ActiveProviders;
-    if (!GetVisibleProviders(ActiveProviders))
-        return;
+	TArray<UVision_VisualComp*> ActiveProviders;
+	if (!GetVisibleProviders(ActiveProviders))
+		return;
 
-    const FVector CameraCenter = GetOwner()->GetActorLocation();
+	const FVector CameraCenter = GetOwner()->GetActorLocation();
+	ULOSRequirementPoolSubsystem* PoolSub = GetPoolSubsystem();
 
-    // Build cached list for DrawLOS_CPU to consume — avoids second GeAllProviders() call
-    CachedValidProviders.Reset();
+	CachedValidProviders.Reset();
 
-    for (UVision_VisualComp* Provider : ActiveProviders)
-    {
-        if (!Provider || !Provider->GetOwner())
-            continue;
+	for (UVision_VisualComp* Provider : ActiveProviders)
+	{
+		if (!Provider || !Provider->GetOwner())
+			continue;
 
-        const bool bInRange = RectOverlapsWorld(
-            CameraCenter, CameraVisionRange,
-            Provider->GetOwner()->GetActorLocation(),
-            Provider->GetVisibleRange());
+		const bool bInRange = RectOverlapsWorld(
+			CameraCenter,                        CameraVisionRange,
+			Provider->GetOwner()->GetActorLocation(), Provider->GetVisibleRange());
 
-        Provider->ToggleLOSStampUpdate(bInRange);
+		// ── Pool acquire / release ────────────────────────────────────────
+		// Routed through Vision_VisualComp — the manager never touches
+		// sub-components directly. The visual comp distributes slot resources
+		// to its own ObstacleDrawer, StampDrawer, and VisibilityMeshComp.
+		if (Provider->UsesResourcePool() && PoolSub)
+		{
+			if (bInRange && !Provider->HasPoolSlot())
+			{
+				// Provider just entered range — hand it a slot
+				PoolSub->AcquireSlot(Provider);
+			}
+			else if (!bInRange && Provider->HasPoolSlot())
+			{
+				// Provider left range — reclaim the slot
+				PoolSub->ReleaseSlot(Provider);
+			}
+		}
+		// ─────────────────────────────────────────────────────────────────
 
-        if (bInRange)
-        {
-            Provider->UpdateVision();
+		Provider->ToggleLOSStampUpdate(bInRange);
 
-            // Only cache providers that are ready to draw
-            if (Provider->IsUpdating() && Provider->GetStampMID())
-                CachedValidProviders.Add(Provider);
-        }
-    }
+		if (bInRange)
+		{
+			// Pool mode: skip update if slot wasn't acquired (pool exhausted)
+			if (Provider->UsesResourcePool() && !Provider->HasPoolSlot())
+				continue;
 
-    if (bUseCPU)
-    {
-        CameraLocalRT->UpdateResource();
-        ApplyFeatheredBlurToRT();
-    }
-    else
-    {
-        TArray<FLOSStampData> StampData_GT;
-        StampData_GT.Reserve(CachedValidProviders.Num());
+			Provider->UpdateVision();
 
-        for (UVision_VisualComp* Provider : CachedValidProviders)
-        {
-            AActor* Owner = Provider->GetOwner();
-            if (!Owner)
-                continue;
+			if (Provider->IsUpdating() && Provider->GetStampMID())
+				CachedValidProviders.Add(Provider);
+		}
+	}
 
-            const FVector WorldPos = Owner->GetActorLocation();
-            const FVector2f CenterUV(
-                (WorldPos.X - CameraCenter.X) / (CameraVisionRange * 2.f) + 0.5f,
-                (WorldPos.Y - CameraCenter.Y) / (CameraVisionRange * 2.f) + 0.5f
-            );
-            const float RadiusUV = Provider->GetVisibleRange() / (CameraVisionRange * 2.f);
+	if (bUseCPU)
+	{
+		CameraLocalRT->UpdateResource();
+		ApplyFeatheredBlurToRT();
+	}
+	else
+	{
+		TArray<FLOSStampData> StampData_GT;
+		StampData_GT.Reserve(CachedValidProviders.Num());
 
-            const EVisionChannel V_Channel = Provider->GetVisionChannel();
-            const uint32 ChannelBitMask = [V_Channel]() -> uint32
-            {
-                if (V_Channel == EVisionChannel::None)
-                    return 0u;
-                if (V_Channel == EVisionChannel::AlwaysVisible)
-                    return 0xFFFFFFFFu;
-                return 1u << static_cast<uint32>(V_Channel);
-            }();
+		for (UVision_VisualComp* Provider : CachedValidProviders)
+		{
+			AActor* Owner = Provider->GetOwner();
+			if (!Owner)
+				continue;
 
-            FLOSStampData& Stamp = StampData_GT.AddDefaulted_GetRef();
-            Stamp.CenterRadiusStrength = FVector4f(CenterUV.X, CenterUV.Y, RadiusUV, Provider->GetVisibilityAlpha());
-            Stamp.ChannelBitMask = ChannelBitMask;
-        }
+			const FVector WorldPos = Owner->GetActorLocation();
+			const FVector2f CenterUV(
+				(WorldPos.X - CameraCenter.X) / (CameraVisionRange * 2.f) + 0.5f,
+				(WorldPos.Y - CameraCenter.Y) / (CameraVisionRange * 2.f) + 0.5f
+			);
+			const float RadiusUV = Provider->GetVisibleRange() / (CameraVisionRange * 2.f);
 
-        const TArray<FLOSStampData> StampData_RT = StampData_GT;
-        const uint32 ViewMask = CameraViewChannelMask;
+			const EVisionChannel V_Channel = Provider->GetVisionChannel();
+			const uint32 ChannelBitMask = [V_Channel]() -> uint32
+			{
+				if (V_Channel == EVisionChannel::None)       return 0u;
+				if (V_Channel == EVisionChannel::AlwaysVisible) return 0xFFFFFFFFu;
+				return 1u << static_cast<uint32>(V_Channel);
+			}();
 
-        ENQUEUE_RENDER_COMMAND(UpdateLOS_GPU)(
-            [this, StampData_RT, ViewMask](FRHICommandListImmediate& RHICmdList)
-            {
-                FRDGBuilder GraphBuilder(RHICmdList);
-                FRDGTextureRef LOSTexture = RegisterExternalTexture(
-                    GraphBuilder,
-                    CameraLocalRT->GetRenderTargetResource()->GetRenderTargetTexture(),
-                    TEXT("CameraLOS_GPU"));
-                AddLOSStampPass(GraphBuilder, LOSTexture, StampData_RT, ViewMask, true);
-                GraphBuilder.Execute();
-            });
-    }
+			FLOSStampData& Stamp = StampData_GT.AddDefaulted_GetRef();
+			Stamp.CenterRadiusStrength = FVector4f(CenterUV.X, CenterUV.Y, RadiusUV, Provider->GetVisibilityAlpha());
+			Stamp.ChannelBitMask = ChannelBitMask;
+		}
 
-    if (MPCInstance)
-    {
-        FVector WorldLocation = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
-        MPCInstance->SetVectorParameterValue(MPCLocationParam,
-            FLinearColor(WorldLocation.X, WorldLocation.Y, WorldLocation.Z));
-    }
+		const TArray<FLOSStampData> StampData_RT = StampData_GT;
+		const uint32 ViewMask = CameraViewChannelMask;
+
+		ENQUEUE_RENDER_COMMAND(UpdateLOS_GPU)(
+			[this, StampData_RT, ViewMask](FRHICommandListImmediate& RHICmdList)
+			{
+				FRDGBuilder GraphBuilder(RHICmdList);
+				FRDGTextureRef LOSTexture = RegisterExternalTexture(
+					GraphBuilder,
+					CameraLocalRT->GetRenderTargetResource()->GetRenderTargetTexture(),
+					TEXT("CameraLOS_GPU"));
+				AddLOSStampPass(GraphBuilder, LOSTexture, StampData_RT, ViewMask, true);
+				GraphBuilder.Execute();
+			});
+	}
+
+	if (MPCInstance)
+	{
+		FVector WorldLocation = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
+		MPCInstance->SetVectorParameterValue(MPCLocationParam,
+			FLinearColor(WorldLocation.X, WorldLocation.Y, WorldLocation.Z));
+	}
 }
 
+// -------------------------------------------------------------------------- //
+//  Draw — CPU path
 // -------------------------------------------------------------------------- //
 
 void UMainVisionRTManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Height)
@@ -231,7 +258,6 @@ void UMainVisionRTManager::DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Heigh
 	if (CachedValidProviders.IsEmpty())
 		return;
 
-	// Cast TObjectPtr array to raw pointer array for DrawLOSStamp
 	TArray<UVision_VisualComp*> RawProviders;
 	RawProviders.Reserve(CachedValidProviders.Num());
 	for (TObjectPtr<UVision_VisualComp>& P : CachedValidProviders)
@@ -282,63 +308,17 @@ void UMainVisionRTManager::DrawLOSStamp(UCanvas* Canvas,
 		Canvas->DrawItem(Tile);
 	}
 }
+
+// -------------------------------------------------------------------------- //
+//  Draw — GPU path (stub)
 // -------------------------------------------------------------------------- //
 
 void UMainVisionRTManager::RenderLOS_GPU(FRDGBuilder& GraphBuilder, FRDGTextureRef LOSTexture)
 {
-	/*TArray<UVision_VisualComp*> ActiveProviders;
-	if (!GetVisibleProviders(ActiveProviders))
-		return;
-
-	TArray<FLOSStampData> Stamps;
-	Stamps.Reserve(ActiveProviders.Num());
-
-	for (UVision_VisualComp* Provider : ActiveProviders)
-	{
-		if (!Provider || !Provider->IsUpdating())
-			continue;
-
-		FVector2D PixelPos;
-		float TileSize;
-
-		if (!ConvertWorldToRT(
-			Provider->GetOwner()->GetActorLocation(),
-			Provider->GetVisibleRange(),
-			PixelPos, TileSize))
-			continue;
-
-		FLOSStampData Stamp;
-		Stamp.CenterRadiusStrength = FVector4f(
-			PixelPos.X / CameraLocalRT->SizeX,
-			PixelPos.Y / CameraLocalRT->SizeY,
-			TileSize   / CameraLocalRT->SizeX,
-			1.0f);
-		Stamp.ChannelBitMask = 1u << static_cast<uint8>(Provider->GetVisionChannel());
-		Stamps.Add(Stamp);
-	}
-
-	AddLOSStampPass(GraphBuilder, LOSTexture, Stamps,
-		1u << static_cast<uint8>(VisionChannel), true);*/
 }
 
 // -------------------------------------------------------------------------- //
-
-/*void UMainVisionRTManager::SetObservedActor(AActor* InActor)
-{
-	ObservedActor = InActor;
-	if (InActor)
-	{
-		if (UVision_VisualComp* VisualComp = InActor->FindComponentByClass<UVision_VisualComp>())
-		{
-			VisionChannel = VisualComp->GetVisionChannel();
-			UE_LOG(LOSVision, Log,
-				TEXT("UMainVisionRTManager::SetObservedActor >> Actor=%s | VisionChannel=%d"),
-				*InActor->GetName(), (int32)VisionChannel);
-		}
-	}
-}*/
-
-
+//  Helpers
 // -------------------------------------------------------------------------- //
 
 bool UMainVisionRTManager::ConvertWorldToRT(
@@ -361,17 +341,8 @@ bool UMainVisionRTManager::ConvertWorldToRT(
 	return true;
 }
 
-// -------------------------------------------------------------------------- //
-
 bool UMainVisionRTManager::GetVisibleProviders(TArray<UVision_VisualComp*>& OutProviders) const
 {
-	/*if (VisionChannel == EVisionChannel::None)
-	{
-		UE_LOG(LOSVision, Warning,
-			TEXT("UMainVisionRTManager::GetVisibleProviders >> VisionChannel is None"));
-		return false;
-	}*/
-
 	ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
 	if (!Subsystem)
 	{
@@ -379,42 +350,29 @@ bool UMainVisionRTManager::GetVisibleProviders(TArray<UVision_VisualComp*>& OutP
 			TEXT("UMainVisionRTManager::GetVisibleProviders >> Subsystem not found"));
 		return false;
 	}
-	
-	/*
-	OutProviders = Subsystem->GetProvidersForTeam(VisionChannel);
-	
-	UE_LOG(LOSVision, Verbose,
-		TEXT("UMainVisionRTManager::GetVisibleProviders >> Channel=%d | Found=%d providers"),
-		(int32)VisionChannel, OutProviders.Num());*/
-	
-	//!!!!! Change !!!!
-	// now it is getting every visible providers, even when they are from different vision channel.
-	// cause different provider can be revealed and be hidden... fuck
 
 	OutProviders = Subsystem->GeAllProviders();
-
 	return true;
 }
-
-// -------------------------------------------------------------------------- //
 
 bool UMainVisionRTManager::ShouldRunClientLogic() const
 {
-	if (GetNetMode() == NM_DedicatedServer)
-		return false;
-
-	return true;
+	return GetNetMode() != NM_DedicatedServer;
 }
 
-// -------------------------------------------------------------------------- //
+ULOSRequirementPoolSubsystem* UMainVisionRTManager::GetPoolSubsystem() const
+{
+	if (!CachedPoolSubsystem)
+		CachedPoolSubsystem = GetWorld()->GetSubsystem<ULOSRequirementPoolSubsystem>();
+
+	return CachedPoolSubsystem;
+}
 
 void UMainVisionRTManager::ApplyFeatheredBlurToRT()
 {
-	// Feather pass is optional — if no FeatherMID or FeatheredRT, silently skip
 	if (!FeatherMID || !FeatheredRT)
 		return;
 
-	// Read from CameraLocalRT (raw stamps), write feathered result to FeatheredRT
 	FeatherMID->SetTextureParameterValue(TEXT("InputTexture"), CameraLocalRT);
 
 	UCanvas* Canvas = nullptr;
@@ -437,8 +395,6 @@ void UMainVisionRTManager::ApplyFeatheredBlurToRT()
 		UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(GetWorld(), Context);
 	}
 }
-
-// -------------------------------------------------------------------------- //
 
 uint32 UMainVisionRTManager::MakeChannelBitMask(const TArray<EVisionChannel>& ChannelEnums)
 {

@@ -28,7 +28,7 @@ public:
     void InitializeOcclusionComponent(APlayerController* InPC);
 
     UFUNCTION(BlueprintCallable, Category="OcclusionPainter")
-    void UpdateOcclusionRT();
+    void UpdateOcclusionRT();// 
 
     // ── Camera source ─────────────────────────────────────────────────────
 

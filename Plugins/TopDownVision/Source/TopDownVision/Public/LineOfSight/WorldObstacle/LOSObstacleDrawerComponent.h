@@ -6,17 +6,21 @@
 
 class UTextureRenderTarget2D;
 class ULocalTextureSampler;
-class UMaterialInterface;
-class UMaterialInstanceDynamic;
 
 
 /**
  * Samples the pre-baked world obstacle texture into a local RenderTarget
- * each LOS frame, and exposes the resulting RT and MID for the LOS painter.
+ * each LOS frame, and exposes the resulting RT for the LOS stamp painter.
  *
- * This component has no concept of vision range or line-of-sight logic.
- * It only knows how wide the world-space sampling window is (SampleWorldWidth)
- * and how large the RT should be (PixelResolution).
+ * Two initialization paths:
+ *
+ *   Owned mode  — Initialize(MaxVisionRange):
+ *     Creates its own ObstacleRT and keeps it for the actor's lifetime.
+ *
+ *   Pool mode   — InitializeSamplerOnly(MaxVisionRange):
+ *     Sets up LocalTextureSampler (world, root, radius) without allocating an RT.
+ *     The pool subsystem later calls SetLocalRenderTargetOnly on the sampler
+ *     to hand in a pooled RT on slot acquire and null it on release.
  *
  * Server/client gating is the caller's responsibility.
  */
@@ -32,63 +36,52 @@ protected:
     virtual void BeginPlay() override;
 
 public:
-    /** Called by VisionTargetComp::BeginPlay. Sets the RT world coverage and creates resources.
-     *  MaxVisionRange must come from VisionTargetComp — it is not editable here. */
+
+    /** Owned mode — sets range, creates ObstacleRT, fully initializes sampler. */
     UFUNCTION(BlueprintCallable, Category="LOSObstacle")
     void Initialize(float InMaxVisionRange);
 
-    /** Sample the pre-baked obstacle texture into the local RT.
-     *  Caller is responsible for only invoking this on the correct net role. */
+    /** Pool mode — sets range and wires sampler root/world, but does NOT create an RT.
+     *  The pool subsystem assigns the RT later via SetLocalRenderTargetOnly. */
+    UFUNCTION(BlueprintCallable, Category="LOSObstacle")
+    void InitializeSamplerOnly(float InMaxVisionRange);
+
+    /** Sample the pre-baked obstacle texture into the active RT.
+     *  Works for both owned and pool mode — reads RT from the sampler directly.
+     *  Caller is responsible for net role gating. */
     UFUNCTION(BlueprintCallable, Category="LOSObstacle")
     void UpdateObstacleTexture();
 
-    /** The RT that holds the merged obstacle frame for this actor. */
+    /** Returns the active RT — sampler's LocalMaskRT in pool mode,
+     *  ObstacleRenderTarget in owned mode. */
     UFUNCTION(BlueprintCallable, Category="LOSObstacle")
-    UTextureRenderTarget2D* GetObstacleRenderTarget() const { return ObstacleRenderTarget; }
+    UTextureRenderTarget2D* GetObstacleRenderTarget() const;
 
     UFUNCTION(BlueprintCallable, Category="LOSObstacle")
     ULocalTextureSampler* GetLocalTextureSampler() const { return LocalTextureSampler; }
-    
-    /*/** The MID whose texture parameter is bound to the obstacle RT. #1#
-    UFUNCTION(BlueprintCallable, Category="LOSObstacle")
-    UMaterialInstanceDynamic* GetObstacleMID() const { return ObstacleMaterialMID; }*/
 
+    /** Owned mode only — called by Initialize internally. */
     UFUNCTION(BlueprintCallable, Category="LOSObstacle")
     void CreateResources();
-    //  Private helpers
+
 private:
-    
-    
-    //  Properties
+
+    /** Shared setup — wires sampler world, root, and radius. Used by both init paths. */
+    void SetupSampler();
+
 protected:
-    // --- Debug ---
+
     UPROPERTY(EditAnywhere, Category="LOSObstacle|Debug")
     bool bDrawSampleRange = false;
 
-    // --- Sampling ---
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSObstacle")
     ULocalTextureSampler* LocalTextureSampler = nullptr;
 
+    /** Valid in owned mode only. Null in pool mode — RT lives on the sampler. */
     UPROPERTY(Transient)
     UTextureRenderTarget2D* ObstacleRenderTarget = nullptr;
 
-    /** How many pixels wide/tall the local RT is. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSObstacle")
-    int32 PixelResolution = 256;
-
-    /** Passed in from VisionTargetComp before BeginPlay resources are created. */
+    /** Passed in from Vision_VisualComp before resources are created. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSObstacle")
     float MaxVisionRange = 0.f;
-
-    // material merge is not used any more
-    /*// --- Material ---
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSObstacle")
-    UMaterialInterface* ObstacleMaterial = nullptr;
-
-    UPROPERTY(Transient)
-    UMaterialInstanceDynamic* ObstacleMaterialMID = nullptr;
-
-    /** Name of the texture parameter in ObstacleMaterial to bind the RT to. #1#
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSObstacle")
-    FName MIDTextureParam = TEXT("ObstacleMaskRT");*/
 };

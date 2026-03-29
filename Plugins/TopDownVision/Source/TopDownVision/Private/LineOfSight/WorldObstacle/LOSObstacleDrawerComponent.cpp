@@ -7,7 +7,10 @@
 #include "DrawDebugHelpers.h"
 
 #include "LineOfSight/WorldObstacle/LocalTextureSampler.h"
+#include "EditorSetting/LOSResourcePoolSettings.h"
+
 #include "TopDownVisionDebug.h"
+
 
 
 ULOSObstacleDrawerComponent::ULOSObstacleDrawerComponent()
@@ -19,9 +22,10 @@ ULOSObstacleDrawerComponent::ULOSObstacleDrawerComponent()
 void ULOSObstacleDrawerComponent::BeginPlay()
 {
     Super::BeginPlay();
-    // CreateResources is called via Initialize() from Vision_VisualComp::BeginPlay
 }
 
+// -------------------------------------------------------------------------- //
+//  Initialize — owned mode
 // -------------------------------------------------------------------------- //
 
 void ULOSObstacleDrawerComponent::Initialize(float InMaxVisionRange)
@@ -30,27 +34,46 @@ void ULOSObstacleDrawerComponent::Initialize(float InMaxVisionRange)
     CreateResources();
 
     UE_LOG(LOSVision, Verbose,
-        TEXT("[%s] ULOSObstacleDrawerComponent::Initialize >> MaxVisionRange=%.1f"),
-        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-        MaxVisionRange);
+        TEXT("[%s] ULOSObstacleDrawerComponent::Initialize >> Owned mode | MaxVisionRange=%.1f"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()), MaxVisionRange);
 }
 
+// -------------------------------------------------------------------------- //
+//  InitializeSamplerOnly — pool mode
+// -------------------------------------------------------------------------- //
+
+void ULOSObstacleDrawerComponent::InitializeSamplerOnly(float InMaxVisionRange)
+{
+    MaxVisionRange = FMath::Max(1.f, InMaxVisionRange);
+
+    // Wire sampler but leave RT null — pool subsystem assigns it on slot acquire
+    SetupSampler();
+
+    UE_LOG(LOSVision, Verbose,
+        TEXT("[%s] ULOSObstacleDrawerComponent::InitializeSamplerOnly >> Pool mode | MaxVisionRange=%.1f — RT deferred"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()), MaxVisionRange);
+}
+
+// -------------------------------------------------------------------------- //
+//  Update
 // -------------------------------------------------------------------------- //
 
 void ULOSObstacleDrawerComponent::UpdateObstacleTexture()
 {
-    if (!ObstacleRenderTarget)
-    {
-        UE_LOG(LOSVision, Warning,
-            TEXT("[%s] ULOSObstacleDrawerComponent::UpdateObstacleTexture >> ObstacleRenderTarget is null"),
-            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
-        return;
-    }
-
     if (!LocalTextureSampler)
     {
         UE_LOG(LOSVision, Error,
             TEXT("[%s] ULOSObstacleDrawerComponent::UpdateObstacleTexture >> LocalTextureSampler missing"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+        return;
+    }
+
+    // Works for both modes — in pool mode the sampler's RT is assigned by the subsystem,
+    // in owned mode it was set during CreateResources. Either way the sampler knows its RT.
+    if (!LocalTextureSampler->GetLocalRenderTarget())
+    {
+        UE_LOG(LOSVision, Verbose,
+            TEXT("[%s] ULOSObstacleDrawerComponent::UpdateObstacleTexture >> No RT on sampler yet — skipping"),
             *TopDownVisionDebug::GetClientDebugName(GetOwner()));
         return;
     }
@@ -63,16 +86,31 @@ void ULOSObstacleDrawerComponent::UpdateObstacleTexture()
             GetWorld(),
             GetOwner()->GetActorLocation(),
             FVector(MaxVisionRange, MaxVisionRange, 50.f),
-            FQuat::Identity,
-            FColor::Green,
+            FQuat::Identity, FColor::Green,
             false, -1.f, 0, 2.f);
     }
 
     UE_LOG(LOSVision, Verbose,
-        TEXT("[%s] ULOSObstacleDrawerComponent::UpdateObstacleTexture >> sampled"),
+        TEXT("[%s] ULOSObstacleDrawerComponent::UpdateObstacleTexture >> Sampled"),
         *TopDownVisionDebug::GetClientDebugName(GetOwner()));
 }
 
+// -------------------------------------------------------------------------- //
+//  Getter
+// -------------------------------------------------------------------------- //
+
+UTextureRenderTarget2D* ULOSObstacleDrawerComponent::GetObstacleRenderTarget() const
+{
+    // Pool mode — RT lives on the sampler
+    if (LocalTextureSampler && LocalTextureSampler->GetLocalRenderTarget())
+        return LocalTextureSampler->GetLocalRenderTarget();
+
+    // Owned mode — RT lives here
+    return ObstacleRenderTarget;
+}
+
+// -------------------------------------------------------------------------- //
+//  CreateResources — owned mode only
 // -------------------------------------------------------------------------- //
 
 void ULOSObstacleDrawerComponent::CreateResources()
@@ -81,17 +119,38 @@ void ULOSObstacleDrawerComponent::CreateResources()
     if (!World)
         return;
 
-    // ---- Render Target ---- //
+    // ---- Render Target (owned) ---- //
     if (!ObstacleRenderTarget)
     {
+        const ULOSResourcePoolSettings* Settings = ULOSResourcePoolSettings::Get();
+
+        UTextureRenderTarget2D* Template = Settings
+            ? Settings->TemplateObstacleRT.LoadSynchronous()
+            : nullptr;
+
         FString RTName = FString::Printf(TEXT("ObstacleRT_%s"), *GetOwner()->GetName());
         ObstacleRenderTarget = NewObject<UTextureRenderTarget2D>(this, FName(*RTName));
-        ObstacleRenderTarget->InitAutoFormat(PixelResolution, PixelResolution);
-        ObstacleRenderTarget->ClearColor        = FLinearColor::Black;
-        //ObstacleRenderTarget->RenderTargetFormat = RTF_R8;
-        ObstacleRenderTarget->RenderTargetFormat = RTF_RGBA8;
-        //ObstacleRenderTarget->UpdateResourceImmediate(); // not necessary. this was causing lag
-        ObstacleRenderTarget->UpdateResource();// just update, no forced update
+
+        if (Template)
+        {
+            ObstacleRenderTarget->RenderTargetFormat = Template->RenderTargetFormat;
+            ObstacleRenderTarget->ClearColor         = Template->ClearColor;
+            ObstacleRenderTarget->bAutoGenerateMips  = Template->bAutoGenerateMips;
+            ObstacleRenderTarget->InitAutoFormat(Template->SizeX, Template->SizeY);
+        }
+        else
+        {
+            // Fallback if settings not configured — keeps owned mode working without pool setup
+            UE_LOG(LOSVision, Warning,
+                TEXT("[%s] ULOSObstacleDrawerComponent::CreateResources >> TemplateObstacleRT not set — using fallback 256 RGBA8"),
+                *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+
+            ObstacleRenderTarget->RenderTargetFormat = RTF_RGBA8;
+            ObstacleRenderTarget->ClearColor         = FLinearColor::Black;
+            ObstacleRenderTarget->InitAutoFormat(256, 256);
+        }
+
+        ObstacleRenderTarget->UpdateResource();
 
         UE_LOG(LOSVision, Verbose,
             TEXT("[%s] ULOSObstacleDrawerComponent::CreateResources >> RT created: %s (%p)"),
@@ -99,38 +158,49 @@ void ULOSObstacleDrawerComponent::CreateResources()
             *ObstacleRenderTarget->GetName(), ObstacleRenderTarget);
     }
 
-    // ---- Local Texture Sampler ---- //
+    // ---- Sampler ---- //
+    SetupSampler();
+
+    // Pass RT to sampler last — triggers first draw
     if (LocalTextureSampler)
+        LocalTextureSampler->SetLocalRenderTarget(ObstacleRenderTarget);
+}
+
+// -------------------------------------------------------------------------- //
+//  SetupSampler — shared between both init paths
+// -------------------------------------------------------------------------- //
+
+void ULOSObstacleDrawerComponent::SetupSampler()
+{
+    if (!LocalTextureSampler)
+        return;
+
+    UWorld* World = GetWorld();
+    LocalTextureSampler->SetCachedWorld(World);
+
+    AActor* OwningActor = GetOwner();
+    if (!OwningActor)
     {
-        // Inject world explicitly — GetWorld() inside LocalTextureSampler
-        // may fail when nested inside another component's subobject chain
-        LocalTextureSampler->SetCachedWorld(World);
-
-        // GetOwner() on ActorComponent always returns the actor directly
-        // regardless of how the component was constructed
-        USceneComponent* BestRoot = nullptr;
-        AActor* OwningActor = GetOwner();
-        if (OwningActor)
-        {
-            BestRoot = OwningActor->GetRootComponent();
-            UE_LOG(LOSVision, Verbose,
-                TEXT("[%s] ULOSObstacleDrawerComponent::CreateResources >> Root resolved: %s"),
-                *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-                *BestRoot->GetName());
-        }
-
-        if (BestRoot)
-        {
-            LocalTextureSampler->SetLocationRoot(BestRoot);
-        }
-        else
-        {
-            UE_LOG(LOSVision, Error,
-                TEXT("[%s] ULOSObstacleDrawerComponent::CreateResources >> Could not find valid root"),
-                *TopDownVisionDebug::GetClientDebugName(GetOwner()));
-        }
-
-        LocalTextureSampler->SetWorldSampleRadius(MaxVisionRange);
-        LocalTextureSampler->SetLocalRenderTarget(ObstacleRenderTarget); // last — triggers first draw
+        UE_LOG(LOSVision, Error,
+            TEXT("[%s] ULOSObstacleDrawerComponent::SetupSampler >> No owning actor"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+        return;
     }
+
+    if (USceneComponent* Root = OwningActor->GetRootComponent())
+    {
+        LocalTextureSampler->SetLocationRoot(Root);
+
+        UE_LOG(LOSVision, Verbose,
+            TEXT("[%s] ULOSObstacleDrawerComponent::SetupSampler >> Root: %s"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()), *Root->GetName());
+    }
+    else
+    {
+        UE_LOG(LOSVision, Error,
+            TEXT("[%s] ULOSObstacleDrawerComponent::SetupSampler >> Could not find valid root"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+    }
+
+    LocalTextureSampler->SetWorldSampleRadius(MaxVisionRange);
 }

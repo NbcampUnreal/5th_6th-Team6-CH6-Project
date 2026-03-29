@@ -133,7 +133,7 @@ void UMainOcclusionPainter::DrawProviderArea()
     const float RTAspect     = RTWidth / RTHeight;
     const float AspectScale  = ScreenAspect / RTAspect;
 
-    for (FOcclusionBrushTarget& Target : Targets)
+    for (FOcclusionBrushTarget& Target : Targets)//batch the targets occlusion brushes
     {
         if (!Target.IsValid()) continue;
 

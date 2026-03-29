@@ -1,41 +1,41 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-//Class
 #include "TopDownVision/Public/LineOfSight/VisionComps/Vision_VisualComp.h"
 
-//comps
+// Sub-components
 #include "LineOfSight/LOSVisual/LOSStampDrawerComp.h"
 #include "LineOfSight/WorldObstacle/LOSObstacleDrawerComponent.h"
+#include "LineOfSight/WorldObstacle/LocalTextureSampler.h"
 #include "LineOfSight/LOSVisual/VisibilityMeshComp.h"
 #include "LineOfSight/ObjectTracing/TopDown2DShapeComp.h"
 
-//Debug
-#include "TopDownVisionDebug.h"
-
-
-#include "GameFramework/GameStateBase.h"
-#include "LineOfSight/Management/VisionGameStateComp.h"
+// Subsystems
 #include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
+#include "LineOfSight/Management/Subsystem/LOSRequirementPoolSubsystem.h"
 #include "LineOfSight/VisionComps/Vision_EvaluatorComp.h"
 #include "ObstacleOcclusion/Manager/OcclusionSubsystem.h"
+
+// Misc
+#include "GameFramework/GameStateBase.h"
+#include "LineOfSight/Management/VisionGameStateComp.h"
+#include "TopDownVisionDebug.h"
 
 
 UVision_VisualComp::UVision_VisualComp()
 {
     PrimaryComponentTick.bCanEverTick = false;
-    
+
     ObstacleDrawer = CreateDefaultSubobject<ULOSObstacleDrawerComponent>(TEXT("ObstacleDrawer"));
-    StampDrawer =    CreateDefaultSubobject<ULOSStampDrawerComp>(TEXT("StampDrawer"));
+    StampDrawer    = CreateDefaultSubobject<ULOSStampDrawerComp>(TEXT("StampDrawer"));
     VisibilityMesh = CreateDefaultSubobject<UVisibilityMeshComp>(TEXT("VisibilityMesh"));
-    ShapeComp =      CreateDefaultSubobject<UTopDown2DShapeComp>(TEXT("2DShapeComp"));
-    //ShapeComp->SetupAttachment(GetOwner()->GetRootComponent());-> do this on runtime, not right now
+    ShapeComp      = CreateDefaultSubobject<UTopDown2DShapeComp>(TEXT("2DShapeComp"));
 }
 
 void UVision_VisualComp::BeginPlay()
 {
     Super::BeginPlay();
-    
-    if (ShapeComp)//attachment happens here
+
+    if (ShapeComp)
     {
         if (USceneComponent* Root = GetOwner()->GetRootComponent())
         {
@@ -46,32 +46,37 @@ void UVision_VisualComp::BeginPlay()
         else
         {
             UE_LOG(LOSVision, Warning,
-                TEXT("[%s] UVision_VisualComp::Initialize >> Owner has no root component, cannot attach ShapeComp"),
+                TEXT("[%s] UVision_VisualComp::BeginPlay >> Owner has no root component, cannot attach ShapeComp"),
                 *GetOwner()->GetName());
         }
     }
     else
     {
         UE_LOG(LOSVision, Error,
-            TEXT("[%s] UVision_VisualComp::Initialize >> ShapeComp subobject is missing"),
+            TEXT("[%s] UVision_VisualComp::BeginPlay >> ShapeComp subobject is missing"),
             *GetOwner()->GetName());
     }
 
-    
-    if (!ShouldRunClientLogic())//server gate
+    if (!ShouldRunClientLogic())
         return;
 
-    //Initialize();
+    // Initialize() called manually from BP or owning actor
 }
 
 void UVision_VisualComp::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     Super::EndPlay(EndPlayReason);
 
+    // Release pool slot before unregistering
+    if (bUseResourcePool && bHasActivePoolSlot)
+    {
+        if (ULOSRequirementPoolSubsystem* PoolSub = GetWorld()->GetSubsystem<ULOSRequirementPoolSubsystem>())
+            PoolSub->ReleaseSlot(this);
+    }
+
     if (ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>())
         Subsystem->UnregisterProvider(this, VisionChannel);
 
-    // Unregister from occlusion subsystem
     if (OcclusionTargetIndex != INDEX_NONE)
     {
         if (UOcclusionSubsystem* OccSub = GetWorld()->GetSubsystem<UOcclusionSubsystem>())
@@ -86,15 +91,14 @@ void UVision_VisualComp::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void UVision_VisualComp::OnRegister()
 {
     Super::OnRegister();
-
- 
-    
 }
+
+// -------------------------------------------------------------------------- //
+//  Initialize
+// -------------------------------------------------------------------------- //
 
 void UVision_VisualComp::Initialize()
 {
-    AActor* DebugCheckingActor = GetOwner();
-
     if (!ShouldRunClientLogic())
         return;
 
@@ -108,46 +112,110 @@ void UVision_VisualComp::Initialize()
             *GetOwner()->GetName(), IndicatorRange);
     }
 
-    if (ObstacleDrawer)
-        ObstacleDrawer->Initialize(MaxVisionRange);
-
-    if (StampDrawer)
+    if (bUseResourcePool)
     {
-        StampDrawer->CreateResources();
-        StampDrawer->OnVisionRangeChanged(VisionRange, MaxVisionRange);
-    }
+        // Pool mode:
+        //   ObstacleRT  — deferred, pool hands it in via OnPoolSlotAcquired
+        //   StampMID    — deferred, pool hands it in via OnPoolSlotAcquired
+        //   VisibilityMesh MIDs — pooled, handed in via OnPoolSlotAcquired
+        if (ObstacleDrawer)
+            ObstacleDrawer->InitializeSamplerOnly(MaxVisionRange);
 
-    if (VisibilityMesh)
-        VisibilityMesh->Initialize();
+        if (VisibilityMesh)
+            VisibilityMesh->Initialize();
+
+        UE_LOG(LOSVision, Log,
+            TEXT("[%s] Initialize >> Pool mode — RT and StampMID deferred to slot acquire"),
+            *GetOwner()->GetName());
+    }
+    else
+    {
+        // Owned mode — all resources created and kept for actor lifetime
+        if (ObstacleDrawer)
+            ObstacleDrawer->Initialize(MaxVisionRange);
+
+        if (StampDrawer)
+        {
+            StampDrawer->CreateResources();
+            StampDrawer->OnVisionRangeChanged(VisionRange, MaxVisionRange);
+        }
+
+        if (VisibilityMesh)
+            VisibilityMesh->Initialize();
+
+        UE_LOG(LOSVision, Log,
+            TEXT("[%s] Initialize >> Owned mode — all resources created"),
+            *GetOwner()->GetName());
+    }
 
     CachedEvaluatorComp = GetOwner()->FindComponentByClass<UVision_EvaluatorComp>();
 
     if (ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>())
-    {
         Subsystem->RegisterProvider(this, VisionChannel);
-    }
     else
-    {
         UE_LOG(LOSVision, Warning,
-            TEXT("[%s] Initialize >> LOSVisionSubsystem not found"),
-            *GetOwner()->GetName());
-    }
+            TEXT("[%s] Initialize >> LOSVisionSubsystem not found"), *GetOwner()->GetName());
 
-    // Register with occlusion subsystem — store index for alpha updates
     if (UOcclusionSubsystem* OccSub = GetWorld()->GetSubsystem<UOcclusionSubsystem>())
     {
         if (UPrimitiveComponent* Root = Cast<UPrimitiveComponent>(GetOwner()->GetRootComponent()))
-        {
             OcclusionTargetIndex = OccSub->RegisterTarget(Root, nullptr, VisionRange);
-        }
     }
 }
 
 void UVision_VisualComp::SetIndicatorRange(float NewIndicatorRange)
 {
+    IndicatorRange = NewIndicatorRange;
+}
 
-    IndicatorRange =  NewIndicatorRange;
+// -------------------------------------------------------------------------- //
+//  Pool enter / exit
+// -------------------------------------------------------------------------- //
 
+void UVision_VisualComp::OnPoolSlotAcquired(const FLOSStampPoolSlot& Slot)
+{
+    if (ObstacleDrawer)
+    {
+        if (ULocalTextureSampler* Sampler = ObstacleDrawer->GetLocalTextureSampler())
+            Sampler->SetLocalRenderTargetOnly(Slot.ObstacleRT);
+    }
+
+    if (StampDrawer)
+    {
+        StampDrawer->SetStampMID(Slot.StampMID);
+        StampDrawer->OnVisionRangeChanged(VisionRange, MaxVisionRange);
+    }
+
+    if (VisibilityMesh)
+        VisibilityMesh->SetMIDs(Slot.VisibilityMeshMIDs);
+
+    bHasActivePoolSlot = true;
+
+    UE_LOG(LOSVision, Verbose,
+        TEXT("[%s] OnPoolSlotAcquired >> Resources bound"),
+        *GetOwner()->GetName());
+}
+
+void UVision_VisualComp::OnPoolSlotReleased()
+{
+    if (ObstacleDrawer)
+    {
+        if (ULocalTextureSampler* Sampler = ObstacleDrawer->GetLocalTextureSampler())
+            Sampler->SetLocalRenderTargetOnly(nullptr);
+    }
+
+    if (StampDrawer)
+        StampDrawer->SetStampMID(nullptr);
+
+    // Empty array triggers RestoreOriginalMaterials inside SetMIDs
+    if (VisibilityMesh)
+        VisibilityMesh->SetMIDs({});
+
+    bHasActivePoolSlot = false;
+
+    UE_LOG(LOSVision, Verbose,
+        TEXT("[%s] OnPoolSlotReleased >> Resources unbound"),
+        *GetOwner()->GetName());
 }
 
 // -------------------------------------------------------------------------- //
@@ -157,6 +225,9 @@ void UVision_VisualComp::SetIndicatorRange(float NewIndicatorRange)
 void UVision_VisualComp::UpdateVision()
 {
     if (!ShouldRunClientLogic())
+        return;
+
+    if (bUseResourcePool && !bHasActivePoolSlot)
         return;
 
     if (ObstacleDrawer)
@@ -176,7 +247,6 @@ void UVision_VisualComp::UpdateVision()
         StampDrawer->SetVisionAlpha(VisibilityAlpha);
         StampDrawer->UpdateLOSStamp(ObstacleDrawer ? ObstacleDrawer->GetObstacleRenderTarget() : nullptr);
     }
-       
 }
 
 void UVision_VisualComp::ToggleLOSStampUpdate(bool bIsOn)
@@ -198,13 +268,11 @@ void UVision_VisualComp::SetVisible(bool bVisible, bool bInstant)
 {
     TargetVisibilityAlpha = bVisible ? 1.0f : 0.0f;
 
-    // ── Broadcast occlusion tracer events ────────────────────────────────
     if (bVisible)
         OnTargetRevealed.Broadcast();
     else
         OnTargetHidden.Broadcast();
-    
-    //immediate update
+
     if (bInstant)
     {
         if (VisibilityMesh)
@@ -247,7 +315,7 @@ void UVision_VisualComp::UpdateVisibilityFade(float DeltaTime)
         GetWorld()->GetTimerManager().ClearTimer(FadeTimerHandle);
 
         UE_LOG(LOSVision, Verbose,
-            TEXT("[%s] UVisionTargetComp::UpdateVisibilityFade >> Complete: %.2f"),
+            TEXT("[%s] UpdateVisibilityFade >> Complete: %.2f"),
             *GetOwner()->GetName(), VisibilityAlpha);
     }
 }
@@ -263,7 +331,6 @@ void UVision_VisualComp::SetVisionRange(float NewRange)
     if (StampDrawer)
         StampDrawer->OnVisionRangeChanged(VisionRange, MaxVisionRange);
 
-    // Lazy cache — null is valid for actors without an evaluator
     if (!CachedEvaluatorComp)
         CachedEvaluatorComp = GetOwner()->FindComponentByClass<UVision_EvaluatorComp>();
 
@@ -277,6 +344,8 @@ UMaterialInstanceDynamic* UVision_VisualComp::GetStampMID() const
 }
 
 // -------------------------------------------------------------------------- //
+//  Vision channel
+// -------------------------------------------------------------------------- //
 
 void UVision_VisualComp::SetVisionChannel(EVisionChannel InVC)
 {
@@ -286,7 +355,7 @@ void UVision_VisualComp::SetVisionChannel(EVisionChannel InVC)
 
 void UVision_VisualComp::UpdateVisionRange(float NewRange)
 {
-    VisionRange= FMath::Clamp(NewRange, 0.f, MaxVisionRange);
+    VisionRange = FMath::Clamp(NewRange, 0.f, MaxVisionRange);
 }
 
 bool UVision_VisualComp::IsSharedVisionChannel() const
@@ -300,7 +369,7 @@ EVisionChannel UVision_VisualComp::GetLocalPlayerVisionChannel() const
     if (!GS) return EVisionChannel::None;
 
     UVisionGameStateComp* GSComp = GS->FindComponentByClass<UVisionGameStateComp>();
-    if (!GSComp) return  EVisionChannel::None;
+    if (!GSComp) return EVisionChannel::None;
 
     return GSComp->GetLocalPlayerTeamChannel();
 }
