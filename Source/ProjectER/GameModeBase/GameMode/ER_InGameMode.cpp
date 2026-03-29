@@ -1,4 +1,4 @@
-﻿#include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
@@ -93,7 +93,7 @@ void AER_InGameMode::InitGame(const FString& MapName, const FString& Options, FS
 void AER_InGameMode::Logout(AController* Exiting)
 {
 	// ── 게임 중 끊긴 플레이어 데이터 보존 (Super 호출 전에 처리) ──
-	if (bIsGameStarted)
+	if (bIsGameStarted && !bIsGameEnd)
 	{
 		APlayerController* PC = Cast<APlayerController>(Exiting);
 		if (PC && PC->PlayerState)
@@ -219,6 +219,12 @@ void AER_InGameMode::Logout(AController* Exiting)
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("[GM] Logout. RemainingPlayers=%d"), RemainingPlayers);
+
+	// 게임이 종료된 상태면 승패/인원 관련 처리를 더 이상 진행하지 않음
+	if (bIsGameEnd)
+	{
+		return;
+	}
 
 	if (!bIsGameStarted)
 	{
@@ -389,8 +395,14 @@ void AER_InGameMode::PostLogin(APlayerController* NewPlayer)
 	if (ERGS && NewERPS)
 	{
 		const int32 TeamIdx = static_cast<int32>(NewERPS->TeamType);
-		TArray<TWeakObjectPtr<AER_PlayerState>>& TeamArr = ERGS->GetTeamArray(TeamIdx);
-		TeamArr.AddUnique(NewERPS);
+		TArray<FString>& TeamArr = ERGS->GetTeamArray(TeamIdx);
+		
+		const FUniqueNetIdRepl UID = NewERPS->GetUniqueId();
+		FString NewPlayerUniqueIdStr = UID.IsValid() ? UID->ToString() : NewERPS->GetPlayerName();
+		if (!NewPlayerUniqueIdStr.IsEmpty())
+		{
+			TeamArr.AddUnique(NewPlayerUniqueIdStr);
+		}
 	}
 
 	// 재접속 플레이어에게 인게임 입력 모드 및 프리로드 지시
@@ -489,6 +501,13 @@ void AER_InGameMode::DisConnectClient(APlayerController* PC)
 		ERPC->Client_ReturnToMainMenu(TEXT("GameOver"));
 	}
 
+	// 호스트(Listen Server 본인)는 자신을 Kick 할 수 없습니다. 
+	// 호스트는 OpenLevel을 통해 메인 메뉴로 이동하면 자동으로 방이 터지고 넷드라이버가 닫힙니다.
+	if (PC->IsLocalController())
+	{
+		return;
+	}
+
 	TWeakObjectPtr<APlayerController> WeakPC(PC);
 	TWeakObjectPtr<AER_InGameMode> WeakThis(this);
 
@@ -500,6 +519,38 @@ void AER_InGameMode::DisConnectClient(APlayerController* PC)
 				WeakThis->GameSession->KickPlayer(WeakPC.Get(), FText::FromString(TEXT("Defeated")));
 			}
 		}, 0.2f, false);
+}
+
+void AER_InGameMode::ShutdownServerForHost()
+{
+	UE_LOG(LogTemp, Warning, TEXT("[GM] Host requested server shutdown. Evacuating clients..."));
+
+	// 1. 호스트를 제외한 모든 클라이언트에게 귀환 명령 송신
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* PC = It->Get();
+		
+		if (IsValid(PC) && !PC->IsLocalController()) 
+		{
+			if (ABasePlayerController* ERPC = Cast<ABasePlayerController>(PC))
+			{
+				ERPC->Client_ReturnToMainMenu(TEXT("Host Closed Server"));
+			}
+		}
+	}
+
+	// 2. 1초 대기 후 호스트 본인도 로비로 이동하며 방 폭파
+	FTimerHandle ShutdownTimer;
+	GetWorld()->GetTimerManager().SetTimer(ShutdownTimer, [this]()
+	{
+		if (APlayerController* HostPC = GetWorld()->GetFirstPlayerController())
+		{
+			if (ABasePlayerController* HostERPC = Cast<ABasePlayerController>(HostPC))
+			{
+				HostERPC->Client_ReturnToMainMenu(TEXT("Server Shutdown Complete"));
+			}
+		}
+	}, 1.0f, false);
 }
 
 void AER_InGameMode::RequestTeleportToRegion(ACharacter* TargetCharacter, int32 RegionIndex)
@@ -698,6 +749,9 @@ void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter, APlayerState*
 			if (LastTeamIdx != -1)
 			{
 				RespawnSS->SetTeamWin(*ERGS, LastTeamIdx);
+				// 승리 판정 시 게임 종료를 알림
+				bIsGameStarted = false;
+				bIsGameEnd = true;
 			}
 		}
 		else
@@ -787,18 +841,6 @@ void AER_InGameMode::HandleObjectNoticeTimeUp()
 		ObjectSS->PickSupplySpawnIndex();
 		ObjectSS->PickBossSpawnIndex();
 	}
-}
-
-void AER_InGameMode::TEMP_SpawnNeutrals()
-{
-	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
-	NeutralSS->TEMP_SpawnNeutrals();
-}
-
-void AER_InGameMode::TEMP_DespawnNeutrals()
-{
-	UER_NeutralSpawnSubsystem* NeutralSS = GetWorld()->GetSubsystem<UER_NeutralSpawnSubsystem>();
-	NeutralSS->TEMP_NeutralsALLDespawn();
 }
 
 void AER_InGameMode::CleanupDisconnectedPlayer(const FString& UniqueIdStr)
