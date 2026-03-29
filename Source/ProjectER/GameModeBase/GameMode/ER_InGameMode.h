@@ -19,6 +19,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float RespawnDelay = 5.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float InitialSpawnDelay = 0.f;
 };
 
 USTRUCT(BlueprintType)

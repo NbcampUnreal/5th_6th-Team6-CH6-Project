@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "GameModeBase/Subsystem/NeutralSpawn/ER_NeutralSpawnSubsystem.h"
@@ -69,6 +69,7 @@ void UER_NeutralSpawnSubsystem::InitializeSpawnPoints(TMap<FName, FNeutralClassC
         Info.SpawnPoint = PointActor;
         Info.NeutralActorClass = Picked->Class;
         Info.RespawnDelay = Picked->RespawnDelay;
+        Info.InitialSpawnDelay = Picked->InitialSpawnDelay;
         Info.DAName = DAName;
         Info.bIsSpawned = false;
 
@@ -131,9 +132,27 @@ void UER_NeutralSpawnSubsystem::FirstSpawnNeutral()
             continue;
         }
 
-        SpawnMonsterInternal(Info, Pair.Key);
-
-
+        if (Info.InitialSpawnDelay <= 0.0f)
+        {
+            SpawnMonsterInternal(Info, Pair.Key);
+        }
+        else
+        {
+            const int32 PointIdx = Pair.Key;
+            
+            GetWorld()->GetTimerManager().SetTimer(
+                Info.RespawnTimer,
+                FTimerDelegate::CreateWeakLambda(this, [this, PointIdx]()
+                {
+                    if (FNeutralInfo* DelayedInfo = NeutralSpawnMap.Find(PointIdx))
+                    {
+                        SpawnMonsterInternal(*DelayedInfo, PointIdx);
+                    }
+                }),
+                Info.InitialSpawnDelay,
+                false
+            );
+        }
     }
 }
 
