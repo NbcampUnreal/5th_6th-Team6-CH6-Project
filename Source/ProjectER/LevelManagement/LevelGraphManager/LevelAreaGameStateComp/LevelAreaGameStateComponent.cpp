@@ -143,7 +143,7 @@ void ULevelAreaGameStateComponent::UnregisterBridge(ALevelAreaInstanceBridge* Br
    Server: Phase Advancement
    ===================================================================== */
 
-void ULevelAreaGameStateComponent::AdvancePhase()
+void ULevelAreaGameStateComponent::AdvancePhase(int32 Phase)
 {
     /*if (HazardOrder.IsEmpty())
     {
@@ -183,7 +183,7 @@ void ULevelAreaGameStateComponent::AdvancePhase()
         return;
     }
 
-    CurrentPhase++;
+    CurrentPhase = Phase;
 
     UE_LOG(LevelAreaGraphManagement, Log,
         TEXT("AdvancePhase >> Phase %d | State: %s"),

@@ -1,4 +1,4 @@
-#include "GameModeBase/GameMode/ER_InGameMode.h"
+﻿#include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
@@ -802,16 +802,20 @@ void AER_InGameMode::HandlePhaseTimeUp()
 		ERGS->SetCurrentPhase(ERGS->GetCurrentPhase() + 1);
 		// 페이즈에 따라 작동할 코드 넣기
 		ULevelAreaGameStateComponent* AreaGSComp = ERGS->GetComponentByClass<ULevelAreaGameStateComponent>();
-		AreaGSComp->AdvancePhase();
-
-		FString Text = "";
-		for (auto& aa : AreaGSComp->HazardOrder)
+		if(ERGS->GetCurrentPhase() != 1)
 		{
-			Text.Append(" -> ");
-			Text.AppendInt(aa);
-
+			// 1페이즈에는 금지 구역을 지정하지 않도록 수정
+			AreaGSComp->AdvancePhase(ERGS->GetCurrentPhase());
 		}
-		UE_LOG(LogTemp, Log, TEXT("[GM] AreaGSComp->HazardOrder : %s"), *Text);
+
+		//FString Text = "";
+		//for (auto& aa : AreaGSComp->HazardOrder)
+		//{
+		//	Text.Append(" -> ");
+		//	Text.AppendInt(aa);
+
+		//}
+		//UE_LOG(LogTemp, Log, TEXT("[GM] AreaGSComp->HazardOrder : %s"), *Text);
 
 		UER_ObjectSubsystem* ObjectSS = GetWorld()->GetSubsystem<UER_ObjectSubsystem>();
 		if (ObjectSS)

@@ -55,7 +55,7 @@ public:
     /* ---------- Server API ---------- */
 
     UFUNCTION(BlueprintCallable, Category = "Hazard", BlueprintAuthorityOnly)
-    void AdvancePhase();
+    void AdvancePhase(int32 Phase);
 
     UFUNCTION(BlueprintCallable, Category = "Hazard", BlueprintAuthorityOnly)
     void ResetHazards(EAreaHazardState NewState = EAreaHazardState::None);
