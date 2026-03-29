@@ -19,6 +19,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float RespawnDelay = 5.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float InitialSpawnDelay = 0.f;
 };
 
 USTRUCT(BlueprintType)
@@ -101,6 +104,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void DisConnectClient(APlayerController* PC);
 
+	UFUNCTION(BlueprintCallable, Category = "Shutdown")
+	void ShutdownServerForHost();
+
 	UFUNCTION(BlueprintCallable, Category = "Teleport|Region")
 	void RequestTeleportToRegion(ACharacter* TargetCharacter, int32 RegionIndex);
 
@@ -111,13 +117,6 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category="Phase")
 	void OnPhaseTimeUp(int32 CurrentPhase);
 
-
-	UFUNCTION(BlueprintCallable)
-	void TEMP_SpawnNeutrals();
-
-	UFUNCTION(BlueprintCallable)
-	void TEMP_DespawnNeutrals();
-
 	// Called from Blueprint when a level instance finishes loading
 	UFUNCTION(BlueprintImplementableEvent, Category="LevelArea")
 	void OnLevelInstanceLoaded();
@@ -125,6 +124,7 @@ public:
 
 private:
 	bool bIsGameStarted = false;
+	bool bIsGameEnd = false;
 	int32 PlayersInitialized = 0; // Number of players connected
 	int32 PlayersReady = 0;       // Number of players who finished preloading
 	int32 ExpectedPlayers = 0;

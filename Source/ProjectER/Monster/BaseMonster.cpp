@@ -1,4 +1,4 @@
-﻿#include "Monster/BaseMonster.h"
+#include "Monster/BaseMonster.h"
 
 #include "Monster/GAS/AttributeSet/BaseMonsterAttributeSet.h"
 #include "Monster/Data/MonsterDataAsset.h"
@@ -519,7 +519,16 @@ void ABaseMonster::GameplayEffectSetByCaller(AActor* Player, TSubclassOf<UGamepl
 	int TeamIndex = (int)BC->GetTeamType();
 
 	AER_GameState* EPS = GetWorld()->GetGameState<AER_GameState>();
-	TArray<TWeakObjectPtr<AER_PlayerState>> TeamPSArray = EPS->GetTeamArray(TeamIndex);
+	TArray<FString>& TeamPSArrayIDs = EPS->GetTeamArray(TeamIndex);
+
+	TArray<TWeakObjectPtr<AER_PlayerState>> TeamPSArray;
+	for (const FString& IDStr : TeamPSArrayIDs)
+	{
+		if (AER_PlayerState* PS = EPS->GetPlayerStateByUniqueId(IDStr))
+		{
+			TeamPSArray.Add(PS);
+		}
+	}
 
 	FVector MonsterLocation = GetActorLocation();
 	for (int32 i = TeamPSArray.Num() - 1; i >= 0; --i)

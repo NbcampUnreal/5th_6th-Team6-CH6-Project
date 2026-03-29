@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "ER_RespawnSubsystem.h"
@@ -90,21 +90,31 @@ bool UER_RespawnSubsystem::EvaluateTeamElimination(AER_PlayerState& PS, AER_Game
 
 void UER_RespawnSubsystem::SetTeamLose(AER_GameState& GS, int32 TeamIdx)
 {
-	for (auto& player : GS.GetTeamArray(TeamIdx))
+	for (const FString& UniqueIdStr : GS.GetTeamArray(TeamIdx))
 	{
-		ABasePlayerController* PC = Cast<ABasePlayerController>(player->GetOwner());
+		AER_PlayerState* player = GS.GetPlayerStateByUniqueId(UniqueIdStr);
+		if (!player) continue;
 
-		PC->Client_SetLose();
+		ABasePlayerController* PC = Cast<ABasePlayerController>(player->GetOwner());
+		if (PC)
+		{
+			PC->Client_SetLose();
+		}
 	}
 }
 
 void UER_RespawnSubsystem::SetTeamWin(AER_GameState& GS, int32 TeamIdx)
 {
-	for (auto& player : GS.GetTeamArray(TeamIdx))
+	for (const FString& UniqueIdStr : GS.GetTeamArray(TeamIdx))
 	{
-		ABasePlayerController* PC = Cast<ABasePlayerController>(player->GetOwner());
+		AER_PlayerState* player = GS.GetPlayerStateByUniqueId(UniqueIdStr);
+		if (!player) continue;
 
-		PC->Client_SetWin();
+		ABasePlayerController* PC = Cast<ABasePlayerController>(player->GetOwner());
+		if (PC)
+		{
+			PC->Client_SetWin();
+		}
 	}
 }
 
@@ -194,16 +204,22 @@ void UER_RespawnSubsystem::StopResapwnTimer(AER_GameState& GS, int32 TeamIdx)
 		return;
 
 	// 사출 당한 팀의 배열을 순회
-	for (auto& player : GS.GetTeamArray(TeamIdx))
+	for (const FString& UniqueIdStr : GS.GetTeamArray(TeamIdx))
 	{
+		AER_PlayerState* player = GS.GetPlayerStateByUniqueId(UniqueIdStr);
+		if (!player) continue;
+
 		// 플레이어의 id를 받아와 리스폰 map에 접근 후 타이머 정지
 		const int32 PlayerId = player->GetPlayerId();
 		FTimerHandle& Handle = RespawnMap.FindOrAdd(PlayerId);
 		GetWorld()->GetTimerManager().ClearTimer(Handle);
 
 		ABasePlayerController* PC = Cast<ABasePlayerController>(player->GetOwner());
-		// 사망한 팀원의 리스폰 UI 제거
-		PC->Client_StopRespawnTimer();
+		if (PC)
+		{
+			// 사망한 팀원의 리스폰 UI 제거
+			PC->Client_StopRespawnTimer();
+		}
 	}
 }
 

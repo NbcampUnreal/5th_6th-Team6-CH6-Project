@@ -398,12 +398,6 @@ private:
 	void Server_DisConnectServer();
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_TEMP_SpawnNeutrals();
-
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_TEMP_DespawnNeutrals();
-
-	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_MoveTeam(int32 TeamIdx);
 
 	// Helper function to get hit result with curved world correction
