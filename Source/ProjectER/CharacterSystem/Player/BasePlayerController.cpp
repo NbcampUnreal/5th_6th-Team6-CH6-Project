@@ -1,4 +1,4 @@
-﻿#include "CharacterSystem/Player/BasePlayerController.h"
+#include "CharacterSystem/Player/BasePlayerController.h"
 #include "CharacterSystem/Character/BaseCharacter.h"
 #include "CharacterSystem/Data/InputConfig.h"
 #include "CharacterSystem/GameplayTags/GameplayTags.h"
@@ -37,6 +37,8 @@
 #include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Preload/ER_AssetPreloadSubsystem.h"
+#include "GameModeBase/Subsystem/Session/ER_SessionSubsystem.h" // 스팀 세션 파괴를 위해 추가
+#include "Engine/GameInstance.h"
 #include "Blueprint/UserWidget.h"
 #include "CharacterSystem/Data/CharacterData.h"
 
@@ -1239,6 +1241,16 @@ void ABasePlayerController::Client_InGameInputMode_Implementation()
 void ABasePlayerController::Client_ReturnToMainMenu_Implementation(const FString& Reason)
 {
 	UE_LOG(LogTemp, Warning, TEXT("ReturnToMainMenu: %s"), *Reason);
+
+	// 메인 메뉴로 돌아가기 전 스팀 세션 파괴 (본인 세션 탈퇴)
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UER_SessionSubsystem* SessionSubsystem = GI->GetSubsystem<UER_SessionSubsystem>())
+		{
+			SessionSubsystem->DestroyGameSession();
+		}
+	}
+
 	UGameplayStatics::OpenLevel(this, FName(TEXT("/Game/Level/Level_MainMenu")));
 }
 

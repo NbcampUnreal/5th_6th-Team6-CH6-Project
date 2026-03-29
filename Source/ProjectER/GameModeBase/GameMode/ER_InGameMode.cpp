@@ -1,4 +1,4 @@
-﻿#include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
@@ -10,6 +10,8 @@
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/GameSession.h"
+#include "GameModeBase/Subsystem/Session/ER_SessionSubsystem.h" // 호스트 스팀 세션 파괴 위해 추가
+#include "Engine/GameInstance.h"
 
 #include "Monster/BaseMonster.h"
 
@@ -702,6 +704,15 @@ void AER_InGameMode::EndGame_Internal()
 
 	PlayersInitialized = 0;
 	PlayersReady = 0;
+
+	// 게임이 종료되어 로비로 돌아가기 전에 현재 호스트의 스팀 세션을 먼저 내립니다.
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UER_SessionSubsystem* SessionSubsystem = GI->GetSubsystem<UER_SessionSubsystem>())
+		{
+			SessionSubsystem->DestroyGameSession();
+		}
+	}
 
 	UE_LOG(LogTemp, Warning, TEXT("[GM] Player is Zero -> ServerTravel to Lobby"));
 
