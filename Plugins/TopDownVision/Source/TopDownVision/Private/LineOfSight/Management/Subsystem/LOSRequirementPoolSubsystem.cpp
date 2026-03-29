@@ -7,7 +7,6 @@
 #include "Materials/MaterialInterface.h"
 
 #include "TopDownVision/Public/LineOfSight/VisionComps/Vision_VisualComp.h"
-#include "LineOfSight/LOSVisual/VisibilityMeshComp.h"
 #include "EditorSetting/LOSResourcePoolSettings.h"
 #include "TopDownVisionDebug.h"
 
@@ -62,7 +61,7 @@ int32 ULOSRequirementPoolSubsystem::AcquireSlot(UVision_VisualComp* Provider)
     if (!Provider)
         return INDEX_NONE;
 
-    // Reclaim stale slots — owner died without calling ReleaseSlot
+    // Reclaim stale slots
     for (FLOSStampPoolSlot& Slot : Pool)
     {
         if (Slot.IsStale())
@@ -89,7 +88,7 @@ int32 ULOSRequirementPoolSubsystem::AcquireSlot(UVision_VisualComp* Provider)
         }
     }
 
-    // Grow if needed and allowed
+    // Grow if needed
     if (!FreeSlot)
     {
         const ULOSResourcePoolSettings* Settings = ULOSResourcePoolSettings::Get();
@@ -140,7 +139,7 @@ void ULOSRequirementPoolSubsystem::ReleaseSlot(UVision_VisualComp* Provider)
         Slot.Owner.Reset();
 
         UE_LOG(LOSVision, Verbose,
-            TEXT("ULOSRequirementPoolSubsystem::ReleaseSlot >> Released slot from [%s]"),
+            TEXT("ULOSRequirementPoolSubsystem::ReleaseSlot >> Released from [%s]"),
             Provider->GetOwner() ? *Provider->GetOwner()->GetName() : TEXT("Unknown"));
         return;
     }
@@ -183,7 +182,6 @@ FLOSStampPoolSlot* ULOSRequirementPoolSubsystem::AllocateSlot()
 
     NewSlot.ObstacleRT = CreateObstacleRT();
     NewSlot.StampMID   = CreateStampMID();
-    // VisibilityMeshMIDs deferred to BindSlotToProvider — MeshKey unknown until acquire
 
     if (!NewSlot.IsValid())
     {
@@ -198,27 +196,12 @@ FLOSStampPoolSlot* ULOSRequirementPoolSubsystem::AllocateSlot()
 
 // ------------------------------------------------------------------ //
 //  Internal — bind / unbind
+//  Subsystem only hands RT and StampMID to the provider.
+//  VisibilityMesh is always locally owned — never touched here.
 // ------------------------------------------------------------------ //
 
 void ULOSRequirementPoolSubsystem::BindSlotToProvider(FLOSStampPoolSlot& Slot, UVision_VisualComp* Provider)
 {
-    // Build VisibilityMesh MIDs now that MeshKey is known from the provider
-    if (UVisibilityMeshComp* MeshComp = Provider->GetVisibilityMeshComp())
-    {
-        const FName MeshKey = MeshComp->GetMeshKey();
-        if (MeshKey != NAME_None)
-        {
-            Slot.VisibilityMeshMIDs = CreateVisibilityMeshMIDs(MeshKey);
-        }
-        else
-        {
-            UE_LOG(LOSVision, Warning,
-                TEXT("ULOSRequirementPoolSubsystem::BindSlotToProvider >> [%s] MeshKey is None — visibility MIDs skipped"),
-                Provider->GetOwner() ? *Provider->GetOwner()->GetName() : TEXT("Unknown"));
-        }
-    }
-
-    // Slot fully populated — provider distributes to its own sub-components
     Provider->OnPoolSlotAcquired(Slot);
 }
 
@@ -226,8 +209,6 @@ void ULOSRequirementPoolSubsystem::UnbindSlotFromProvider(FLOSStampPoolSlot& Slo
 {
     if (UVision_VisualComp* Provider = Slot.Owner.Get())
         Provider->OnPoolSlotReleased();
-
-    Slot.VisibilityMeshMIDs.Empty();
 }
 
 // ------------------------------------------------------------------ //
@@ -237,14 +218,13 @@ void ULOSRequirementPoolSubsystem::UnbindSlotFromProvider(FLOSStampPoolSlot& Slo
 UTextureRenderTarget2D* ULOSRequirementPoolSubsystem::CreateObstacleRT()
 {
     const ULOSResourcePoolSettings* Settings = ULOSResourcePoolSettings::Get();
-    if (!Settings)
-        return nullptr;
+    if (!Settings) return nullptr;
 
     UTextureRenderTarget2D* Template = Settings->TemplateObstacleRT.LoadSynchronous();
     if (!Template)
     {
         UE_LOG(LOSVision, Error,
-            TEXT("ULOSRequirementPoolSubsystem::CreateObstacleRT >> TemplateObstacleRT not set in LOSResourcePoolSettings"));
+            TEXT("ULOSRequirementPoolSubsystem::CreateObstacleRT >> TemplateObstacleRT not set"));
         return nullptr;
     }
 
@@ -261,53 +241,15 @@ UTextureRenderTarget2D* ULOSRequirementPoolSubsystem::CreateObstacleRT()
 UMaterialInstanceDynamic* ULOSRequirementPoolSubsystem::CreateStampMID()
 {
     const ULOSResourcePoolSettings* Settings = ULOSResourcePoolSettings::Get();
-    if (!Settings)
-        return nullptr;
+    if (!Settings) return nullptr;
 
     UMaterialInterface* BaseMat = Settings->LOSStampMaterial.LoadSynchronous();
     if (!BaseMat)
     {
         UE_LOG(LOSVision, Error,
-            TEXT("ULOSRequirementPoolSubsystem::CreateStampMID >> LOSStampMaterial not set in LOSResourcePoolSettings"));
+            TEXT("ULOSRequirementPoolSubsystem::CreateStampMID >> LOSStampMaterial not set"));
         return nullptr;
     }
 
     return UMaterialInstanceDynamic::Create(BaseMat, this);
-}
-
-TArray<TObjectPtr<UMaterialInstanceDynamic>> ULOSRequirementPoolSubsystem::CreateVisibilityMeshMIDs(FName MeshKey)
-{
-    TArray<TObjectPtr<UMaterialInstanceDynamic>> MIDs;
-
-    const ULOSResourcePoolSettings* Settings = ULOSResourcePoolSettings::Get();
-    if (!Settings)
-        return MIDs;
-
-    const FLOSVisibilityMeshMaterialSlot* Found = Settings->VisibilityMeshMaterialSlots.FindByPredicate(
-        [&MeshKey](const FLOSVisibilityMeshMaterialSlot& S){ return S.MeshKey == MeshKey; });
-
-    if (!Found)
-    {
-        UE_LOG(LOSVision, Warning,
-            TEXT("ULOSRequirementPoolSubsystem::CreateVisibilityMeshMIDs >> MeshKey [%s] not found in settings"),
-            *MeshKey.ToString());
-        return MIDs;
-    }
-
-    for (const TSoftObjectPtr<UMaterialInterface>& SoftMat : Found->Materials)
-    {
-        UMaterialInterface* BaseMat = SoftMat.LoadSynchronous();
-        if (!BaseMat)
-        {
-            UE_LOG(LOSVision, Warning,
-                TEXT("ULOSRequirementPoolSubsystem::CreateVisibilityMeshMIDs >> Material in slot [%s] failed to load — inserting null"),
-                *MeshKey.ToString());
-            MIDs.Add(nullptr);
-            continue;
-        }
-
-        MIDs.Add(UMaterialInstanceDynamic::Create(BaseMat, this));
-    }
-
-    return MIDs;
 }

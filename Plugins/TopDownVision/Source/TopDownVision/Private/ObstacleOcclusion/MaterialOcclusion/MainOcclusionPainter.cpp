@@ -197,6 +197,7 @@ void UMainOcclusionPainter::DrawProviderArea()
         Canvas->DrawItem(TileItem);
     }
 
+    // all drawn
     UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(this, Context);
 }
 

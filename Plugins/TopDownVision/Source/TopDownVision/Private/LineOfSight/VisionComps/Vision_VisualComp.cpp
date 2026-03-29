@@ -2,20 +2,17 @@
 
 #include "TopDownVision/Public/LineOfSight/VisionComps/Vision_VisualComp.h"
 
-// Sub-components
 #include "LineOfSight/LOSVisual/LOSStampDrawerComp.h"
 #include "LineOfSight/WorldObstacle/LOSObstacleDrawerComponent.h"
 #include "LineOfSight/WorldObstacle/LocalTextureSampler.h"
 #include "LineOfSight/LOSVisual/VisibilityMeshComp.h"
 #include "LineOfSight/ObjectTracing/TopDown2DShapeComp.h"
 
-// Subsystems
 #include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
 #include "LineOfSight/Management/Subsystem/LOSRequirementPoolSubsystem.h"
 #include "LineOfSight/VisionComps/Vision_EvaluatorComp.h"
 #include "ObstacleOcclusion/Manager/OcclusionSubsystem.h"
 
-// Misc
 #include "GameFramework/GameStateBase.h"
 #include "LineOfSight/Management/VisionGameStateComp.h"
 #include "TopDownVisionDebug.h"
@@ -46,28 +43,22 @@ void UVision_VisualComp::BeginPlay()
         else
         {
             UE_LOG(LOSVision, Warning,
-                TEXT("[%s] UVision_VisualComp::BeginPlay >> Owner has no root component, cannot attach ShapeComp"),
+                TEXT("[%s] UVision_VisualComp::BeginPlay >> No root component for ShapeComp"),
                 *GetOwner()->GetName());
         }
-    }
-    else
-    {
-        UE_LOG(LOSVision, Error,
-            TEXT("[%s] UVision_VisualComp::BeginPlay >> ShapeComp subobject is missing"),
-            *GetOwner()->GetName());
     }
 
     if (!ShouldRunClientLogic())
         return;
-
-    // Initialize() called manually from BP or owning actor
 }
 
 void UVision_VisualComp::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     Super::EndPlay(EndPlayReason);
 
-    // Release pool slot before unregistering
+    if (GetWorld())
+        GetWorld()->GetTimerManager().ClearTimer(FadeTimerHandle);
+
     if (bUseResourcePool && bHasActivePoolSlot)
     {
         if (ULOSRequirementPoolSubsystem* PoolSub = GetWorld()->GetSubsystem<ULOSRequirementPoolSubsystem>())
@@ -108,29 +99,27 @@ void UVision_VisualComp::Initialize()
         MaxVisionRange = IndicatorRange;
 
         UE_LOG(LOSVision, Log,
-            TEXT("[%s] Initialize >> Not shared channel, overriding ranges to IndicatorRange: %.1f"),
+            TEXT("[%s] Initialize >> IndicatorRange override: %.1f"),
             *GetOwner()->GetName(), IndicatorRange);
     }
 
     if (bUseResourcePool)
     {
-        // Pool mode:
-        //   ObstacleRT  — deferred, pool hands it in via OnPoolSlotAcquired
-        //   StampMID    — deferred, pool hands it in via OnPoolSlotAcquired
-        //   VisibilityMesh MIDs — pooled, handed in via OnPoolSlotAcquired
+        // ObstacleRT and StampMID deferred to OnPoolSlotAcquired
         if (ObstacleDrawer)
             ObstacleDrawer->InitializeSamplerOnly(MaxVisionRange);
 
+        // VisibilityMesh always locally owned — initialize now
+        // SetMeshKey() should be called after monster data loads to re-run FindMeshesByTag
         if (VisibilityMesh)
             VisibilityMesh->Initialize();
 
         UE_LOG(LOSVision, Log,
-            TEXT("[%s] Initialize >> Pool mode — RT and StampMID deferred to slot acquire"),
+            TEXT("[%s] Initialize >> Pool mode — ObstacleRT and StampMID deferred"),
             *GetOwner()->GetName());
     }
     else
     {
-        // Owned mode — all resources created and kept for actor lifetime
         if (ObstacleDrawer)
             ObstacleDrawer->Initialize(MaxVisionRange);
 
@@ -172,49 +161,62 @@ void UVision_VisualComp::SetIndicatorRange(float NewIndicatorRange)
 //  Pool enter / exit
 // -------------------------------------------------------------------------- //
 
+void UVision_VisualComp::OnRevealed_EnterPool()
+{
+    if (!bUseResourcePool || bHasActivePoolSlot)
+        return;
+
+    if (ULOSRequirementPoolSubsystem* PoolSub = GetWorld()->GetSubsystem<ULOSRequirementPoolSubsystem>())
+        PoolSub->AcquireSlot(this);
+}
+
+void UVision_VisualComp::OnHidden_ExitPool()
+{
+    if (!bUseResourcePool || !bHasActivePoolSlot)
+        return;
+
+    if (ULOSRequirementPoolSubsystem* PoolSub = GetWorld()->GetSubsystem<ULOSRequirementPoolSubsystem>())
+        PoolSub->ReleaseSlot(this);
+}
+
 void UVision_VisualComp::OnPoolSlotAcquired(const FLOSStampPoolSlot& Slot)
 {
+    // ObstacleRT → sampler
     if (ObstacleDrawer)
-    {
         if (ULocalTextureSampler* Sampler = ObstacleDrawer->GetLocalTextureSampler())
             Sampler->SetLocalRenderTargetOnly(Slot.ObstacleRT);
-    }
 
+    // StampMID → stamp drawer
     if (StampDrawer)
     {
         StampDrawer->SetStampMID(Slot.StampMID);
         StampDrawer->OnVisionRangeChanged(VisionRange, MaxVisionRange);
     }
 
-    if (VisibilityMesh)
-        VisibilityMesh->SetMIDs(Slot.VisibilityMeshMIDs);
+    // VisibilityMesh — always locally owned, never touched by pool
 
     bHasActivePoolSlot = true;
 
     UE_LOG(LOSVision, Verbose,
-        TEXT("[%s] OnPoolSlotAcquired >> Resources bound"),
+        TEXT("[%s] OnPoolSlotAcquired >> ObstacleRT and StampMID bound"),
         *GetOwner()->GetName());
 }
 
 void UVision_VisualComp::OnPoolSlotReleased()
 {
     if (ObstacleDrawer)
-    {
         if (ULocalTextureSampler* Sampler = ObstacleDrawer->GetLocalTextureSampler())
             Sampler->SetLocalRenderTargetOnly(nullptr);
-    }
 
     if (StampDrawer)
         StampDrawer->SetStampMID(nullptr);
 
-    // Empty array triggers RestoreOriginalMaterials inside SetMIDs
-    if (VisibilityMesh)
-        VisibilityMesh->SetMIDs({});
+    // VisibilityMesh — left alone, locally owned
 
     bHasActivePoolSlot = false;
 
     UE_LOG(LOSVision, Verbose,
-        TEXT("[%s] OnPoolSlotReleased >> Resources unbound"),
+        TEXT("[%s] OnPoolSlotReleased >> ObstacleRT and StampMID unbound"),
         *GetOwner()->GetName());
 }
 
@@ -291,6 +293,13 @@ void UVision_VisualComp::SetVisible(bool bVisible, bool bInstant)
 
 void UVision_VisualComp::UpdateVisibilityFade(float DeltaTime)
 {
+    if (!IsValid(this) || !IsValid(GetOwner()) || !GetWorld())
+    {
+        if (GetWorld())
+            GetWorld()->GetTimerManager().ClearTimer(FadeTimerHandle);
+        return;
+    }
+
     VisibilityAlpha = FMath::FInterpTo(VisibilityAlpha, TargetVisibilityAlpha, DeltaTime, FadeSpeed);
 
     if (VisibilityMesh)
@@ -313,6 +322,11 @@ void UVision_VisualComp::UpdateVisibilityFade(float DeltaTime)
         }
 
         GetWorld()->GetTimerManager().ClearTimer(FadeTimerHandle);
+
+        if (VisibilityAlpha > 0)
+            OnTargetRevealComplete.Broadcast();
+        else
+            OnTargetHideComplete.Broadcast();
 
         UE_LOG(LOSVision, Verbose,
             TEXT("[%s] UpdateVisibilityFade >> Complete: %.2f"),

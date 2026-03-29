@@ -35,6 +35,8 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 	virtual void Tick( float DeltaTime ) override;
 	
 	virtual void PossessedBy(AController* NewController) override;
@@ -50,12 +52,7 @@ public:
 	
 #pragma region Component
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UCameraComponent> TopDownCameraComponent;
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<USpringArmComponent> CameraBoom;
-
 	//replacement for camera comp
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Components", meta = (AllowPrivateAccess="true"))
 	TObjectPtr<UTopDownCameraComp> TopDownCameraComp=nullptr;
@@ -387,6 +384,14 @@ protected:
 
 	FTimerHandle UILoadTimerHandle;
 
+	//Added for the Minimap draw interval--> previously drawing per tick
+	UFUNCTION()
+	void UpdateMinimapCapture();
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI|Bar")
+	float MinimapUpdateRate=0.1f;
+	
+	FTimerHandle MinimapCaptureTimerHandle;
 
 public:
 	// 팀 구분해서 아이콘 색상 업데이트

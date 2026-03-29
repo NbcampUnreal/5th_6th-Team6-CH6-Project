@@ -114,6 +114,53 @@ static bool RectOverlapsWorld(
 //  Update
 // -------------------------------------------------------------------------- //
 
+void UMainVisionRTManager::DrawLOSStampsBatched(
+	UTextureRenderTarget2D* TargetRT,
+	const TArray<UVision_VisualComp*>& Providers,
+	const FLinearColor& Color)
+{
+	if (!TargetRT || Providers.Num() == 0)
+		return;
+
+	UCanvas* Canvas = nullptr;
+	FDrawToRenderTargetContext Context;
+	FVector2D RTSize(TargetRT->SizeX, TargetRT->SizeY);
+
+	UKismetRenderingLibrary::BeginDrawCanvasToRenderTarget(GetWorld(), TargetRT, Canvas, RTSize, Context);
+	if (!Canvas)
+		return;
+
+	for (UVision_VisualComp* Provider : Providers)
+	{
+		if (!Provider || !Provider->GetOwner() || !Provider->GetStampMID())
+			continue;
+
+		FVector2D PixelPos;
+		float TileSize;
+
+		if (!ConvertWorldToRT(
+			Provider->GetOwner()->GetActorLocation(),
+			Provider->GetVisibleRange(),
+			PixelPos, TileSize))
+			continue;
+
+		const float Alpha = Provider->GetVisibilityAlpha();
+		if (Alpha <= KINDA_SMALL_NUMBER)
+			continue;
+
+		FCanvasTileItem Tile(
+			PixelPos - FVector2D(TileSize * 0.5f, TileSize * 0.5f),
+			Provider->GetStampMID()->GetRenderProxy(),
+			FVector2D(TileSize, TileSize)
+		);
+		Tile.BlendMode = SE_BLEND_AlphaBlend;
+		Tile.SetColor(FLinearColor(Color.R * Alpha, Color.G * Alpha, Color.B * Alpha, Color.A * Alpha));
+		Canvas->DrawItem(Tile);
+	}
+
+	UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(GetWorld(), Context);
+}
+
 void UMainVisionRTManager::UpdateCameraLOS()
 {
 	if (!ShouldRunClientLogic())
@@ -131,7 +178,6 @@ void UMainVisionRTManager::UpdateCameraLOS()
 		return;
 
 	const FVector CameraCenter = GetOwner()->GetActorLocation();
-	ULOSRequirementPoolSubsystem* PoolSub = GetPoolSubsystem();
 
 	CachedValidProviders.Reset();
 
@@ -141,33 +187,15 @@ void UMainVisionRTManager::UpdateCameraLOS()
 			continue;
 
 		const bool bInRange = RectOverlapsWorld(
-			CameraCenter,                        CameraVisionRange,
+			CameraCenter,                            CameraVisionRange,
 			Provider->GetOwner()->GetActorLocation(), Provider->GetVisibleRange());
-
-		// ── Pool acquire / release ────────────────────────────────────────
-		// Routed through Vision_VisualComp — the manager never touches
-		// sub-components directly. The visual comp distributes slot resources
-		// to its own ObstacleDrawer, StampDrawer, and VisibilityMeshComp.
-		if (Provider->UsesResourcePool() && PoolSub)
-		{
-			if (bInRange && !Provider->HasPoolSlot())
-			{
-				// Provider just entered range — hand it a slot
-				PoolSub->AcquireSlot(Provider);
-			}
-			else if (!bInRange && Provider->HasPoolSlot())
-			{
-				// Provider left range — reclaim the slot
-				PoolSub->ReleaseSlot(Provider);
-			}
-		}
-		// ─────────────────────────────────────────────────────────────────
 
 		Provider->ToggleLOSStampUpdate(bInRange);
 
 		if (bInRange)
 		{
-			// Pool mode: skip update if slot wasn't acquired (pool exhausted)
+			// Pool mode: skip update if no slot assigned
+			// Slot is acquired/released via OnRevealed/OnHidden on Vision_VisualComp
 			if (Provider->UsesResourcePool() && !Provider->HasPoolSlot())
 				continue;
 
@@ -204,7 +232,7 @@ void UMainVisionRTManager::UpdateCameraLOS()
 			const EVisionChannel V_Channel = Provider->GetVisionChannel();
 			const uint32 ChannelBitMask = [V_Channel]() -> uint32
 			{
-				if (V_Channel == EVisionChannel::None)       return 0u;
+				if (V_Channel == EVisionChannel::None)          return 0u;
 				if (V_Channel == EVisionChannel::AlwaysVisible) return 0xFFFFFFFFu;
 				return 1u << static_cast<uint32>(V_Channel);
 			}();
@@ -282,7 +310,11 @@ void UMainVisionRTManager::DrawLOSStamp(UCanvas* Canvas,
 
 	for (UVision_VisualComp* Provider : Providers)
 	{
-		if (!Provider || !Provider->GetOwner() || !Provider->GetStampMID())
+		if (!Provider)
+			continue;
+
+		UMaterialInstanceDynamic* MID = Provider->GetStampMID();
+		if (!MID)
 			continue;
 
 		FVector2D PixelPos;
@@ -300,7 +332,7 @@ void UMainVisionRTManager::DrawLOSStamp(UCanvas* Canvas,
 
 		FCanvasTileItem Tile(
 			PixelPos - FVector2D(TileSize * 0.5f, TileSize * 0.5f),
-			Provider->GetStampMID()->GetRenderProxy(),
+			MID->GetRenderProxy(),
 			FVector2D(TileSize, TileSize)
 		);
 		Tile.BlendMode = SE_BLEND_AlphaBlend;

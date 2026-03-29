@@ -5,7 +5,6 @@
 #include "LineOfSight/VisionData.h"
 #include "Vision_VisualComp.generated.h"
 
-
 #pragma region Forward Declarations
 
 class ULineOfSightComponent;
@@ -17,29 +16,23 @@ class UTopDown2DShapeComp;
 class UVision_EvaluatorComp;
 struct FLOSStampPoolSlot;
 
-#pragma endregion Forward Declarations
+#pragma endregion
 
 /**
  * Hub component for vision-related logic on a unit.
  *
- * Owns ObstacleDrawer, StampDrawer, VisibilityMesh as subobjects.
- * Holds vision range as the source of truth.
- * Manages the reveal/hide visibility fade via timer.
- * Registered with ULOSVisionSubsystem as the provider.
- * Updated externally by the vision RT manager.
- * Gates all client-only work behind ShouldRunClientLogic.
- *
  * Pool mode (bUseResourcePool = true):
- *   Resources (ObstacleRT, StampMID, VisibilityMesh MIDs) are NOT created at Initialize.
- *   ULOSRequirementPoolSubsystem hands them in via OnPoolSlotAcquired when the provider
- *   enters the camera's vision range, and reclaims them via OnPoolSlotReleased on exit.
+ *   ObstacleRT and StampMID come from ULOSRequirementPoolSubsystem on slot acquire.
+ *   VisibilityMesh MIDs are ALWAYS locally owned — created at Initialize time
+ *   and kept for the actor's lifetime regardless of pool mode.
+ *   Call OnRevealed_EnterPool / OnHidden_ExitPool from BP vision evaluator events.
  *
  * Owned mode (bUseResourcePool = false):
- *   Resources are created once at Initialize and kept for the actor's lifetime.
- *   Use this for always-visible units (e.g. the local player's own unit).
+ *   All resources created once at Initialize and kept for actor lifetime.
  */
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOcclusionTracerEvent);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnVisibilityFadeComplete);
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class TOPDOWNVISION_API UVision_VisualComp : public UActorComponent
@@ -65,8 +58,6 @@ public:
     UFUNCTION(BlueprintCallable, Category="Vision")
     float GetIndicatorRange() const { return IndicatorRange; }
 
-    // --- Called by the RT manager --- //
-
     UFUNCTION(BlueprintCallable, Category="Vision")
     void UpdateVision();
 
@@ -75,15 +66,11 @@ public:
     UFUNCTION(BlueprintCallable, Category="Vision")
     bool IsUpdating() const;
 
-    // --- Visibility fade --- //
-
     UFUNCTION(BlueprintCallable, Category="Vision")
     void SetVisible(bool bVisible, bool bInstant = false);
 
     UFUNCTION(BlueprintCallable, Category="Vision")
     float GetVisibilityAlpha() const { return VisibilityAlpha; }
-
-    // --- Range --- //
 
     UFUNCTION(BlueprintCallable, Category="Vision")
     void SetVisionRange(float NewRange);
@@ -91,12 +78,8 @@ public:
     float GetVisibleRange()    const { return VisionRange; }
     float GetMaxVisibleRange() const { return MaxVisionRange; }
 
-    // --- Stamp MID passthrough --- //
-
     UFUNCTION(BlueprintCallable, Category="Vision")
     UMaterialInstanceDynamic* GetStampMID() const;
-
-    // --- Subobject access --- //
 
     UFUNCTION(BlueprintCallable, Category="Vision")
     ULOSObstacleDrawerComponent* GetObstacleDrawer()  const { return ObstacleDrawer; }
@@ -109,8 +92,6 @@ public:
 
     UFUNCTION(BlueprintCallable, Category="Vision")
     UTopDown2DShapeComp* GetShapeComp()               const { return ShapeComp; }
-
-    // --- Vision channel --- //
 
     UFUNCTION(BlueprintCallable, Category="Vision")
     EVisionChannel GetVisionChannel() const { return VisionChannel; }
@@ -129,20 +110,16 @@ public:
 
     // ---------------------------------------------------------------- //
     //  Pool enter / exit
-    //  Called exclusively by ULOSRequirementPoolSubsystem.
-    //  Distributes slot resources to sub-components on acquire,
-    //  strips them on release.
     // ---------------------------------------------------------------- //
 
-    /** Called by the pool subsystem when a slot is assigned.
-     *  Distributes ObstacleRT, StampMID, and VisibilityMesh MIDs to sub-components. */
+    UFUNCTION(BlueprintCallable, Category="Vision|Pool")
+    void OnRevealed_EnterPool();
+
+    UFUNCTION(BlueprintCallable, Category="Vision|Pool")
+    void OnHidden_ExitPool();
+
     void OnPoolSlotAcquired(const FLOSStampPoolSlot& Slot);
-
-    /** Called by the pool subsystem when the slot is reclaimed.
-     *  Nulls out all pooled resources from sub-components. */
     void OnPoolSlotReleased();
-
-    // --- Pool state queries --- //
 
     bool UsesResourcePool() const { return bUseResourcePool; }
     bool HasPoolSlot()      const { return bHasActivePoolSlot; }
@@ -154,6 +131,12 @@ public:
 
     UPROPERTY(BlueprintAssignable, Category="Occlusion Tracer")
     FOcclusionTracerEvent OnTargetHidden;
+
+    UPROPERTY(BlueprintAssignable, Category="Vision")
+    FOnVisibilityFadeComplete OnTargetRevealComplete;
+
+    UPROPERTY(BlueprintAssignable, Category="Vision")
+    FOnVisibilityFadeComplete OnTargetHideComplete;
 
 #pragma region Components
 
@@ -171,20 +154,17 @@ private:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision", meta=(AllowPrivateAccess="true"))
     UTopDown2DShapeComp* ShapeComp = nullptr;
 
-#pragma endregion Components
+#pragma endregion
 
-    // --- Vision channel --- //
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
     EVisionChannel VisionChannel = EVisionChannel::None;
 
-    // --- Range --- //
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
     float VisionRange = 800.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
     float MaxVisionRange = 800.f;
 
-    // --- Dynamic Fade --- //
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
     float FadeTickInterval = 0.033333f;
 
@@ -195,7 +175,6 @@ private:
     float TargetVisibilityAlpha = 0.0f;
     FTimerHandle FadeTimerHandle;
 
-    // --- Movement threshold --- //
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
     float ObstacleRedrawThreshold = 50.f;
 
@@ -204,18 +183,11 @@ private:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
     float IndicatorRange = 0.f;
 
-    // ---------------------------------------------------------------- //
-    //  Pool
-    // ---------------------------------------------------------------- //
+    // ── Pool ─────────────────────────────────────────────────────────
 
-    /** If true, resources (ObstacleRT, StampMID, VisibilityMesh MIDs) come from the pool.
-     *  Acquire on enter range, release on exit.
-     *  If false, resources are created once at Initialize and owned for lifetime. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision|Pool", meta=(AllowPrivateAccess="true"))
     bool bUseResourcePool = true;
 
-    /** True while a pool slot is actively assigned to this provider.
-     *  Set by OnPoolSlotAcquired / OnPoolSlotReleased. */
     bool bHasActivePoolSlot = false;
 
 private:

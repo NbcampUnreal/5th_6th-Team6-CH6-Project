@@ -39,6 +39,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
 	void UpdateCameraLOS();
 
+	/*UFUNCTION(BlueprintCallable, Category="LineOfSight")
+	void UpdateVisionRTs();*/
+
 	UCanvasRenderTarget2D* GetCameraLOSTexture() const { return CameraLocalRT; }
 
 	UFUNCTION(BlueprintCallable, Category="LineOfSight")
@@ -48,6 +51,13 @@ private:
 
 	UFUNCTION()
 	void DrawLOS_CPU(UCanvas* Canvas, int32 Width, int32 Height);
+
+
+	//New method
+	void DrawLOSStampsBatched(
+		UTextureRenderTarget2D* TargetRT,
+		const TArray<UVision_VisualComp*>& Providers,
+		const FLinearColor& Color);
 
 	void DrawLOSStamp(
 		UCanvas* Canvas,

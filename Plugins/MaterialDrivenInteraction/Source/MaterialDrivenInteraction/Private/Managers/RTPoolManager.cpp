@@ -7,7 +7,7 @@
 #include "Kismet/KismetRenderingLibrary.h"
 #include "Engine/World.h"
 
-static const FLinearColor GInteractionNeutral(
+static constexpr FLinearColor GInteractionNeutral(
     32896.0f / 65535.0f,
     32896.0f / 65535.0f,
     0.0f, 0.0f);
