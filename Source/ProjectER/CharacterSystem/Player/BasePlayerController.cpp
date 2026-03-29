@@ -1282,21 +1282,19 @@ void ABasePlayerController::Server_StartGame_Implementation()
 
 void ABasePlayerController::Server_DisConnectServer_Implementation()
 {
-	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
-
-	InGameMode->DisConnectClient(this);
-}
-
-void ABasePlayerController::Server_TEMP_SpawnNeutrals_Implementation()
-{
-	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
-	InGameMode->TEMP_SpawnNeutrals();
-}
-
-void ABasePlayerController::Server_TEMP_DespawnNeutrals_Implementation()
-{
-	auto InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode());
-	InGameMode->TEMP_DespawnNeutrals();
+	if (AER_InGameMode* InGameMode = Cast<AER_InGameMode>(GetWorld()->GetAuthGameMode()))
+	{
+		// 이 코드가 서버(호스트) 본인의 컨트롤러에서 실행된 것이라면 안전한 서버 종료를 트리거합니다.
+		if (IsLocalController())
+		{
+			InGameMode->ShutdownServerForHost();
+		}
+		else
+		{
+			// 클라이언트인 경우 기존의 단일 퇴장 로직을 수행합니다.
+			InGameMode->DisConnectClient(this);
+		}
+	}
 }
 
 void ABasePlayerController::Server_MoveTeam_Implementation(int32 TeamIdx)
