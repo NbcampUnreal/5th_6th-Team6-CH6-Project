@@ -37,6 +37,7 @@ float FSTCons_AttackCountUtility::GetScore(FStateTreeExecutionContext& Context) 
 
 	if (InstanceData.AttackCountThreshold <= Monster->GetAttackCount())
 	{
+		Monster->SetAttackCount(0);
 		return 1.f;
 	}
 

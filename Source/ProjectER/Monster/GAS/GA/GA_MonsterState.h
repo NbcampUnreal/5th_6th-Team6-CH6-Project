@@ -11,7 +11,7 @@ struct FMonsterStateInitData
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, Category = "MonsterState|Montage")
-	EMonsterMontageType MontageType = EMonsterMontageType::None;
+	EMonsterMontageType MontageType;
 
 	UPROPERTY(EditAnywhere, Category = "MonsterState|Tag")
 	FGameplayTagContainer MonsterAssetTags;
@@ -59,6 +59,18 @@ protected:
 
 
 	UFUNCTION()
+	void OnTagRemoved();
+
+	UPROPERTY(EditAnywhere, Category = "MonsterState")
+	bool bIsUseWaitTag = false;
+
+
+
+	UPROPERTY(EditAnywhere, Category = "MonsterState")
+	FMonsterStateInitData StateInitData;
+
+
+	UFUNCTION()
 	virtual void OnMontageCompleted();
 
 	UFUNCTION()
@@ -72,17 +84,4 @@ protected:
 
 	UFUNCTION()
 	virtual void OnMontageCancel();
-
-
-
-	UFUNCTION()
-	virtual void OnTagRemoved();
-
-	UPROPERTY(EditAnywhere, Category = "MonsterState")
-	bool bIsUseWaitTag = false;
-
-
-
-	UPROPERTY(EditAnywhere, Category = "MonsterState")
-	FMonsterStateInitData StateInitData;
 };
