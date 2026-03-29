@@ -1,4 +1,4 @@
-#include "GameModeBase/GameMode/ER_InGameMode.h"
+﻿#include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
@@ -816,7 +816,7 @@ void AER_InGameMode::HandlePhaseTimeUp()
 		if(ERGS->GetCurrentPhase() != 1)
 		{
 			// 1페이즈에는 금지 구역을 지정하지 않도록 수정
-			AreaGSComp->AdvancePhase(ERGS->GetCurrentPhase());
+			AreaGSComp->SetPhase(ERGS->GetCurrentPhase());
 		}
 
 		//FString Text = "";

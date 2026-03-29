@@ -143,32 +143,8 @@ void ULevelAreaGameStateComponent::UnregisterBridge(ALevelAreaInstanceBridge* Br
    Server: Phase Advancement
    ===================================================================== */
 
-void ULevelAreaGameStateComponent::AdvancePhase(int32 Phase)
+void ULevelAreaGameStateComponent::AdvancePhase()
 {
-    /*if (HazardOrder.IsEmpty())
-    {
-        UE_LOG(LevelAreaGraphManagement, Warning,
-            TEXT("AdvancePhase >> HazardOrder is empty"));
-        return;
-    }
-
-    int32 StartIdx = CurrentPhase * HazardsPerPhase;
-
-    if (StartIdx >= HazardOrder.Num())
-    {
-        UE_LOG(LevelAreaGraphManagement, Log,
-            TEXT("AdvancePhase >> All phases exhausted at phase %d"), CurrentPhase);
-        return;
-    }
-
-    CurrentPhase++;
-
-    UE_LOG(LevelAreaGraphManagement, Log,
-        TEXT("AdvancePhase >> Phase %d | State: %s"),
-        CurrentPhase, *UEnum::GetValueAsString(HazardStatePerPhase));
-
-    ApplyHazardsUpToCurrentPhase();*/
-
     if (HazardOrder.IsEmpty())
     {
         UE_LOG(LevelAreaGraphManagement, Warning,
@@ -183,13 +159,46 @@ void ULevelAreaGameStateComponent::AdvancePhase(int32 Phase)
         return;
     }
 
-    CurrentPhase = Phase;
+    SetPhase(CurrentPhase + 1);// accumulate
+}
+
+void ULevelAreaGameStateComponent::SetPhase(int32 NewPhase)
+{
+    if (HazardOrder.IsEmpty())
+    {
+        UE_LOG(LevelAreaGraphManagement, Warning,
+            TEXT("SetPhase >> HazardOrder is empty"));
+        return;
+    }
+
+    if (NewPhase == CurrentPhase)
+        return;
+
+    //  block backward transitions
+    if (NewPhase < CurrentPhase)
+    {
+        UE_LOG(LevelAreaGraphManagement, Warning,
+            TEXT("SetPhase >> Backward phase change not supported (%d → %d)"),
+            CurrentPhase, NewPhase);
+        return;
+    }
+
+    int32 PhaseGap = NewPhase - CurrentPhase;
 
     UE_LOG(LevelAreaGraphManagement, Log,
-        TEXT("AdvancePhase >> Phase %d | State: %s"),
-        CurrentPhase, *UEnum::GetValueAsString(HazardStatePerPhase));
+        TEXT("SetPhase >> Current: %d → Target: %d (Gap: %d)"),
+        CurrentPhase, NewPhase, PhaseGap);
 
-    ApplyHazards(CurrentPhase, HazardStatePerPhase);
+    // !!!! loop the jumped gap-> dont miss to apply hazard for the gap nodes
+    for (int32 PhaseStep = CurrentPhase + 1; PhaseStep <= NewPhase; PhaseStep++)
+    {
+        CurrentPhase = PhaseStep;
+
+        UE_LOG(LevelAreaGraphManagement, Log,
+            TEXT("SetPhase >> Applying Phase %d"), CurrentPhase);
+
+        ApplyHazards(CurrentPhase, HazardStatePerPhase);
+    }
 }
 
 
@@ -202,6 +211,7 @@ void ULevelAreaGameStateComponent::ResetHazards(EAreaHazardState NewState)
     CancelAllInstantDeath();
 
     CurrentPhase = 0;
+    LastAppliedPhase = 0;
 
     if (ULevelAreaGraphSubsystem* Sub =
         GetWorld()->GetSubsystem<ULevelAreaGraphSubsystem>())
@@ -300,17 +310,31 @@ void ULevelAreaGameStateComponent::ApplyHazards(int32 Phase, EAreaHazardState St
         World->GetSubsystem<ULevelAreaGraphSubsystem>();
     if (!Sub) return;
 
+    // safe gate (Phase 0 and 1)
+    if (Phase <= 1)
+    {
+        Sub->ClearHazards();
+        NotifyTrackers();
+
+        UE_LOG(LevelAreaGraphManagement, Log,
+            TEXT("ApplyHazards >> Phase %d | SAFE (no hazards)"), Phase);
+
+        return;
+    }
+
+    //  Shift phase so hazards start from Phase 2
+    int32 EffectivePhase = Phase - 1;
+
     // Full cumulative range from the beginning up to this phase
-    int32 PrevCount = FMath::Min((Phase - 1) * HazardsPerPhase, HazardOrder.Num());
-    int32 ActiveCount = FMath::Min(Phase * HazardsPerPhase, HazardOrder.Num());
+    int32 PrevCount = FMath::Min((EffectivePhase - 1) * HazardsPerPhase, HazardOrder.Num());
+    int32 ActiveCount = FMath::Min(EffectivePhase * HazardsPerPhase, HazardOrder.Num());
 
     // All nodes that should be active hazards at this phase
     TArray<int32> ActiveHazards;
     for (int32 i = 0; i < ActiveCount; i++)
         ActiveHazards.Add(HazardOrder[i]);
 
-    // Only the nodes that are NEW this phase — bridges for already-hazardous
-    // nodes must NOT be re-notified or they restart their transition sequences
+    // Only the nodes that are NEW this phase
     TArray<int32> NewHazards;
     for (int32 i = PrevCount; i < ActiveCount; i++)
         NewHazards.Add(HazardOrder[i]);
@@ -324,8 +348,9 @@ void ULevelAreaGameStateComponent::ApplyHazards(int32 Phase, EAreaHazardState St
     NotifyTrackers();
 
     UE_LOG(LevelAreaGraphManagement, Log,
-        TEXT("ApplyHazards >> Phase %d | New: %d | Total Active: %d | State: %s"),
-        Phase, NewHazards.Num(), ActiveHazards.Num(), *UEnum::GetValueAsString(State));
+        TEXT("ApplyHazards >> Phase %d (Effective %d) | New: %d | Total Active: %d | State: %s"),
+        Phase, EffectivePhase, NewHazards.Num(), ActiveHazards.Num(),
+        *UEnum::GetValueAsString(State));
 }
 
 void ULevelAreaGameStateComponent::NotifyBridgeActors(const TArray<int32>& NodeIDs, EAreaHazardState State)
@@ -380,10 +405,23 @@ void ULevelAreaGameStateComponent::ApplyInstantDeathToNode(int32 NodeID)
 
 void ULevelAreaGameStateComponent::OnRep_HazardOrder()
 {
+    // Reset client tracking because hazard order is authoritative baseline
+    LastAppliedPhase = 0;
+
     // HazardOrder just arrived on the client — if phase is already ahead
     // (i.e. CurrentPhase replicated first), apply immediately to catch up
     if (CurrentPhase > 0)
-        ApplyHazards(CurrentPhase, HazardStatePerPhase);
+    {
+        UE_LOG(LevelAreaGraphManagement, Log,
+            TEXT("OnRep_HazardOrder >> Replaying up to Phase %d"), CurrentPhase);
+
+        for (int32 PhaseStep = 1; PhaseStep <= CurrentPhase; PhaseStep++)
+        {
+            ApplyHazards(PhaseStep, HazardStatePerPhase);
+        }
+
+        LastAppliedPhase = CurrentPhase;
+    }
 
     UE_LOG(LevelAreaGraphManagement, Log,
         TEXT("OnRep_HazardOrder >> Received %d entries"), HazardOrder.Num());
@@ -391,13 +429,26 @@ void ULevelAreaGameStateComponent::OnRep_HazardOrder()
 
 void ULevelAreaGameStateComponent::OnRep_CurrentPhase()
 {
-    // Guard: if HazardOrder hasn't arrived yet, wait for OnRep_HazardOrder to apply
+    // if HazardOrder hasn't arrived yet, wait for OnRep_HazardOrder to apply
     if (HazardOrder.IsEmpty()) return;
 
-    ApplyHazards(CurrentPhase, HazardStatePerPhase);
+    if (CurrentPhase <= LastAppliedPhase)
+        return;
 
     UE_LOG(LevelAreaGraphManagement, Log,
-        TEXT("OnRep_CurrentPhase >> Phase %d received"), CurrentPhase);
+        TEXT("OnRep_CurrentPhase >> Catch-up from %d to %d"),
+        LastAppliedPhase, CurrentPhase);
+
+    // loop the apply for gap
+    for (int32 PhaseStep = LastAppliedPhase + 1; PhaseStep <= CurrentPhase; PhaseStep++)
+    {
+        ApplyHazards(PhaseStep, HazardStatePerPhase);
+    }
+
+    LastAppliedPhase = CurrentPhase;
+
+    UE_LOG(LevelAreaGraphManagement, Log,
+        TEXT("OnRep_CurrentPhase >> Phase %d received (catch-up applied)"), CurrentPhase);
 }
 
 
