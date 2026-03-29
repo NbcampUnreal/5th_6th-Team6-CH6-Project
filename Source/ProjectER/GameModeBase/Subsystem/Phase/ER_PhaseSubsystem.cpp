@@ -136,13 +136,10 @@ void UER_PhaseSubsystem::OnPeriodicCheckTick()
                         // 활성화되는 금지구역 수량 제한 (Phase * HazardsPerPhase)
                         if (Tracker->CurrentHazardState == EAreaHazardState::Hazard)
                         {
-                            // apply damage
                             if (ERPS->CurrentRestrictedTime <= 1.0f && !ERPS->bIsDead)
                             {
                                 if (UAbilitySystemComponent* ASC = ERPS->GetAbilitySystemComponent())
                                 {
-                                    // GAS 방식을 사용하여 IncomingDamage(메타 어트리뷰트)에 즉사급 데미지를 가합니다.
-                                    // 이를 통해 BaseAttributeSet의 PostGameplayEffectExecute가 정상적으로 호출되며 체력 차감 및 사망 프로세스를 탑니다.
                                     UGameplayEffect* DamageEffect = NewObject<UGameplayEffect>(GetTransientPackage(), FName(TEXT("HazardDamage")));
                                     DamageEffect->DurationPolicy = EGameplayEffectDurationType::Instant;
 
@@ -153,7 +150,7 @@ void UER_PhaseSubsystem::OnPeriodicCheckTick()
                                     DamageEffect->Modifiers.Add(ModInfo);
 
                                     FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
-                                    // 환경(Phase) 데미지가 자신(Player)의 데미지로 판정되어 자살로 인해 킬이 오르는 것을 막기 위해 Instigator를 변경
+                                    // 데미지가 자신의 데미지로 판정되어 자살로 인해 킬이 오르는 것을 막기 위해 Instigator를 변경
                                     EffectContext.AddInstigator(ERGS, ERGS);
 
                                     ASC->ApplyGameplayEffectToSelf(DamageEffect, 1.0f, EffectContext);

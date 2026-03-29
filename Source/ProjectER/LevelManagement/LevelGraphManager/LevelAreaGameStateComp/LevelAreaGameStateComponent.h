@@ -27,6 +27,7 @@ public:
     void GenerateGraph();
 
     /* ---------- Config ---------- */
+
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Hazard")
     bool bUseFixedSeed = false;
 
@@ -45,6 +46,11 @@ public:
 
     /* ---------- Replicated State ---------- */
 
+    //!!!! Update -> The initial 0 will be nothing(safe) and the first phase will be also safe, no danger zone
+    // Phase semantics:  
+    // 0 = initial (safe)
+    // 1 = safe phase (no hazards)
+    // 2+ = hazards begin
     UPROPERTY(ReplicatedUsing = OnRep_HazardOrder, BlueprintReadOnly, Category = "Hazard")
     TArray<int32> HazardOrder;
 
@@ -58,18 +64,21 @@ public:
     void AdvancePhase();
 
     UFUNCTION(BlueprintCallable, Category = "Hazard", BlueprintAuthorityOnly)
+    void SetPhase(int32 NewPhase);
+
+    UFUNCTION(BlueprintCallable, Category = "Hazard", BlueprintAuthorityOnly)
     void ResetHazards(EAreaHazardState NewState = EAreaHazardState::None);
 
     // Instant death 
     UFUNCTION(BlueprintCallable, Category = "Hazard", BlueprintAuthorityOnly)
     void ScheduleInstantDeath(int32 NodeID, float Delay);
-    // Cancel a pending instant death escalation for a node
+
     UFUNCTION(BlueprintCallable, Category = "Hazard", BlueprintAuthorityOnly)
     void CancelInstantDeath(int32 NodeID);
-    // Schedule all currently active Hazard nodes to escalate after Delay seconds
+
     UFUNCTION(BlueprintCallable, Category = "Hazard", BlueprintAuthorityOnly)
     void ScheduleInstantDeathForAllHazards(float Delay);
-    // Cancel all pending instant death escalations
+
     UFUNCTION(BlueprintCallable, Category = "Hazard", BlueprintAuthorityOnly)
     void CancelAllInstantDeath();
 
@@ -80,10 +89,18 @@ public:
     int32 GetHazardSeed() const { return HazardSeed; }
 
     UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Hazard")
-    int32 GetTotalPhases() const { return HazardOrder.Num() / FMath::Max(1, HazardsPerPhase); }
+    int32 GetTotalPhases() const
+    {
+        int32 HazardPhases = HazardOrder.Num() / FMath::Max(1, HazardsPerPhase);
+        return HazardPhases + 1; // +1 for safe phase
+    }
 
     UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Hazard")
-    bool IsAllPhasesExhausted() const { return (CurrentPhase * HazardsPerPhase) >= HazardOrder.Num(); }
+    bool IsAllPhasesExhausted() const
+    {
+        int32 EffectivePhase = FMath::Max(0, CurrentPhase - 1);
+        return (EffectivePhase * HazardsPerPhase) >= HazardOrder.Num();
+    }
 
     // Wide — all bridges for a node area
     UFUNCTION(BlueprintCallable, Category = "LevelArea")
@@ -103,14 +120,21 @@ public:
     void RegisterBridge(ALevelAreaInstanceBridge* Bridge);
     void UnregisterBridge(ALevelAreaInstanceBridge* Bridge);
 
+
 public:
 
     TMap<int32, TArray<TObjectPtr<ALevelAreaInstanceBridge>>> BridgeActorMap;
+
 
 private:
 
     // NodeID → active timer handle
     TMap<int32, FTimerHandle> InstantDeathTimerMap;
+
+    // Client-side last applied phase for replication catch-up
+    UPROPERTY()
+    int32 LastAppliedPhase = 0;
+
 
     UFUNCTION()
     void OnRep_HazardOrder();
