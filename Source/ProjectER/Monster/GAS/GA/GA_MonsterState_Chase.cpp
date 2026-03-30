@@ -1,8 +1,11 @@
 ﻿#include "Monster/GAS/GA/GA_MonsterState_Chase.h"
 #include "Monster/BaseMonster.h"
+#include "AbilitySystemComponent.h"
+#include "Navigation/PathFollowingComponent.h"
 #include "Monster/GAS/AttributeSet/BaseMonsterAttributeSet.h"
-#include "AIController.h"
 #include "Components/CapsuleComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
+
 
 
 UGA_MonsterState_Chase::UGA_MonsterState_Chase()
@@ -12,7 +15,7 @@ UGA_MonsterState_Chase::UGA_MonsterState_Chase()
 	StateInitData.NiagaraCueTag = FGameplayTag::RequestGameplayTag("GameplayCue.Particle.Action.Move");
 	StateInitData.SoundCueTag = FGameplayTag::RequestGameplayTag("GameplayCue.Sound.Action.Move");
 	StateInitData.WaitTag = FGameplayTag::RequestGameplayTag("State.Action.Move");
-	bIsUseWaitTag = false;
+	bIsUseWaitTag = true;
 	SetAssetTags(StateInitData.MonsterAssetTags);
 }
 
@@ -26,27 +29,36 @@ void UGA_MonsterState_Chase::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
 	ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActorFromActorInfo());
+	if (IsValid(Monster) == false || IsValid(Monster->MonsterData) == false)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
 	AAIController* AIC = Cast<AAIController>(Monster->GetController());
 	AActor* TargetActor = Monster->GetTargetPlayer();
 
-	if (IsValid(AIC) && IsValid(TargetActor))
+	if (IsValid(AIC) == false || IsValid(TargetActor) == false)
 	{
-		Monster->SetbIsCombat(true);
-
-		float AttackRange = 0.0f;
-		UBaseMonsterAttributeSet* AS = Monster->GetAttributeSet();
-		if (IsValid(AS))
-		{
-			AttackRange = AS->GetAttackRange();
-		}
-		float CapsuleRadius = Monster->GetCapsuleComponent()->GetScaledCapsuleRadius();
-		float AcceptanceRadius = FMath::Max(0.0f, AttackRange - CapsuleRadius);
-
-		AIC->ReceiveMoveCompleted.RemoveAll(this);
-		AIC->ReceiveMoveCompleted.AddDynamic(this, &UGA_MonsterState_Chase::OnMoveFinished);
-		AIC->MoveToActor(TargetActor, AcceptanceRadius, false);
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
 	}
-	else
+
+	Monster->SetbIsCombat(true);
+
+	float AttackRange = 0.0f;
+	UBaseMonsterAttributeSet* AS = Monster->GetAttributeSet();
+	if (IsValid(AS))
+	{
+		AttackRange = AS->GetAttackRange();
+	}
+	float CapsuleRadius = Monster->GetCapsuleComponent()->GetScaledCapsuleRadius();
+	float AcceptanceRadius = FMath::Max(0.0f, AttackRange - (CapsuleRadius + 10));
+
+	AIC->ReceiveMoveCompleted.RemoveAll(this);
+	AIC->ReceiveMoveCompleted.AddDynamic(this, &UGA_MonsterState_Chase::OnMoveFinished);
+	EPathFollowingRequestResult::Type ReqResult = AIC->MoveToActor(TargetActor, AcceptanceRadius, false);
+	if (ReqResult == EPathFollowingRequestResult::Failed)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 	}
@@ -60,6 +72,9 @@ void UGA_MonsterState_Chase::OnMoveFinished(FAIRequestID RequestID, EPathFollowi
 
 void UGA_MonsterState_Chase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+	//UE_LOG(LogTemp, Error, TEXT("%s : UGA_MonsterState_Chase::EndAbility"), *GetOwningActorFromActorInfo()->GetName());
+
 	ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActorFromActorInfo());
 	if (IsValid(Monster))
 	{
@@ -67,35 +82,17 @@ void UGA_MonsterState_Chase::EndAbility(const FGameplayAbilitySpecHandle Handle,
 		{
 			AIC->ReceiveMoveCompleted.RemoveAll(this);
 		}
+
+		if (UAnimInstance* AnimInstance = Monster->GetMesh()->GetAnimInstance())
+		{
+			AnimInstance->StopAllMontages(0.f);
+		}
 	}
-	if (UBaseMonsterAttributeSet* AS = Monster->GetAttributeSet())
+
+	UBaseMonsterAttributeSet* AS = Monster->GetAttributeSet();
+	if(IsValid(AS))
 	{
 		Monster->SendAttackRangeEvent(AS->GetAttackRange());
 	}
 
-	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
-}
-
-void UGA_MonsterState_Chase::OnMontageCompleted()
-{
-}
-
-void UGA_MonsterState_Chase::OnMontageBlendIn()
-{
-}
-
-void UGA_MonsterState_Chase::OnMontageBlendOut()
-{
-}
-
-void UGA_MonsterState_Chase::OnMontageInterrupt()
-{
-}
-
-void UGA_MonsterState_Chase::OnMontageCancel()
-{
-}
-
-void UGA_MonsterState_Chase::OnTagRemoved()
-{
 }

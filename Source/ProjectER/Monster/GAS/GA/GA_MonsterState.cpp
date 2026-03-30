@@ -1,6 +1,5 @@
 ﻿#include "Monster/GAS/GA/GA_MonsterState.h"
 #include "Monster/BaseMonster.h"
-#include "Monster/Data/MonsterDataAsset.h"
 #include "AbilitySystemComponent.h"
 
 #include "Abilities/Tasks/AbilityTask_WaitGameplayTag.h"
@@ -36,6 +35,16 @@ void UGA_MonsterState::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 		return;
 	}
 
+	if (StateInitData.WaitTag.IsValid())
+	{
+		if (bIsUseWaitTag)
+		{
+			UAbilityTask_WaitGameplayTagRemoved* WaitRemoveTask = UAbilityTask_WaitGameplayTagRemoved::WaitGameplayTagRemove(this, StateInitData.WaitTag);
+			WaitRemoveTask->Removed.AddDynamic(this, &UGA_MonsterState::OnTagRemoved);
+			WaitRemoveTask->ReadyForActivation();
+		}
+	}
+	
 	ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActorFromActorInfo());
 	if (IsValid(Monster) == false || IsValid(Monster->MonsterData) == false)
 	{
@@ -43,12 +52,12 @@ void UGA_MonsterState::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 		return;
 	}
 
-	TObjectPtr<UAnimMontage> Montage = Monster->MonsterData->Montages.FindRef(StateInitData.MontageType);
+	TObjectPtr<UAnimMontage> Montage = *Monster->MonsterData->Montages.Find(StateInitData.MontageType);
 	if (IsValid(Montage))
 	{
 		UAbilityTask_PlayMontageAndWait* WaitPlayMontageTask =
 			UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
-				this, 
+				this,
 				NAME_None,
 				Montage,
 				1.f,
@@ -58,13 +67,11 @@ void UGA_MonsterState::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 				0.f,
 				false
 			);
-
 		WaitPlayMontageTask->OnCompleted.AddDynamic(this, &UGA_MonsterState::OnMontageCompleted);
 		WaitPlayMontageTask->OnBlendedIn.AddDynamic(this, &UGA_MonsterState::OnMontageBlendIn);
 		WaitPlayMontageTask->OnBlendOut.AddDynamic(this, &UGA_MonsterState::OnMontageBlendOut);
 		WaitPlayMontageTask->OnInterrupted.AddDynamic(this, &UGA_MonsterState::OnMontageInterrupt);
 		WaitPlayMontageTask->OnCancelled.AddDynamic(this, &UGA_MonsterState::OnMontageCancel);
-
 		WaitPlayMontageTask->ReadyForActivation();
 	}
 	else
@@ -85,16 +92,6 @@ void UGA_MonsterState::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 		FGameplayCueParameters Params;
 		Params.Instigator = Monster;
 		ActorInfo->AbilitySystemComponent->ExecuteGameplayCue(StateInitData.NiagaraCueTag, Params);
-	}
-
-	if (StateInitData.WaitTag.IsValid())
-	{
-		if (bIsUseWaitTag)
-		{
-			UAbilityTask_WaitGameplayTagRemoved* WaitRemoveTask = UAbilityTask_WaitGameplayTagRemoved::WaitGameplayTagRemove(this, StateInitData.WaitTag);
-			WaitRemoveTask->Removed.AddDynamic(this, &UGA_MonsterState::OnTagRemoved);
-			WaitRemoveTask->ReadyForActivation();
-		}
 	}
 }
 
@@ -125,4 +122,6 @@ void UGA_MonsterState::OnMontageCancel()
 
 void UGA_MonsterState::OnTagRemoved()
 {
+	Super::EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+
 }
