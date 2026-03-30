@@ -2095,3 +2095,28 @@ void ABaseCharacter::InitPlayer()
 	
 	OnPlayerStateChosen();
 }
+
+void ABaseCharacter::Multicast_ToggleCraftingUI_Implementation(bool bShow)
+{
+	if (bShow)
+	{
+		if (CraftingWidgetClass && !CraftingWidgetComp)
+		{
+			CraftingWidgetComp = NewObject<UWidgetComponent>(this, TEXT("CraftingWidgetComp"));
+			CraftingWidgetComp->SetWidgetSpace(EWidgetSpace::Screen);
+			CraftingWidgetComp->SetWidgetClass(CraftingWidgetClass);
+			CraftingWidgetComp->SetDrawSize(FVector2D(50.f, 50.f));
+			CraftingWidgetComp->RegisterComponent();
+			CraftingWidgetComp->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform);
+			CraftingWidgetComp->SetRelativeLocation(FVector(0.f, 0.f, 400.f)); // HP바(300.f)보다 더 높은 위치로 지정
+		}
+	}
+	else
+	{
+		if (CraftingWidgetComp)
+		{
+			CraftingWidgetComp->DestroyComponent();
+			CraftingWidgetComp = nullptr;
+		}
+	}
+}

@@ -5,7 +5,7 @@
 #include "CharacterSystem/Interface/TargetableInterface.h"
 #include "CharacterSystem/Player/BasePlayerState.h"
 #include "CharacterSystem/GAS/AttributeSet/BaseAttributeSet.h"
-
+#include "Components/WidgetComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/DecalComponent.h"
 #include "GameFramework/Character.h"
@@ -2051,12 +2051,13 @@ void ABasePlayerController::Server_DropInventoryItem_Implementation(int32 SlotIn
 }
 
 
-
-
-
-
-
-
+void ABasePlayerController::Server_NotifyCraftingUI_Implementation(bool bIsCraftingStarted)
+{
+	if (ABaseCharacter* const BaseChar = Cast<ABaseCharacter>(GetPawn()))
+	{
+		BaseChar->Multicast_ToggleCraftingUI(bIsCraftingStarted);
+	}
+}
 
 // ===== 아이템 조합 시스템 =====
 
@@ -2269,6 +2270,9 @@ void ABasePlayerController::StartCrafting(FItemRecipeRow* Recipe)
 		);
 	}
 
+	// 서버에 위젯 생성 알림
+	Server_NotifyCraftingUI(true);
+
 	// 타이머 설정
 	GetWorld()->GetTimerManager().SetTimer(
 		CraftingTimerHandle,
@@ -2329,6 +2333,9 @@ void ABasePlayerController::CompleteCrafting()
 		CraftingSoundComponent = nullptr;
 	}
 
+	// 서버에 위젯 삭제 알림
+	Server_NotifyCraftingUI(false);
+
 	// 조합 상태 종료 (로컬)
 	bIsCrafting = false;
 	CurrentCraftingRecipe = nullptr;
@@ -2351,6 +2358,11 @@ void ABasePlayerController::CancelCrafting()
 		CraftingSoundComponent->Stop();
 		CraftingSoundComponent = nullptr;
 	}
+
+	// 서버에 위젯 삭제 알림
+	Server_NotifyCraftingUI(false);
+
+	// 조합 상태 종료
 
 	// 조합 상태 종료
 	bIsCrafting = false;

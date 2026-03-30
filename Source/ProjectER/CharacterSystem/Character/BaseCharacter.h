@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -407,6 +407,17 @@ protected:
 public:
 	// 팀 구분해서 아이콘 색상 업데이트
 	void UpdateMinimapVisuals(FLinearColor n_teamColor);
+
+	// ক্র래프팅 시 머리 위에 띄울 위젯 클래스
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Crafting")
+	TSubclassOf<UUserWidget> CraftingWidgetClass;
+
+	// 동적으로 생성된 크래프팅 위젯 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Crafting")
+	class UWidgetComponent* CraftingWidgetComp;
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_ToggleCraftingUI(bool bShow);
 
 #pragma endregion
 
