@@ -227,47 +227,51 @@ void ULOSVisionSubsystem::ReportTargetVisibility(
     if (!Observer || !Target || ObserverTeam == EVisionChannel::None)
         return;
 
-    UVisionGameStateComp* GSComp = GetVisionGameStateComp();
-    if (!GSComp)
-        return;
-
     const uint8 TeamID = (uint8)ObserverTeam;
 
-    FTargetVisibilityVotes& Votes     = VisibilityVotes.FindOrAdd(Target);
+    FTargetVisibilityVotes& Votes = VisibilityVotes.FindOrAdd(Target);
     TSet<TWeakObjectPtr<AActor>>& Observers = Votes.ObserversByTeam.FindOrAdd(TeamID);
 
-    // Clean stale weak pointers before reading Num()
     CleanInvalidObservers(Observers);
-
     const bool bWasVisible = Observers.Num() > 0;
 
-    if (bVisible)
-        Observers.Add(Observer);
-    else
-        Observers.Remove(Observer);
+    if (bVisible) Observers.Add(Observer);
+    else          Observers.Remove(Observer);
 
-    // Clean again after removal in case the observer was already stale
     CleanInvalidObservers(Observers);
-
     const bool bIsNowVisible = Observers.Num() > 0;
 
-    // Prune empty entries so the map doesn't grow unboundedly
     if (Observers.Num() == 0)
     {
         Votes.ObserversByTeam.Remove(TeamID);
-
         if (Votes.ObserversByTeam.Num() == 0)
             VisibilityVotes.Remove(Target);
     }
 
-    UE_LOG(LOSVisionSubsystem, Verbose,
-        TEXT("[VISION] %s | Team:%d | Observers:%d | Was:%d -> Now:%d"),
-        *Target->GetName(), TeamID, Observers.Num(), bWasVisible, bIsNowVisible);
+    if (bWasVisible == bIsNowVisible)
+        return;
 
-    // Fixed: was SetActorVisibleByTeam
-    if (!bWasVisible && bIsNowVisible)
+    // ------------------------------------------------------------------ //
+    //  CLIENT: apply locally right now. GSComp->GetVisibleActors() is a  //
+    //  server-replicated array — reading it here would stall until the   //
+    //  RPC makes a full round trip. Instead, trust the local vote map    //
+    //  (just updated above) and call ReevaluateTargetVisibility directly. //
+    //  The server RPC will update GSComp and replicate to other clients.  //
+    // ------------------------------------------------------------------ //
+    if (GetWorld()->GetNetMode() == NM_Client)
+    {
+        if (UVisionPlayerStateComp* VisionPS = GetLocalVisionPS(GetWorld()))
+            VisionPS->ReevaluateTargetVisibility(Target);
+        return;
+    }
+
+    // SERVER / STANDALONE: write through GSComp as the replication source.
+    UVisionGameStateComp* GSComp = GetVisionGameStateComp();
+    if (!GSComp) return;
+
+    if (bIsNowVisible)
         GSComp->SetActorVisibleToTeam(Target, ObserverTeam);
-    else if (bWasVisible && !bIsNowVisible)
+    else
         GSComp->ClearActorVisibleToTeam(Target, ObserverTeam);
 }
 

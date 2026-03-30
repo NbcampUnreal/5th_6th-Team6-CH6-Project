@@ -61,6 +61,13 @@ public:
     // --- Local player lookup (shared with GameStateComp) --- //
     static UVisionPlayerStateComp* GetLocalVisionPS(UWorld* World);
 
+    const TMap<uint8, TSet<TWeakObjectPtr<AActor>>>* GetVisibilityVotesForTarget(AActor* Target) const
+    {
+        const FTargetVisibilityVotes* Votes = VisibilityVotes.Find(Target);
+        return Votes ? &Votes->ObserversByTeam : nullptr;
+    }
+    
+
 private:
     void HandleProviderRegistered(UVision_VisualComp* NewProvider, EVisionChannel Channel);
     UVisionGameStateComp* GetVisionGameStateComp() const;
@@ -68,6 +75,8 @@ private:
 public:
     UPROPERTY()
     TMap<EVisionChannel, FRegisteredProviders> VisionMap;
+
+
 
 private:
     

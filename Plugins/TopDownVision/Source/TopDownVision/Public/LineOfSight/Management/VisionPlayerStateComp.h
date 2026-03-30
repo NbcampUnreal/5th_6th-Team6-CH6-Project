@@ -17,7 +17,8 @@ public:
 
 protected:
     virtual void BeginPlay() override;
-    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    virtual void GetLifetimeReplicatedProps(
+        TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:
     UFUNCTION(BlueprintCallable, Category="Vision")
@@ -34,15 +35,10 @@ public:
 
     bool CanSeeTeam(EVisionChannel InTeam) const;
 
-    /**
-     * Reads the LIVE VisibleActors list and resolves the correct visibility
-     * for this one target.  Never accepts a bVisible hint — that was the bug.
-     * Called for every incremental add/remove and during full refresh.
-     */
-    void ReevaluateTargetVisibility(AActor* Target, EVisionChannel ExcludeObserverTeam = EVisionChannel::None);
+    void ReevaluateTargetVisibility(
+        AActor* Target,
+        EVisionChannel ExcludeObserverTeam = EVisionChannel::None);
 
-    /** Full re-evaluation against all currently tracked actors.
-     *  Also drains any pending queue in GameStateComp. */
     UFUNCTION(BlueprintCallable, Category="Vision")
     void RefreshVisibility();
 
@@ -55,4 +51,8 @@ private:
 
     UFUNCTION() void OnRep_TeamChannel();
     UFUNCTION() void OnRep_AllReveal();
+
+    /** Iterates all same-team providers and late-initializes their evaluators.
+     *  Called whenever TeamChannel is set or replicated. */
+    void InitializeSameTeamEvaluators();
 };

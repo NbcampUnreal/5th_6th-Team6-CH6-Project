@@ -26,6 +26,11 @@ public:
     UFUNCTION(BlueprintCallable)
     void InitializeEvaluator(UVision_VisualComp* DirectParamComp);
 
+    /** Called by VisionPlayerStateComp when local team is assigned/changed.
+     *  Late-initializes same-team evaluators that were skipped at BeginPlay
+     *  because the team channel was not yet known. */
+    void InitializeIfSameTeam();
+
     UFUNCTION(BlueprintCallable)
     void DirectCacheVisualComp(UVision_VisualComp* DirectParamComp);
 
@@ -66,15 +71,18 @@ private:
     // --- Visibility reporting --- //
     void ReportVisibility(AActor* Target, bool bVisible);
     void ReportVisibilityIfChanged(AActor* Target, bool bVisible);
+    void CommitHide(AActor* Target);
 
     // RPC — crosses network boundary, subsystem handles logic on server side
     UFUNCTION(Server, Reliable)
     void Server_ReportVisibility(AActor* Target, EVisionChannel Channel, bool bVisible);
-    void Server_ReportVisibility_Implementation(AActor* Target, EVisionChannel Channel, bool bVisible);
+    void Server_ReportVisibility_Implementation(
+        AActor* Target, EVisionChannel Channel, bool bVisible);
 
     // --- Helpers --- //
     UVision_VisualComp* GetVisualComp(AActor* Target) const;
     bool ShouldRunServerLogic() const;
+    bool IsSameTeamAsLocalPlayer() const;
     void StartEvaluationTimer();
     void StopEvaluationTimer();
 
@@ -94,7 +102,8 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Evaluator")
     TEnumAsByte<ECollisionChannel> WallTraceChannel = ECC_Visibility;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Evaluator", meta=(ClampMin="0.01"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Evaluator",
+        meta=(ClampMin="0.01"))
     float EvaluationInterval = 0.1f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Evaluator")
@@ -102,6 +111,10 @@ protected:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Evaluator|Debug")
     bool bDrawDebug = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Evaluator",
+        meta=(AllowPrivateAccess="true", ClampMin="0.0"))
+    float HideHysteresisDelay = 0.3f;
 
 private:
     UPROPERTY(Transient)
@@ -114,4 +127,8 @@ private:
 
     UPROPERTY(Transient)
     TMap<AActor*, bool> LastReportedVisibility;
+
+    TMap<AActor*, FTimerHandle> PendingHideTimers;
+
+    bool bIsInitialized = false;
 };
