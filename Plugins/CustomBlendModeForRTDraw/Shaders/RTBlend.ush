@@ -1,0 +1,139 @@
+﻿// RTBlend.ush
+// Place in: CustomBlendModeForRTDraw/Shaders/RTBlend.ush
+// Include in any Custom node: #include "/CustomBlendModeForRTDraw/RTBlend.ush"
+// Virtual path registered in FCustomBlendModeForRTDrawModule::StartupModule().
+
+#pragma once
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_BlendMax
+// Per-channel MAX — highest value per channel wins.
+// Use when: you want the strongest signal to dominate (e.g. height field).
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_BlendMax(float4 Previous, float4 Current)
+{
+    return max(Previous, Current);
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_BlendMaxByChannel
+// MAX on a specific channel — winner takes all channels from that sample.
+// Channel: 0=R 1=G 2=B 3=A
+// Use when: you want the sample with the highest A (e.g. timestamp) to win.
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_BlendMaxByChannel(float4 Previous, float4 Current, int Channel)
+{
+    float PrevVal = (Channel == 0) ? Previous.r
+                  : (Channel == 1) ? Previous.g
+                  : (Channel == 2) ? Previous.b
+                  :                  Previous.a;
+
+    float CurrVal = (Channel == 0) ? Current.r
+                  : (Channel == 1) ? Current.g
+                  : (Channel == 2) ? Current.b
+                  :                  Current.a;
+
+    return CurrVal > PrevVal ? Current : Previous;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_BlendFade
+// Exponential fade — multiplies previous by FadeRate each frame.
+// FadeRate: 0 = instant clear, 1 = no fade, 0.99 = slow fade
+// Use when: you want a decaying trail effect.
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_BlendFade(float4 Previous, float FadeRate)
+{
+    return Previous * saturate(FadeRate);
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_BlendFadeAndStamp
+// Fade previous content then stamp current on top.
+// FadeRate: 0 = instant clear, 1 = no fade
+// Use when: you want a fading trail with fresh stamps on top.
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_BlendFadeAndStamp(float4 Previous, float4 Current, float FadeRate)
+{
+    float4 Faded = Previous * saturate(FadeRate);
+    return max(Faded, Current);
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_BlendAdditiveClamped
+// Additive blend clamped to [0,1] per channel.
+// Use when: multiple invokers should accumulate without overflow.
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_BlendAdditiveClamped(float4 Previous, float4 Current)
+{
+    return saturate(Previous + Current);
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_BlendFreezeOnExit
+// Keeps current value while invoker is present (Current.a > 0).
+// Freezes previous value when invoker leaves (Current.a == 0).
+// Use when: you want data to persist after the invoker exits
+//           e.g. timestamp that freezes on exit for spring/damping.
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_BlendFreezeOnExit(float4 Previous, float4 Current, float Threshold)
+{
+    return Current.a > Threshold ? Current : Previous;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_BlendWeightedAverage
+// Weighted blend between previous and current.
+// Weight: 0 = keep previous, 1 = use current
+// Use when: you want smooth interpolation between states.
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_BlendWeightedAverage(float4 Previous, float4 Current, float Weight)
+{
+    return lerp(Previous, Current, saturate(Weight));
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_BlendMaskByChannel
+// Only writes Current where a specific channel of Current exceeds a threshold.
+// Keeps Previous everywhere else.
+// Channel: 0=R 1=G 2=B 3=A
+// Use when: you want selective writes (e.g. only stamp where brush is active).
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_BlendMaskByChannel(float4 Previous, float4 Current, int Channel, float Threshold)
+{
+    float Mask = (Channel == 0) ? Current.r
+               : (Channel == 1) ? Current.g
+               : (Channel == 2) ? Current.b
+               :                  Current.a;
+
+    return Mask > Threshold ? Current : Previous;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_BlendLerpByChannel
+// Lerps Previous to Current on channels specified by bitmask.
+// ChannelMask: bit 0 = R, bit 1 = G, bit 2 = B, bit 3 = A
+// Example: 0b0101 = 5 → lerp R and B, keep Previous G and A
+// Weight: 0 = keep Previous, 1 = use Current
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_BlendLerpByChannel(float4 Previous, float4 Current, int ChannelMask, float Weight)
+{
+    float W = saturate(Weight);
+
+    float R = (ChannelMask & 1) ? lerp(Previous.r, Current.r, W) : Previous.r;
+    float G = (ChannelMask & 2) ? lerp(Previous.g, Current.g, W) : Previous.g;
+    float B = (ChannelMask & 4) ? lerp(Previous.b, Current.b, W) : Previous.b;
+    float A = (ChannelMask & 8) ? lerp(Previous.a, Current.a, W) : Previous.a;
+
+    return float4(R, G, B, A);
+}

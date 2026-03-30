@@ -2,7 +2,7 @@
 
 #include "GameFramework/GameStateBase.h"
 #include "LevelInstance/LevelInstanceActor.h"
-#include "LevelManagement/LevelGraphManager/LevelAreaGameStateComp/LevelAreaGameStateComponent.h"
+#include "LevelManagement/LevelGraphManager/LevelAreaGameStateComp/LevelAreaGameModeComponent.h"
 #include "LevelManagement/LevelGraphManager/LevelSequenceManager/LevelSequenceManagerSubsystem.h"
 #include "LogHelper/DebugLogHelper.h"
 

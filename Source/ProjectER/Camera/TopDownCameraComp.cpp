@@ -77,7 +77,8 @@ void UTopDownCameraComp::TickComponent(float DeltaTime, ELevelTick TickType,
 
 	PendingKeyInput = FVector2D::ZeroVector;
 
-	UpdateCameraTransform();
+	// no longer use curved world 
+	//UpdateCameraTransform();
 	
 }
 

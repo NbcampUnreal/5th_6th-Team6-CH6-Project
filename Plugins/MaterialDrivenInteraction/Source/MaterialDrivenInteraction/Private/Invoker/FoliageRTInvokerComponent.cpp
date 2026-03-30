@@ -2,16 +2,17 @@
 
 #include "Managers/RTPoolManager.h"
 #include "Data/RTBrushTypes.h"
+#include "Data/RTPoolTypes.h"
 #include "Debug/LogCategory.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/World.h"
 
-static const FName PN_VelocityX      (TEXT("VelocityX"));
-static const FName PN_VelocityY      (TEXT("VelocityY"));
-static const FName PN_Weight         (TEXT("Weight"));
-static const FName PN_GameTimeFrac   (TEXT("GameTimeFrac"));
-static const FName PN_BrushRot       (TEXT("BrushRotation"));
-static const FName PN_BrushUVExtent  (TEXT("BrushUVExtent"));
+static const FName PN_Weight        (TEXT("Weight"));
+static const FName PN_BrushSoftness (TEXT("Softness"));
+static const FName PN_BrushUVExtent (TEXT("BrushUVExtent"));
+static const FName PN_VelocityX     (TEXT("VelocityX"));
+static const FName PN_VelocityY     (TEXT("VelocityY"));
+static const FName PN_DecayRate     (TEXT("DecayRate"));
 
 UFoliageRTInvokerComponent::UFoliageRTInvokerComponent()
 {
@@ -23,20 +24,23 @@ void UFoliageRTInvokerComponent::BeginPlay()
 {
     Super::BeginPlay();
 
+    // Cache shared params from settings
+    if (const URTPoolSettings* Settings = GetDefault<URTPoolSettings>())
+    {
+        CachedMaxVelocity = Settings->MaxVelocity;
+        CachedDecayRate   = Settings->DecayRate;
+    }
+
     UWorld* World = GetOwner() ? GetOwner()->GetWorld() : nullptr;
     if (!World) { return; }
 
     PoolManager = World->GetSubsystem<URTPoolManager>();
     if (!PoolManager) { return; }
 
-    if (BrushMaterial_Continuous)
-        MID_Continuous = UMaterialInstanceDynamic::Create(BrushMaterial_Continuous, this);
-
-    if (BrushMaterial_Impulse)
-        MID_Impulse = UMaterialInstanceDynamic::Create(BrushMaterial_Impulse, this);
+    if (BrushMaterial)
+        MID_Interaction = UMaterialInstanceDynamic::Create(BrushMaterial, this);
 
     PoolManager->RegisterInvoker(this);
-
     PrevWorldLocation = GetComponentLocation();
 }
 
@@ -47,13 +51,11 @@ void UFoliageRTInvokerComponent::EndPlay(const EEndPlayReason::Type EndPlayReaso
 }
 
 void UFoliageRTInvokerComponent::TickComponent(float DeltaTime,
-                                               ELevelTick TickType,
-                                               FActorComponentTickFunction* ThisTickFunction)
+    ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
     if (!PoolManager) { return; }
-
     PoolManager->Tick(DeltaTime);
 
     if (bFirstTick)
@@ -63,14 +65,12 @@ void UFoliageRTInvokerComponent::TickComponent(float DeltaTime,
         return;
     }
 
-    // Skip velocity update if no slot assigned — not being drawn this cycle
     if (!PoolManager->IsInvokerActive(this)) { return; }
 
     const FVector2D RawVelocity = ComputeVelocity(DeltaTime);
     EncodedVelocity = FVector2D(
         EncodeVelocityAxis(RawVelocity.X),
-        EncodeVelocityAxis(RawVelocity.Y)
-    );
+        EncodeVelocityAxis(RawVelocity.Y));
 
     PrevWorldLocation = GetComponentLocation();
 }
@@ -78,40 +78,30 @@ void UFoliageRTInvokerComponent::TickComponent(float DeltaTime,
 FRTInvokerFrameData UFoliageRTInvokerComponent::GetFrameData(
     int32 SlotIndex, FVector2D CellOriginWS, float CellSize) const
 {
-    const FVector  CompLoc       = GetComponentLocation();
-    const float    OwnerYaw      = GetComponentRotation().Yaw;
-    const float    GameTime      = GetWorld()->GetTimeSeconds();
-    const float    GameTimeFrac  = FMath::Frac(GameTime / TimestampPeriod);
-    const float    UVRadius      = BrushRadius / CellSize;
-    const FVector2D CellUV       = (FVector2D(CompLoc.X, CompLoc.Y) - CellOriginWS) / CellSize;
+    const FVector      CompLoc   = GetComponentLocation();
+    const float        UVRadius  = BrushRadius / CellSize;
+    const FVector2D    CellUV    = (FVector2D(CompLoc.X, CompLoc.Y) - CellOriginWS) / CellSize;
     const FLinearColor UVExtentV = FLinearColor(UVRadius, UVRadius, 0.f, 0.f);
 
-    if (MID_Continuous)
+    if (MID_Interaction)
     {
-        MID_Continuous->SetScalarParameterValue(PN_Weight,        BrushWeight);
-        MID_Continuous->SetScalarParameterValue(PN_BrushRot,      OwnerYaw);
-        MID_Continuous->SetVectorParameterValue(PN_BrushUVExtent, UVExtentV);
-    }
-
-    if (MID_Impulse)
-    {
-        // Written every tick — SE_BLEND_MAX in draw manager preserves
-        // the freshest timestamp per texel. Freezes on invoker exit.
-        MID_Impulse->SetScalarParameterValue(PN_VelocityX,    EncodedVelocity.X);
-        MID_Impulse->SetScalarParameterValue(PN_VelocityY,    EncodedVelocity.Y);
-        MID_Impulse->SetScalarParameterValue(PN_GameTimeFrac, GameTimeFrac);
-        MID_Impulse->SetVectorParameterValue(PN_BrushUVExtent, UVExtentV);
+        MID_Interaction->SetScalarParameterValue(PN_Weight,        BrushWeight);
+        MID_Interaction->SetScalarParameterValue(PN_BrushSoftness, BrushSoftness);
+        MID_Interaction->SetScalarParameterValue(PN_VelocityX,     EncodedVelocity.X);
+        MID_Interaction->SetScalarParameterValue(PN_VelocityY,     EncodedVelocity.Y);
+        MID_Interaction->SetScalarParameterValue(PN_DecayRate,     CachedDecayRate);
+        MID_Interaction->SetVectorParameterValue(PN_BrushUVExtent, UVExtentV);
     }
 
     FRTInvokerFrameData Data;
     Data.CellUV          = CellUV;
     Data.UVExtent        = FVector2D(UVRadius, UVRadius);
     Data.EncodedVelocity = EncodedVelocity;
-    Data.OwnerYaw        = OwnerYaw;
-    Data.GameTimeFrac    = GameTimeFrac;
+    Data.DecayRate       = CachedDecayRate;
+    Data.BrushWeight     = BrushWeight;
+    Data.BrushSoftness   = BrushSoftness;
     Data.SlotIndex       = SlotIndex;
-    Data.MID_Continuous  = MID_Continuous;
-    Data.MID_Impulse     = MID_Impulse;
+    Data.MID_Interaction = MID_Interaction;
 
     return Data;
 }
@@ -125,6 +115,6 @@ FVector2D UFoliageRTInvokerComponent::ComputeVelocity(float DeltaTime) const
 
 float UFoliageRTInvokerComponent::EncodeVelocityAxis(float WorldVelAxis) const
 {
-    const float Normalized = WorldVelAxis / FMath::Max(MaxVelocity, 1.f);
+    const float Normalized = WorldVelAxis / FMath::Max(CachedMaxVelocity, 1.f);
     return FMath::Clamp(Normalized * 0.5f + 0.5f, 0.f, 1.f);
 }

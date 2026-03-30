@@ -2,7 +2,7 @@
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_PlayerState.h"
-#include "LevelManagement/LevelGraphManager/LevelAreaGameStateComp/LevelAreaGameStateComponent.h"
+#include "LevelManagement/LevelGraphManager/LevelAreaGameStateComp/LevelAreaGameModeComponent.h"
 #include "LevelManagement/LevelAreaTrackerComponent.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -117,7 +117,7 @@ void UER_PhaseSubsystem::OnPeriodicCheckTick()
 
     if (AER_GameState* ERGS = CachedGameState.Get())
     {
-        ULevelAreaGameStateComponent* AreaGSComp = ERGS->GetComponentByClass<ULevelAreaGameStateComponent>();
+        ULevelAreaGameModeComponent* AreaGSComp = ERGS->GetComponentByClass<ULevelAreaGameModeComponent>();
         AER_InGameMode* GM = Cast<AER_InGameMode>(World->GetAuthGameMode());
 
         if (AreaGSComp == nullptr || GM == nullptr)
