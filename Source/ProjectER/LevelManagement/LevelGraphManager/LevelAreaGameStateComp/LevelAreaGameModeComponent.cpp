@@ -1,4 +1,4 @@
-﻿#include "LevelAreaGameStateComponent.h"
+﻿#include "LevelAreaGameModeComponent.h"
 
 #include "Net/UnrealNetwork.h"
 #include "Engine/World.h"
@@ -12,7 +12,7 @@
 #include "LogHelper/DebugLogHelper.h"
 
 
-ULevelAreaGameStateComponent::ULevelAreaGameStateComponent()
+ULevelAreaGameModeComponent::ULevelAreaGameModeComponent()
 {
     SetIsReplicatedByDefault(true);
     PrimaryComponentTick.bCanEverTick = false;
@@ -23,14 +23,14 @@ ULevelAreaGameStateComponent::ULevelAreaGameStateComponent()
    BeginPlay — build graph + generate full hazard order once
    ===================================================================== */
 
-void ULevelAreaGameStateComponent::BeginPlay()
+void ULevelAreaGameModeComponent::BeginPlay()
 {
     Super::BeginPlay();
 
     GenerateGraph();
 }
 
-void ULevelAreaGameStateComponent::GenerateGraph()
+void ULevelAreaGameModeComponent::GenerateGraph()
 {
     if (!GetOwner()->HasAuthority())
         return;
@@ -100,16 +100,16 @@ void ULevelAreaGameStateComponent::GenerateGraph()
    Replication
    ===================================================================== */
 
-void ULevelAreaGameStateComponent::GetLifetimeReplicatedProps(
+void ULevelAreaGameModeComponent::GetLifetimeReplicatedProps(
     TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-    DOREPLIFETIME(ULevelAreaGameStateComponent, HazardOrder);
-    DOREPLIFETIME(ULevelAreaGameStateComponent, CurrentPhase);
+    DOREPLIFETIME(ULevelAreaGameModeComponent, HazardOrder);
+    DOREPLIFETIME(ULevelAreaGameModeComponent, CurrentPhase);
 }
 
-void ULevelAreaGameStateComponent::RegisterBridge(ALevelAreaInstanceBridge* Bridge)
+void ULevelAreaGameModeComponent::RegisterBridge(ALevelAreaInstanceBridge* Bridge)
 {
     if (!Bridge || Bridge->NodeID == INDEX_NONE) return;
 
@@ -120,7 +120,7 @@ void ULevelAreaGameStateComponent::RegisterBridge(ALevelAreaInstanceBridge* Brid
         Bridge->NodeID, *Bridge->GetName());
 }
 
-void ULevelAreaGameStateComponent::UnregisterBridge(ALevelAreaInstanceBridge* Bridge)
+void ULevelAreaGameModeComponent::UnregisterBridge(ALevelAreaInstanceBridge* Bridge)
 {
     if (!Bridge || Bridge->NodeID == INDEX_NONE) return;
 
@@ -143,7 +143,7 @@ void ULevelAreaGameStateComponent::UnregisterBridge(ALevelAreaInstanceBridge* Br
    Server: Phase Advancement
    ===================================================================== */
 
-void ULevelAreaGameStateComponent::AdvancePhase()
+void ULevelAreaGameModeComponent::AdvancePhase()
 {
     if (HazardOrder.IsEmpty())
     {
@@ -162,7 +162,7 @@ void ULevelAreaGameStateComponent::AdvancePhase()
     SetPhase(CurrentPhase + 1);// accumulate
 }
 
-void ULevelAreaGameStateComponent::SetPhase(int32 NewPhase)
+void ULevelAreaGameModeComponent::SetPhase(int32 NewPhase)
 {
     if (HazardOrder.IsEmpty())
     {
@@ -206,7 +206,7 @@ void ULevelAreaGameStateComponent::SetPhase(int32 NewPhase)
    Reset
    ===================================================================== */
 
-void ULevelAreaGameStateComponent::ResetHazards(EAreaHazardState NewState)
+void ULevelAreaGameModeComponent::ResetHazards(EAreaHazardState NewState)
 {
     CancelAllInstantDeath();
 
@@ -231,7 +231,7 @@ void ULevelAreaGameStateComponent::ResetHazards(EAreaHazardState NewState)
         TEXT("ResetHazards >> Reset complete"));
 }
 
-void ULevelAreaGameStateComponent::ScheduleInstantDeath(int32 NodeID, float Delay)
+void ULevelAreaGameModeComponent::ScheduleInstantDeath(int32 NodeID, float Delay)
 {
     UWorld* World = GetWorld();
     if (!World) return;
@@ -241,7 +241,7 @@ void ULevelAreaGameStateComponent::ScheduleInstantDeath(int32 NodeID, float Dela
 
     FTimerHandle Handle;
     FTimerDelegate Delegate;
-    Delegate.BindUObject(this, &ULevelAreaGameStateComponent::ApplyInstantDeathToNode, NodeID);
+    Delegate.BindUObject(this, &ULevelAreaGameModeComponent::ApplyInstantDeathToNode, NodeID);
 
     World->GetTimerManager().SetTimer(Handle, Delegate, Delay, false);
     InstantDeathTimerMap.Add(NodeID, Handle);
@@ -250,7 +250,7 @@ void ULevelAreaGameStateComponent::ScheduleInstantDeath(int32 NodeID, float Dela
         TEXT("ScheduleInstantDeath >> NodeID %d will escalate in %.2fs"), NodeID, Delay);
 }
 
-void ULevelAreaGameStateComponent::CancelInstantDeath(int32 NodeID)
+void ULevelAreaGameModeComponent::CancelInstantDeath(int32 NodeID)
 {
     UWorld* World = GetWorld();
     if (!World) return;
@@ -265,7 +265,7 @@ void ULevelAreaGameStateComponent::CancelInstantDeath(int32 NodeID)
     }
 }
 
-void ULevelAreaGameStateComponent::ScheduleInstantDeathForAllHazards(float Delay)
+void ULevelAreaGameModeComponent::ScheduleInstantDeathForAllHazards(float Delay)
 {
     UWorld* World = GetWorld();
     if (!World) return;
@@ -285,7 +285,7 @@ void ULevelAreaGameStateComponent::ScheduleInstantDeathForAllHazards(float Delay
         InstantDeathTimerMap.Num(), Delay);
 }
 
-void ULevelAreaGameStateComponent::CancelAllInstantDeath()
+void ULevelAreaGameModeComponent::CancelAllInstantDeath()
 {
     UWorld* World = GetWorld();
     if (!World) return;
@@ -299,7 +299,7 @@ void ULevelAreaGameStateComponent::CancelAllInstantDeath()
         TEXT("CancelAllInstantDeath >> All escalations cancelled"));
 }
 
-void ULevelAreaGameStateComponent::ApplyHazards(int32 Phase, EAreaHazardState State)
+void ULevelAreaGameModeComponent::ApplyHazards(int32 Phase, EAreaHazardState State)
 {
     if (HazardOrder.IsEmpty()) return;
 
@@ -349,6 +349,8 @@ void ULevelAreaGameStateComponent::ApplyHazards(int32 Phase, EAreaHazardState St
 
     if (NewHazards.Num() > 0)// call delegate with new hazards
     {
+        bool bIsBound=OnPhaseChanged.IsBound();
+        
         OnPhaseChanged.Broadcast(NewHazards);
     }
 
@@ -358,7 +360,7 @@ void ULevelAreaGameStateComponent::ApplyHazards(int32 Phase, EAreaHazardState St
         *UEnum::GetValueAsString(State));
 }
 
-void ULevelAreaGameStateComponent::NotifyBridgeActors(const TArray<int32>& NodeIDs, EAreaHazardState State)
+void ULevelAreaGameModeComponent::NotifyBridgeActors(const TArray<int32>& NodeIDs, EAreaHazardState State)
 {
     for (int32 NodeID : NodeIDs)
     {
@@ -374,7 +376,7 @@ void ULevelAreaGameStateComponent::NotifyBridgeActors(const TArray<int32>& NodeI
     }
 }
 
-void ULevelAreaGameStateComponent::ApplyInstantDeathToNode(int32 NodeID)
+void ULevelAreaGameModeComponent::ApplyInstantDeathToNode(int32 NodeID)
 {
     // Remove the timer entry — it has already fired
     InstantDeathTimerMap.Remove(NodeID);
@@ -408,7 +410,7 @@ void ULevelAreaGameStateComponent::ApplyInstantDeathToNode(int32 NodeID)
    OnRep
    ===================================================================== */
 
-void ULevelAreaGameStateComponent::OnRep_HazardOrder()
+void ULevelAreaGameModeComponent::OnRep_HazardOrder()
 {
     // Reset client tracking because hazard order is authoritative baseline
     LastAppliedPhase = 0;
@@ -432,7 +434,7 @@ void ULevelAreaGameStateComponent::OnRep_HazardOrder()
         TEXT("OnRep_HazardOrder >> Received %d entries"), HazardOrder.Num());
 }
 
-void ULevelAreaGameStateComponent::OnRep_CurrentPhase()
+void ULevelAreaGameModeComponent::OnRep_CurrentPhase()
 {
     // if HazardOrder hasn't arrived yet, wait for OnRep_HazardOrder to apply
     if (HazardOrder.IsEmpty()) return;
@@ -463,7 +465,7 @@ void ULevelAreaGameStateComponent::OnRep_CurrentPhase()
 
 
 
-void ULevelAreaGameStateComponent::BuildBridgeActorMap()
+void ULevelAreaGameModeComponent::BuildBridgeActorMap()
 {
     BridgeActorMap.Reset();
 
@@ -493,7 +495,7 @@ void ULevelAreaGameStateComponent::BuildBridgeActorMap()
         TEXT("BuildBridgeActorMap >> Total: %d node entries"), BridgeActorMap.Num());
 }
 
-TArray<ALevelAreaInstanceBridge*> ULevelAreaGameStateComponent::GetBridgeActorsByID(int32 NodeID) const
+TArray<ALevelAreaInstanceBridge*> ULevelAreaGameModeComponent::GetBridgeActorsByID(int32 NodeID) const
 {
     TArray<ALevelAreaInstanceBridge*> Result;
 
@@ -515,7 +517,7 @@ TArray<ALevelAreaInstanceBridge*> ULevelAreaGameStateComponent::GetBridgeActorsB
     return Result;
 }
 
-ALevelAreaInstanceBridge* ULevelAreaGameStateComponent::GetBridgeActorByInstance(
+ALevelAreaInstanceBridge* ULevelAreaGameModeComponent::GetBridgeActorByInstance(
     ALevelInstance* LevelInstance) const
 {
     for (const TPair<int32, TArray<TObjectPtr<ALevelAreaInstanceBridge>>>& Pair : BridgeActorMap)
@@ -534,7 +536,7 @@ ALevelAreaInstanceBridge* ULevelAreaGameStateComponent::GetBridgeActorByInstance
 }
 
 
-void ULevelAreaGameStateComponent::NotifyTrackers()
+void ULevelAreaGameModeComponent::NotifyTrackers()
 {
     UWorld* World = GetWorld();
     if (!World) return;

@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "LevelManagement/Requirements/LevelAreaData.h"
-#include "LevelAreaGameStateComponent.generated.h"
+#include "LevelAreaGameModeComponent.generated.h"
 
 class ULevelAreaGraphData;
 class ALevelAreaInstanceBridge;
@@ -16,13 +16,13 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPhaseChangedSignature, const TArr
 
 
 UCLASS(ClassGroup = (LevelManagement), meta = (BlueprintSpawnableComponent))
-class PROJECTER_API ULevelAreaGameStateComponent : public UActorComponent
+class PROJECTER_API ULevelAreaGameModeComponent : public UActorComponent
 {
     GENERATED_BODY()
 
 public:
 
-    ULevelAreaGameStateComponent();
+    ULevelAreaGameModeComponent();
 
 protected:
 
@@ -166,12 +166,6 @@ public:
     
     UPROPERTY(BlueprintAssignable, Category="LineOfSight")
     FOnPhaseChangedSignature OnPhaseChanged;
-    
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Hazard")
-    UMaterialParameterCollection* HazardMPC;
-
-    UPROPERTY()
-    UMaterialParameterCollectionInstance* HazardMPCInstance;
 
 #pragma endregion
 };

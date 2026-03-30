@@ -7,7 +7,7 @@
 #include "Kismet/KismetRenderingLibrary.h"
 #include "Engine/World.h"
 
-static  FLinearColor GInteractionNeutral(
+static  FLinearColor GInteractionNeutralColor(
     32896.0f / 65535.0f,
     32896.0f / 65535.0f,
     0.0f, 0.0f);
@@ -344,7 +344,7 @@ UTextureRenderTarget2D* URTPoolManager::LoadInteractionRT(int32 SlotIndex) const
 
     if (UWorld* World = GetWorld())
     {
-        UKismetRenderingLibrary::ClearRenderTarget2D(World, RT, GInteractionNeutral);
+        UKismetRenderingLibrary::ClearRenderTarget2D(World, RT, GInteractionNeutralColor);
     }
 
     UE_LOG(RTFoliageInvoker, Verbose,
