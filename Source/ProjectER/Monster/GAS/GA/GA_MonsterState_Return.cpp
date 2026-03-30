@@ -23,11 +23,11 @@ void UGA_MonsterState_Return::OnGiveAbility(const FGameplayAbilityActorInfo* Act
 void UGA_MonsterState_Return::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-	UE_LOG(LogTemp, Warning, TEXT("%s : UGA_MonsterState_Return:: ActivateAbility"), *GetName());
+
 	ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActorFromActorInfo());
 	if (IsValid(Monster) == false || IsValid(Monster->MonsterData) == false)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("UGA_MonsterState_Return::ActivateAbility : Not Monster"));
+		//UE_LOG(LogTemp, Warning, TEXT("UGA_MonsterState_Return::ActivateAbility : Not Monster"));
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
@@ -43,16 +43,33 @@ void UGA_MonsterState_Return::ActivateAbility(const FGameplayAbilitySpecHandle H
 	}
 
 	AIC->ReceiveMoveCompleted.RemoveAll(this);
-	AIC->ReceiveMoveCompleted.AddDynamic(this, &UGA_MonsterState_Return::OnMoveFinished);
+	
 	EPathFollowingRequestResult::Type ReqResult = AIC->MoveToLocation(TargetLocation, 10.f, false);
 	if (ReqResult == EPathFollowingRequestResult::Failed)
 	{
-		AIC->MoveToLocation(TargetLocation, 100.f, false);
+		ReqResult = AIC->MoveToLocation(TargetLocation, 100.f, false);
+	}
+
+	if (ReqResult != EPathFollowingRequestResult::Failed && ReqResult != EPathFollowingRequestResult::AlreadyAtGoal)
+	{
+		MoveRequestID = AIC->GetCurrentMoveRequestID();
+		AIC->ReceiveMoveCompleted.AddDynamic(this, &UGA_MonsterState_Return::OnMoveFinished);
+	}
+	else
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
 	}
 }
 
 void UGA_MonsterState_Return::OnMoveFinished(FAIRequestID RequestID, EPathFollowingResult::Type Result)
 {
+	// 자신이 발송한 요청이 아니면 무시
+	if (RequestID != MoveRequestID)
+	{
+		return;
+	}
+	
 	ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActorFromActorInfo());
 	if (IsValid(Monster))
 	{
@@ -69,7 +86,6 @@ void UGA_MonsterState_Return::OnMoveFinished(FAIRequestID RequestID, EPathFollow
 void UGA_MonsterState_Return::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
-	//UE_LOG(LogTemp, Error, TEXT("%s : UGA_MonsterState_Return::EndAbility"), *GetOwningActorFromActorInfo()->GetName());
 
 	ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActorFromActorInfo());
 	if (IsValid(Monster))

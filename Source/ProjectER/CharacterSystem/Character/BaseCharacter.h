@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -35,6 +35,8 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 	virtual void Tick( float DeltaTime ) override;
 	
 	virtual void PossessedBy(AController* NewController) override;
@@ -50,12 +52,7 @@ public:
 	
 #pragma region Component
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UCameraComponent> TopDownCameraComponent;
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<USpringArmComponent> CameraBoom;
-
 	//replacement for camera comp
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Components", meta = (AllowPrivateAccess="true"))
 	TObjectPtr<UTopDownCameraComp> TopDownCameraComp=nullptr;
@@ -275,8 +272,16 @@ public:
 	float GetAttackCooldown() const;
 	
 	// 지정된 몽타주 섹션의 실제 재생 시간(초) 반환
+	//UFUNCTION(BlueprintCallable, Category = "Combat|AttackSpeed")
+	//float GetCurrentAttackSectionDuration(UAnimMontage* Montage, FName SectionName) const;
+	
+	// 공격 쿨다운이 지났는지 확인 (공격 가능 여부)
 	UFUNCTION(BlueprintCallable, Category = "Combat|AttackSpeed")
-	float GetCurrentAttackSectionDuration(UAnimMontage* Montage, FName SectionName) const;
+	bool CanAttack() const;
+	
+	// 공격 실행 시각 기록 (GA에서 공격 시작 시 호출)
+	UFUNCTION(BlueprintCallable, Category = "Combat|AttackSpeed")
+	void MarkAttackExecuted();
 	
 protected:
 	UFUNCTION()
@@ -303,6 +308,9 @@ protected:
 	// 기본 공격속도 (CurveTable Level 1 기준값, InitAttributes에서 자동 캐싱)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat|AttackSpeed")
 	float CachedBaseAttackSpeed = 0.625f;
+	
+	// 마지막 공격 실행 서버 시각 (공격 쿨다운 타이머)
+	float LastAttackExecuteTime = -999.f;
 	
 	// 피격 이펙트 캐싱용 변수
 	UPROPERTY(Transient)
@@ -387,6 +395,14 @@ protected:
 
 	FTimerHandle UILoadTimerHandle;
 
+	//Added for the Minimap draw interval--> previously drawing per tick
+	UFUNCTION()
+	void UpdateMinimapCapture();
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI|Bar")
+	float MinimapUpdateRate=0.1f;
+	
+	FTimerHandle MinimapCaptureTimerHandle;
 
 public:
 	// 팀 구분해서 아이콘 색상 업데이트

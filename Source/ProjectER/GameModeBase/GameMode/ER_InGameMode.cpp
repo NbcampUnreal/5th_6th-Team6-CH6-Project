@@ -23,7 +23,7 @@
 #include "ItemSystem/Data/BaseItemData.h"
 #include "CharacterSystem/Data/CharacterData.h"
 
-#include "LevelManagement/LevelGraphManager/LevelAreaGameStateComp/LevelAreaGameStateComponent.h"
+#include "LevelManagement/LevelGraphManager/LevelAreaGameStateComp/LevelAreaGameModeComponent.h"
 #include "LevelManagement/LevelAreaTrackerComponent.h"
 
 void AER_InGameMode::BeginPlay()
@@ -812,7 +812,7 @@ void AER_InGameMode::HandlePhaseTimeUp()
 	{
 		ERGS->SetCurrentPhase(ERGS->GetCurrentPhase() + 1);
 		// 페이즈에 따라 작동할 코드 넣기
-		ULevelAreaGameStateComponent* AreaGSComp = ERGS->GetComponentByClass<ULevelAreaGameStateComponent>();
+  	ULevelAreaGameModeComponent* AreaGSComp = GetComponentByClass<ULevelAreaGameModeComponent>();
 		if(ERGS->GetCurrentPhase() != 1)
 		{
 			// 1페이즈에는 금지 구역을 지정하지 않도록 수정

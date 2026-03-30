@@ -50,7 +50,7 @@ UWorld* ULocalTextureSampler::ResolveWorld() const
 void ULocalTextureSampler::SetCachedWorld(UWorld* InWorld)
 {
     CachedWorld = InWorld;
-    UE_LOG(LOSVision, Log,
+    UE_LOG(LOSVision, Verbose,
         TEXT("ULocalTextureSampler::SetCachedWorld >> World set: %s"),
         InWorld ? *InWorld->GetName() : TEXT("NULL"));
 }
@@ -64,7 +64,7 @@ void ULocalTextureSampler::UpdateLocalTexture()
 
     if (!LocalMaskRT || !SourceRoot.IsValid())
     {
-        UE_LOG(LOSVision, VeryVerbose,
+        UE_LOG(LOSVision, Verbose,
             TEXT("ULocalTextureSampler::UpdateLocalTexture >> skipped | RT=%d Root=%d"),
             LocalMaskRT != nullptr,
             SourceRoot.IsValid());
@@ -79,7 +79,7 @@ void ULocalTextureSampler::UpdateLocalTexture()
             ObstacleSubsystem = World->GetSubsystem<UWorldObstacleSubsystem>();
             if (ObstacleSubsystem)
             {
-                UE_LOG(LOSVision, Log,
+                UE_LOG(LOSVision, Verbose,
                     TEXT("ULocalTextureSampler::UpdateLocalTexture >> Lazy-loaded ObstacleSubsystem with %d tiles"),
                     ObstacleSubsystem->GetTiles().Num());
             }
@@ -102,6 +102,10 @@ void ULocalTextureSampler::UpdateLocalTexture()
 
     const FVector WorldCenter = SourceRoot->GetComponentLocation();
 
+    // Skip redraw if moved less than threshold
+    if (FVector::DistSquared(WorldCenter, LastSampleCenter) < FMath::Square(RedrawDistanceThreshold))
+        return;
+    
     LastSampleCenter = WorldCenter;
 
     UE_LOG(LOSVision, Verbose,
@@ -173,10 +177,13 @@ void ULocalTextureSampler::SetLocalRenderTargetOnly(UTextureRenderTarget2D* InRT
     {
         UE_LOG(LOSVision, Warning,
             TEXT("ULocalTextureSampler::SetLocalRenderTargetOnly >> RT is null"));
+        return;
     }
 
-    // this is only for the setting, no update
+    LastSampleCenter = FVector(FLT_MAX); // force redraw
+    UpdateLocalTexture();                // make sure sampler draws to new RT
 }
+
 
 void ULocalTextureSampler::SetLocationRoot(USceneComponent* NewRoot)
 {
@@ -281,7 +288,6 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
         return;
     }
 
-    // Check RT resource is ready
     FRenderTarget* RTResource = LocalMaskRT->GameThread_GetRenderTargetResource();
     if (!RTResource)
     {
@@ -290,6 +296,7 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
         return;
     }
 
+    // Clear async — no stall
     UKismetRenderingLibrary::ClearRenderTarget2D(World, LocalMaskRT, FLinearColor::Black);
 
     if (bDrawDebugRT && DebugRT)
@@ -302,23 +309,24 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
         return;
     }
 
-    FCanvas Canvas(RTResource, nullptr, World, GMaxRHIFeatureLevel);
+    // ------------------------------------------------------------------ //
+    //  Build tile draw data on the game thread — layout math is cheap
+    //  and must not touch UObjects on the render thread
+    // ------------------------------------------------------------------ //
 
-    FCanvas* DebugCanvas = nullptr;
-    if (bDrawDebugRT && DebugRT)
+    struct FTileDrawData
     {
-        if (FRenderTarget* DebugResource = DebugRT->GameThread_GetRenderTargetResource())
-        {
-            DebugCanvas = new FCanvas(DebugResource, nullptr, World, GMaxRHIFeatureLevel);
-        }
-    }
+        FVector2D        Pos;
+        FVector2D        Size;
+        FRotator         Rotation;
+        FTextureResource* MaskResource;
+    };
 
-    const FVector2D LocalSize = LocalWorldBounds.GetSize();
-    const float CameraYawOffset = 90.f;
+    const FVector2D LocalSize       = LocalWorldBounds.GetSize();
+    const float     CameraYawOffset = 90.f;
 
-    UE_LOG(LOSVision, Verbose,
-        TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Drawing %d tiles"),
-        ActiveTileIndices.Num());
+    TArray<FTileDrawData> TilesToDraw;
+    TilesToDraw.Reserve(ActiveTileIndices.Num());
 
     for (int32 TileIndex : ActiveTileIndices)
     {
@@ -347,30 +355,82 @@ void ULocalTextureSampler::DrawTilesIntoLocalRT()
         TileSizeInRT.X = (Tile.WorldSize.Y / LocalSize.Y) * LocalMaskRT->SizeX;
         TileSizeInRT.Y = (Tile.WorldSize.X / LocalSize.X) * LocalMaskRT->SizeY;
 
-        FVector2D SafeSize  = TileSizeInRT - FVector2D(0.5f, 0.5f);
+        FVector2D SafeSize    = TileSizeInRT - FVector2D(0.5f, 0.5f);
         FVector2D TilePosInRT = TileCenterInRT - (SafeSize * 0.5f);
 
-        FCanvasTileItem TileItem(TilePosInRT, MaskResource, SafeSize, FLinearColor::White);
-        TileItem.BlendMode  = SE_BLEND_Additive;
-        TileItem.UV0        = FVector2D(0.001f, 0.001f);
-        TileItem.UV1        = FVector2D(0.999f, 0.999f);
-        TileItem.PivotPoint = FVector2D(0.5f, 0.5f);
-        TileItem.Rotation   = FRotator(0.f, Tile.WorldRotationYaw - CameraYawOffset, 0.f);
-
-        Canvas.DrawItem(TileItem);
-
-        if (DebugCanvas)
-            DebugCanvas->DrawItem(TileItem);
+        TilesToDraw.Add({
+            TilePosInRT,
+            SafeSize,
+            FRotator(0.f, Tile.WorldRotationYaw - CameraYawOffset, 0.f),
+            MaskResource
+        });
     }
 
-    Canvas.Flush_GameThread();
+    if (TilesToDraw.IsEmpty())
+        return;
 
-    if (DebugCanvas)
+    UE_LOG(LOSVision, Verbose,
+        TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Enqueueing %d tiles"),
+        TilesToDraw.Num());
+    
+    //  Enqueue render command — runs async on render thread, no GT stall
+
+    ENQUEUE_RENDER_COMMAND(DrawObstacleTiles)(
+        [RTResource, TilesToDraw](FRHICommandListImmediate& RHICmdList)
+        {
+            FCanvas Canvas(RTResource, nullptr, FGameTime(), GMaxRHIFeatureLevel);
+
+            for (const FTileDrawData& Tile : TilesToDraw)
+            {
+                FCanvasTileItem TileItem(
+                    Tile.Pos,
+                    Tile.MaskResource,
+                    Tile.Size,
+                    FLinearColor::White);
+
+                TileItem.BlendMode  = SE_BLEND_Additive;
+                TileItem.UV0        = FVector2D(0.001f, 0.001f);
+                TileItem.UV1        = FVector2D(0.999f, 0.999f);
+                TileItem.PivotPoint = FVector2D(0.5f, 0.5f);
+                TileItem.Rotation   = Tile.Rotation;
+
+                Canvas.DrawItem(TileItem);
+            }
+
+            Canvas.Flush_GameThread(); // 
+        });
+
+
+    //  Debug RT
+    if (bDrawDebugRT && DebugRT)
     {
-        DebugCanvas->Flush_GameThread();
-        delete DebugCanvas;
+        FRenderTarget* DebugResource = DebugRT->GameThread_GetRenderTargetResource();
+        if (DebugResource)
+        {
+            FCanvas DebugCanvas(DebugResource, nullptr, World, GMaxRHIFeatureLevel);
+
+            for (const FTileDrawData& Tile : TilesToDraw)
+            {
+                FCanvasTileItem TileItem(
+                    Tile.Pos,
+                    Tile.MaskResource,
+                    Tile.Size,
+                    FLinearColor::White);
+
+                TileItem.BlendMode  = SE_BLEND_Additive;
+                TileItem.UV0        = FVector2D(0.001f, 0.001f);
+                TileItem.UV1        = FVector2D(0.999f, 0.999f);
+                TileItem.PivotPoint = FVector2D(0.5f, 0.5f);
+                TileItem.Rotation   = Tile.Rotation;
+
+                DebugCanvas.DrawItem(TileItem);
+            }
+
+            DebugCanvas.Flush_GameThread();
+        }
     }
 
     UE_LOG(LOSVision, Verbose,
-        TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Finished drawing tiles"));
+        TEXT("ULocalTextureSampler::DrawTilesIntoLocalRT >> Finished enqueueing tiles"));
 }
+

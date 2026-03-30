@@ -1,0 +1,416 @@
+﻿// RTBlur.ush
+// Place in: CustomBlendModeForRTDraw/Shaders/RTBlur.ush
+// Include in any Custom node: #include "/CustomBlendModeForRTDraw/RTBlur.ush"
+
+#pragma once
+
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Internal helpers
+// ─────────────────────────────────────────────────────────────────────────────
+float RTB_GaussianWeight(float Offset, float Sigma)
+{
+    return exp(-(Offset * Offset) / (2.0f * Sigma * Sigma));
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_GaussianBlur1D
+// Single-axis Gaussian blur — run twice for full 2D blur.
+// Direction: float2(1,0) = horizontal, float2(0,1) = vertical
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_GaussianBlur1D(
+    Texture2D    RT,
+    SamplerState RTSampler,
+    float2       TexCoord,
+    float2       Direction,
+    float2       TexelSize,
+    float        Radius,
+    int          Samples)
+{
+    float4 Result      = float4(0.f, 0.f, 0.f, 0.f);
+    float  TotalWeight = 0.f;
+    float  Sigma       = max(Radius / 3.0f, 0.0001f);
+    int    HalfSamples = Samples / 2;
+
+    for (int i = -HalfSamples; i <= HalfSamples; ++i)
+    {
+        float2 Offset = Direction * TexelSize * Radius * float(i) / float(max(HalfSamples, 1));
+        float  Weight  = RTB_GaussianWeight(float(i), Sigma);
+        Result        += RT.SampleLevel(RTSampler, TexCoord + Offset, 0) * Weight;
+        TotalWeight   += Weight;
+    }
+
+    return Result / max(TotalWeight, 0.0001f);
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_BoxBlur1D
+// Single-axis box blur — uniform weights, cheaper than Gaussian.
+// Run twice (horizontal + vertical) for full 2D blur.
+// Direction: float2(1,0) = horizontal, float2(0,1) = vertical
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_BoxBlur1D(
+    Texture2D    RT,
+    SamplerState RTSampler,
+    float2       TexCoord,
+    float2       Direction,
+    float2       TexelSize,
+    float        Radius,
+    int          Samples)
+{
+    float4 Result      = float4(0.f, 0.f, 0.f, 0.f);
+    int    HalfSamples = Samples / 2;
+
+    for (int i = -HalfSamples; i <= HalfSamples; ++i)
+    {
+        // ← add Radius multiplier
+        float2 Offset = Direction * TexelSize * Radius * float(i) / float(max(HalfSamples, 1));
+        Result       += RT.SampleLevel(RTSampler, TexCoord + Offset, 0);
+    }
+
+    return Result / float(Samples);
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_KawaseBlur
+// Single Kawase blur pass — call multiple times with increasing Iteration.
+// Very efficient at large radius. Typical usage: 4-6 passes, Iteration 0,1,2,3...
+// Each pass doubles the effective kernel size.
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_KawaseBlur(
+    Texture2D    RT,
+    SamplerState RTSampler,
+    float2       TexCoord,
+    float2       TexelSize,
+    int          Iteration)
+{
+    float2 Step = TexelSize * (float(Iteration) + 0.5f);
+
+    float4 Result = float4(0.f, 0.f, 0.f, 0.f);
+    Result += RT.SampleLevel(RTSampler, TexCoord + float2( Step.x,  Step.y), 0);
+    Result += RT.SampleLevel(RTSampler, TexCoord + float2(-Step.x,  Step.y), 0);
+    Result += RT.SampleLevel(RTSampler, TexCoord + float2( Step.x, -Step.y), 0);
+    Result += RT.SampleLevel(RTSampler, TexCoord + float2(-Step.x, -Step.y), 0);
+
+    return Result * 0.25f;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_DirectionalBlur
+// Smears the image along a direction vector.
+// Useful for motion blur or directional trail effects.
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_DirectionalBlur(
+    Texture2D    RT,
+    SamplerState RTSampler,
+    float2       TexCoord,
+    float2       Direction,
+    float2       TexelSize,
+    float        Strength,
+    int          Samples)
+{
+    float4 Result      = float4(0.f, 0.f, 0.f, 0.f);
+    float  SafeSamples = max(float(Samples), 1.f);
+
+    for (int i = 0; i < Samples; ++i)
+    {
+        float  T      = float(i) / (SafeSamples - 1.f);
+        float2 Offset = Direction * TexelSize * Strength * T;
+        Result       += RT.SampleLevel(RTSampler, TexCoord + Offset, 0);
+    }
+
+    return Result / SafeSamples;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_RadialBlur
+// Smears outward from a centre point — simulates explosion or impact.
+// Centre: UV space centre point e.g. float2(0.5, 0.5)
+// Strength: smear amount in UV space
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_RadialBlur(
+    Texture2D    RT,
+    SamplerState RTSampler,
+    float2       TexCoord,
+    float2       Centre,
+    float        Strength,
+    int          Samples)
+{
+    float4 Result      = float4(0.f, 0.f, 0.f, 0.f);
+    float  SafeSamples = max(float(Samples), 1.f);
+    float2 Dir         = TexCoord - Centre;
+
+    for (int i = 0; i < Samples; ++i)
+    {
+        float  T      = float(i) / (SafeSamples - 1.f);
+        float2 Offset = Dir * Strength * T;
+        Result       += RT.SampleLevel(RTSampler, TexCoord + Offset, 0);
+    }
+
+    return Result / SafeSamples;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_RotationalBlur
+// Smears in a circular arc around a centre point.
+// Centre: UV space centre point e.g. float2(0.5, 0.5)
+// Angle: rotation arc in radians e.g. 0.1
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_RotationalBlur(
+    Texture2D    RT,
+    SamplerState RTSampler,
+    float2       TexCoord,
+    float2       Centre,
+    float        Angle,
+    int          Samples)
+{
+    float4 Result      = float4(0.f, 0.f, 0.f, 0.f);
+    float  SafeSamples = max(float(Samples), 1.f);
+    float2 Delta       = TexCoord - Centre;
+
+    for (int i = 0; i < Samples; ++i)
+    {
+        float T   = float(i) / (SafeSamples - 1.f);
+        float A   = Angle * (T - 0.5f);
+        float CosA = cos(A);
+        float SinA = sin(A);
+
+        float2 Rotated;
+        Rotated.x = Delta.x * CosA - Delta.y * SinA;
+        Rotated.y = Delta.x * SinA + Delta.y * CosA;
+
+        Result += RT.SampleLevel(RTSampler, Centre + Rotated, 0);
+    }
+
+    return Result / SafeSamples;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_RotationalBlurExponential
+// Rotational blur with exponential influence from centre to edge.
+// Pixels near centre have minimal blur, pixels at edge have maximum blur.
+// Exponent: controls falloff curve — 1.0 = linear, 2.0 = quadratic, 3.0 = cubic
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_RotationalBlurExponential(
+    Texture2D    RT,
+    SamplerState RTSampler,
+    float2       TexCoord,
+    float2       Centre,
+    float        Angle,
+    float        Exponent,
+    int          Samples)
+{
+    float4 Result      = float4(0.f, 0.f, 0.f, 0.f);
+    float  SafeSamples = max(float(Samples), 1.f);
+    float2 Delta       = TexCoord - Centre;
+    float  Dist        = length(Delta);
+
+    // Exponential influence — grows rapidly toward edge
+    float Influence = pow(Dist, max(Exponent, 0.0001f));
+
+    for (int i = 0; i < Samples; ++i)
+    {
+        float  T   = float(i) / (SafeSamples - 1.f);
+        float  A   = Angle * Influence * (T - 0.5f);
+        float CosA = cos(A);
+        float SinA = sin(A);
+
+        float2 Rotated;
+        Rotated.x = Delta.x * CosA - Delta.y * SinA;
+        Rotated.y = Delta.x * SinA + Delta.y * CosA;
+
+        Result += RT.SampleLevel(RTSampler, Centre + Rotated, 0);
+    }
+
+    return Result / SafeSamples;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_EdgePreservingBlur
+// Blurs smooth areas, preserves sharp edges.
+// Useful for smoothing height fields without losing detail.
+// EdgeThreshold: higher = preserve more edges (0.1 = sensitive, 1.0 = loose)
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_EdgePreservingBlur(
+    Texture2D    RT,
+    SamplerState RTSampler,
+    float2       TexCoord,
+    float2       TexelSize,
+    float        Radius,
+    int          Samples,
+    float        EdgeThreshold)
+{
+    float4 Centre      = RT.SampleLevel(RTSampler, TexCoord, 0);
+    float4 Result      = float4(0.f, 0.f, 0.f, 0.f);
+    float  TotalWeight = 0.f;
+    int    HalfSamples = Samples / 2;
+
+    for (int x = -HalfSamples; x <= HalfSamples; ++x)
+    {
+        for (int y = -HalfSamples; y <= HalfSamples; ++y)
+        {
+            float2 Offset  = float2(float(x), float(y)) * TexelSize * Radius / float(HalfSamples);
+            float4 Sample  = RT.SampleLevel(RTSampler, TexCoord + Offset, 0);
+
+            // Weight falls off when sample differs too much from centre
+            float  Diff    = length(Sample - Centre);
+            float  Weight  = exp(-Diff / max(EdgeThreshold, 0.0001f));
+
+            Result        += Sample * Weight;
+            TotalWeight   += Weight;
+        }
+    }
+
+    return Result / max(TotalWeight, 0.0001f);
+}
+
+#pragma region MorphBlur
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_Morphology
+// Combined dilate and erode with circular or rectangular kernel.
+// bDilate:      1.0 = dilate (expand bright), 0.0 = erode (shrink bright)
+// bCircular:    1.0 = circular kernel, 0.0 = rectangular kernel
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_Morphology(
+    Texture2D    RT,
+    SamplerState RTSampler,
+    float2       TexCoord,
+    float2       TexelSize,
+    float        Radius,
+    int          Samples,
+    float        bDilate,
+    float        bCircular)
+{
+    float4 Result      = bDilate > 0.5f ? float4(0.f, 0.f, 0.f, 0.f)
+                                        : float4(1.f, 1.f, 1.f, 1.f);
+    int    HalfSamples = max(Samples / 2, 1);
+
+    for (int x = -HalfSamples; x <= HalfSamples; ++x)
+    {
+        for (int y = -HalfSamples; y <= HalfSamples; ++y)
+        {
+            // Circular kernel check
+            if (bCircular > 0.5f)
+            {
+                float Dist = length(float2(float(x), float(y))) / float(HalfSamples);
+                if (Dist > 1.0f) { continue; }
+            }
+
+            float2 Offset = float2(float(x), float(y)) * TexelSize * Radius / float(HalfSamples);
+            float4 Sample = RT.SampleLevel(RTSampler, TexCoord + Offset, 0);
+
+            Result = bDilate > 0.5f ? max(Result, Sample)
+                                    : min(Result, Sample);
+        }
+    }
+
+    return Result;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_MorphologyShape
+// Combined dilate and erode with custom shape mask texture.
+// ChannelMask: bitmask selecting which channel to read from shape mask
+//              bit 0=R, bit 1=G, bit 2=B, bit 3=A
+//              Built from MakeChannelMask in FRTBlendDraw — pass as float
+// bDilate:     1.0 = dilate, 0.0 = erode
+// ShapeThreshold: 0.5 works for binary masks
+// ─────────────────────────────────────────────────────────────────────────────
+float RTB_SampleShapeChannel(float4 Sample, int ChannelMask)
+{
+    float Value = 0.f;
+    int   Count = 0;
+
+    if (ChannelMask & 1) { Value += Sample.r; ++Count; }
+    if (ChannelMask & 2) { Value += Sample.g; ++Count; }
+    if (ChannelMask & 4) { Value += Sample.b; ++Count; }
+    if (ChannelMask & 8) { Value += Sample.a; ++Count; }
+
+    return Count > 0 ? Value / float(Count) : 0.f;
+}
+
+float4 RTB_MorphologyShape(
+    Texture2D    RT,
+    SamplerState RTSampler,
+    Texture2D    ShapeMask,
+    SamplerState ShapeMaskSampler,
+    float2       TexCoord,
+    float2       TexelSize,
+    float        Radius,
+    int          Samples,
+    int          ChannelMask,
+    float        ShapeThreshold,
+    float        bDilate)
+{
+    float4 Result      = bDilate > 0.5f ? float4(0.f, 0.f, 0.f, 0.f)
+                                        : float4(1.f, 1.f, 1.f, 1.f);
+    int    HalfSamples = max(Samples / 2, 1);
+
+    for (int x = -HalfSamples; x <= HalfSamples; ++x)
+    {
+        for (int y = -HalfSamples; y <= HalfSamples; ++y)
+        {
+            // Sample shape mask at kernel position
+            float2 NormalizedOffset = float2(float(x), float(y)) / float(HalfSamples);
+            float2 ShapeUV          = NormalizedOffset * 0.5f + 0.5f;
+            float4 ShapeSample      = ShapeMask.SampleLevel(ShapeMaskSampler, ShapeUV, 0);
+
+            // Read selected channel via bitmask
+            float ShapeValue = RTB_SampleShapeChannel(ShapeSample, ChannelMask);
+            if (ShapeValue < ShapeThreshold) { continue; }
+
+            float2 Offset = NormalizedOffset * TexelSize * Radius;
+            float4 Sample = RT.SampleLevel(RTSampler, TexCoord + Offset, 0);
+
+            Result = bDilate > 0.5f ? max(Result, Sample)
+                                    : min(Result, Sample);
+        }
+    }
+
+    return Result;
+}
+#pragma endregion
+
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTB_Erode
+// Morphological erosion — shrinks bright regions.
+// Useful for thinning masks, shrinking brush footprints.
+// ─────────────────────────────────────────────────────────────────────────────
+float4 RTB_Erode(
+    Texture2D    RT,
+    SamplerState RTSampler,
+    float2       TexCoord,
+    float2       TexelSize,
+    float        Radius,
+    int          Samples)
+{
+    float4 Result      = float4(1.f, 1.f, 1.f, 1.f);
+    int    HalfSamples = Samples / 2;
+
+    for (int x = -HalfSamples; x <= HalfSamples; ++x)
+    {
+        for (int y = -HalfSamples; y <= HalfSamples; ++y)
+        {
+            float2 Offset = float2(float(x), float(y)) * TexelSize * Radius / float(HalfSamples);
+            float4 Sample = RT.SampleLevel(RTSampler, TexCoord + Offset, 0);
+            Result        = min(Result, Sample);
+        }
+    }
+
+    return Result;
+}
+
+

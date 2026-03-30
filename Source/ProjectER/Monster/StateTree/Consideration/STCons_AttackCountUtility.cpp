@@ -1,6 +1,7 @@
 ﻿#include "Monster/StateTree/Consideration/STCons_AttackCountUtility.h"
 #include "StateTreeLinker.h"
 #include "StateTreeExecutionContext.h"
+#include "AbilitySystemComponent.h"
 
 #include "Monster/BaseMonster.h"
 
@@ -37,9 +38,15 @@ float FSTCons_AttackCountUtility::GetScore(FStateTreeExecutionContext& Context) 
 
 	if (InstanceData.AttackCountThreshold <= Monster->GetAttackCount())
 	{
-		Monster->SetAttackCount(0);
+		UAbilitySystemComponent* ASC = Monster->GetAbilitySystemComponent();
+		if (ASC && ASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag("Cooldown.Skill.R")))
+		{
+			return 0.f;
+		}
+
 		return 1.f;
 	}
+
 
 	return 0.f;
 }

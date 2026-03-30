@@ -11,9 +11,9 @@ UGA_MonsterState::UGA_MonsterState()
 	bReplicateInputDirectly = false;
 
 	//Advanced
-	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
-	ReplicationPolicy = EGameplayAbilityReplicationPolicy::ReplicateYes;
-	NetSecurityPolicy = EGameplayAbilityNetSecurityPolicy::ClientOrServer;
+	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly; // LocalPredicted;
+	ReplicationPolicy = EGameplayAbilityReplicationPolicy::ReplicateNo; // ReplicateYes;
+	NetSecurityPolicy = EGameplayAbilityNetSecurityPolicy::ServerOnly; // ClientOrServer;
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	bServerRespectsRemoteAbilityCancellation = false;
 	bRetriggerInstancedAbility = false;

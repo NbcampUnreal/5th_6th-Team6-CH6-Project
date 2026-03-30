@@ -12,388 +12,204 @@
 #include "CanvasItem.h"
 #include "Engine/World.h"
 
-// Clear color update — ImpulseRT neutral is (0.5, 0.5, 0, 0)
-// R=0.5 G=0.5 = zero velocity, A=0 = never stamped
-static const FLinearColor GImpulseNeutral(0.5f, 0.5f, 0.f, 0.f);
-static const FLinearColor GContinuousNeutral(0.f, 0.f, 0.f, 0.f);
 
-// for the clipping
-enum class EBrushTileType : uint8
-{
-	Original = 0,
-	Wrapped  = 1
-};
+static const FLinearColor GInteractionNeutral(
+    32896.0f / 65535.0f,
+    32896.0f / 65535.0f,
+    0.0f, 0.0f);
 
 bool URTDrawManager::ShouldCreateSubsystem(UObject* Outer) const
 {
-	UWorld* World = Cast<UWorld>(Outer);
-	return World && (World->IsGameWorld() || World->IsPlayInEditor());
+    UWorld* World = Cast<UWorld>(Outer);
+    return World && (World->IsGameWorld() || World->IsPlayInEditor());
 }
 
 void URTDrawManager::Initialize(FSubsystemCollectionBase& Collection)
 {
-	Collection.InitializeDependency<URTPoolManager>();
-	Super::Initialize(Collection);
+    Collection.InitializeDependency<URTPoolManager>();
+    Super::Initialize(Collection);
 
-	PoolManager = GetWorld()->GetSubsystem<URTPoolManager>();
-	if (!PoolManager) { return; }
+    PoolManager = GetWorld()->GetSubsystem<URTPoolManager>();
+    if (!PoolManager) { return; }
 
-	// Clear stale timestamps from previous session
-	const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
-	for (int32 i = 0; i < Pool.Num(); ++i)
-	{
-		if (Pool[i].ImpulseRT)
-		{
-			UKismetRenderingLibrary::ClearRenderTarget2D(
-				GetWorld(), Pool[i].ImpulseRT, GImpulseNeutral);
-		}
-	}
+    // Load decay material from settings and create MID
+    if (const URTPoolSettings* Settings = GetDefault<URTPoolSettings>())
+    {
+        UMaterialInterface* DecayMat = Settings->DecayMaterial.LoadSynchronous();
+        if (DecayMat)
+            DecayMID = UMaterialInstanceDynamic::Create(DecayMat, this);
+    }
 
-	UE_LOG(RTFoliageInvoker, Log, TEXT("URTDrawManager::Initialize >> Ready"));
+    const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
+    for (int32 i = 0; i < Pool.Num(); ++i)
+    {
+        if (Pool[i].InteractionRT)
+            UKismetRenderingLibrary::ClearRenderTarget2D(
+                GetWorld(), Pool[i].InteractionRT, GInteractionNeutral);
+    }
+
+    UE_LOG(RTFoliageInvoker, Log, TEXT("URTDrawManager::Initialize >> Ready"));
 }
 
 void URTDrawManager::Deinitialize()
 {
-	Super::Deinitialize();
+    Super::Deinitialize();
 }
 
 void URTDrawManager::Update(float DeltaTime)
 {
-	if (!PoolManager)
-	{
-		UE_LOG(RTFoliageInvoker, Warning,
-			TEXT("URTDrawManager::Update >> PoolManager is null — skipping"));
-		return;
-	}
+    if (!PoolManager || !GetWorld()) { return; }
 
-	if (!GetWorld())
-	{
-		UE_LOG(RTFoliageInvoker, Warning,
-			TEXT("URTDrawManager::Update >> World is null — skipping"));
-		return;
-	}
+    const TArray<TTuple<UFoliageRTInvokerComponent*, int32>> AssignedInvokers =
+        PoolManager->EvaluateAndAssignSlots();
 
-	const TArray<TTuple<UFoliageRTInvokerComponent*, int32>> AssignedInvokers =
-		PoolManager->EvaluateAndAssignSlots();
-
-	ProcessPendingImpulseClears();
-	ClearContinuousRTs();
-	DrawAllInvokers(AssignedInvokers, DeltaTime);
-	PoolManager->ReclaimExpiredSlots();
-
-	UE_LOG(RTFoliageInvoker, Verbose,
-		TEXT("URTDrawManager::Update >> Drew %d invokers"), AssignedInvokers.Num());
+    ProcessPendingClears();
+    DrawAllInvokers(AssignedInvokers);
+    PoolManager->ReclaimExpiredSlots();
 }
 
 void URTDrawManager::DrawAllInvokers(
-	const TArray<TTuple<UFoliageRTInvokerComponent*, int32>>& AssignedInvokers,
-	float DeltaTime) const
+    const TArray<TTuple<UFoliageRTInvokerComponent*, int32>>& AssignedInvokers) const
 {
-	if (AssignedInvokers.Num() == 0) { return; }
+    if (AssignedInvokers.Num() == 0) { return; }
 
-	for (int32 SlotIdx = 0; SlotIdx < PoolManager->PoolSize; ++SlotIdx)
-	{
-		UTextureRenderTarget2D* ImpulseRT    = nullptr;
-		UTextureRenderTarget2D* ContinuousRT = nullptr;
-		FVector2D               DummyOrigin;
+    for (int32 SlotIdx = 0; SlotIdx < PoolManager->PoolSize; ++SlotIdx)
+    {
+        UTextureRenderTarget2D* InteractionRT = nullptr;
+        FVector2D               DummyOrigin;
 
-		if (!PoolManager->GetSlotData(SlotIdx, ImpulseRT, ContinuousRT, DummyOrigin))
-			continue;
-
-		if (ContinuousRT)
-			DrawContinuousForSlot(ContinuousRT, SlotIdx, AssignedInvokers);
-
-		if (ImpulseRT)
-			DrawImpulseForSlot(ImpulseRT, SlotIdx, AssignedInvokers);
-	}
+        if (!PoolManager->GetSlotData(SlotIdx, InteractionRT, DummyOrigin)) { continue; }
+        if (InteractionRT)
+            DrawSlot(InteractionRT, SlotIdx, AssignedInvokers);
+    }
 }
 
-void URTDrawManager::DrawContinuousForSlot(UTextureRenderTarget2D* RT, int32 SlotIdx,
-	const TArray<TTuple<UFoliageRTInvokerComponent*, int32>>& AssignedInvokers) const
+void URTDrawManager::DrawSlot(UTextureRenderTarget2D* RT, int32 SlotIdx,
+    const TArray<TTuple<UFoliageRTInvokerComponent*, int32>>& AssignedInvokers) const
 {
-	UCanvas* Canvas = nullptr;
-	FVector2D CanvasSize;
-	FDrawToRenderTargetContext Context;
+    const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
 
-	UKismetRenderingLibrary::BeginDrawCanvasToRenderTarget(
-		GetWorld(), RT, Canvas, CanvasSize, Context);
+    // Clear pass — reset directions and height, preserve progression
+    if (DecayMID && Pool.IsValidIndex(SlotIdx))
+    {
+        UCanvas* Canvas = nullptr;
+        FVector2D CanvasSize;
+        FDrawToRenderTargetContext Context;
 
-	if (Canvas)
-	{
-		for (const TTuple<UFoliageRTInvokerComponent*, int32>& Pair : AssignedInvokers)
-		{
-			if (Pair.Get<1>() != SlotIdx) { continue; }
+        UKismetRenderingLibrary::BeginDrawCanvasToRenderTarget(GetWorld(), RT, Canvas, CanvasSize, Context);
+        if (Canvas)
+        {
+            DecayMID->SetTextureParameterValue(FName("PreviousRT"), RT);
+            DecayMID->SetScalarParameterValue(FName("Mode"), 0.0f);
 
-			UFoliageRTInvokerComponent* Invoker = Pair.Get<0>();
-			if (!Invoker) { continue; }
+            FCanvasTileItem TileItem(FVector2D::ZeroVector, DecayMID->GetRenderProxy(), CanvasSize);
+            TileItem.UV0       = FVector2D(0.f, 0.f);
+            TileItem.UV1       = FVector2D(1.f, 1.f);
+            TileItem.BlendMode = SE_BLEND_Opaque;
+            Canvas->DrawItem(TileItem);
 
-			FVector2D CellOriginWS;
-			UTextureRenderTarget2D* Dummy1 = nullptr;
-			UTextureRenderTarget2D* Dummy2 = nullptr;
-			PoolManager->GetSlotData(SlotIdx, Dummy1, Dummy2, CellOriginWS);
+            UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(GetWorld(), Context);
+        }
+    }
 
-			const FRTInvokerFrameData Data =
-				Invoker->GetFrameData(SlotIdx, CellOriginWS, PoolManager->CellSize);
+    // Brush pass — accumulate all invokers into cleared RT
+    {
+        UCanvas* Canvas = nullptr;
+        FVector2D CanvasSize;
+        FDrawToRenderTargetContext Context;
 
-			if (!Data.MID_Continuous) { continue; }
+        UKismetRenderingLibrary::BeginDrawCanvasToRenderTarget(GetWorld(), RT, Canvas, CanvasSize, Context);
+        if (!Canvas) { return; }
 
-			// Additive — multiple invokers accumulate into combined height field
-			DrawTiledBrush(Canvas, CanvasSize, Data.MID_Continuous,
-				Data.CellUV, Data.UVExtent, SE_BLEND_Additive);
-		}
+        for (const TTuple<UFoliageRTInvokerComponent*, int32>& Pair : AssignedInvokers)
+        {
+            if (Pair.Get<1>() != SlotIdx) { continue; }
 
-		UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(GetWorld(), Context);
-	}
+            UFoliageRTInvokerComponent* Invoker = Pair.Get<0>();
+            if (!Invoker) { continue; }
+
+            FVector2D CellOriginWS;
+            UTextureRenderTarget2D* Dummy = nullptr;
+            PoolManager->GetSlotData(SlotIdx, Dummy, CellOriginWS);
+
+            const FRTInvokerFrameData Data =
+                Invoker->GetFrameData(SlotIdx, CellOriginWS, PoolManager->CellSize);
+
+            if (!Data.MID_Interaction) { continue; }
+
+            Data.MID_Interaction->SetTextureParameterValue(FName("PreviousRT"), RT);
+            DrawBrush(Canvas, CanvasSize, Data.MID_Interaction, Data.CellUV, Data.UVExtent);
+        }
+
+        UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(GetWorld(), Context);
+    }
+
+    // Decay pass — decay progression after brushes drawn
+    if (DecayMID && Pool.IsValidIndex(SlotIdx))
+    {
+        UCanvas* Canvas = nullptr;
+        FVector2D CanvasSize;
+        FDrawToRenderTargetContext Context;
+
+        UKismetRenderingLibrary::BeginDrawCanvasToRenderTarget(GetWorld(), RT, Canvas, CanvasSize, Context);
+        if (Canvas)
+        {
+            DecayMID->SetTextureParameterValue(FName("PreviousRT"), RT);
+            DecayMID->SetScalarParameterValue(FName("Mode"), 1.0f);
+            DecayMID->SetScalarParameterValue(FName("DecayRate"), Pool[SlotIdx].LastDecayRate);
+
+            FCanvasTileItem TileItem(FVector2D::ZeroVector, DecayMID->GetRenderProxy(), CanvasSize);
+            TileItem.UV0       = FVector2D(0.f, 0.f);
+            TileItem.UV1       = FVector2D(1.f, 1.f);
+            TileItem.BlendMode = SE_BLEND_Opaque;
+            Canvas->DrawItem(TileItem);
+
+            UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(GetWorld(), Context);
+        }
+    }
 }
 
-void URTDrawManager::DrawImpulseForSlot(UTextureRenderTarget2D* RT, int32 SlotIdx,
-	const TArray<TTuple<UFoliageRTInvokerComponent*, int32>>& AssignedInvokers) const
-{
-	UCanvas* Canvas = nullptr;
-	FVector2D CanvasSize;
-	FDrawToRenderTargetContext Context;
-
-	UKismetRenderingLibrary::BeginDrawCanvasToRenderTarget(
-		GetWorld(), RT, Canvas, CanvasSize, Context);
-
-	if (Canvas)
-	{
-		for (const TTuple<UFoliageRTInvokerComponent*, int32>& Pair : AssignedInvokers)
-		{
-			if (Pair.Get<1>() != SlotIdx) { continue; }
-
-			UFoliageRTInvokerComponent* Invoker = Pair.Get<0>();
-			if (!Invoker) { continue; }
-
-			FVector2D CellOriginWS;
-			UTextureRenderTarget2D* Dummy1 = nullptr;
-			UTextureRenderTarget2D* Dummy2 = nullptr;
-			PoolManager->GetSlotData(SlotIdx, Dummy1, Dummy2, CellOriginWS);
-
-			const FRTInvokerFrameData Data =
-				Invoker->GetFrameData(SlotIdx, CellOriginWS, PoolManager->CellSize);
-
-			if (!Data.MID_Impulse) { continue; }
-
-			// SE_BLEND_MAX — latest timestamp wins per texel.
-			// Written every tick while present, freezes on exit.
-			// bShouldStamp gate removed.
-			DrawTiledBrush(Canvas, CanvasSize, Data.MID_Impulse,
-				Data.CellUV, Data.UVExtent, SE_BLEND_MAX);
-		}
-
-		UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(GetWorld(), Context);
-	}
-}
-
-void URTDrawManager::DrawTiledBrush(
+void URTDrawManager::DrawBrush(
     UCanvas* Canvas,
     FVector2D CanvasSize,
     UMaterialInstanceDynamic* MID,
     FVector2D CentreUV,
-    FVector2D UVExtent,
-    ESimpleElementBlendMode BlendMode) const
+    FVector2D UVExtent) const
 {
     if (!MID || !Canvas) { return; }
 
-    struct FTile
+    MID->SetVectorParameterValue(
+        FName("BrushCentreUV"),
+        FLinearColor(CentreUV.X, CentreUV.Y, 0.f, 0.f));
+
+    MID->SetVectorParameterValue(
+        FName("BrushUVExtent"),
+        FLinearColor(UVExtent.X, UVExtent.Y, 0.f, 0.f));
+
+    FCanvasTileItem TileItem(FVector2D::ZeroVector, MID->GetRenderProxy(), CanvasSize);
+    TileItem.UV0       = FVector2D(0.f, 0.f);
+    TileItem.UV1       = FVector2D(1.f, 1.f);
+    TileItem.BlendMode = SE_BLEND_Opaque;
+    Canvas->DrawItem(TileItem);
+}
+
+void URTDrawManager::ProcessPendingClears() const
+{
+    const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
+    for (int32 i = 0; i < Pool.Num(); ++i)
     {
-        FVector2D Offset;
-        EBrushTileType Type;
-    };
-
-    TArray<FTile, TInlineAllocator<9>> Tiles;
-
-    const bool bWrapLeft   = CentreUV.X - UVExtent.X < 0.f;
-    const bool bWrapRight  = CentreUV.X + UVExtent.X > 1.f;
-    const bool bWrapBottom = CentreUV.Y - UVExtent.Y < 0.f;
-    const bool bWrapTop    = CentreUV.Y + UVExtent.Y > 1.f;
-
-    // Original
-    Tiles.Add({ FVector2D(0.f, 0.f), EBrushTileType::Original });
-
-    // Wrapped
-    if (bWrapLeft)   Tiles.Add({ FVector2D( 1.f,  0.f), EBrushTileType::Wrapped });
-    if (bWrapRight)  Tiles.Add({ FVector2D(-1.f,  0.f), EBrushTileType::Wrapped });
-    if (bWrapBottom) Tiles.Add({ FVector2D( 0.f,  1.f), EBrushTileType::Wrapped });
-    if (bWrapTop)    Tiles.Add({ FVector2D( 0.f, -1.f), EBrushTileType::Wrapped });
-
-    if (bWrapLeft  && bWrapBottom) Tiles.Add({ FVector2D( 1.f,  1.f), EBrushTileType::Wrapped });
-    if (bWrapRight && bWrapBottom) Tiles.Add({ FVector2D(-1.f,  1.f), EBrushTileType::Wrapped });
-    if (bWrapLeft  && bWrapTop)    Tiles.Add({ FVector2D( 1.f, -1.f), EBrushTileType::Wrapped });
-    if (bWrapRight && bWrapTop)    Tiles.Add({ FVector2D(-1.f, -1.f), EBrushTileType::Wrapped });
-
-    //  Pixel-safe inset (screen space)
-    const FVector2D PixelInset(0.5f, 0.5f);
-    const FVector2D DrawPos  = PixelInset;
-    const FVector2D DrawSize = CanvasSize - PixelInset * 2.0f;
-
-    // UV-safe inset (this is the missing piece)
-    const FVector2D UVInset(
-        0.5f / CanvasSize.X,
-        0.5f / CanvasSize.Y);
-
-    const FVector2D UV0 = FVector2D(0.f, 0.f) + UVInset;
-    const FVector2D UV1 = FVector2D(1.f, 1.f) - UVInset;
-
-    for (const FTile& Tile : Tiles)
-    {
-        FVector2D WrappedCenter = CentreUV + Tile.Offset;
-
-        MID->SetVectorParameterValue(
-            FName("BrushCentreUV"),
-            FLinearColor(WrappedCenter.X, WrappedCenter.Y, 0.f, 0.f));
-
-        MID->SetVectorParameterValue(
-            FName("BrushExtent"),
-            FLinearColor(UVExtent.X, UVExtent.Y, 0.f, 0.f));
-
-        MID->SetScalarParameterValue(
-            FName("TileType"),
-            (float)Tile.Type);
-
-        FCanvasTileItem TileItem(
-            DrawPos,
-            MID->GetRenderProxy(),
-            DrawSize);
-    	
-        /*TileItem.UV0 = UV0;
-        TileItem.UV1 = UV1;*/
-
-    	constexpr float RTMargin = 0.01f;
-    	TileItem.UV0 = FVector2D(RTMargin, RTMargin);
-        TileItem.UV1 = FVector2D(1.f-RTMargin, 1.f-RTMargin);
-        
-        TileItem.BlendMode = BlendMode;
-
-        Canvas->DrawItem(TileItem);
+        if (Pool[i].bNeedsClear)
+        {
+            ClearSlot(i);
+            PoolManager->ClearSlotFlag(i);
+        }
     }
 }
 
-void URTDrawManager::ProcessPendingImpulseClears() const
+void URTDrawManager::ClearSlot(int32 SlotIndex) const
 {
-	/*const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
-	for (int32 i = 0; i < Pool.Num(); ++i)
-	{
-		if (Pool[i].bImpulseNeedsClear)
-		{
-			ClearImpulseSlot(i);
-			PoolManager->ClearImpulseFlag(i);
-		}
-	}*/
-	const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
-	for (int32 i = 0; i < Pool.Num(); ++i)
-	{
-		if (Pool[i].bImpulseNeedsClear)
-		{
-			UE_LOG(RTFoliageInvoker, Warning,
-				TEXT("URTDrawManager >> Clearing ImpulseRT slot %d"), i);
-			ClearImpulseSlot(i);
-			PoolManager->ClearImpulseFlag(i);
-		}
-	}
+    const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
+    if (!Pool.IsValidIndex(SlotIndex) || !Pool[SlotIndex].InteractionRT) { return; }
+    UKismetRenderingLibrary::ClearRenderTarget2D(
+        GetWorld(), Pool[SlotIndex].InteractionRT, GInteractionNeutral);
 }
-
-void URTDrawManager::ClearContinuousRTs() const
-{
-	const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
-	for (int32 i = 0; i < Pool.Num(); ++i)
-	{
-		if (Pool[i].IsOccupied() && Pool[i].ContinuousRT)
-		{
-			ClearContinuousSlot(i);
-		}
-	}
-}
-
-void URTDrawManager::ClearImpulseSlot(int32 SlotIndex) const
-{
-	const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
-	if (!Pool.IsValidIndex(SlotIndex) || !Pool[SlotIndex].ImpulseRT) { return; }
-
-	// (0.5, 0.5, 0, 0) — neutral velocity, A=0 guards consumer spring
-	UKismetRenderingLibrary::ClearRenderTarget2D(
-		GetWorld(), Pool[SlotIndex].ImpulseRT, GImpulseNeutral);
-}
-
-void URTDrawManager::ClearContinuousSlot(int32 SlotIndex) const
-{
-	const TArray<FRTPoolEntry>& Pool = PoolManager->GetPool();
-	if (!Pool.IsValidIndex(SlotIndex) || !Pool[SlotIndex].ContinuousRT) { return; }
-
-	UKismetRenderingLibrary::ClearRenderTarget2D(
-		GetWorld(), Pool[SlotIndex].ContinuousRT, GContinuousNeutral);
-}
-
-
-/*//Temp testing
-void URTDrawManager::DecayImpulseForSlot(UTextureRenderTarget2D* RT, float DeltaTime) const
-{
-	if (!RT) { return; }
-
-	UCanvas* Canvas = nullptr;
-	FVector2D CanvasSize;
-	FDrawToRenderTargetContext Context;
-
-	UKismetRenderingLibrary::BeginDrawCanvasToRenderTarget(
-		GetWorld(), RT, Canvas, CanvasSize, Context);
-
-	if (Canvas)
-	{
-		// Add DecayDelta to all pixels — A climbs from 0 toward 1 over time
-		const float DecayRate  = 1.f / FMath::Max(PoolManager->DecayDuration, 0.001f);
-		const float DecayDelta = DeltaTime * DecayRate;
-
-		FCanvasTileItem TileItem(
-			FVector2D(0.f, 0.f),
-			GWhiteTexture,
-			CanvasSize,
-			FVector2D(0.f, 0.f),
-			FVector2D(1.f, 1.f),
-			FLinearColor(DecayDelta, DecayDelta, DecayDelta, DecayDelta));
-		// use the decay value for the overlay
-
-		TileItem.BlendMode = SE_BLEND_Additive;
-		Canvas->DrawItem(TileItem);
-
-		UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(GetWorld(), Context);
-	}
-}
-
-void URTDrawManager::StampImpulseForSlot(UTextureRenderTarget2D* RT, int32 SlotIdx,
-	const TArray<TTuple<UFoliageRTInvokerComponent*, int32>>& AssignedInvokers) const
-{
-	UCanvas* Canvas = nullptr;
-	FVector2D CanvasSize;
-	FDrawToRenderTargetContext Context;
-
-	UKismetRenderingLibrary::BeginDrawCanvasToRenderTarget(
-		GetWorld(), RT, Canvas, CanvasSize, Context);
-
-	if (Canvas)
-	{
-		for (const TTuple<UFoliageRTInvokerComponent*, int32>& Pair : AssignedInvokers)
-		{
-			if (Pair.Get<1>() != SlotIdx) { continue; }
-
-			UFoliageRTInvokerComponent* Invoker = Pair.Get<0>();
-			if (!Invoker) { continue; }
-
-			FVector2D CellOriginWS;
-			UTextureRenderTarget2D* Dummy1 = nullptr;
-			UTextureRenderTarget2D* Dummy2 = nullptr;
-			PoolManager->GetSlotData(SlotIdx, Dummy1, Dummy2, CellOriginWS);
-
-			const FRTInvokerFrameData Data =
-				Invoker->GetFrameData(SlotIdx, CellOriginWS, PoolManager->CellSize);
-
-			if (!Data.bShouldStamp || !Data.MID_Impulse) { continue; }
-
-			// Stamp resets progression to 0 at brush position — Opaque black overdraw
-			DrawTiledBrush(Canvas, CanvasSize, Data.MID_Impulse,
-				Data.CellUV, Data.UVExtent, SE_BLEND_Opaque);
-		}
-
-		UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(GetWorld(), Context);
-	}
-}*/

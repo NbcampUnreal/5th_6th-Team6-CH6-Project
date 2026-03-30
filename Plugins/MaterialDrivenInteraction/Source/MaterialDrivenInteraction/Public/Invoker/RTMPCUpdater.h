@@ -65,11 +65,11 @@ private:
     UFUNCTION()
     void OnCellReclaimed(FIntPoint CellIndex, int32 SlotIndex);
 
-    UPROPERTY()
+    UPROPERTY(Transient)
     TObjectPtr<URTPoolManager> PoolManager;
 
     /** Cached root component — passed in via InitializeMPCUpdater. */
-    UPROPERTY()
+    UPROPERTY(Transient)
     TObjectPtr<USceneComponent> CachedRootComponent;
 
     TArray<FName> ParamName_SlotData;

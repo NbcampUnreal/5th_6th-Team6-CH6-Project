@@ -1,10 +1,7 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "LineOfSight/VisionData.h"
 #include "LOSStampDrawerComp.generated.h"
 
 class UTextureRenderTarget2D;
@@ -13,9 +10,19 @@ class UMaterialInstanceDynamic;
 
 
 /**
- * Responsible solely for binding the obstacle RT into the LOS raymarching material.
- * MainVisionRTManager draws the MID directly onto the camera RT each frame —
- * no intermediate stamp RT needed.
+ * Binds the obstacle RT into the LOS raymarching MID each frame.
+ * MainVisionRTManager draws the MID directly onto CameraLocalRT — no intermediate RT.
+ *
+ * Two operating modes:
+ *
+ *   Owned mode  (bUseResourcePool = false on Vision_VisualComp):
+ *     CreateResources() creates a MID from LOSMaterial and keeps it for the actor's lifetime.
+ *
+ *   Pool mode   (bUseResourcePool = true):
+ *     CreateResources() is NOT called. The pool subsystem calls SetStampMID() on slot acquire
+ *     to inject a pre-created MID, and SetStampMID(nullptr) on release to strip it.
+ *     LOSMaterial and per-component param name properties are unused in this mode —
+ *     all config comes from LOSResourcePoolSettings.
  *
  * Server/client gating is the caller's responsibility.
  */
@@ -31,8 +38,9 @@ protected:
     virtual void BeginPlay() override;
 
 public:
-    /** Bind the obstacle RT into the MID each frame.
-     *  No pre-render — MainVisionRTManager draws the MID directly. */
+
+    /** Bind the obstacle RT into the active MID each frame.
+     *  Safe to call in both owned and pool mode — no-ops if MID is null. */
     UFUNCTION(BlueprintCallable, Category="LOSStamp")
     void UpdateLOSStamp(UTextureRenderTarget2D* ObstacleRT);
 
@@ -44,32 +52,29 @@ public:
     UFUNCTION(BlueprintCallable, Category="LOSStamp")
     void OnVisionRangeChanged(float NewRange, float MaxRange);
 
-    /** Called by Vision_VisualComp::BeginPlay to create the MID. */
+    /** Owned mode only — creates LOSMaterialMID from LOSMaterial. */
     void CreateResources();
 
-    void SetVisionAlpha(float InAlpha) {PassedVisionAlpha=InAlpha;}
+    void SetVisionAlpha(float InAlpha) { PassedVisionAlpha = InAlpha; }
 
-    // --- Getters --- //
+    // --- Pool mode --- //
+
+    /** Called by Vision_VisualComp::OnPoolSlotAcquired/Released.
+     *  Pass nullptr to strip the MID on slot release. */
+    void SetStampMID(UMaterialInstanceDynamic* InMID);
+
+    // --- Getter --- //
     UMaterialInstanceDynamic* GetLOSMaterialMID() const { return LOSMaterialMID; }
 
 protected:
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSStamp")
+
+    /** Owned mode — base material to create MID from.
+     *  Unused in pool mode (material comes from LOSResourcePoolSettings). */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSStamp|Owned")
     UMaterialInterface* LOSMaterial = nullptr;
 
     UPROPERTY(Transient)
     UMaterialInstanceDynamic* LOSMaterialMID = nullptr;
-
-    /** Texture parameter name for the obstacle RT in the LOS material. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSStamp")
-    FName MIDObstacleTextureParam = TEXT("ObstacleMaskRT");
-
-    /** Scalar parameter name for normalized vision range in the LOS material. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSStamp")
-    FName MIDVisibleRangeParam = TEXT("NormalizedVisionRadius");
-
-    /** Scalar parameter name for Opacity */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LOSStamp")
-    FName MIDVisibilityAlpha = TEXT("VisibilityAlpha");
 
     // --- Debug --- //
     UPROPERTY(EditAnywhere, Category="LOSStamp|Debug")
@@ -83,7 +88,6 @@ protected:
 
 private:
     bool  bShouldUpdateLOSStamp = false;
-    float CachedVisionRange = 0.f;
-
-    float PassedVisionAlpha = 0.f;
+    float CachedVisionRange     = 0.f;
+    float PassedVisionAlpha     = 0.f;
 };

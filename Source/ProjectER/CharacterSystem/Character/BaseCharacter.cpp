@@ -156,6 +156,15 @@ ABaseCharacter::ABaseCharacter()
 	MinimapCaptureComponent->ShowFlags.SetGlobalIllumination(false); // 루멘
 	//MinimapCaptureComponent->ShowFlags.SetMotionBlur(false); // 잔상 제거용
 	//MinimapCaptureComponent->CaptureSource = ESceneCaptureSource::SCS_BaseColor; // 포스트 프로세싱 무효화
+
+	//Additional flag de-initialize
+	MinimapCaptureComponent->ShowFlags.SetAtmosphere(false);
+	MinimapCaptureComponent->ShowFlags.SetFog(false);
+	MinimapCaptureComponent->ShowFlags.SetBloom(false);
+	MinimapCaptureComponent->ShowFlags.SetAmbientOcclusion(false);
+	MinimapCaptureComponent->ShowFlags.SetAntiAliasing(false);
+	MinimapCaptureComponent->ShowFlags.SetMotionBlur(false);
+	MinimapCaptureComponent->ShowFlags.SetVolumetricFog(false);
 	
 }
 
@@ -181,6 +190,15 @@ void ABaseCharacter::BeginPlay()
 	}*/
 	
 	PreloadMontages();
+}
+
+void ABaseCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	/*//Minimap update timer deactivation
+	GetWorld()->GetTimerManager().ClearTimer(MinimapCaptureTimerHandle);
+	MinimapCaptureComponent->Deactivate();*/
 }
 
 void ABaseCharacter::Tick(float DeltaTime)
@@ -1212,8 +1230,9 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 			bool bHasAbility = (Specs.Num() > 0);
 			bool bWasActivated = false;
 			
-			if (bHasAbility)
+			if (bHasAbility && CanAttack())
 			{
+				MarkAttackExecuted();
 				bWasActivated = AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(AttackTag));
 			}
 			
@@ -1304,15 +1323,34 @@ float ABaseCharacter::GetAttackCooldown() const
 	return 1.0f / CurrentAPS;
 }
 
-float ABaseCharacter::GetCurrentAttackSectionDuration(UAnimMontage* Montage, FName SectionName) const
+// float ABaseCharacter::GetCurrentAttackSectionDuration(UAnimMontage* Montage, FName SectionName) const
+// {
+// 	if (!Montage) return 1.0f;
+	
+// 	int32 SectionIndex = Montage->GetSectionIndex(SectionName);
+// 	if (SectionIndex == INDEX_NONE) return 1.0f;
+	
+// 	// 해당 섹션의 원본 재생 시간(초) 반환
+// 	return Montage->GetSectionLength(SectionIndex);
+// }
+
+bool ABaseCharacter::CanAttack() const
 {
-	if (!Montage) return 1.0f;
+	if (!GetWorld()) return false;
 	
-	int32 SectionIndex = Montage->GetSectionIndex(SectionName);
-	if (SectionIndex == INDEX_NONE) return 1.0f;
+	float CurrentTime = GetWorld()->GetTimeSeconds();
+	float Cooldown = GetAttackCooldown();
 	
-	// 해당 섹션의 원본 재생 시간(초) 반환
-	return Montage->GetSectionLength(SectionIndex);
+	// 마지막 공격으로부터 공격 주기가 경과했는지 확인
+	return (CurrentTime - LastAttackExecuteTime) >= Cooldown;
+}
+
+void ABaseCharacter::MarkAttackExecuted()
+{
+	if (GetWorld())
+	{
+		LastAttackExecuteTime = GetWorld()->GetTimeSeconds();
+	}
 }
 
 void ABaseCharacter::OnRep_TargetActor()
@@ -1663,6 +1701,8 @@ void ABaseCharacter::Multicast_Death_Implementation()
     
 	// 틱 비활성화 (불필요한 연산 방지)
 	SetActorTickEnabled(false);
+
+
 }
 
 void ABaseCharacter::Server_SetTarget_Implementation(AActor* NewTarget)
@@ -1779,6 +1819,19 @@ void ABaseCharacter::InitUI()
 	{
 		/// '나' 이외는 캡쳐 컴포넌트를 꺼서 성능 최적화~
 		MinimapCaptureComponent->Deactivate();
+	}
+	else  //  no more tick update
+	{
+		MinimapCaptureComponent->bCaptureEveryFrame = false;
+		MinimapCaptureComponent->bCaptureOnMovement = false;
+
+		MinimapCaptureComponent->Activate();
+
+		GetWorld()->GetTimerManager().SetTimer(
+			MinimapCaptureTimerHandle,
+			this,
+			&ABaseCharacter::UpdateMinimapCapture,
+			MinimapUpdateRate, true);
 	}
 
 	// 방장(Listen Server)과 클라이언트 모두 HP Bar 및 미니맵 아이콘 초기화 필요
@@ -1964,6 +2017,12 @@ void ABaseCharacter::OnLevelChanged()
 
 		HPBarWidgetInstance->Update_LV_bar(CurrentLV);
 	}
+}
+
+void ABaseCharacter::UpdateMinimapCapture()
+{
+	if (MinimapCaptureComponent && MinimapCaptureComponent->IsActive())
+		MinimapCaptureComponent->CaptureScene();
 }
 
 void ABaseCharacter::UpdateMinimapVisuals(FLinearColor n_teamColor)

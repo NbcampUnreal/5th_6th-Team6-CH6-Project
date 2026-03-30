@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Monster/GAS/GA/GA_MonsterState.h"
@@ -37,6 +37,8 @@ protected:
 
 
 private:
+	FAIRequestID MoveRequestID;
+
 	UFUNCTION()
 	void OnMoveFinished(FAIRequestID RequestID, EPathFollowingResult::Type Result);
 };

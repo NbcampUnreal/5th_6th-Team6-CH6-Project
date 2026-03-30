@@ -44,7 +44,7 @@ void UOcclusionBinderSubsystem::RegisterBinderPrimitive(UPrimitiveComponent* Pri
 
 	PrimitiveToBinderMap.Add(Prim, Binder);
 
-	UE_LOG(OcclusionBinderSubsystem, Log,
+	UE_LOG(OcclusionBinderSubsystem, Verbose,
 		TEXT("UOcclusionBinderSubsystem::RegisterBinderPrimitive>> %s → %s"),
 		*Prim->GetName(),
 		*Binder->GetName());
@@ -61,7 +61,7 @@ void UOcclusionBinderSubsystem::UnregisterBinder(AOcclusionBinder* Binder)
 			It.RemoveCurrent();
 	}
 
-	UE_LOG(OcclusionBinderSubsystem, Log,
+	UE_LOG(OcclusionBinderSubsystem, Verbose,
 		TEXT("UOcclusionBinderSubsystem::UnregisterBinder>> %s unregistered"),
 		*Binder->GetName());
 }
@@ -170,7 +170,7 @@ void UOcclusionBinderSubsystem::TrimOverflowPool()
 	const int32 Count = OverflowMIDs.Num();
 	OverflowMIDs.Empty();
 
-	UE_LOG(OcclusionBinderSubsystem, Log,
+	UE_LOG(OcclusionBinderSubsystem, Verbose,
 		TEXT("UOcclusionBinderSubsystem::TrimOverflowPool>> Trimmed %d overflow MIDs"),
 		Count);
 }

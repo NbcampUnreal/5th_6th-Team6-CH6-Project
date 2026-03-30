@@ -19,7 +19,7 @@ int32 UOcclusionSubsystem::RegisterTarget(UPrimitiveComponent* PrimComp, UMateri
 
 	const int32 Index = Targets.Add(Target);
 
-	UE_LOG(OcclusionSubsystem, Log,
+	UE_LOG(OcclusionSubsystem, Verbose,
 		TEXT("UOcclusionSubsystem::RegisterTarget>> %s | Index: %d | Total: %d"),
 		*PrimComp->GetOwner()->GetName(), Index, Targets.Num());
 
@@ -46,7 +46,7 @@ void UOcclusionSubsystem::UnregisterTarget(UPrimitiveComponent* PrimComp)
 
 		Targets.RemoveAtSwap(i);
 
-		UE_LOG(OcclusionSubsystem, Log,
+		UE_LOG(OcclusionSubsystem, Verbose,
 			TEXT("UOcclusionSubsystem::UnregisterTarget>> %s | Total: %d"),
 			*PrimComp->GetOwner()->GetName(), Targets.Num());
 
