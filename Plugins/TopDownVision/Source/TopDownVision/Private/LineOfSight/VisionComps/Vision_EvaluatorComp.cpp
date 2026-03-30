@@ -345,7 +345,7 @@ void UVision_EvaluatorComp::EvaluateTarget(AActor* Target, UVision_VisualComp* T
         return;
     }
 
-    const bool bVolumeVisible = EvaluateVolumeObstacle(Target, ShapeComp);
+    /*const bool bVolumeVisible = EvaluateVolumeObstacle(Target, ShapeComp);
     if (!bVolumeVisible)
     {
         UE_LOG(LOSVision, Verbose,
@@ -355,7 +355,7 @@ void UVision_EvaluatorComp::EvaluateTarget(AActor* Target, UVision_VisualComp* T
 
         ReportVisibilityIfChanged(Target, false);
         return;
-    }
+    }*/
 
     const bool bWallVisible = EvaluateWallObstacle(Target, ShapeComp);
 

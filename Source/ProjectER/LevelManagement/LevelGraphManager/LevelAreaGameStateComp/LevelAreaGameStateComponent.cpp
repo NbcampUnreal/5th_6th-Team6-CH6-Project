@@ -347,6 +347,11 @@ void ULevelAreaGameStateComponent::ApplyHazards(int32 Phase, EAreaHazardState St
     NotifyBridgeActors(NewHazards, State);
     NotifyTrackers();
 
+    if (NewHazards.Num() > 0)// call delegate with new hazards
+    {
+        OnPhaseChanged.Broadcast(NewHazards);
+    }
+
     UE_LOG(LevelAreaGraphManagement, Log,
         TEXT("ApplyHazards >> Phase %d (Effective %d) | New: %d | Total Active: %d | State: %s"),
         Phase, EffectivePhase, NewHazards.Num(), ActiveHazards.Num(),

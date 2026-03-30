@@ -9,6 +9,12 @@ class ULevelAreaGraphData;
 class ALevelAreaInstanceBridge;
 class ALevelInstance;
 
+
+// BP exposed Delegate for danger zone area update
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPhaseChangedSignature, const TArray<int32>&, NewDangerZoneIDs);
+
+
+
 UCLASS(ClassGroup = (LevelManagement), meta = (BlueprintSpawnableComponent))
 class PROJECTER_API ULevelAreaGameStateComponent : public UActorComponent
 {
@@ -152,4 +158,20 @@ private:
     void BuildBridgeActorMap();
 
     void ApplyInstantDeathToNode(int32 NodeID);
+
+
+#pragma region MPC update
+
+public:
+    
+    UPROPERTY(BlueprintAssignable, Category="LineOfSight")
+    FOnPhaseChangedSignature OnPhaseChanged;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Hazard")
+    UMaterialParameterCollection* HazardMPC;
+
+    UPROPERTY()
+    UMaterialParameterCollectionInstance* HazardMPCInstance;
+
+#pragma endregion
 };

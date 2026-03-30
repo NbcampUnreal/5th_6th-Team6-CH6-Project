@@ -50,7 +50,7 @@ UWorld* ULocalTextureSampler::ResolveWorld() const
 void ULocalTextureSampler::SetCachedWorld(UWorld* InWorld)
 {
     CachedWorld = InWorld;
-    UE_LOG(LOSVision, Log,
+    UE_LOG(LOSVision, Verbose,
         TEXT("ULocalTextureSampler::SetCachedWorld >> World set: %s"),
         InWorld ? *InWorld->GetName() : TEXT("NULL"));
 }

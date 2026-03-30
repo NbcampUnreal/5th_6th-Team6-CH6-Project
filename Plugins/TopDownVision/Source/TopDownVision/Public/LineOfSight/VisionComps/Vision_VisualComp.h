@@ -6,7 +6,6 @@
 #include "Vision_VisualComp.generated.h"
 
 #pragma region Forward Declarations
-
 class ULineOfSightComponent;
 class ULOSObstacleDrawerComponent;
 class ULOSStampDrawerComp;
@@ -15,21 +14,7 @@ class UVisibilityMeshComp;
 class UTopDown2DShapeComp;
 class UVision_EvaluatorComp;
 struct FLOSStampPoolSlot;
-
 #pragma endregion
-
-/**
- * Hub component for vision-related logic on a unit.
- *
- * Pool mode (bUseResourcePool = true):
- *   ObstacleRT and StampMID come from ULOSRequirementPoolSubsystem on slot acquire.
- *   VisibilityMesh MIDs are ALWAYS locally owned — created at Initialize time
- *   and kept for the actor's lifetime regardless of pool mode.
- *   Call OnRevealed_EnterPool / OnHidden_ExitPool from BP vision evaluator events.
- *
- * Owned mode (bUseResourcePool = false):
- *   All resources created once at Initialize and kept for actor lifetime.
- */
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOcclusionTracerEvent);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnVisibilityFadeComplete);
@@ -108,9 +93,7 @@ public:
     UFUNCTION(BlueprintCallable, BlueprintPure, Category="Vision")
     EVisionChannel GetLocalPlayerVisionChannel() const;
 
-    // ---------------------------------------------------------------- //
-    //  Pool enter / exit
-    // ---------------------------------------------------------------- //
+    // ── Pool ─────────────────────────────────────────────────────────
 
     UFUNCTION(BlueprintCallable, Category="Vision|Pool")
     void OnRevealed_EnterPool();
@@ -139,9 +122,7 @@ public:
     FOnVisibilityFadeComplete OnTargetHideComplete;
 
 #pragma region Components
-
 private:
-
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision", meta=(AllowPrivateAccess="true"))
     ULOSObstacleDrawerComponent* ObstacleDrawer = nullptr;
 
@@ -153,7 +134,6 @@ private:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vision", meta=(AllowPrivateAccess="true"))
     UTopDown2DShapeComp* ShapeComp = nullptr;
-
 #pragma endregion
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
@@ -183,15 +163,12 @@ private:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision", meta=(AllowPrivateAccess="true"))
     float IndicatorRange = 0.f;
 
-    // ── Pool ─────────────────────────────────────────────────────────
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vision|Pool", meta=(AllowPrivateAccess="true"))
     bool bUseResourcePool = true;
 
     bool bHasActivePoolSlot = false;
 
 private:
-
     UPROPERTY(Transient)
     UVision_EvaluatorComp* CachedEvaluatorComp = nullptr;
 

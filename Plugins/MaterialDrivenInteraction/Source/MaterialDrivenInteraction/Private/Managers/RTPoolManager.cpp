@@ -7,7 +7,7 @@
 #include "Kismet/KismetRenderingLibrary.h"
 #include "Engine/World.h"
 
-static constexpr FLinearColor GInteractionNeutral(
+static  FLinearColor GInteractionNeutral(
     32896.0f / 65535.0f,
     32896.0f / 65535.0f,
     0.0f, 0.0f);
@@ -69,7 +69,7 @@ void URTPoolManager::RegisterInvoker(UFoliageRTInvokerComponent* Invoker)
 {
     if (!Invoker) { return; }
     RegisteredInvokers.AddUnique(Invoker);
-    UE_LOG(RTFoliageInvoker, Log,
+    UE_LOG(RTFoliageInvoker, Verbose,
         TEXT("URTPoolManager::RegisterInvoker >> Total: %d"), RegisteredInvokers.Num());
 }
 
@@ -77,7 +77,7 @@ void URTPoolManager::UnregisterInvoker(UFoliageRTInvokerComponent* Invoker)
 {
     if (!Invoker) { return; }
     RegisteredInvokers.RemoveSwap(Invoker);
-    UE_LOG(RTFoliageInvoker, Log,
+    UE_LOG(RTFoliageInvoker, Verbose,
         TEXT("URTPoolManager::UnregisterInvoker >> Total: %d"), RegisteredInvokers.Num());
 }
 
@@ -347,7 +347,7 @@ UTextureRenderTarget2D* URTPoolManager::LoadInteractionRT(int32 SlotIndex) const
         UKismetRenderingLibrary::ClearRenderTarget2D(World, RT, GInteractionNeutral);
     }
 
-    UE_LOG(RTFoliageInvoker, Log,
+    UE_LOG(RTFoliageInvoker, Verbose,
         TEXT("URTPoolManager::LoadInteractionRT >> Loaded '%s' Slot %d"),
         *RT->GetName(), SlotIndex);
     return RT;

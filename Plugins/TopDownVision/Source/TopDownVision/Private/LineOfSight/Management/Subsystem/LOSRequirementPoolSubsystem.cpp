@@ -7,6 +7,7 @@
 #include "Materials/MaterialInterface.h"
 
 #include "TopDownVision/Public/LineOfSight/VisionComps/Vision_VisualComp.h"
+#include "LineOfSight/LOSVisual/VisibilityMeshComp.h"
 #include "EditorSetting/LOSResourcePoolSettings.h"
 #include "TopDownVisionDebug.h"
 
@@ -27,28 +28,33 @@ void ULOSRequirementPoolSubsystem::Initialize(FSubsystemCollectionBase& Collecti
         return;
     }
 
+    // Pre-warm RT + StampMID pool
     Pool.Reserve(Settings->PreWarmCount);
-
     for (int32 i = 0; i < Settings->PreWarmCount; ++i)
     {
-        FLOSStampPoolSlot* Slot = AllocateSlot();
-        if (!Slot)
+        if (!AllocateSlot())
         {
             UE_LOG(LOSVision, Warning,
-                TEXT("ULOSRequirementPoolSubsystem::Initialize >> Failed at slot %d — stopping pre-warm"), i);
+                TEXT("ULOSRequirementPoolSubsystem::Initialize >> RT slot failed at %d — stopping"), i);
             break;
         }
     }
 
+    // Pre-warm visibility MID pools
+    PreWarmVisibilityMIDPools();
+
     UE_LOG(LOSVision, Log,
-        TEXT("ULOSRequirementPoolSubsystem::Initialize >> Pre-warmed %d / %d slots"),
-        Pool.Num(), Settings->PreWarmCount);
+        TEXT("ULOSRequirementPoolSubsystem::Initialize >> RT slots: %d | MID pools: %d"),
+        Pool.Num(), VisibilityMIDPools.Num());
 }
 
 void ULOSRequirementPoolSubsystem::Deinitialize()
 {
     DrainPool();
     Pool.Empty();
+    VisibilityMIDPools.Empty();
+    VisibilityPoolIndex.Empty();
+    ProviderMIDSlotMap.Empty();
     Super::Deinitialize();
 }
 
@@ -61,20 +67,18 @@ int32 ULOSRequirementPoolSubsystem::AcquireSlot(UVision_VisualComp* Provider)
     if (!Provider)
         return INDEX_NONE;
 
-    // Reclaim stale slots
+    // Reclaim stale RT slots
     for (FLOSStampPoolSlot& Slot : Pool)
     {
         if (Slot.IsStale())
         {
-            UE_LOG(LOSVision, Verbose,
-                TEXT("ULOSRequirementPoolSubsystem::AcquireSlot >> Reclaiming stale slot"));
             UnbindSlotFromProvider(Slot);
             Slot.bInUse = false;
             Slot.Owner.Reset();
         }
     }
 
-    // Find a free slot
+    // Find free RT slot
     FLOSStampPoolSlot* FreeSlot = nullptr;
     int32 FreeIndex = INDEX_NONE;
 
@@ -88,7 +92,6 @@ int32 ULOSRequirementPoolSubsystem::AcquireSlot(UVision_VisualComp* Provider)
         }
     }
 
-    // Grow if needed
     if (!FreeSlot)
     {
         const ULOSResourcePoolSettings* Settings = ULOSResourcePoolSettings::Get();
@@ -99,14 +102,14 @@ int32 ULOSRequirementPoolSubsystem::AcquireSlot(UVision_VisualComp* Provider)
             {
                 FreeIndex = Pool.Num() - 1;
                 UE_LOG(LOSVision, Log,
-                    TEXT("ULOSRequirementPoolSubsystem::AcquireSlot >> Pool grew to %d slots"), Pool.Num());
+                    TEXT("ULOSRequirementPoolSubsystem::AcquireSlot >> RT pool grew to %d"), Pool.Num());
             }
         }
 
         if (!FreeSlot)
         {
             UE_LOG(LOSVision, Warning,
-                TEXT("ULOSRequirementPoolSubsystem::AcquireSlot >> Pool exhausted — skipping [%s]"),
+                TEXT("ULOSRequirementPoolSubsystem::AcquireSlot >> RT pool exhausted — skipping [%s]"),
                 Provider->GetOwner() ? *Provider->GetOwner()->GetName() : TEXT("Unknown"));
             return INDEX_NONE;
         }
@@ -155,10 +158,16 @@ void ULOSRequirementPoolSubsystem::DrainPool()
     {
         if (Slot.bInUse)
             UnbindSlotFromProvider(Slot);
-
         Slot.bInUse = false;
         Slot.Owner.Reset();
     }
+
+    // Reset all MID pool free flags
+    for (FLOSVisibilityMIDPool& MIDPool : VisibilityMIDPools)
+        for (bool& bFree : MIDPool.bFree)
+            bFree = true;
+
+    ProviderMIDSlotMap.Empty();
 
     UE_LOG(LOSVision, Log,
         TEXT("ULOSRequirementPoolSubsystem::DrainPool >> All slots released"));
@@ -173,13 +182,12 @@ int32 ULOSRequirementPoolSubsystem::GetAcquiredCount() const
 }
 
 // ------------------------------------------------------------------ //
-//  Internal — allocation
+//  Internal — RT + StampMID allocation
 // ------------------------------------------------------------------ //
 
 FLOSStampPoolSlot* ULOSRequirementPoolSubsystem::AllocateSlot()
 {
     FLOSStampPoolSlot& NewSlot = Pool.AddDefaulted_GetRef();
-
     NewSlot.ObstacleRT = CreateObstacleRT();
     NewSlot.StampMID   = CreateStampMID();
 
@@ -187,28 +195,158 @@ FLOSStampPoolSlot* ULOSRequirementPoolSubsystem::AllocateSlot()
     {
         Pool.RemoveAt(Pool.Num() - 1);
         UE_LOG(LOSVision, Error,
-            TEXT("ULOSRequirementPoolSubsystem::AllocateSlot >> RT or MID creation failed — slot discarded"));
+            TEXT("ULOSRequirementPoolSubsystem::AllocateSlot >> RT or MID creation failed"));
         return nullptr;
     }
 
     return &Pool.Last();
 }
 
-// ------------------------------------------------------------------ //
-//  Internal — bind / unbind
-//  Subsystem only hands RT and StampMID to the provider.
-//  VisibilityMesh is always locally owned — never touched here.
-// ------------------------------------------------------------------ //
-
 void ULOSRequirementPoolSubsystem::BindSlotToProvider(FLOSStampPoolSlot& Slot, UVision_VisualComp* Provider)
 {
+    // Acquire visibility MID set if provider has a key
+    if (UVisibilityMeshComp* MeshComp = Provider->GetVisibilityMeshComp())
+    {
+        const FName MeshKey = MeshComp->GetMeshKey();
+        if (MeshKey != NAME_None)
+        {
+            int32 PoolIdx = INDEX_NONE;
+            int32 SetIdx  = INDEX_NONE;
+            FLOSVisibilityMIDSet MIDSet = AcquireVisibilityMIDSet(MeshKey, PoolIdx, SetIdx);
+
+            if (!MIDSet.IsEmpty())
+            {
+                ProviderMIDSlotMap.Add(Provider, MakeTuple(PoolIdx, SetIdx));
+                MeshComp->SetMIDsFromPool(MIDSet);
+            }
+            else
+            {
+                UE_LOG(LOSVision, Verbose,
+                    TEXT("ULOSRequirementPoolSubsystem::BindSlotToProvider >> [%s] MID pool exhausted for key [%s] — original materials kept"),
+                    Provider->GetOwner() ? *Provider->GetOwner()->GetName() : TEXT("Unknown"),
+                    *MeshKey.ToString());
+            }
+        }
+    }
+
     Provider->OnPoolSlotAcquired(Slot);
 }
 
 void ULOSRequirementPoolSubsystem::UnbindSlotFromProvider(FLOSStampPoolSlot& Slot)
 {
     if (UVision_VisualComp* Provider = Slot.Owner.Get())
+    {
+        // Return MID set to pool
+        if (const TTuple<int32, int32>* Entry = ProviderMIDSlotMap.Find(Provider))
+        {
+            ReleaseVisibilityMIDSet(Entry->Key, Entry->Value);
+            ProviderMIDSlotMap.Remove(Provider);
+
+            if (UVisibilityMeshComp* MeshComp = Provider->GetVisibilityMeshComp())
+                MeshComp->ClearPoolMIDs();
+        }
+
         Provider->OnPoolSlotReleased();
+    }
+}
+
+// ------------------------------------------------------------------ //
+//  Internal — visibility MID pool
+// ------------------------------------------------------------------ //
+
+void ULOSRequirementPoolSubsystem::PreWarmVisibilityMIDPools()
+{
+    const ULOSResourcePoolSettings* Settings = ULOSResourcePoolSettings::Get();
+    if (!Settings) return;
+
+    for (const FLOSVisibilityMeshMaterialSlot& SlotDef : Settings->VisibilityMeshMaterialSlots)
+    {
+        if (SlotDef.MeshKey == NAME_None || SlotDef.Materials.IsEmpty())
+        {
+            UE_LOG(LOSVision, Warning,
+                TEXT("ULOSRequirementPoolSubsystem::PreWarmVisibilityMIDPools >> Entry with no key or no materials — skipped"));
+            continue;
+        }
+
+        FLOSVisibilityMIDPool& MIDPool = VisibilityMIDPools.AddDefaulted_GetRef();
+        MIDPool.MeshKey = SlotDef.MeshKey;
+
+        const int32 PoolIdx = VisibilityMIDPools.Num() - 1;
+        VisibilityPoolIndex.Add(SlotDef.MeshKey, PoolIdx);
+
+        MIDPool.Sets.Reserve(SlotDef.PoolCount);
+        MIDPool.bFree.Reserve(SlotDef.PoolCount);
+
+        for (int32 i = 0; i < SlotDef.PoolCount; ++i)
+        {
+            MIDPool.Sets.Add(CreateMIDSet(SlotDef));
+            MIDPool.bFree.Add(true);
+        }
+
+        UE_LOG(LOSVision, Log,
+            TEXT("ULOSRequirementPoolSubsystem::PreWarmVisibilityMIDPools >> Key [%s] — %d sets pre-warmed"),
+            *SlotDef.MeshKey.ToString(), SlotDef.PoolCount);
+    }
+}
+
+FLOSVisibilityMIDSet ULOSRequirementPoolSubsystem::CreateMIDSet(const FLOSVisibilityMeshMaterialSlot& SlotDef)
+{
+    FLOSVisibilityMIDSet Set;
+
+    for (const FLOSMIDMaterialEntry& Entry : SlotDef.Materials)
+    {
+        UMaterialInterface* BaseMat = Entry.Material.LoadSynchronous();
+        if (!BaseMat)
+        {
+            UE_LOG(LOSVision, Warning,
+                TEXT("ULOSRequirementPoolSubsystem::CreateMIDSet >> Material at slot %d for key [%s] failed to load"),
+                Entry.SlotIndex, *SlotDef.MeshKey.ToString());
+            continue;
+        }
+
+        Set.SlotIndices.Add(Entry.SlotIndex);
+        Set.MIDs.Add(UMaterialInstanceDynamic::Create(BaseMat, this));
+    }
+
+    return Set;
+}
+
+FLOSVisibilityMIDSet ULOSRequirementPoolSubsystem::AcquireVisibilityMIDSet(
+    FName MeshKey, int32& OutPoolIndex, int32& OutSetIndex)
+{
+    OutPoolIndex = INDEX_NONE;
+    OutSetIndex  = INDEX_NONE;
+
+    const int32* PoolIdx = VisibilityPoolIndex.Find(MeshKey);
+    if (!PoolIdx)
+    {
+        UE_LOG(LOSVision, Verbose,
+            TEXT("ULOSRequirementPoolSubsystem::AcquireVisibilityMIDSet >> Key [%s] not in settings"),
+            *MeshKey.ToString());
+        return {};
+    }
+
+    FLOSVisibilityMIDPool& MIDPool = VisibilityMIDPools[*PoolIdx];
+    const int32 SetIdx = MIDPool.Acquire();
+
+    if (SetIdx == INDEX_NONE)
+    {
+        UE_LOG(LOSVision, Verbose,
+            TEXT("ULOSRequirementPoolSubsystem::AcquireVisibilityMIDSet >> Key [%s] pool exhausted"),
+            *MeshKey.ToString());
+        return {};
+    }
+
+    OutPoolIndex = *PoolIdx;
+    OutSetIndex  = SetIdx;
+
+    return MIDPool.Sets[SetIdx];
+}
+
+void ULOSRequirementPoolSubsystem::ReleaseVisibilityMIDSet(int32 PoolIndex, int32 SetIndex)
+{
+    if (VisibilityMIDPools.IsValidIndex(PoolIndex))
+        VisibilityMIDPools[PoolIndex].Release(SetIndex);
 }
 
 // ------------------------------------------------------------------ //
