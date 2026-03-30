@@ -56,24 +56,34 @@ void UGA_MonsterState_Chase::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 	float AcceptanceRadius = FMath::Max(0.0f, AttackRange - (CapsuleRadius + 10));
 
 	AIC->ReceiveMoveCompleted.RemoveAll(this);
-	AIC->ReceiveMoveCompleted.AddDynamic(this, &UGA_MonsterState_Chase::OnMoveFinished);
+	
 	EPathFollowingRequestResult::Type ReqResult = AIC->MoveToActor(TargetActor, AcceptanceRadius, false);
-	if (ReqResult == EPathFollowingRequestResult::Failed)
+	if (ReqResult != EPathFollowingRequestResult::Failed && ReqResult != EPathFollowingRequestResult::AlreadyAtGoal)
+	{
+		MoveRequestID = AIC->GetCurrentMoveRequestID();
+		AIC->ReceiveMoveCompleted.AddDynamic(this, &UGA_MonsterState_Chase::OnMoveFinished);
+	}
+	else
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
 	}
 }
 
 
 void UGA_MonsterState_Chase::OnMoveFinished(FAIRequestID RequestID, EPathFollowingResult::Type Result)
 {
+	if (RequestID != MoveRequestID)
+	{
+		return;
+	}
+
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 
 void UGA_MonsterState_Chase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
-	//UE_LOG(LogTemp, Error, TEXT("%s : UGA_MonsterState_Chase::EndAbility"), *GetOwningActorFromActorInfo()->GetName());
 
 	ABaseMonster* Monster = Cast<ABaseMonster>(GetOwningActorFromActorInfo());
 	if (IsValid(Monster))
