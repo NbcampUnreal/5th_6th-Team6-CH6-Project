@@ -278,6 +278,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat|AttackSpeed")
 	float GetCurrentAttackSectionDuration(UAnimMontage* Montage, FName SectionName) const;
 	
+	// 공격 쿨다운이 지났는지 확인 (공격 가능 여부)
+	UFUNCTION(BlueprintCallable, Category = "Combat|AttackSpeed")
+	bool CanAttack() const;
+	
+	// 공격 실행 시각 기록 (GA에서 공격 시작 시 호출)
+	UFUNCTION(BlueprintCallable, Category = "Combat|AttackSpeed")
+	void MarkAttackExecuted();
+	
 protected:
 	UFUNCTION()
 	void OnRep_TargetActor();
@@ -303,6 +311,9 @@ protected:
 	// 기본 공격속도 (CurveTable Level 1 기준값, InitAttributes에서 자동 캐싱)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat|AttackSpeed")
 	float CachedBaseAttackSpeed = 0.625f;
+	
+	// 마지막 공격 실행 서버 시각 (공격 쿨다운 타이머)
+	float LastAttackExecuteTime = -999.f;
 	
 	// 피격 이펙트 캐싱용 변수
 	UPROPERTY(Transient)

@@ -47,9 +47,6 @@ struct FSkillNiagaraSpawnSettings
 	UPROPERTY(EditDefaultsOnly, Category = "Niagara|Transform")
 	FRotator RotationOffset = FRotator::ZeroRotator;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Niagara|Transform")
-	FVector Scale = FVector::OneVector;
-
 	UPROPERTY(EditDefaultsOnly, Category = "Niagara|GameplayCue", meta = (Categories = "GameplayCue"))
 	FGameplayTag CueTag;
 
