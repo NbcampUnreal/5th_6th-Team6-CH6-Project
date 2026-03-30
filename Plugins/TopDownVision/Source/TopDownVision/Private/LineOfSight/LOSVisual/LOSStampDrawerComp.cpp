@@ -8,6 +8,8 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Kismet/KismetRenderingLibrary.h"
 #include "DrawDebugHelpers.h"
+
+#include "EditorSetting/LOSResourcePoolSettings.h"
 #include "TopDownVisionDebug.h"
 
 
@@ -19,9 +21,11 @@ ULOSStampDrawerComp::ULOSStampDrawerComp()
 void ULOSStampDrawerComp::BeginPlay()
 {
     Super::BeginPlay();
-    // CreateResources() is called manually from Vision_VisualComp::BeginPlay
+    // CreateResources() called manually from Vision_VisualComp::Initialize (owned mode only)
 }
 
+// -------------------------------------------------------------------------- //
+//  Owned mode — resource creation
 // -------------------------------------------------------------------------- //
 
 void ULOSStampDrawerComp::CreateResources()
@@ -29,35 +33,56 @@ void ULOSStampDrawerComp::CreateResources()
     if (!GetWorld())
         return;
 
-    // No RT needed — MainVisionRTManager draws the MID directly onto the camera RT.
-    // Only the MID needs to be created here.
-    if (LOSMaterial)
+    if (!LOSMaterial)
     {
-        FString MIDName = FString::Printf(TEXT("LOSStampMID_%s"), *GetOwner()->GetName());
-        LOSMaterialMID = UMaterialInstanceDynamic::Create(LOSMaterial, this, FName(*MIDName));
+        UE_LOG(LOSVision, Warning,
+            TEXT("[%s] ULOSStampDrawerComp::CreateResources >> LOSMaterial not assigned — owned mode requires it"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+        return;
+    }
 
-        if (LOSMaterialMID)
-        {
-            UE_LOG(LOSVision, Verbose,
-                TEXT("[%s] ULOSStampDrawerComp::CreateResources >> MID: %s (%p)"),
-                *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-                *LOSMaterialMID->GetName(), LOSMaterialMID);
-        }
-        else
-        {
-            UE_LOG(LOSVision, Warning,
-                TEXT("[%s] ULOSStampDrawerComp::CreateResources >> Failed to create MID"),
-                *TopDownVisionDebug::GetClientDebugName(GetOwner()));
-        }
+    FString MIDName = FString::Printf(TEXT("LOSStampMID_%s"), *GetOwner()->GetName());
+    LOSMaterialMID = UMaterialInstanceDynamic::Create(LOSMaterial, this, FName(*MIDName));
+
+    if (LOSMaterialMID)
+    {
+        UE_LOG(LOSVision, Verbose,
+            TEXT("[%s] ULOSStampDrawerComp::CreateResources >> MID created: %s (%p)"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+            *LOSMaterialMID->GetName(), LOSMaterialMID);
     }
     else
     {
         UE_LOG(LOSVision, Warning,
-            TEXT("[%s] ULOSStampDrawerComp::CreateResources >> LOSMaterial not assigned"),
+            TEXT("[%s] ULOSStampDrawerComp::CreateResources >> Failed to create MID"),
             *TopDownVisionDebug::GetClientDebugName(GetOwner()));
     }
 }
 
+// -------------------------------------------------------------------------- //
+//  Pool mode — MID injection
+// -------------------------------------------------------------------------- //
+
+void ULOSStampDrawerComp::SetStampMID(UMaterialInstanceDynamic* InMID)
+{
+    LOSMaterialMID = InMID;
+
+    if (InMID)
+    {
+        UE_LOG(LOSVision, Verbose,
+            TEXT("[%s] ULOSStampDrawerComp::SetStampMID >> MID bound (%p)"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()), InMID);
+    }
+    else
+    {
+        UE_LOG(LOSVision, Verbose,
+            TEXT("[%s] ULOSStampDrawerComp::SetStampMID >> MID cleared (slot released)"),
+            *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+    }
+}
+
+// -------------------------------------------------------------------------- //
+//  Update
 // -------------------------------------------------------------------------- //
 
 void ULOSStampDrawerComp::UpdateLOSStamp(UTextureRenderTarget2D* ObstacleRT)
@@ -67,32 +92,30 @@ void ULOSStampDrawerComp::UpdateLOSStamp(UTextureRenderTarget2D* ObstacleRT)
 
     if (!LOSMaterialMID)
     {
-        UE_LOG(LOSVision, Warning,
-            TEXT("[%s] ULOSStampDrawerComp::UpdateLOSStamp >> LOSMaterialMID is null"),
+        UE_LOG(LOSVision, Verbose,
+            TEXT("[%s] ULOSStampDrawerComp::UpdateLOSStamp >> MID is null — skipping (slot not yet acquired?)"),
             *TopDownVisionDebug::GetClientDebugName(GetOwner()));
         return;
     }
 
-    if (MIDVisibilityAlpha != NAME_None)
+    // Read param names from settings — single source of truth for both modes
+    const ULOSResourcePoolSettings* Settings = ULOSResourcePoolSettings::Get();
+
+    if (Settings && Settings->StampVisibilityAlphaParam != NAME_None)
+        LOSMaterialMID->SetScalarParameterValue(Settings->StampVisibilityAlphaParam, PassedVisionAlpha);
+
+    if (ObstacleRT && Settings && Settings->StampObstacleTextureParam != NAME_None)
     {
-        LOSMaterialMID->SetScalarParameterValue(MIDVisibilityAlpha, PassedVisionAlpha);
+        LOSMaterialMID->SetTextureParameterValue(Settings->StampObstacleTextureParam, ObstacleRT);
     }
-    
-    // Bind obstacle RT to the MID each frame.
-    // MainVisionRTManager::DrawLOSStamp reads GetLOSMaterialMID() and
-    // draws it directly onto the camera RT — no pre-render step here.
-    if (ObstacleRT && MIDObstacleTextureParam != NAME_None)
+    else if (!ObstacleRT)
     {
-        LOSMaterialMID->SetTextureParameterValue(MIDObstacleTextureParam, ObstacleRT);
-    }
-    else
-    {
-        UE_LOG(LOSVision, Warning,
-            TEXT("[%s] ULOSStampDrawerComp::UpdateLOSStamp >> ObstacleRT null or param not set — stamp will be empty"),
+        UE_LOG(LOSVision, Verbose,
+            TEXT("[%s] ULOSStampDrawerComp::UpdateLOSStamp >> ObstacleRT null — stamp will be empty this frame"),
             *TopDownVisionDebug::GetClientDebugName(GetOwner()));
     }
 
-    // Debug copy — assign a RT asset in BP details to visualize the MID output
+    // Debug copy
     if (bDrawDebugRT && DebugRT)
     {
         UKismetRenderingLibrary::ClearRenderTarget2D(GetWorld(), DebugRT, FLinearColor::Black);
@@ -106,14 +129,9 @@ void ULOSStampDrawerComp::UpdateLOSStamp(UTextureRenderTarget2D* ObstacleRT)
 
         if (Canvas)
         {
-            FCanvasTileItem Tile(
-                FVector2D(0, 0),
-                LOSMaterialMID->GetRenderProxy(),
-                RTSize
-            );
+            FCanvasTileItem Tile(FVector2D(0, 0), LOSMaterialMID->GetRenderProxy(), RTSize);
             Tile.BlendMode = SE_BLEND_Opaque;
             Canvas->DrawItem(Tile);
-
             UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(GetWorld(), Context);
         }
     }
@@ -143,12 +161,21 @@ void ULOSStampDrawerComp::ToggleLOSStampUpdate(bool bIsOn)
 
 void ULOSStampDrawerComp::OnVisionRangeChanged(float NewRange, float MaxRange)
 {
-    if (LOSMaterialMID && MIDVisibleRangeParam != NAME_None && MIDVisibilityAlpha!= NAME_None)
+    if (!LOSMaterialMID)
+        return;
+
+    const ULOSResourcePoolSettings* Settings = ULOSResourcePoolSettings::Get();
+    if (!Settings)
+        return;
+
+    if (Settings->StampNormalizedRadiusParam != NAME_None)
     {
         const float Normalized = FMath::Max(0.f, NewRange) / FMath::Max(1.f, MaxRange) / 2.f;
-        LOSMaterialMID->SetScalarParameterValue(MIDVisibleRangeParam, Normalized);
-
-        LOSMaterialMID->SetScalarParameterValue(MIDVisibilityAlpha, 1.0f);// need to pass the visibility alpha here
-        CachedVisionRange = NewRange;
+        LOSMaterialMID->SetScalarParameterValue(Settings->StampNormalizedRadiusParam, Normalized);
     }
+
+    if (Settings->StampVisibilityAlphaParam != NAME_None)
+        LOSMaterialMID->SetScalarParameterValue(Settings->StampVisibilityAlphaParam, 1.f);
+
+    CachedVisionRange = NewRange;
 }

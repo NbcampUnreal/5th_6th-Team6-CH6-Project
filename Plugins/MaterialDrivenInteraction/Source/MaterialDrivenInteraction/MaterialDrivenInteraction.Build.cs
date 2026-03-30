@@ -31,7 +31,10 @@ public class MaterialDrivenInteraction : ModuleRules
 				"Engine",
 				"MaterialShaderQualitySettings",
 				"Projects",       // IPluginManager
-				"DeveloperSettings"// for editor setting
+				"DeveloperSettings",// for editor setting
+				
+				"CustomBlendModeForRTDraw", 
+				//!!!!!! For Custom Blend Mode for encoding Locomotion data to Rt with no loss or modification by unreal
 			}
 			);
 			
@@ -41,7 +44,7 @@ public class MaterialDrivenInteraction : ModuleRules
 			{
 				"RenderCore",   // ETextureRenderTargetFormat
 				"RHI",          // FRHICommandListImmediate 
-				//"Settings",     // required for ISettingsModule
+				//"Settings",     // required for ISettingsModule // just use developer settings class instead
 			}
 			);
 		

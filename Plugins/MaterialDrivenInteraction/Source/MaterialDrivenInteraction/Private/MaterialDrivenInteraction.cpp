@@ -29,6 +29,7 @@ void FMaterialDrivenInteractionModule::StartupModule()
 		AddShaderSourceDirectoryMapping(TEXT("/FoliageRT"), ShaderDir);
 		AddShaderSourceDirectoryMapping(TEXT("/FoliageRT_V2"), ShaderDir);
 		AddShaderSourceDirectoryMapping(TEXT("/TargetBrush"), ShaderDir);
+		AddShaderSourceDirectoryMapping(TEXT("/MaterialDrivenInteraction"), ShaderDir);
 	}
 
 

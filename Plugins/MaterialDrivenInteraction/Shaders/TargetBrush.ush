@@ -1,224 +1,141 @@
-// TargetBrush.ush
-// Place in: YourPlugin/Shaders/TargetBrush.ush
-// Include in any Custom node: #include "/TargetBrush/TargetBrush.ush"
-
 #pragma once
 
-
 // ─────────────────────────────────────────────────────────────────────────────
-// TB_SelectUseWrap
-// Decides whether wrapped or raw delta is closer (toroidal space)
-// Shared by ALL logic → fixes diagonal ambiguity
+// FRT_Pack8x2
+// Pack two [0,1] values into one 16-bit float channel using 8 bits each.
+// 256 levels per value.
 // ─────────────────────────────────────────────────────────────────────────────
-float TB_SelectUseWrap(float2 deltaRaw, float2 deltaWrap)
+float FRT_Pack8x2(float Hi, float Lo)
 {
-    float distRaw  = dot(deltaRaw,  deltaRaw);
-    float distWrap = dot(deltaWrap, deltaWrap);
-
-    float epsilon = 1e-6;
-
-    return (distWrap < distRaw - epsilon) ? 1.0 : 0.0;
+    float hi = floor(saturate(Hi) * 255.0 + 0.5);
+    float lo = floor(saturate(Lo) * 255.0 + 0.5);
+    return (hi * 256.0 + lo) / 65535.0;
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
-// TB_IsPixelOwned
-// Determines if this tile is responsible for this pixel
-// 1 = draw, 0 = discard
-// FIXED: now uses global distance instead of axis-based logic
+// FRT_Unpack8x2
+// Unpack one 16-bit float channel into two [0,1] values.
 // ─────────────────────────────────────────────────────────────────────────────
-float TB_IsPixelOwned(
-    float2 TexCoord,
-    float2 CentreUV,
-    float  TileType
-)
+void FRT_Unpack8x2(float Packed, out float Hi, out float Lo)
 {
-    float2 deltaRaw  = TexCoord - CentreUV;
-    float2 deltaWrap = deltaRaw - sign(deltaRaw);
-
-    float useWrap = TB_SelectUseWrap(deltaRaw, deltaWrap);
-
-    if (TileType < 0.5) // ORIGINAL
-    {
-        return (useWrap > 0.5) ? 0.0 : 1.0;
-    }
-    else // WRAPPED
-    {
-        return (useWrap > 0.5) ? 1.0 : 0.0;
-    }
+    float v = floor(Packed * 65535.0 + 0.5);
+    Hi = floor(v / 256.0) / 255.0;
+    Lo = fmod(v, 256.0) / 255.0;
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
-// TB_GetWrappedDelta
-// Returns shortest toroidal delta (correct for diagonals)
+// FRT_Encode
+// Packs all interaction data into RGBA16f.
+//   R = Pack(PushDirX, VelX)
+//   G = Pack(PushDirY, VelY)
+//   B = Pack(HeightMask, Progression)
+//   A = unused
 // ─────────────────────────────────────────────────────────────────────────────
-float2 TB_GetWrappedDelta(
-    float2 TexCoord,
-    float2 CentreUV
-)
+float4 FRT_Encode(
+    float PushDirX,
+    float PushDirY,
+    float VelX,
+    float VelY,
+    float HeightMask,
+    float Progression)
 {
-    float2 deltaRaw  = TexCoord - CentreUV;
-    float2 deltaWrap = deltaRaw - sign(deltaRaw);
-
-    float useWrap = TB_SelectUseWrap(deltaRaw, deltaWrap);
-
-    return (useWrap > 0.5) ? deltaWrap : deltaRaw;
+    return float4(
+        FRT_Pack8x2(PushDirX,   VelX),
+        FRT_Pack8x2(PushDirY,   VelY),
+        FRT_Pack8x2(HeightMask, Progression),
+        0.0
+    );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// FRT_Decode
+// Unpacks RGBA16f into all interaction values.
+// ─────────────────────────────────────────────────────────────────────────────
+void FRT_Decode(
+    float4 Packed,
+    out float PushDirX,
+    out float PushDirY,
+    out float VelX,
+    out float VelY,
+    out float HeightMask,
+    out float Progression)
+{
+    FRT_Unpack8x2(Packed.r, PushDirX,   VelX);
+    FRT_Unpack8x2(Packed.g, PushDirY,   VelY);
+    FRT_Unpack8x2(Packed.b, HeightMask, Progression);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TB_RadialNormal
-// Radial outward push encoded in RG
+// TB_InteractionBrush
+// Draws interaction data into the RT.
+// Outside brush radius — decays Progression, preserves direction.
+// Inside brush radius — writes fresh push direction and resets Progression to 1.
+//
+// DecayRate: value per frame e.g. 0.95 = 5% decay per frame
 // ─────────────────────────────────────────────────────────────────────────────
-float4 TB_RadialNormal(
+float4 TB_InteractionBrush(
+    float4 Previous,
     float2 TexCoord,
     float2 CentreUV,
     float2 UVExtent,
+    float  VelocityX,
+    float  VelocityY,
     float  Weight,
     float  Softness,
-    float  TileType
-)
+    float  DecayRate)
 {
-    float ownership = TB_IsPixelOwned(TexCoord, CentreUV, TileType);
-    if (ownership < 0.5)
-        return float4(0.5, 0.5, 0.0, 0.0);
+    // Decode previous
+    float PrevDirX, PrevVelX, PrevDirY, PrevVelY, PrevHeight, PrevProgression;
+    FRT_Decode(Previous, PrevDirX, PrevDirY, PrevVelX, PrevVelY, PrevHeight, PrevProgression);
 
-    float2 Delta = TB_GetWrappedDelta(TexCoord, CentreUV);
+    float2 Delta  = TexCoord - CentreUV;
+    float  Dist   = length(Delta);
+    float  Radius = UVExtent.x;
 
-    float Dist   = length(Delta);
-    float Radius = UVExtent.x;
+    // Outside brush — decay progression, preserve everything else
+    if (Dist > Radius)
+    {
+        return FRT_Encode(
+            PrevDirX, PrevDirY,
+            PrevVelX, PrevVelY,
+            PrevHeight,
+            PrevProgression * DecayRate
+        );
+    }
 
     float HardEdge = 1.0 - step(Radius, Dist);
     float SoftEdge = 1.0 - smoothstep(Radius * (1.0 - Softness), Radius, Dist);
     float Mask     = lerp(HardEdge, SoftEdge, saturate(Softness));
 
     if (Mask <= 0.0001)
-        return float4(0.5, 0.5, 0.0, 0.0);
+    {
+        return FRT_Encode(
+            PrevDirX, PrevDirY,
+            PrevVelX, PrevVelY,
+            PrevHeight,
+            PrevProgression * DecayRate
+        );
+    }
 
-    float2 Dir     = (Dist > 0.0001) ? normalize(Delta) : float2(0.0, 0.0);
-    float2 Encoded = Dir * 0.5 + 0.5;
+    // Push direction — radial outward from brush center
+    float2 Dir    = (Dist > 0.0001) ? normalize(Delta) : float2(0.0, 0.0);
+    float2 DirEnc = Dir * 0.5 + 0.5;
+    float  CurMag = Weight * Mask;
 
-    float4 Out;
-    Out.r = lerp(0.5, Encoded.x, Mask);
-    Out.g = lerp(0.5, Encoded.y, Mask);
-    Out.b = 0.0;
-    Out.a = Weight * Mask;
+    // Blend continuous — MAX by magnitude
+    float WinDirX  = CurMag > PrevHeight ? DirEnc.x  : PrevDirX;
+    float WinDirY  = CurMag > PrevHeight ? DirEnc.y  : PrevDirY;
+    float WinVelX  = CurMag > PrevHeight ? VelocityX : PrevVelX;
+    float WinVelY  = CurMag > PrevHeight ? VelocityY : PrevVelY;
+    float WinMag   = max(CurMag, PrevHeight);
 
-    return Out;
+    // Progression resets to 1 while invoker is present
+    float WinProg  = 1.0;
 
-}
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TB_RotateNormal
-// Rotates an input RG normal map
-// ─────────────────────────────────────────────────────────────────────────────
-float4 TB_RotateNormal(
-    float2 TexCoord,
-    float2 CentreUV,
-    float2 EncodedNormal,
-    float  Mask,
-    float  BrushRotation,
-    float  Weight,
-    float  TileType
-)
-{
-    float ownership = TB_IsPixelOwned(TexCoord, CentreUV, TileType);
-    if (ownership < 0.5)
-        return float4(0.5, 0.5, 0.0, 0.0);
-
-    float2 Normal = EncodedNormal * 2.0 - 1.0;
-
-    float Angle = BrushRotation * 0.01745329;
-    float CosA  = cos(Angle);
-    float SinA  = sin(Angle);
-
-    float2 Rotated;
-    Rotated.x = Normal.x * CosA - Normal.y * SinA;
-    Rotated.y = Normal.x * SinA + Normal.y * CosA;
-
-    float2 Encoded = Rotated * 0.5 + 0.5;
-
-    float4 Out;
-    Out.r = lerp(0.5, Encoded.x, Mask);
-    Out.g = lerp(0.5, Encoded.y, Mask);
-    Out.b = 0.0;
-    Out.a = Weight * Mask;
-
-    return Out;
-}
-
-
-
-//====================== Impulse Brush ==========================//
-
-// Written every tick via SE_BLEND_MAX while invoker is present.
-// Pixels outside brush radius or unowned tile are clipped —
-// MAX preserves frozen values for those texels untouched.
-//
-//   R = VelocityX encoded [0,1]  (0.5 = stationary)
-//   G = VelocityY encoded [0,1]  (0.5 = stationary)
-//   B = 0 (reserved)
-//   A = GameTimeFrac — freezes on exit, consumer reads age = frac(Now - A)
-
-float4 TB_ImpulseBrush(
-    float2 TexCoord,
-    float2 CentreUV,
-    float2 UVExtent,
-    float  TileType,
-    float  VelocityX,
-    float  VelocityY,
-    float  GameTimeFrac)
-{
-    /*float Owned = TB_IsPixelOwned(TexCoord, CentreUV, TileType);
-    clip(Owned - 0.5f);
-
-    float2 Delta  = TB_GetWrappedDelta(TexCoord, CentreUV);
-    float  Dist   = length(Delta);
-    float  Radius = UVExtent.x;
-
-    clip(Radius - Dist);
-
-    // Flat velocity across full radius — consumer uses ContinuousRT.A as envelope
-    return float4(
-        VelocityX,    // R
-        VelocityY,    // G
-        0.f,          // B — reserved
-        GameTimeFrac  // A — timestamp, freezes on exit
-    );*/
-
-    float Owned = TB_IsPixelOwned(TexCoord, CentreUV, TileType);
-    if (Owned < 0.5)
-        return float4(0.5f, 0.5f, 0.f, 0.f);  // A=0 — MAX keeps existing
-
-    float2 Delta  = TB_GetWrappedDelta(TexCoord, CentreUV);
-    float  Dist   = length(Delta);
-    float  Radius = UVExtent.x;
-
-    if (Dist > Radius)
-        return float4(0.5f, 0.5f, 0.f, 0.f);  // A=0 — MAX keeps existing
-
-    return float4(
-        VelocityX,
-        VelocityY,
-        0.f,
-        GameTimeFrac  // A — timestamp
+    return FRT_Encode(
+        WinDirX, WinDirY,
+        WinVelX, WinVelY,
+        WinMag,
+        WinProg
     );
-}
-
-
-float2 FRT_HeightToNormal(float Height)
-{
-    float GradX = ddx(Height);
-    float GradY = ddy(Height);
-
-    float2 Dir = float2(GradX, GradY);
-    float  Len = length(Dir);
-
-    // Return zero direction if gradient is too small — no meaningful push
-    if (Len < 0.0001f)
-        return float2(0.f, 0.f);
-
-    return Dir / Len;
 }

@@ -6,7 +6,7 @@
 #include "Engine/World.h"
 #include "GameFramework/GameStateBase.h"
 #include "LevelManagement/Area/LevelAreaInstanceBridge.h"
-#include "LevelManagement/LevelGraphManager/LevelAreaGameStateComp/LevelAreaGameStateComponent.h"
+#include "LevelManagement/LevelGraphManager/LevelAreaGameStateComp/LevelAreaGameModeComponent.h"
 #include "LogHelper/DebugLogHelper.h"
 
 
@@ -64,8 +64,8 @@ void ULevelSequenceManagerSubsystem::RegisterBridge(ALevelAreaInstanceBridge* Br
     AGameStateBase* GS = World->GetGameState();
     if (!GS) return;
 
-    if (ULevelAreaGameStateComponent* GSComp =
-        GS->FindComponentByClass<ULevelAreaGameStateComponent>())
+    if (ULevelAreaGameModeComponent* GSComp =
+        GS->FindComponentByClass<ULevelAreaGameModeComponent>())
     {
         GSComp->RegisterBridge(Bridge);
     }
@@ -86,8 +86,8 @@ void ULevelSequenceManagerSubsystem::UnregisterBridge(ALevelAreaInstanceBridge* 
     AGameStateBase* GS = World->GetGameState();
     if (!GS) return;
 
-    if (ULevelAreaGameStateComponent* GSComp =
-        GS->FindComponentByClass<ULevelAreaGameStateComponent>())
+    if (ULevelAreaGameModeComponent* GSComp =
+        GS->FindComponentByClass<ULevelAreaGameModeComponent>())
     {
         GSComp->UnregisterBridge(Bridge);
     }
@@ -365,8 +365,8 @@ ALevelAreaInstanceBridge* ULevelSequenceManagerSubsystem::GetBridgeByInstance(
     AGameStateBase* GS = World->GetGameState();
     if (!GS) return nullptr;
 
-    ULevelAreaGameStateComponent* GameStateComp =
-        GS->FindComponentByClass<ULevelAreaGameStateComponent>();
+    ULevelAreaGameModeComponent* GameStateComp =
+        GS->FindComponentByClass<ULevelAreaGameModeComponent>();
     if (!GameStateComp) return nullptr;
 
     return GameStateComp->GetBridgeActorByInstance(LevelInstance);
@@ -381,8 +381,8 @@ TArray<ALevelAreaInstanceBridge*> ULevelSequenceManagerSubsystem::GetBridgesByNo
     AGameStateBase* GS = World->GetGameState();
     if (!GS) return {};
 
-    ULevelAreaGameStateComponent* GameStateComp =
-        GS->FindComponentByClass<ULevelAreaGameStateComponent>();
+    ULevelAreaGameModeComponent* GameStateComp =
+        GS->FindComponentByClass<ULevelAreaGameModeComponent>();
     if (!GameStateComp) return {};
 
     return GameStateComp->GetBridgeActorsByID(NodeID);
