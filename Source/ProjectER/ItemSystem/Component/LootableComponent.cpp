@@ -1,4 +1,4 @@
-﻿// LootableComponent.cpp
+// LootableComponent.cpp
 // 위치: Source/ProjectER/ItemSystem/Component/LootableComponent.cpp
 #include "ItemSystem/Component/LootableComponent.h"
 #include "ItemSystem/Data/BaseItemData.h"
@@ -8,6 +8,8 @@
 #include "GameFramework/Actor.h"
 #include "GameFramework/Character.h"
 #include "Components/CapsuleComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 
 ULootableComponent::ULootableComponent()
 {
@@ -394,6 +396,27 @@ bool ULootableComponent::TakeItem(int32 SlotIndex, APawn* Taker)
 
 	GetOwner()->ForceNetUpdate();
 	return true;
+}
+
+// ========================================
+// 사운드 로직
+// ========================================
+
+void ULootableComponent::PlayOpenSoundLocally(const UObject* WorldContextObject)
+{
+	if (GetOwner())
+	{
+		USoundBase* SoundToPlay = OpenSound.Get();
+		if (!SoundToPlay && OpenSound.IsPending())
+		{
+			SoundToPlay = OpenSound.LoadSynchronous();
+		}
+
+		if (SoundToPlay)
+		{
+			UGameplayStatics::PlaySoundAtLocation(WorldContextObject, SoundToPlay, GetOwner()->GetActorLocation());
+		}
+	}
 }
 
 // ========================================

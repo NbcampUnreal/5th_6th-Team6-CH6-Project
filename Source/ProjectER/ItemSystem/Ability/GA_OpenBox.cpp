@@ -1,4 +1,4 @@
-﻿#include "ItemSystem/Ability/GA_OpenBox.h"
+#include "ItemSystem/Ability/GA_OpenBox.h"
 #include "Abilities/Tasks/AbilityTask_WaitDelay.h"
 #include "ItemSystem/Actor/BaseBoxActor.h"
 #include "ItemSystem/UI/W_LootingPopup.h"
