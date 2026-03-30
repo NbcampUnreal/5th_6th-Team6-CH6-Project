@@ -39,7 +39,7 @@ public:
      * for this one target.  Never accepts a bVisible hint — that was the bug.
      * Called for every incremental add/remove and during full refresh.
      */
-    void ReevaluateTargetVisibility(AActor* Target);
+    void ReevaluateTargetVisibility(AActor* Target, EVisionChannel ExcludeObserverTeam = EVisionChannel::None);
 
     /** Full re-evaluation against all currently tracked actors.
      *  Also drains any pending queue in GameStateComp. */

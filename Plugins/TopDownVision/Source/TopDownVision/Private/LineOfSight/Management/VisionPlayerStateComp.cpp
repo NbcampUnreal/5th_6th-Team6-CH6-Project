@@ -90,17 +90,9 @@ bool UVisionPlayerStateComp::CanSeeTeam(EVisionChannel InTeam) const
     return bAllReveal || (TeamChannel == InTeam);
 }
 
-// -------------------------------------------------------------------------- //
-//  ReevaluateTargetVisibility
-//
-//  This is the core fix.  It does NOT accept a bVisible hint from the caller.
-//  Instead it reads the live VisibleActors list and scans every entry for
-//  this target.  If ANY entry belongs to a team this player can see, the
-//  actor is shown.  This means one team losing sight can never hide an
-//  actor that another eligible team still sees.
-// -------------------------------------------------------------------------- //
 
-void UVisionPlayerStateComp::ReevaluateTargetVisibility(AActor* Target)
+void UVisionPlayerStateComp::ReevaluateTargetVisibility(
+    AActor* Target, EVisionChannel ExcludeObserverTeam)
 {
     if (!Target)
         return;
@@ -109,7 +101,6 @@ void UVisionPlayerStateComp::ReevaluateTargetVisibility(AActor* Target)
     if (!VisualComp)
         return;
 
-    // Only the local controller applies rendering changes.
     APlayerController* PC = GetWorld()->GetFirstPlayerController();
     if (!PC || !PC->IsLocalController())
         return;
@@ -122,7 +113,6 @@ void UVisionPlayerStateComp::ReevaluateTargetVisibility(AActor* Target)
     }
     else
     {
-        // Same-team and AlwaysVisible actors are visible regardless of LOS votes.
         const EVisionChannel TargetTeam = VisualComp->GetVisionChannel();
         if (CanSeeTeam(TargetTeam))
         {
@@ -130,11 +120,6 @@ void UVisionPlayerStateComp::ReevaluateTargetVisibility(AActor* Target)
         }
         else
         {
-            // Scan every live entry for this target.
-            // The entry that triggered this call may already be gone from the
-            // array (PreReplicatedRemove fires before the item is removed on
-            // client, but SetActorVisibleToTeam removes it before calling us
-            // on server).  Either way the array reflects current truth.
             UVisionGameStateComp* GSComp = nullptr;
             if (AGameStateBase* GS = GetWorld()->GetGameState())
                 GSComp = GS->FindComponentByClass<UVisionGameStateComp>();
@@ -144,6 +129,13 @@ void UVisionPlayerStateComp::ReevaluateTargetVisibility(AActor* Target)
                 for (const FVisibleActorEntry& Entry : GSComp->GetVisibleActors())
                 {
                     if (Entry.Target != Target)
+                        continue;
+
+                    // Skip the entry that triggered PreReplicatedRemove — it is
+                    // still physically in the array at callback time even though
+                    // it is conceptually already gone.
+                    if (ExcludeObserverTeam != EVisionChannel::None &&
+                        Entry.ObserverTeam == ExcludeObserverTeam)
                         continue;
 
                     if (CanSeeTeam(Entry.ObserverTeam))
@@ -157,10 +149,11 @@ void UVisionPlayerStateComp::ReevaluateTargetVisibility(AActor* Target)
     }
 
     UE_LOG(VisionPlayerStateComp, Verbose,
-        TEXT("[%s] ReevaluateTargetVisibility >> %s -> %s"),
+        TEXT("[%s] ReevaluateTargetVisibility >> %s -> %s (exclude team: %s)"),
         *GetOwner()->GetName(),
         *Target->GetName(),
-        bShouldBeVisible ? TEXT("VISIBLE") : TEXT("HIDDEN"));
+        bShouldBeVisible ? TEXT("VISIBLE") : TEXT("HIDDEN"),
+        *UEnum::GetValueAsString(ExcludeObserverTeam));
 
     VisualComp->SetVisible(bShouldBeVisible);
 }

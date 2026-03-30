@@ -213,10 +213,8 @@ void UVisionGameStateComp::OnTargetBecameHidden(AActor* Target, EVisionChannel T
         return;
     }
 
-    // Do NOT call SetVisible(false) here.
-    // Re-evaluate from scratch — if another team's entry still exists for
-    // this target and this player can see that team, it stays visible.
-    VisionPS->ReevaluateTargetVisibility(Target);
+   // Pass Team as ExcludeObserverTeam so the entry that is still physically
+   VisionPS->ReevaluateTargetVisibility(Target, Team);
 }
 
 // -------------------------------------------------------------------------- //
