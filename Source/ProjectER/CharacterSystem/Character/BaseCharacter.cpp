@@ -1212,8 +1212,9 @@ void ABaseCharacter::CheckCombatTarget(float DeltaTime)
 			bool bHasAbility = (Specs.Num() > 0);
 			bool bWasActivated = false;
 			
-			if (bHasAbility)
+			if (bHasAbility && CanAttack())
 			{
+				MarkAttackExecuted();
 				bWasActivated = AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(AttackTag));
 			}
 			
@@ -1304,15 +1305,34 @@ float ABaseCharacter::GetAttackCooldown() const
 	return 1.0f / CurrentAPS;
 }
 
-float ABaseCharacter::GetCurrentAttackSectionDuration(UAnimMontage* Montage, FName SectionName) const
+// float ABaseCharacter::GetCurrentAttackSectionDuration(UAnimMontage* Montage, FName SectionName) const
+// {
+// 	if (!Montage) return 1.0f;
+	
+// 	int32 SectionIndex = Montage->GetSectionIndex(SectionName);
+// 	if (SectionIndex == INDEX_NONE) return 1.0f;
+	
+// 	// 해당 섹션의 원본 재생 시간(초) 반환
+// 	return Montage->GetSectionLength(SectionIndex);
+// }
+
+bool ABaseCharacter::CanAttack() const
 {
-	if (!Montage) return 1.0f;
+	if (!GetWorld()) return false;
 	
-	int32 SectionIndex = Montage->GetSectionIndex(SectionName);
-	if (SectionIndex == INDEX_NONE) return 1.0f;
+	float CurrentTime = GetWorld()->GetTimeSeconds();
+	float Cooldown = GetAttackCooldown();
 	
-	// 해당 섹션의 원본 재생 시간(초) 반환
-	return Montage->GetSectionLength(SectionIndex);
+	// 마지막 공격으로부터 공격 주기가 경과했는지 확인
+	return (CurrentTime - LastAttackExecuteTime) >= Cooldown;
+}
+
+void ABaseCharacter::MarkAttackExecuted()
+{
+	if (GetWorld())
+	{
+		LastAttackExecuteTime = GetWorld()->GetTimeSeconds();
+	}
 }
 
 void ABaseCharacter::OnRep_TargetActor()
