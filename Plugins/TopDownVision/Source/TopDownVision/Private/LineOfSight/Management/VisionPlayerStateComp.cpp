@@ -23,7 +23,6 @@ void UVisionPlayerStateComp::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 void UVisionPlayerStateComp::BeginPlay()
 {
     Super::BeginPlay();
-    // Deferred one tick — by then PC->PlayerState is assigned and GSComp is populated
     if (UWorld* World = GetWorld())
         World->GetTimerManager().SetTimerForNextTick(this, &UVisionPlayerStateComp::RefreshVisibility);
 }
@@ -34,13 +33,6 @@ void UVisionPlayerStateComp::BeginPlay()
 
 void UVisionPlayerStateComp::SetTeamChannel(EVisionChannel InTeam)
 {
-    /*if (!GetOwner()->HasAuthority())
-    {
-        UE_LOG(VisionPlayerStateComp, Warning,
-            TEXT("[%s] SetTeamChannel >> Server only"), *GetOwner()->GetName());
-        return;
-    }*/
-
     TeamChannel = InTeam;
 
     UE_LOG(VisionPlayerStateComp, Log,
@@ -87,39 +79,28 @@ void UVisionPlayerStateComp::OnRep_AllReveal()
 }
 
 // -------------------------------------------------------------------------- //
-//  Visibility logic — single place for filter + apply
+//  CanSeeTeam
 // -------------------------------------------------------------------------- //
 
 bool UVisionPlayerStateComp::CanSeeTeam(EVisionChannel InTeam) const
 {
-    /*return bAllReveal || (TeamChannel == InTeam);*/
-    // AlwaysVisible bypasses all team filtering
-    /*if (InTeam == EVisionChannel::AlwaysVisible)
-        return true;
-
-    if (bAllReveal)
-        return true;
-
-    if (TeamChannel == EVisionChannel::None)
-        return false;
-
-    return InTeam == TeamChannel
-        || InTeam == EVisionChannel::SharedVision;*/
-    /*if (InTeam == EVisionChannel::None)          return false; 
-    if (InTeam == EVisionChannel::AlwaysVisible) return true;
-    if (bAllReveal)                              return true;
-    if (TeamChannel == EVisionChannel::None)     return false;
-
-    return InTeam == TeamChannel
-        || InTeam == EVisionChannel::SharedVision;*/
-
-    if (InTeam == EVisionChannel::AlwaysVisible) // always
+    if (InTeam == EVisionChannel::AlwaysVisible)
         return true;
 
     return bAllReveal || (TeamChannel == InTeam);
 }
 
-void UVisionPlayerStateComp::ApplyActorVisibility(AActor* Target, EVisionChannel ObserverTeam, bool bVisible)
+// -------------------------------------------------------------------------- //
+//  ReevaluateTargetVisibility
+//
+//  This is the core fix.  It does NOT accept a bVisible hint from the caller.
+//  Instead it reads the live VisibleActors list and scans every entry for
+//  this target.  If ANY entry belongs to a team this player can see, the
+//  actor is shown.  This means one team losing sight can never hide an
+//  actor that another eligible team still sees.
+// -------------------------------------------------------------------------- //
+
+void UVisionPlayerStateComp::ReevaluateTargetVisibility(AActor* Target)
 {
     if (!Target)
         return;
@@ -128,30 +109,68 @@ void UVisionPlayerStateComp::ApplyActorVisibility(AActor* Target, EVisionChannel
     if (!VisualComp)
         return;
 
-    const EVisionChannel TargetTeam = VisualComp->GetVisionChannel();
+    // Only the local controller applies rendering changes.
+    APlayerController* PC = GetWorld()->GetFirstPlayerController();
+    if (!PC || !PC->IsLocalController())
+        return;
 
-    const bool bTargetIsSameTeam = (TargetTeam == TeamChannel);
+    bool bShouldBeVisible = false;
 
-    const bool bShouldBeVisible =
-        bAllReveal ||
-        bTargetIsSameTeam ||
-        (
-            TeamChannel == ObserverTeam // ← THIS is the key fix
-            && bVisible
-        );
-
-    if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+    if (bAllReveal)
     {
-        if (PC->IsLocalController())
+        bShouldBeVisible = true;
+    }
+    else
+    {
+        // Same-team and AlwaysVisible actors are visible regardless of LOS votes.
+        const EVisionChannel TargetTeam = VisualComp->GetVisionChannel();
+        if (CanSeeTeam(TargetTeam))
         {
-            VisualComp->SetVisible(bShouldBeVisible);
+            bShouldBeVisible = true;
+        }
+        else
+        {
+            // Scan every live entry for this target.
+            // The entry that triggered this call may already be gone from the
+            // array (PreReplicatedRemove fires before the item is removed on
+            // client, but SetActorVisibleToTeam removes it before calling us
+            // on server).  Either way the array reflects current truth.
+            UVisionGameStateComp* GSComp = nullptr;
+            if (AGameStateBase* GS = GetWorld()->GetGameState())
+                GSComp = GS->FindComponentByClass<UVisionGameStateComp>();
+
+            if (GSComp)
+            {
+                for (const FVisibleActorEntry& Entry : GSComp->GetVisibleActors())
+                {
+                    if (Entry.Target != Target)
+                        continue;
+
+                    if (CanSeeTeam(Entry.ObserverTeam))
+                    {
+                        bShouldBeVisible = true;
+                        break;
+                    }
+                }
+            }
         }
     }
-    
+
+    UE_LOG(VisionPlayerStateComp, Verbose,
+        TEXT("[%s] ReevaluateTargetVisibility >> %s -> %s"),
+        *GetOwner()->GetName(),
+        *Target->GetName(),
+        bShouldBeVisible ? TEXT("VISIBLE") : TEXT("HIDDEN"));
+
+    VisualComp->SetVisible(bShouldBeVisible);
 }
 
 // -------------------------------------------------------------------------- //
-//  Full refresh — initial sync and on team/AllReveal change
+//  RefreshVisibility
+//
+//  Collects unique targets from the live list and re-evaluates each once.
+//  A single target may have multiple entries (one per team that sees it),
+//  so deduplication avoids redundant SetVisible calls.
 // -------------------------------------------------------------------------- //
 
 void UVisionPlayerStateComp::RefreshVisibility()
@@ -165,19 +184,23 @@ void UVisionPlayerStateComp::RefreshVisibility()
     UVisionGameStateComp* GSComp = GS->FindComponentByClass<UVisionGameStateComp>();
     if (!GSComp) return;
 
-    // Drain anything that arrived before we were ready
+    // Drain anything queued before we were ready.
     GSComp->FlushPendingReveals(this);
 
-    UE_LOG(VisionPlayerStateComp, Verbose,
-        TEXT("[%s] RefreshVisibility >> %d actors | Team:%d | AllReveal:%d"),
-        *GetOwner()->GetName(),
-        GSComp->GetVisibleActors().Num(),
-        (uint8)TeamChannel,
-        bAllReveal);
-
+    TSet<AActor*> Evaluated;
     for (const FVisibleActorEntry& Entry : GSComp->GetVisibleActors())
     {
-        if (Entry.Target)
-            ApplyActorVisibility(Entry.Target, Entry.ObserverTeam, true);
+        if (!Entry.Target || Evaluated.Contains(Entry.Target))
+            continue;
+
+        Evaluated.Add(Entry.Target);
+        ReevaluateTargetVisibility(Entry.Target);
     }
+
+    UE_LOG(VisionPlayerStateComp, Verbose,
+        TEXT("[%s] RefreshVisibility >> %d unique actors | Team:%d | AllReveal:%d"),
+        *GetOwner()->GetName(),
+        Evaluated.Num(),
+        (uint8)TeamChannel,
+        (int32)bAllReveal);
 }

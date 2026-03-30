@@ -20,31 +20,29 @@ protected:
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:
-    // --- Team --- //
     UFUNCTION(BlueprintCallable, Category="Vision")
     void SetTeamChannel(EVisionChannel InTeam);
 
     UFUNCTION(BlueprintCallable, Category="Vision")
     EVisionChannel GetTeamChannel() const { return TeamChannel; }
 
-    // --- All Reveal --- //
     UFUNCTION(BlueprintCallable, Category="Vision")
     void SetAllReveal(bool bEnabled);
 
     UFUNCTION(BlueprintCallable, Category="Vision")
     bool IsAllReveal() const { return bAllReveal; }
 
-    // --- Visibility logic (single location for filter + apply) --- //
-
-    /** Returns true if this player can see actors belonging to the given team. */
     bool CanSeeTeam(EVisionChannel InTeam) const;
 
-
-    void ApplyActorVisibility(AActor* Target, EVisionChannel ObserverTeam, bool bVisible);
+    /**
+     * Reads the LIVE VisibleActors list and resolves the correct visibility
+     * for this one target.  Never accepts a bVisible hint — that was the bug.
+     * Called for every incremental add/remove and during full refresh.
+     */
+    void ReevaluateTargetVisibility(AActor* Target);
 
     /** Full re-evaluation against all currently tracked actors.
-     *  Also drains any pending queue in GameStateComp.
-     *  Called on rep, after team assignment, and on BeginPlay next tick. */
+     *  Also drains any pending queue in GameStateComp. */
     UFUNCTION(BlueprintCallable, Category="Vision")
     void RefreshVisibility();
 

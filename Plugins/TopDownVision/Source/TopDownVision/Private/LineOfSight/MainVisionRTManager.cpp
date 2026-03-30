@@ -383,8 +383,8 @@ bool UMainVisionRTManager::GetVisibleProviders(TArray<UVision_VisualComp*>& OutP
 		return false;
 	}
 
-	OutProviders = Subsystem->GeAllProviders();
-	return true;
+	OutProviders = Subsystem->GetProvidersVisibleToLocalPlayer();
+	return OutProviders.Num() > 0;
 }
 
 bool UMainVisionRTManager::ShouldRunClientLogic() const
