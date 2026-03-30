@@ -28,30 +28,3 @@ void UGA_MonsterState_Idle::EndAbility(const FGameplayAbilitySpecHandle Handle, 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 
 }
-
-
-void UGA_MonsterState_Idle::OnMontageCompleted()
-{
-}
-
-void UGA_MonsterState_Idle::OnMontageBlendIn()
-{
-}
-
-void UGA_MonsterState_Idle::OnMontageBlendOut()
-{
-}
-
-void UGA_MonsterState_Idle::OnMontageInterrupt()
-{
-}
-
-void UGA_MonsterState_Idle::OnMontageCancel()
-{
-}
-
-
-void UGA_MonsterState_Idle::OnTagRemoved()
-{
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
-}

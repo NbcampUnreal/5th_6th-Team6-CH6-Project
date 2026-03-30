@@ -34,17 +34,4 @@ protected:
 	) override;
 
 
-
-	virtual void OnMontageCompleted() override;
-
-	virtual void OnMontageBlendIn() override;
-
-	virtual void OnMontageBlendOut() override;
-
-	virtual void OnMontageInterrupt() override;
-
-	virtual void OnMontageCancel() override;
-
-
-	virtual void OnTagRemoved() override;
 };

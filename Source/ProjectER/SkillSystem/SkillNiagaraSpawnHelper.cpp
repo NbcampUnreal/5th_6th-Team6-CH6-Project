@@ -108,7 +108,7 @@ void SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(UWorld* World, const FSkill
 
 		const FTransform ParentTransform = FinalAttachComponent->GetSocketTransform(Settings.SocketOrBoneName);
 		const FRotator RelativeAttachRotation = CalculateNiagaraRelativeRotation(Settings, ParentTransform, OptionalLookAtTarget);
-		ResultNC = UNiagaraFunctionLibrary::SpawnSystemAttached(LoadedNiagaraSystem, FinalAttachComponent, Settings.SocketOrBoneName, Settings.LocationOffset, RelativeAttachRotation, Settings.Scale, EAttachLocation::KeepRelativeOffset, true, ENCPoolMethod::None, false, false);
+		ResultNC = UNiagaraFunctionLibrary::SpawnSystemAttached(LoadedNiagaraSystem, FinalAttachComponent, Settings.SocketOrBoneName, Settings.LocationOffset, RelativeAttachRotation, EAttachLocation::KeepRelativeOffset, true, false);
 	}
 	else {
 		const FVector SourceLocation = SourceTransform.GetLocation();
@@ -118,27 +118,27 @@ void SkillNiagaraSpawnHelper::SpawnNiagaraBySettings(UWorld* World, const FSkill
 			: Settings.LocationOffset;
 		const FVector SpawnLocation = SourceLocation + WorldLocationOffset;
 		const FRotator SpawnRotation = CalculateNiagaraWorldRotation(Settings, SourceTransform, OptionalLookAtTarget);
-		ResultNC = UNiagaraFunctionLibrary::SpawnSystemAtLocation(World, LoadedNiagaraSystem, SpawnLocation, SpawnRotation, Settings.Scale, true, false);
+		ResultNC = UNiagaraFunctionLibrary::SpawnSystemAtLocation(World, LoadedNiagaraSystem, SpawnLocation, SpawnRotation, FVector(1.f), true, false);
 	}
 	
 	if (!IsValid(ResultNC)) {
 		UE_LOG(LogTemp, Warning, TEXT("ResultNC is Null, Niagara is Not Spawn"));
 		return;
 	}
-	else{
-		for (const auto& Pair : Settings.FloatParameters)
-		{
-			ResultNC->SetVariableFloat(Pair.Key, Pair.Value);
-		}
-		for (const auto& Pair : Settings.VectorParameters)
-		{
-			ResultNC->SetVariableVec3(Pair.Key, Pair.Value);
-		}
-		for (const auto& Pair : Settings.ColorParameters)
-		{
-			ResultNC->SetVariableLinearColor(Pair.Key, Pair.Value);
-		}
 
-		ResultNC->Activate();
+	// 파라미터 적용
+	for (const auto& Pair : Settings.FloatParameters)
+	{
+		ResultNC->SetVariableFloat(Pair.Key, Pair.Value);
 	}
+	for (const auto& Pair : Settings.VectorParameters)
+	{
+		ResultNC->SetVariableVec3(Pair.Key, Pair.Value);
+	}
+	for (const auto& Pair : Settings.ColorParameters)
+	{
+		ResultNC->SetVariableLinearColor(Pair.Key, Pair.Value);
+	}
+
+	ResultNC->Activate();
 }
