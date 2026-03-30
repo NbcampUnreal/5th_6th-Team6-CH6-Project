@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -275,8 +275,8 @@ public:
 	float GetAttackCooldown() const;
 	
 	// 지정된 몽타주 섹션의 실제 재생 시간(초) 반환
-	UFUNCTION(BlueprintCallable, Category = "Combat|AttackSpeed")
-	float GetCurrentAttackSectionDuration(UAnimMontage* Montage, FName SectionName) const;
+	//UFUNCTION(BlueprintCallable, Category = "Combat|AttackSpeed")
+	//float GetCurrentAttackSectionDuration(UAnimMontage* Montage, FName SectionName) const;
 	
 	// 공격 쿨다운이 지났는지 확인 (공격 가능 여부)
 	UFUNCTION(BlueprintCallable, Category = "Combat|AttackSpeed")
