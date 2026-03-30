@@ -39,9 +39,8 @@ public:
     /** Returns true if this player can see actors belonging to the given team. */
     bool CanSeeTeam(EVisionChannel InTeam) const;
 
-    /** Applies team filter then calls VisualComp->SetVisible.
-     *  Called by GameStateComp push callbacks and RefreshVisibility. */
-    void ApplyActorVisibility(AActor* Target, EVisionChannel Team, bool bVisible);
+
+    void ApplyActorVisibility(AActor* Target, EVisionChannel ObserverTeam, bool bVisible);
 
     /** Full re-evaluation against all currently tracked actors.
      *  Also drains any pending queue in GameStateComp.

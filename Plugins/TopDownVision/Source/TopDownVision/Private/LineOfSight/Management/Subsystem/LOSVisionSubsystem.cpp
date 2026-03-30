@@ -150,7 +150,7 @@ void ULOSVisionSubsystem::HandleProviderRegistered(UVision_VisualComp* NewProvid
         if (!Existing || !Existing->GetOwner())
             continue;
 
-        GSComp->SetActorVisibleToTeam(Existing->GetOwner(), Channel);
+        GSComp->SetActorVisibleByTeam(Existing->GetOwner(), Channel);
 
         UE_LOG(LOSVisionSubsystem, Verbose,
             TEXT("HandleProviderRegistered >> Revealed %s to channel [%s]"),
@@ -177,6 +177,17 @@ void ULOSVisionSubsystem::HandleProviderRegistered(UVision_VisualComp* NewProvid
 //  Visibility reporting
 // -------------------------------------------------------------------------- //
 
+static void CleanInvalidObservers(TSet<TWeakObjectPtr<AActor>>& Set)
+{
+    for (auto It = Set.CreateIterator(); It; ++It)
+    {
+        if (!It->IsValid())
+        {
+            It.RemoveCurrent();
+        }
+    }
+}
+
 void ULOSVisionSubsystem::ReportTargetVisibility(
     AActor* Observer,
     EVisionChannel ObserverTeam,
@@ -188,35 +199,46 @@ void ULOSVisionSubsystem::ReportTargetVisibility(
 
     UVisionGameStateComp* GSComp = GetVisionGameStateComp();
     if (!GSComp)
-    {
-        UE_LOG(LOSVisionSubsystem, Warning,
-            TEXT("ReportTargetVisibility >> No VisionGameStateComp"));
         return;
-    }
 
     const uint8 TeamID = (uint8)ObserverTeam;
 
-    FTargetVisibilityVotes& Votes = VisibilityVotes.FindOrAdd(Target);
-    int32& VoteCount = Votes.VotesByTeam.FindOrAdd(TeamID, 0);
+    TMap<uint8, int32>& TeamVotes = VisibilityVotes.FindOrAdd(Target);
+    int32& VoteCount = TeamVotes.FindOrAdd(TeamID);
 
     const bool bWasVisible = VoteCount > 0;
 
+    // Update vote
     VoteCount = bVisible
-        ? FMath::Max(VoteCount + 1, 1)
+        ? VoteCount + 1
         : FMath::Max(VoteCount - 1, 0);
 
     const bool bIsNowVisible = VoteCount > 0;
 
-    UE_LOG(LOSVisionSubsystem, Verbose,
-        TEXT("ReportTargetVisibility >> %s | Team:%d | Votes:%d | Was:%s | Now:%s"),
-        *Target->GetName(), TeamID, VoteCount,
-        bWasVisible   ? TEXT("Y") : TEXT("N"),
-        bIsNowVisible ? TEXT("Y") : TEXT("N"));
+    //  CLEANUP GOES HERE
+    if (VoteCount == 0)
+    {
+        TeamVotes.Remove(TeamID);
 
+        if (TeamVotes.Num() == 0)
+        {
+            VisibilityVotes.Remove(Target);
+        }
+    }
+
+    UE_LOG(LOSVisionSubsystem, Warning,
+        TEXT("[VISION] %s | Team:%d | Votes:%d | Was:%d -> Now:%d"),
+        *Target->GetName(), TeamID, VoteCount, bWasVisible, bIsNowVisible);
+
+    //  Apply result
     if (!bWasVisible && bIsNowVisible)
-        GSComp->SetActorVisibleToTeam(Target, ObserverTeam);
+    {
+        GSComp->SetActorVisibleByTeam(Target, ObserverTeam);
+    }
     else if (bWasVisible && !bIsNowVisible)
+    {
         GSComp->ClearActorVisibleToTeam(Target, ObserverTeam);
+    }
 }
 
 UVisionGameStateComp* ULOSVisionSubsystem::GetVisionGameStateComp() const

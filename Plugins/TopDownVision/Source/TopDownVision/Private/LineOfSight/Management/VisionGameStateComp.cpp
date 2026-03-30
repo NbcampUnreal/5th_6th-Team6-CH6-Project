@@ -15,18 +15,22 @@ DEFINE_LOG_CATEGORY(VisionGameStateComp);
 
 void FVisibleActorArray::PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize)
 {
-    if (!OwnerComp) return;
+    if (!OwnerComp)
+        return;
+    
     for (int32 Idx : AddedIndices)
         if (Items.IsValidIndex(Idx))
-            OwnerComp->OnTargetBecameVisible(Items[Idx].Target, Items[Idx].TeamChannel);
+            OwnerComp->OnTargetBecameVisible(Items[Idx].Target, Items[Idx].ObserverTeam);
 }
 
 void FVisibleActorArray::PreReplicatedRemove(const TArrayView<int32>& RemovedIndices, int32 FinalSize)
 {
-    if (!OwnerComp) return;
+    if (!OwnerComp)
+        return;
+    
     for (int32 Idx : RemovedIndices)
         if (Items.IsValidIndex(Idx))
-            OwnerComp->OnTargetBecameHidden(Items[Idx].Target, Items[Idx].TeamChannel);
+            OwnerComp->OnTargetBecameHidden(Items[Idx].Target, Items[Idx].ObserverTeam);
 }
 
 void FVisibleActorArray::PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize)
@@ -60,11 +64,11 @@ void UVisionGameStateComp::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 //  Server API
 // -------------------------------------------------------------------------- //
 
-void UVisionGameStateComp::SetActorVisibleToTeam(AActor* Target, EVisionChannel Team)
+void UVisionGameStateComp::SetActorVisibleByTeam(AActor* Target, EVisionChannel Team)
 {
     if (!Target)
     {
-        UE_LOG(VisionGameStateComp, Warning, TEXT("SetActorVisibleToTeam >> Null target"));
+        UE_LOG(VisionGameStateComp, Warning, TEXT("SetActorVisibleByTeam >> Null target"));
         return;
     }
 
@@ -73,7 +77,7 @@ void UVisionGameStateComp::SetActorVisibleToTeam(AActor* Target, EVisionChannel 
 
     FVisibleActorEntry& Entry = VisibleActors.Items.AddDefaulted_GetRef();
     Entry.Target      = Target;
-    Entry.TeamChannel = Team;
+    Entry.ObserverTeam = Team;
     VisibleActors.MarkItemDirty(Entry);
 
     // Fire locally — PostReplicatedAdd only runs on remote clients
@@ -95,7 +99,7 @@ void UVisionGameStateComp::ClearActorVisibleToTeam(AActor* Target, EVisionChanne
     for (int32 i = VisibleActors.Items.Num() - 1; i >= 0; --i)
     {
         const FVisibleActorEntry& Entry = VisibleActors.Items[i];
-        if (Entry.Target == Target && Entry.TeamChannel == Team)
+        if (Entry.Target == Target && Entry.ObserverTeam == Team)
         {
             VisibleActors.Items.RemoveAt(i);
             VisibleActors.MarkArrayDirty();
@@ -128,10 +132,10 @@ bool UVisionGameStateComp::IsActorVisibleToTeam(AActor* Target, EVisionChannel T
             continue;
 
         // An AlwaysVisible entry satisfies any team query
-        if (Entry.TeamChannel == EVisionChannel::AlwaysVisible)
+        if (Entry.ObserverTeam == EVisionChannel::AlwaysVisible)
             return true;
 
-        if (Entry.TeamChannel == Team)
+        if (Entry.ObserverTeam == Team)
             return true;
     }
     return false;

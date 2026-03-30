@@ -4,6 +4,8 @@
 #include "LineOfSight/VisionComps/Vision_VisualComp.h"
 #include "LineOfSight/ObjectTracing/TopDown2DShapeComp.h"
 #include "TopDownVisionDebug.h"
+#include "GameFramework/PlayerState.h"
+#include "LineOfSight/Management/VisionPlayerStateComp.h"
 #include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
 #include "LineOfSight/ObjectTracing/VolumeVisibilityEvaluator2D.h"
 #include "LineOfSight/ObjectTracing/WallVisibilityEvaluator2D.h"
@@ -307,7 +309,31 @@ void UVision_EvaluatorComp::ReportVisibility(AActor* Target, bool bVisible)
     }
     else
     {
-        Server_ReportVisibility(Target, CachedVisualComp->GetVisionChannel(), bVisible);
+        EVisionChannel ObserverTeam = EVisionChannel::None;
+
+        //  Get team from PlayerState (authoritative)
+        if (APawn* Pawn = Cast<APawn>(GetOwner()))
+        {
+            if (APlayerState* PS = Pawn->GetPlayerState())
+            {
+                if (UVisionPlayerStateComp* VPS =
+                    PS->FindComponentByClass<UVisionPlayerStateComp>())
+                {
+                    ObserverTeam = VPS->GetTeamChannel();
+                }
+            }
+        }
+
+        // Safety check 
+        if (ObserverTeam == EVisionChannel::None)
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("[Evaluator] Invalid ObserverTeam for %s"),
+                *GetOwner()->GetName());
+            return;
+        }
+
+        Server_ReportVisibility(Target, ObserverTeam, bVisible);
     }
 }
 

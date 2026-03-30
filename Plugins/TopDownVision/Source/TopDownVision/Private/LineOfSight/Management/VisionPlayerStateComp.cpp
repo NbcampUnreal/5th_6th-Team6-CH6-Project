@@ -119,7 +119,7 @@ bool UVisionPlayerStateComp::CanSeeTeam(EVisionChannel InTeam) const
     return bAllReveal || (TeamChannel == InTeam);
 }
 
-void UVisionPlayerStateComp::ApplyActorVisibility(AActor* Target, EVisionChannel Team, bool bVisible)
+void UVisionPlayerStateComp::ApplyActorVisibility(AActor* Target, EVisionChannel ObserverTeam, bool bVisible)
 {
     if (!Target)
         return;
@@ -128,24 +128,26 @@ void UVisionPlayerStateComp::ApplyActorVisibility(AActor* Target, EVisionChannel
     if (!VisualComp)
         return;
 
-    // Check the target's actual team, not the observer's team
-    const bool bTargetIsSameTeam = (VisualComp->GetVisionChannel() == TeamChannel);
+    const EVisionChannel TargetTeam = VisualComp->GetVisionChannel();
 
-    const bool bShouldBeVisible = bAllReveal
-        || bTargetIsSameTeam                    // same team — always visible regardless of LOS
-        || (CanSeeTeam(Team) && bVisible);       // enemy — only visible if my team spotted them and LOS confirms
+    const bool bTargetIsSameTeam = (TargetTeam == TeamChannel);
 
-    VisualComp->SetVisible(bShouldBeVisible);
+    const bool bShouldBeVisible =
+        bAllReveal ||
+        bTargetIsSameTeam ||
+        (
+            TeamChannel == ObserverTeam // ← THIS is the key fix
+            && bVisible
+        );
 
-    UE_LOG(VisionPlayerStateComp, Verbose,
-        TEXT("[%s] ApplyActorVisibility >> %s | ObserverTeam:%s | TargetTeam:%s | SameTeam:%d | bVisible:%d | Result:%d"),
-        *GetOwner()->GetName(),
-        *Target->GetName(),
-        *UEnum::GetValueAsString(Team),
-        *UEnum::GetValueAsString(VisualComp->GetVisionChannel()),
-        bTargetIsSameTeam,
-        bVisible,
-        bShouldBeVisible);
+    if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+    {
+        if (PC->IsLocalController())
+        {
+            VisualComp->SetVisible(bShouldBeVisible);
+        }
+    }
+    
 }
 
 // -------------------------------------------------------------------------- //
@@ -176,6 +178,6 @@ void UVisionPlayerStateComp::RefreshVisibility()
     for (const FVisibleActorEntry& Entry : GSComp->GetVisibleActors())
     {
         if (Entry.Target)
-            ApplyActorVisibility(Entry.Target, Entry.TeamChannel, true);
+            ApplyActorVisibility(Entry.Target, Entry.ObserverTeam, true);
     }
 }

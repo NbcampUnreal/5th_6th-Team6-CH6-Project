@@ -24,7 +24,7 @@ struct FVisibleActorEntry : public FFastArraySerializerItem
     AActor* Target = nullptr;
 
     UPROPERTY()
-    EVisionChannel TeamChannel = EVisionChannel::None;
+    EVisionChannel ObserverTeam = EVisionChannel::None;
 };
 
 USTRUCT()
@@ -85,7 +85,7 @@ protected:
 public:
     // --- Server API --- //
     UFUNCTION(BlueprintCallable, Category="Vision")
-    void SetActorVisibleToTeam(AActor* Target, EVisionChannel Team);
+    void SetActorVisibleByTeam(AActor* Target, EVisionChannel Team);
 
     UFUNCTION(BlueprintCallable, Category="Vision")
     void ClearActorVisibleToTeam(AActor* Target, EVisionChannel Team);

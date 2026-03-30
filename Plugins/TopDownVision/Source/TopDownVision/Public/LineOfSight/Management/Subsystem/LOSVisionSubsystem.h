@@ -23,7 +23,9 @@ struct FTargetVisibilityVotes
 {
 	GENERATED_BODY()
 
-	TMap<uint8, int32> VotesByTeam;
+	//TMap<uint8, int32> VotesByTeam;
+
+	TMap<uint8, TSet<TWeakObjectPtr<AActor>>> ObserversByTeam;
 };
 
 TOPDOWNVISION_API DECLARE_LOG_CATEGORY_EXTERN(LOSVisionSubsystem, Log, All);
@@ -67,6 +69,6 @@ public:
 	TMap<EVisionChannel, FRegisteredProviders> VisionMap;
 
 private:
-	UPROPERTY()
-	TMap<AActor*, FTargetVisibilityVotes> VisibilityVotes;
+
+	TMap<AActor*, TMap<uint8, int32>> VisibilityVotes;
 };
