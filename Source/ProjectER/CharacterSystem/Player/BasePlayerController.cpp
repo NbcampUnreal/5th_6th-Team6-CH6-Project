@@ -1464,6 +1464,9 @@ void ABasePlayerController::Client_OpenLootUI_Implementation(const AActor* Box)
 		AActor* Actor = const_cast<AActor*>(Box);
 		if (ULootableComponent* LootComp = Actor->FindComponentByClass<ULootableComponent>())
 		{
+			// 클라이언트 로컬에서만 사운드 재생
+			LootComp->PlayOpenSoundLocally(this);
+
 			if (LootComp->bDestroyOwnerWhenEmpty)
 			{
 				// Capture a weak pointer to the widget; when loot depleted fires, close the popup locally.

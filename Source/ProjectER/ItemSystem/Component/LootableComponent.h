@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -138,6 +138,18 @@ protected:
 
 
 public:
+	// ========================================
+	// 사운드
+	// ========================================
+
+	/** 상자 등이 열릴 때 로컬에서만 재생되는 사운드 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lootable|Sound")
+	TSoftObjectPtr<class USoundBase> OpenSound;
+
+	/** 상호작용 시 사운드 로컬 재생 (클라이언트에서 호출) */
+	UFUNCTION(BlueprintCallable, Category = "Lootable|Sound")
+	void PlayOpenSoundLocally(const UObject* WorldContextObject);
+
 	// ========================================
 	// 설정 가능한 프로퍼티
 	// ========================================
