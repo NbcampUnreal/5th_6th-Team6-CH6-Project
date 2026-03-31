@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "ItemSystem/Interface/I_ItemInteractable.h" // [김현수 추가분]
 #include "ItemSystem/Data/ItemRecipeRow.h" // [김현수 추가분]
@@ -189,9 +189,6 @@ private:
 	// 조합 중인지 여부
 	bool bIsCrafting = false;
 
-	// Z키 입력: 조합 시도
-	void TryStartCrafting();
-
 	// 조합 가능한 레시피 찾기 (우선순위 높은 순)
 	FItemRecipeRow* FindBestAvailableRecipe();
 
@@ -222,6 +219,18 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Item|Drop")
 	TSubclassOf<ABaseItemActor> DroppedItemActorClass;
 
+	// ===== 아이템 조합 시스템 =====
+protected:
+
+	/** 크래프팅 상태 서버 동기화 */
+	UFUNCTION(Server, Reliable)
+	void Server_NotifyCraftingUI(bool bIsCraftingStarted);
+
+	/** 크래프팅 시도 */
+	UFUNCTION(BlueprintCallable, Category = "Interaction|Crafting")
+	void TryStartCrafting();
+
+public:
 	// 조합 취소
 	void CancelCrafting();
 
