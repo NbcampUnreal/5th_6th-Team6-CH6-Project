@@ -192,6 +192,25 @@ void AER_InGameMode::Logout(AController* Exiting)
 					}
 				}
 
+				// [전민성 요구사항] 도중 퇴장한 플레이어 강제 사망 및 팀 승패 처리
+				// 데이터(HP, 인벤토리 등)를 살아있던 원 상태 그대로 데이터 구조체(Data)에 안전하게 보존한 뒤,
+				// 실제 게임 월드 상의 폰은 사망(Death) 처리하여 팀 탈락 여부(EndGame) 로직을 정상 진행시킵니다.
+				if (!Data.bIsDead && ERPS)
+				{
+					if (OwnedPawn)
+					{
+						if (ABaseCharacter* Char = Cast<ABaseCharacter>(OwnedPawn))
+						{
+							Char->HandleDeath(); // 캐릭터 몸뚱이를 시체 상태로 전환 (애니메이션, 콜리전)
+						}
+					}
+					
+					// UnPossess 이후 Pawn에서 PlayerState를 찾는 NotifyPlayerDied를 우회하여 전용 함수 호출
+					this->NotifyDisconnectedPlayerDied(ERPS); 
+					
+					ERPS->bIsDead = true; // 안전장치
+				}
+
 				// 타임아웃 타이머 설정
 				TWeakObjectPtr<AER_InGameMode> WeakThis(this);
 				GetWorld()->GetTimerManager().SetTimer(
@@ -267,6 +286,13 @@ void AER_InGameMode::Logout(AController* Exiting)
 
 void AER_InGameMode::PreLogin(const FString& InAddress, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
 {
+	// [전민성 요구사항] 게임 종료 상태에서는 재접속도 원천 차단
+	if (bIsGameEnd)
+	{
+		ErrorMessage = TEXT("Game has already ended. Reconnection is disabled.");
+		return;
+	}
+
 	// 게임 시작 전(로비)이면 무조건 통과
 	if (!bIsGameStarted)
 	{
@@ -279,6 +305,21 @@ void AER_InGameMode::PreLogin(const FString& InAddress, const FString& Options, 
 
 	if (!UniqueIdStr.IsEmpty() && DisconnectedPlayers.Contains(UniqueIdStr))
 	{
+		const FDisconnectedPlayerData& Data = DisconnectedPlayers[UniqueIdStr];
+
+		// [전민성 요구사항] 탈락 확정(Eliminated) 팀은 재접속 불가
+		if (AER_GameState* ERGS = GetGameState<AER_GameState>())
+		{
+			const int32 TeamIdx = static_cast<int32>(Data.TeamType);
+			// 탈락 여부가 이미 전멸 상태로 캐싱되어있는지(TeamElimination 맵) 확인
+			if (ERGS->TeamElimination.Contains(TeamIdx) && ERGS->TeamElimination[TeamIdx])
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[GM] PreLogin >> Team is already eliminated. Reconnect rejected: %s"), *UniqueIdStr);
+				ErrorMessage = TEXT("Your team has been eliminated.");
+				return;
+			}
+		}
+
 		UE_LOG(LogTemp, Warning, TEXT("[GM] PreLogin >> Reconnecting player allowed: %s"), *UniqueIdStr);
 		Super::PreLogin(InAddress, Options, UniqueId, ErrorMessage);
 		return;
@@ -397,6 +438,18 @@ void AER_InGameMode::PostLogin(APlayerController* NewPlayer)
 
 		UE_LOG(LogTemp, Warning, TEXT("[GM] PostLogin >> PlayerState restored for: %s (Team=%d, K/D/A=%d/%d/%d)"),
 			*UniqueIdStr, static_cast<int32>(NewERPS->TeamType), NewERPS->KillCount, NewERPS->DeathCount, NewERPS->AssistCount);
+	}
+
+	// [전민성 요구사항] 재접속에 성공하면 다시 생존 상태(Revive)로 복귀
+	// (로그아웃 직전에 살아있었음 -> FoundData->bIsDead == false 이므로 NewERPS->bIsDead 도 이미 false로 복원됨)
+	if (FoundData->PreservedPawn.IsValid() && !FoundData->bIsDead) 
+	{
+		if (ABaseCharacter* Char = Cast<ABaseCharacter>(FoundData->PreservedPawn.Get()))
+		{
+			// 강제 즉사 스태깅(HandleDeath 시체 상태) 되었던 캐릭터를 원래 자리에서 다시 일으켜 세움
+			Char->Revive(Char->GetActorLocation());
+			UE_LOG(LogTemp, Warning, TEXT("[GM] PostLogin >> Pawn Revived successfully for: %s"), *UniqueIdStr);
+		}
 	}
 
 	// GameState TeamCache에 재접속 플레이어 다시 추가
@@ -731,6 +784,51 @@ void AER_InGameMode::EndGame_Internal()
 	UE_LOG(LogTemp, Warning, TEXT("[GM] Player is Zero -> ServerTravel to Lobby"));
 
 	GetWorld()->ServerTravel(TEXT("/Game/Level/Level_MainMenu"), true);
+}
+
+void AER_InGameMode::NotifyDisconnectedPlayerDied(AER_PlayerState* TargetPS)
+{
+	if (!HasAuthority() || !TargetPS)
+		return;
+
+	UE_LOG(LogTemp, Warning, TEXT("[GM] : Start NotifyDisconnectedPlayerDied (Disconnected Player)"));
+
+	AER_GameState* ERGS = GetGameState<AER_GameState>();
+	if (!ERGS)
+		return;
+
+	if (UER_RespawnSubsystem* RespawnSS = GetWorld()->GetSubsystem<UER_RespawnSubsystem>())
+	{
+		TArray<APlayerState*> DummyAssists;
+		RespawnSS->HandlePlayerDeath(*TargetPS, *ERGS, nullptr, DummyAssists);
+
+		// 탈락 방지 페이즈인지 확인
+		const int32 Phase = ERGS->GetCurrentPhase();
+		const bool bCanEliminationProtect = (Phase == 1 || Phase == 2);
+
+		// 전멸 판정 가동
+		if (!bCanEliminationProtect && RespawnSS->EvaluateTeamElimination(*TargetPS, *ERGS))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[GM] : NotifyDisconnectedPlayerDied , EvaluateTeamElimination = true"));
+
+			const int32 TeamIdx = static_cast<int32>(TargetPS->TeamType);
+			RespawnSS->StopResapwnTimer(*ERGS, TeamIdx);
+			RespawnSS->SetTeamLose(*ERGS, TeamIdx);
+
+			int32 LastTeamIdx = RespawnSS->CheckIsLastTeam(*ERGS);
+			if (LastTeamIdx != -1)
+			{
+				RespawnSS->SetTeamWin(*ERGS, LastTeamIdx);
+				bIsGameStarted = false;
+				bIsGameEnd = true;
+			}
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[GM] : NotifyDisconnectedPlayerDied , EvaluateTeamElimination = false"));
+			RespawnSS->StartRespawnTimer(*TargetPS, *ERGS);
+		}
+	}
 }
 
 void AER_InGameMode::NotifyPlayerDied(ACharacter* VictimCharacter, APlayerState* KillerPS, const TArray<APlayerState*>& Assists)
