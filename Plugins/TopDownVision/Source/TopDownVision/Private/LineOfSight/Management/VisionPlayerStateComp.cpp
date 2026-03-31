@@ -44,6 +44,7 @@ void UVisionPlayerStateComp::SetTeamChannel(EVisionChannel InTeam)
         TEXT("[%s] SetTeamChannel >> %d"),
         *GetOwner()->GetName(), (uint8)TeamChannel);
 
+    SyncPawnVisionChannel();
     InitializeSameTeamEvaluators();
     RefreshVisibility();
 }
@@ -54,6 +55,7 @@ void UVisionPlayerStateComp::OnRep_TeamChannel()
         TEXT("[%s] OnRep_TeamChannel >> %d"),
         *GetOwner()->GetName(), (uint8)TeamChannel);
 
+    SyncPawnVisionChannel();
     InitializeSameTeamEvaluators();
     RefreshVisibility();
 }
@@ -101,7 +103,52 @@ bool UVisionPlayerStateComp::CanSeeTeam(EVisionChannel InTeam) const
 }
 
 // -------------------------------------------------------------------------- //
-//  Same-team evaluator initialization
+//  SyncPawnVisionChannel
+//
+//  Players have VisionChannel = None when Vision_VisualComp::Initialize()
+//  runs because the team replicates after BeginPlay. This pushes the correct
+//  channel to the VisualComp and re-registers it with the subsystem so
+//  GetProvidersForTeam and CanSeeTeam work correctly for player pawns.
+// -------------------------------------------------------------------------- //
+
+void UVisionPlayerStateComp::SyncPawnVisionChannel()
+{
+    if (TeamChannel == EVisionChannel::None)
+        return;
+
+    APlayerState* PS = Cast<APlayerState>(GetOwner());
+    if (!PS) return;
+
+    AController* Controller = PS->GetOwningController();
+    APawn* Pawn = Controller ? Controller->GetPawn() : nullptr;
+    if (!Pawn) return;
+
+    UVision_VisualComp* VisualComp =
+        Pawn->FindComponentByClass<UVision_VisualComp>();
+    if (!VisualComp) return;
+
+    if (VisualComp->GetVisionChannel() == TeamChannel)
+        return;
+
+    ULOSVisionSubsystem* Subsystem =
+        GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
+
+    // Unregister from old channel first
+    if (VisualComp->GetVisionChannel() != EVisionChannel::None && Subsystem)
+        Subsystem->UnregisterProvider(VisualComp, VisualComp->GetVisionChannel());
+
+    VisualComp->SetVisionChannel(TeamChannel);
+
+    if (Subsystem)
+        Subsystem->RegisterProvider(VisualComp, TeamChannel);
+
+    UE_LOG(VisionPlayerStateComp, Log,
+        TEXT("[%s] SyncPawnVisionChannel >> %s synced to channel %d"),
+        *GetOwner()->GetName(), *Pawn->GetName(), (uint8)TeamChannel);
+}
+
+// -------------------------------------------------------------------------- //
+//  InitializeSameTeamEvaluators
 // -------------------------------------------------------------------------- //
 
 void UVisionPlayerStateComp::InitializeSameTeamEvaluators()
@@ -118,19 +165,17 @@ void UVisionPlayerStateComp::InitializeSameTeamEvaluators()
     ULOSVisionSubsystem* Subsystem = World->GetSubsystem<ULOSVisionSubsystem>();
     if (!Subsystem) return;
 
-    // Iterate ALL registered providers across every channel.
-    // CanSeeTeam decides eligibility — same logic the RT manager uses
-    // to decide which providers to stamp, so evaluators and RT stay in sync.
+    // Iterate ALL providers across every channel.
+    // CanSeeTeam is the single filter — same logic the RT manager uses.
     for (UVision_VisualComp* Provider : Subsystem->GetAllProviders())
     {
         if (!Provider || !Provider->GetOwner())
             continue;
 
-        // Skip if this player cannot see this provider's channel.
         if (!CanSeeTeam(Provider->GetVisionChannel()))
             continue;
 
-        // Skip the locally controlled pawn — already initialized.
+        // Skip locally controlled pawn — already initialized
         APawn* Pawn = Cast<APawn>(Provider->GetOwner());
         if (Pawn && Pawn->IsLocallyControlled())
             continue;
@@ -184,6 +229,7 @@ void UVisionPlayerStateComp::ReevaluateTargetVisibility(
             // evaluating client.
             ULOSVisionSubsystem* Subsystem =
                 GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
+
             if (Subsystem)
             {
                 const TMap<uint8, TSet<TWeakObjectPtr<AActor>>>* VoteMap =
