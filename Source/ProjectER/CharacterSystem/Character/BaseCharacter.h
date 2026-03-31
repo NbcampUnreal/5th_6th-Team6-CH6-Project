@@ -419,6 +419,11 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_ToggleCraftingUI(bool bShow);
 
+protected:
+	// 크래프팅 시야 판정용 타이머
+	FTimerHandle CraftingUIVisibilityTimer;
+	void UpdateCraftingUIVisibility();
+
 #pragma endregion
 
 #pragma region Vision

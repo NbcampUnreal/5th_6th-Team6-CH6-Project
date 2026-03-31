@@ -38,6 +38,7 @@
 #include "Components/StaticMeshComponent.h" // 미니맵용
 #include "Materials/MaterialInstanceDynamic.h" // 미니맵용
 #include "Engine/StaticMesh.h" // 미니맵용
+#include "GameFramework/Volume.h" // 시야 체크 볼륨 예외처리용
 
 #include "Components/WidgetComponent.h" // HP바 위젯용
 #include "GameModeBase/State/ER_GameState.h"
@@ -2137,6 +2138,18 @@ void ABaseCharacter::Multicast_ToggleCraftingUI_Implementation(bool bShow)
 			CraftingWidgetComp->RegisterComponent();
 			CraftingWidgetComp->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform);
 			CraftingWidgetComp->SetRelativeLocation(FVector(0.f, 0.f, 400.f)); // HP바(300.f)보다 더 높은 위치로 지정
+
+			// 시야 판정 타이머 시작 (0.1초마다 검사)
+			GetWorld()->GetTimerManager().SetTimer(
+				CraftingUIVisibilityTimer,
+				this,
+				&ABaseCharacter::UpdateCraftingUIVisibility,
+				0.3f,
+				true
+			);
+
+			// 즉시 1회 실행하여 최초 상태 반영
+			UpdateCraftingUIVisibility();
 		}
 	}
 	else
@@ -2146,5 +2159,86 @@ void ABaseCharacter::Multicast_ToggleCraftingUI_Implementation(bool bShow)
 			CraftingWidgetComp->DestroyComponent();
 			CraftingWidgetComp = nullptr;
 		}
+
+		// 시작했던 타이머 초기화 (파괴)
+		GetWorld()->GetTimerManager().ClearTimer(CraftingUIVisibilityTimer);
+	}
+}
+
+void ABaseCharacter::UpdateCraftingUIVisibility()
+{
+	if (!CraftingWidgetComp) return;
+
+	APlayerController* LocalPC = GetWorld()->GetFirstPlayerController();
+	if (!LocalPC) return;
+
+	ABaseCharacter* LocalChar = Cast<ABaseCharacter>(LocalPC->GetPawn());
+	if (!LocalChar) return;
+
+	// 1. 내 자신이거나 우리 팀(아군)이면 무조건 보임
+	if (this == LocalChar || this->GetTeamType() == LocalChar->GetTeamType())
+	{
+		CraftingWidgetComp->SetVisibility(true);
+		return;
+	}
+
+	// 2. 적이거나 중립일 때 1000거리 이상이면 가림
+	float Dist = FVector::Dist(this->GetActorLocation(), LocalChar->GetActorLocation());
+	if (Dist > 1000.f)
+	{
+		CraftingWidgetComp->SetVisibility(false);
+		return;
+	}
+
+	// 3. 거리 1000 안쪽이면 시야(장애물) 라인트레이스 확인 (월드 스태틱만 감지)
+	TArray<FHitResult> HitResults;
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+	QueryParams.AddIgnoredActor(LocalChar);
+
+	FCollisionObjectQueryParams ObjectParams;
+	ObjectParams.AddObjectTypesToQuery(ECC_WorldStatic);
+
+	// 중간에 겹치는 투명 볼륨(PCGVolume 등)을 통과하기 위해 MultiTrace 사용
+	bool bHit = GetWorld()->LineTraceMultiByObjectType(
+		HitResults,
+		LocalChar->GetActorLocation(),
+		this->GetActorLocation(),
+		ObjectParams,
+		QueryParams
+	);
+
+	bool bBlockedByWall = false;
+
+	if (bHit)
+	{
+		for (const FHitResult& Hit : HitResults)
+		{
+			AActor* HitActor = Hit.GetActor();
+			
+			// 충돌한 액터가 '볼륨(Volume)' 클래스 계열이면 무시하고 통과시킴
+			if (HitActor && !HitActor->IsA<AVolume>())
+			{
+				bBlockedByWall = true;
+				
+				// 디버깅용 로그: 진짜 벽을 가린 녀석 출력
+				FString HitName = HitActor->GetName();
+				FString CompName = Hit.GetComponent() ? Hit.GetComponent()->GetName() : TEXT("UnknownComp");
+				UE_LOG(LogTemp, Warning, TEXT("[Crafting UI Visibility] Blocked by Actor: %s / Component: %s"), *HitName, *CompName);
+				
+				break; // 하나라도 진짜 벽에 막혔으면 더 검사할 필요 없음
+			}
+		}
+	}
+
+	if (bBlockedByWall)
+	{
+		// 중간에 진짜 장애물(벽 등)이 있으면 가림
+		CraftingWidgetComp->SetVisibility(false);
+	}
+	else
+	{
+		// 안 가려져 있으면 보임
+		CraftingWidgetComp->SetVisibility(true);
 	}
 }
