@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "UI/UI_MainHUD.h"
@@ -994,26 +994,34 @@ void UUI_MainHUD::UpdateSkillCoolDown(int32 SkillIndex)
 {
     RemainingTimes[SkillIndex] -= 0.1f;
     
-    // 종료 처리
-    if (RemainingTimes[SkillIndex] <= 0.0f)
+    // 종료 처리 개선
+    UTextBlock* TargetText = SkillCoolTexts[SkillIndex];
+    if (GetWorld())
     {
-        
-        GetWorld()->GetTimerManager().ClearTimer(SkillTimerHandles[SkillIndex]);
-        if (SkillCoolTexts[SkillIndex])
+
+        if (RemainingTimes[SkillIndex] <= 0.0f)
         {
-            SkillCoolTexts[SkillIndex]->SetText(FText::GetEmpty());
+            GetWorld()->GetTimerManager().ClearTimer(SkillTimerHandles[SkillIndex]);
+            if (IsValid(TargetText))
+            {
+                TargetText->SetText(FText::GetEmpty());
+            }
+        }
+        else
+        {
+            if (IsValid(TargetText))
+            {
+                FNumberFormattingOptions Opts;
+                Opts.MinimumFractionalDigits = 1;
+                Opts.MaximumFractionalDigits = 1;
+
+                TargetText->SetText(FText::AsNumber(RemainingTimes[SkillIndex], &Opts));
+            }
         }
     }
     else
     {
-        if (IsValid(SkillCoolTexts[SkillIndex]))
-        {
-            FNumberFormattingOptions Opts;
-            Opts.MinimumFractionalDigits = 1;
-            Opts.MaximumFractionalDigits = 1;
-
-            SkillCoolTexts[SkillIndex]->SetText(FText::AsNumber(RemainingTimes[SkillIndex], &Opts));
-        }
+        GetWorld()->GetTimerManager().ClearTimer(SkillTimerHandles[SkillIndex]);
     }
 }
 
