@@ -4,6 +4,8 @@
 #include "LineOfSight/VisionComps/Vision_VisualComp.h"
 #include "LineOfSight/ObjectTracing/TopDown2DShapeComp.h"
 #include "TopDownVisionDebug.h"
+#include "GameFramework/PlayerState.h"
+#include "LineOfSight/Management/VisionPlayerStateComp.h"
 #include "LineOfSight/Management/Subsystem/LOSVisionSubsystem.h"
 #include "LineOfSight/ObjectTracing/VolumeVisibilityEvaluator2D.h"
 #include "LineOfSight/ObjectTracing/WallVisibilityEvaluator2D.h"
@@ -26,7 +28,8 @@ UVision_EvaluatorComp::UVision_EvaluatorComp()
 void UVision_EvaluatorComp::BeginPlay()
 {
     Super::BeginPlay();
-    // Initialization is driven externally by the owner via InitializeEvaluator()
+    // Initialization is driven externally via InitializeEvaluator()
+    // or late via InitializeIfSameTeam() when team replicates.
 }
 
 // -------------------------------------------------------------------------- //
@@ -87,18 +90,20 @@ void UVision_EvaluatorComp::PrepareDetectionSphere()
 
 void UVision_EvaluatorComp::InitializeEvaluator(UVision_VisualComp* DirectParamComp)
 {
-    // Only run for the locally controlled pawn
+    if (bIsInitialized)
+        return;
+
     APawn* OwnerPawn = Cast<APawn>(GetOwner());
-    if (!OwnerPawn || !OwnerPawn->IsLocallyControlled())
+    const bool bIsLocallyControlled = OwnerPawn && OwnerPawn->IsLocallyControlled();
+    const bool bIsSameTeam = IsSameTeamAsLocalPlayer();
+
+    if (!bIsLocallyControlled && !bIsSameTeam)
     {
         UE_LOG(LOSVision, Verbose,
-            TEXT("[%s] InitializeEvaluator >> Skipped — not locally controlled"),
+            TEXT("[%s] InitializeEvaluator >> Skipped — not local and not same team"),
             *TopDownVisionDebug::GetClientDebugName(GetOwner()));
         return;
     }
-
-    //if (ShouldRunServerLogic())
-    //    return;// no server
 
     if (DirectParamComp)
         DirectCacheVisualComp(DirectParamComp);
@@ -106,6 +111,50 @@ void UVision_EvaluatorComp::InitializeEvaluator(UVision_VisualComp* DirectParamC
         FindAndCacheVisualComp();
 
     PrepareDetectionSphere();
+    bIsInitialized = true;
+
+    UE_LOG(LOSVision, Verbose,
+        TEXT("[%s] InitializeEvaluator >> Initialized (%s)"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()),
+        bIsLocallyControlled ? TEXT("local") : TEXT("same team"));
+}
+
+void UVision_EvaluatorComp::InitializeIfSameTeam()
+{
+    if (bIsInitialized)
+        return;
+
+    if (!IsSameTeamAsLocalPlayer())
+        return;
+
+    FindAndCacheVisualComp();
+    PrepareDetectionSphere();
+    bIsInitialized = true;
+
+    UE_LOG(LOSVision, Log,
+        TEXT("[%s] InitializeIfSameTeam >> Late-initialized as same-team evaluator"),
+        *TopDownVisionDebug::GetClientDebugName(GetOwner()));
+}
+
+bool UVision_EvaluatorComp::IsSameTeamAsLocalPlayer() const
+{
+    UVisionPlayerStateComp* LocalVPS =
+        ULOSVisionSubsystem::GetLocalVisionPS(GetWorld());
+
+    if (!LocalVPS || LocalVPS->GetTeamChannel() == EVisionChannel::None)
+        return false;
+
+    UVision_VisualComp* VC = CachedVisualComp
+        ? CachedVisualComp
+        : GetOwner()->FindComponentByClass<UVision_VisualComp>();
+
+    if (!VC)
+        return false;
+
+    // Use CanSeeTeam instead of strict equality so AlwaysVisible and any
+    // other eligible channels are included, matching what the RT manager
+    // uses to decide which providers to stamp.
+    return LocalVPS->CanSeeTeam(VC->GetVisionChannel());
 }
 
 void UVision_EvaluatorComp::DirectCacheVisualComp(UVision_VisualComp* DirectParamComp)
@@ -126,7 +175,8 @@ void UVision_EvaluatorComp::DirectCacheVisualComp(UVision_VisualComp* DirectPara
 
 void UVision_EvaluatorComp::FindAndCacheVisualComp()
 {
-    UVision_VisualComp* VisualComp = GetOwner()->FindComponentByClass<UVision_VisualComp>();
+    UVision_VisualComp* VisualComp =
+        GetOwner()->FindComponentByClass<UVision_VisualComp>();
     if (!VisualComp)
     {
         UE_LOG(LOSVision, Error,
@@ -147,10 +197,8 @@ void UVision_EvaluatorComp::FindAndCacheVisualComp()
 
 void UVision_EvaluatorComp::SetEvaluationEnabled(bool bEnabled)
 {
-    if (bEnabled)
-        StartEvaluationTimer();
-    else
-        StopEvaluationTimer();
+    if (bEnabled) StartEvaluationTimer();
+    else          StopEvaluationTimer();
 }
 
 void UVision_EvaluatorComp::SyncDetectionRadius()
@@ -174,11 +222,8 @@ void UVision_EvaluatorComp::BP_DrawDebugSphereComp(float DrawTime)
         DrawDebugSphere(
             GetWorld(),
             GetOwner()->GetActorLocation(),
-            DetectionRadius,
-            32,
-            FColor::Yellow,
-            false,
-            DrawTime);
+            DetectionRadius, 32,
+            FColor::Yellow, false, DrawTime);
     }
 }
 
@@ -224,6 +269,14 @@ void UVision_EvaluatorComp::OnDetectionSphereEndOverlap(
         return;
 
     OverlappingTargets.Remove(OtherActor);
+
+    // Cancel any pending hide — we will force-hide immediately below.
+    if (FTimerHandle* Handle = PendingHideTimers.Find(OtherActor))
+    {
+        GetWorld()->GetTimerManager().ClearTimer(*Handle);
+        PendingHideTimers.Remove(OtherActor);
+    }
+
     LastReportedVisibility.Remove(OtherActor);
 
     UE_LOG(LOSVision, Verbose,
@@ -231,8 +284,7 @@ void UVision_EvaluatorComp::OnDetectionSphereEndOverlap(
         *TopDownVisionDebug::GetClientDebugName(GetOwner()),
         *OtherActor->GetName());
 
-    // Always report false — vote system keeps visible if another observer still sees it
-    // PlayerStateComp handles same-team always-visible on the display side
+    // Leaving the sphere is authoritative — hide immediately, no hysteresis.
     ReportVisibility(OtherActor, false);
 
     if (OverlappingTargets.IsEmpty())
@@ -253,12 +305,10 @@ void UVision_EvaluatorComp::EvaluateTick()
 
     for (AActor* Target : OverlappingTargets)
     {
-        if (!Target)
-            continue;
+        if (!Target) continue;
 
         UVision_VisualComp* TargetVisual = GetVisualComp(Target);
-        if (!TargetVisual)
-            continue;
+        if (!TargetVisual) continue;
 
         EvaluateTarget(Target, TargetVisual);
     }
@@ -270,14 +320,52 @@ void UVision_EvaluatorComp::EvaluateTick()
 
 void UVision_EvaluatorComp::ReportVisibilityIfChanged(AActor* Target, bool bVisible)
 {
-    // No same-team skip here — vote system handles multi-observer correctly
-    // PlayerStateComp handles same-team always-visible on the display side
     bool* LastState = LastReportedVisibility.Find(Target);
     if (LastState && *LastState == bVisible)
         return;
 
-    LastReportedVisibility.FindOrAdd(Target) = bVisible;
-    ReportVisibility(Target, bVisible);
+    if (bVisible)
+    {
+        // Cancel any pending hide — target is visible again.
+        if (FTimerHandle* Handle = PendingHideTimers.Find(Target))
+        {
+            GetWorld()->GetTimerManager().ClearTimer(*Handle);
+            PendingHideTimers.Remove(Target);
+        }
+
+        // Reveal immediately — no delay.
+        LastReportedVisibility.FindOrAdd(Target) = true;
+        ReportVisibility(Target, true);
+    }
+    else
+    {
+        // Already pending hide — do nothing.
+        if (PendingHideTimers.Contains(Target))
+            return;
+
+        FTimerHandle Handle;
+        GetWorld()->GetTimerManager().SetTimer(
+            Handle,
+            FTimerDelegate::CreateUObject(
+                this, &UVision_EvaluatorComp::CommitHide, Target),
+            HideHysteresisDelay,
+            false);
+
+        PendingHideTimers.Add(Target, Handle);
+    }
+}
+
+void UVision_EvaluatorComp::CommitHide(AActor* Target)
+{
+    PendingHideTimers.Remove(Target);
+
+    // If already committed as hidden, nothing to do.
+    bool* LastState = LastReportedVisibility.Find(Target);
+    if (LastState && *LastState == false)
+        return;
+
+    LastReportedVisibility.FindOrAdd(Target) = false;
+    ReportVisibility(Target, false);
 }
 
 void UVision_EvaluatorComp::ReportVisibility(AActor* Target, bool bVisible)
@@ -285,7 +373,7 @@ void UVision_EvaluatorComp::ReportVisibility(AActor* Target, bool bVisible)
     if (!CachedVisualComp || !Target)
         return;
 
-    UE_LOG(LOSVision, Warning,
+    UE_LOG(LOSVision, Verbose,
         TEXT("[%s] ReportVisibility >> Target:%s | Channel:%s | Visible:%d"),
         *TopDownVisionDebug::GetClientDebugName(GetOwner()),
         *Target->GetName(),
@@ -294,27 +382,51 @@ void UVision_EvaluatorComp::ReportVisibility(AActor* Target, bool bVisible)
 
     if (GetWorld()->GetNetMode() == NM_Standalone)
     {
-        ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
-        if (!Subsystem)
-        {
-            UE_LOG(LOSVision, Warning,
-                TEXT("[%s] ReportVisibility >> LOSVisionSubsystem not found"),
-                *TopDownVisionDebug::GetClientDebugName(GetOwner()));
-            return;
-        }
+        ULOSVisionSubsystem* Subsystem =
+            GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
+        if (!Subsystem) return;
         Subsystem->ReportTargetVisibility(
             GetOwner(), CachedVisualComp->GetVisionChannel(), Target, bVisible);
+        return;
     }
-    else
+
+    // --- Multiplayer path ---
+
+    EVisionChannel ObserverTeam = EVisionChannel::None;
+    if (APawn* Pawn = Cast<APawn>(GetOwner()))
+        if (APlayerState* PS = Pawn->GetPlayerState())
+            if (UVisionPlayerStateComp* VPS =
+                PS->FindComponentByClass<UVisionPlayerStateComp>())
+                ObserverTeam = VPS->GetTeamChannel();
+
+    // For non-player same-team actors (e.g. teammate AI / remote pawn),
+    // fall back to the VisualComp's registered channel.
+    if (ObserverTeam == EVisionChannel::None)
+        ObserverTeam = CachedVisualComp->GetVisionChannel();
+
+    if (ObserverTeam == EVisionChannel::None)
     {
-        Server_ReportVisibility(Target, CachedVisualComp->GetVisionChannel(), bVisible);
+        UE_LOG(LogTemp, Warning,
+            TEXT("[Evaluator] Invalid ObserverTeam for %s"),
+            *GetOwner()->GetName());
+        return;
     }
+
+    // Apply on this client immediately — do not wait for the round trip.
+    if (ULOSVisionSubsystem* Subsystem =
+        GetWorld()->GetSubsystem<ULOSVisionSubsystem>())
+        Subsystem->ReportTargetVisibility(
+            GetOwner(), ObserverTeam, Target, bVisible);
+
+    // Inform the server so it replicates to ALL other clients.
+    Server_ReportVisibility(Target, ObserverTeam, bVisible);
 }
 
 void UVision_EvaluatorComp::Server_ReportVisibility_Implementation(
     AActor* Target, EVisionChannel Channel, bool bVisible)
 {
-    ULOSVisionSubsystem* Subsystem = GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
+    ULOSVisionSubsystem* Subsystem =
+        GetWorld()->GetSubsystem<ULOSVisionSubsystem>();
     if (!Subsystem)
     {
         UE_LOG(LOSVision, Warning,
@@ -330,7 +442,8 @@ void UVision_EvaluatorComp::Server_ReportVisibility_Implementation(
 //  Evaluate
 // -------------------------------------------------------------------------- //
 
-void UVision_EvaluatorComp::EvaluateTarget(AActor* Target, UVision_VisualComp* TargetVisual)
+void UVision_EvaluatorComp::EvaluateTarget(
+    AActor* Target, UVision_VisualComp* TargetVisual)
 {
     if (!Target || !TargetVisual || !CachedVisualComp)
         return;
@@ -345,22 +458,10 @@ void UVision_EvaluatorComp::EvaluateTarget(AActor* Target, UVision_VisualComp* T
         return;
     }
 
-    /*const bool bVolumeVisible = EvaluateVolumeObstacle(Target, ShapeComp);
-    if (!bVolumeVisible)
-    {
-        UE_LOG(LOSVision, Verbose,
-            TEXT("[%s] EvaluateTarget >> %s hidden by volume"),
-            *TopDownVisionDebug::GetClientDebugName(GetOwner()),
-            *Target->GetName());
-
-        ReportVisibilityIfChanged(Target, false);
-        return;
-    }*/
-
     const bool bWallVisible = EvaluateWallObstacle(Target, ShapeComp);
 
     UE_LOG(LOSVision, Verbose,
-        TEXT("[%s] EvaluateTarget >> %s | Volume: VISIBLE | Wall: %s"),
+        TEXT("[%s] EvaluateTarget >> %s | Wall: %s"),
         *TopDownVisionDebug::GetClientDebugName(GetOwner()),
         *Target->GetName(),
         bWallVisible ? TEXT("VISIBLE") : TEXT("HIDDEN"));
@@ -368,11 +469,9 @@ void UVision_EvaluatorComp::EvaluateTarget(AActor* Target, UVision_VisualComp* T
     ReportVisibilityIfChanged(Target, bWallVisible);
 }
 
-bool UVision_EvaluatorComp::EvaluateWallObstacle(AActor* Target, UTopDown2DShapeComp* ShapeComp)
+bool UVision_EvaluatorComp::EvaluateWallObstacle(
+    AActor* Target, UTopDown2DShapeComp* ShapeComp)
 {
-    // temp — always visible
-   // return true;
-
     return UWallVisibilityEvaluator2D::EvaluateVisibility(
         GetWorld(),
         GetOwner()->GetActorLocation(),
@@ -381,11 +480,9 @@ bool UVision_EvaluatorComp::EvaluateWallObstacle(AActor* Target, UTopDown2DShape
         WallTraceChannel);
 }
 
-bool UVision_EvaluatorComp::EvaluateVolumeObstacle(AActor* Target, UTopDown2DShapeComp* ShapeComp)
+bool UVision_EvaluatorComp::EvaluateVolumeObstacle(
+    AActor* Target, UTopDown2DShapeComp* ShapeComp)
 {
-    // temp — always visible
-    //return true;
-    
     return UVolumeVisibilityEvaluator2D::EvaluateVisibility(
         CachedVisualComp->GetObstacleDrawer()->GetObstacleRenderTarget(),
         CachedVisualComp->GetMaxVisibleRange(),
@@ -401,9 +498,7 @@ bool UVision_EvaluatorComp::EvaluateVolumeObstacle(AActor* Target, UTopDown2DSha
 
 UVision_VisualComp* UVision_EvaluatorComp::GetVisualComp(AActor* Target) const
 {
-    if (!Target)
-        return nullptr;
-
+    if (!Target) return nullptr;
     return Target->FindComponentByClass<UVision_VisualComp>();
 }
 

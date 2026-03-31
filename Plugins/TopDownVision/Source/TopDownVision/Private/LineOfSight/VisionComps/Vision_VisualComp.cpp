@@ -221,13 +221,25 @@ bool UVision_VisualComp::IsUpdating() const
 
 void UVision_VisualComp::SetVisible(bool bVisible, bool bInstant)
 {
-    TargetVisibilityAlpha = bVisible ? 1.0f : 0.0f;
+    const float NewTargetAlpha = bVisible ? 1.0f : 0.0f;
 
-    if (bVisible) OnTargetRevealed.Broadcast();
-    else          OnTargetHidden.Broadcast();
+    // Only broadcast when the target direction genuinely changes.
+    // ReevaluateTargetVisibility may call SetVisible repeatedly with the
+    // same value (e.g. every time VisibleActors ticks); firing delegates
+    // on every redundant call breaks Blueprint listeners and causes spurious
+    // pool acquire/release cycles.
+    if (!FMath::IsNearlyEqual(NewTargetAlpha, TargetVisibilityAlpha))
+    {
+        TargetVisibilityAlpha = NewTargetAlpha;
+
+        if (bVisible) OnTargetRevealed.Broadcast();
+        else          OnTargetHidden.Broadcast();
+    }
 
     if (bInstant)
     {
+        VisibilityAlpha = TargetVisibilityAlpha;
+        GetWorld()->GetTimerManager().ClearTimer(FadeTimerHandle);
         if (VisibilityMesh) VisibilityMesh->UpdateVisibility(bVisible);
         return;
     }

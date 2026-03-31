@@ -17,35 +17,28 @@ public:
 
 protected:
     virtual void BeginPlay() override;
-    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    virtual void GetLifetimeReplicatedProps(
+        TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:
-    // --- Team --- //
     UFUNCTION(BlueprintCallable, Category="Vision")
     void SetTeamChannel(EVisionChannel InTeam);
 
     UFUNCTION(BlueprintCallable, Category="Vision")
     EVisionChannel GetTeamChannel() const { return TeamChannel; }
 
-    // --- All Reveal --- //
     UFUNCTION(BlueprintCallable, Category="Vision")
     void SetAllReveal(bool bEnabled);
 
     UFUNCTION(BlueprintCallable, Category="Vision")
     bool IsAllReveal() const { return bAllReveal; }
 
-    // --- Visibility logic (single location for filter + apply) --- //
-
-    /** Returns true if this player can see actors belonging to the given team. */
     bool CanSeeTeam(EVisionChannel InTeam) const;
 
-    /** Applies team filter then calls VisualComp->SetVisible.
-     *  Called by GameStateComp push callbacks and RefreshVisibility. */
-    void ApplyActorVisibility(AActor* Target, EVisionChannel Team, bool bVisible);
+    void ReevaluateTargetVisibility(
+        AActor* Target,
+        EVisionChannel ExcludeObserverTeam = EVisionChannel::None);
 
-    /** Full re-evaluation against all currently tracked actors.
-     *  Also drains any pending queue in GameStateComp.
-     *  Called on rep, after team assignment, and on BeginPlay next tick. */
     UFUNCTION(BlueprintCallable, Category="Vision")
     void RefreshVisibility();
 
@@ -58,4 +51,8 @@ private:
 
     UFUNCTION() void OnRep_TeamChannel();
     UFUNCTION() void OnRep_AllReveal();
+
+    /** Iterates all same-team providers and late-initializes their evaluators.
+     *  Called whenever TeamChannel is set or replicated. */
+    void InitializeSameTeamEvaluators();
 };

@@ -24,7 +24,7 @@ struct FVisibleActorEntry : public FFastArraySerializerItem
     AActor* Target = nullptr;
 
     UPROPERTY()
-    EVisionChannel TeamChannel = EVisionChannel::None;
+    EVisionChannel ObserverTeam = EVisionChannel::None;
 };
 
 USTRUCT()
@@ -63,11 +63,10 @@ struct FPendingVisibilityEntry
 {
     TWeakObjectPtr<AActor> Target;
     EVisionChannel         Team    = EVisionChannel::None;
-    bool                   bVisible = false;
 };
 
 // -------------------------------------------------------------------------- //
-//  Component — pure replication pipe, no game logic
+//  Component
 // -------------------------------------------------------------------------- //
 
 UCLASS(ClassGroup=(Vision), meta=(BlueprintSpawnableComponent))
@@ -84,6 +83,8 @@ protected:
 
 public:
     // --- Server API --- //
+
+    /** Unified name used everywhere — was SetActorVisibleByTeam in some call sites. */
     UFUNCTION(BlueprintCallable, Category="Vision")
     void SetActorVisibleToTeam(AActor* Target, EVisionChannel Team);
 
@@ -93,16 +94,14 @@ public:
     UFUNCTION(BlueprintCallable, Category="Vision")
     bool IsActorVisibleToTeam(AActor* Target, EVisionChannel Team) const;
 
-
     UFUNCTION(BlueprintCallable, Category="Vision")
     EVisionChannel GetLocalPlayerTeamChannel() const;
-    
 
     // --- FastArray callbacks (client) --- //
     void OnTargetBecameVisible(AActor* Target, EVisionChannel Team);
     void OnTargetBecameHidden (AActor* Target, EVisionChannel Team);
 
-    // --- Called by VisionPlayerStateComp::RefreshVisibility to drain queued entries --- //
+    // --- Called by VisionPlayerStateComp::RefreshVisibility --- //
     void FlushPendingReveals(UVisionPlayerStateComp* VisionPS);
 
     const TArray<FVisibleActorEntry>& GetVisibleActors() const { return VisibleActors.Items; }
@@ -111,6 +110,7 @@ private:
     UPROPERTY(Replicated)
     FVisibleActorArray VisibleActors;
 
-    // Entries queued when VisionPS was null during a push callback
+    // bVisible removed — pending entries no longer need it.
+    // The drain just calls ReevaluateTargetVisibility which reads live state.
     TArray<FPendingVisibilityEntry> PendingReveals;
 };

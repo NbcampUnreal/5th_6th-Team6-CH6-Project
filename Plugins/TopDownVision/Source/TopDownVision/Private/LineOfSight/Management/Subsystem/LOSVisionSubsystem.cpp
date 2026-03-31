@@ -9,7 +9,7 @@
 DEFINE_LOG_CATEGORY(LOSVisionSubsystem);
 
 // -------------------------------------------------------------------------- //
-//  Local player lookup — single authoritative location, used by GameStateComp too
+//  Local player lookup
 // -------------------------------------------------------------------------- //
 
 UVisionPlayerStateComp* ULOSVisionSubsystem::GetLocalVisionPS(UWorld* World)
@@ -21,10 +21,10 @@ UVisionPlayerStateComp* ULOSVisionSubsystem::GetLocalVisionPS(UWorld* World)
     if (!PC)
         return nullptr;
 
-    // Fast path
     if (PC->PlayerState)
     {
-        if (UVisionPlayerStateComp* VPS = PC->PlayerState->FindComponentByClass<UVisionPlayerStateComp>())
+        if (UVisionPlayerStateComp* VPS =
+            PC->PlayerState->FindComponentByClass<UVisionPlayerStateComp>())
             return VPS;
     }
 
@@ -35,7 +35,8 @@ UVisionPlayerStateComp* ULOSVisionSubsystem::GetLocalVisionPS(UWorld* World)
         {
             if (PS && PS->GetOwningController() == PC)
             {
-                if (UVisionPlayerStateComp* VPS = PS->FindComponentByClass<UVisionPlayerStateComp>())
+                if (UVisionPlayerStateComp* VPS =
+                    PS->FindComponentByClass<UVisionPlayerStateComp>())
                     return VPS;
             }
         }
@@ -48,7 +49,8 @@ UVisionPlayerStateComp* ULOSVisionSubsystem::GetLocalVisionPS(UWorld* World)
 //  Provider registration
 // -------------------------------------------------------------------------- //
 
-bool ULOSVisionSubsystem::RegisterProvider(UVision_VisualComp* Provider, EVisionChannel InVisionChannel)
+bool ULOSVisionSubsystem::RegisterProvider(
+    UVision_VisualComp* Provider, EVisionChannel InVisionChannel)
 {
     if (!Provider)
     {
@@ -78,13 +80,12 @@ bool ULOSVisionSubsystem::RegisterProvider(UVision_VisualComp* Provider, EVision
         TEXT("RegisterProvider >> %s registered on channel %d"),
         *Provider->GetOwner()->GetName(), (uint8)InVisionChannel);
 
-    // All reveal/refresh logic lives here — not in GameStateComp
     HandleProviderRegistered(Provider, InVisionChannel);
-
     return true;
 }
 
-void ULOSVisionSubsystem::UnregisterProvider(UVision_VisualComp* Provider, EVisionChannel InVisionChannel)
+void ULOSVisionSubsystem::UnregisterProvider(
+    UVision_VisualComp* Provider, EVisionChannel InVisionChannel)
 {
     if (!Provider)
     {
@@ -109,7 +110,8 @@ void ULOSVisionSubsystem::UnregisterProvider(UVision_VisualComp* Provider, EVisi
         *Provider->GetOwner()->GetName(), (uint8)InVisionChannel);
 }
 
-TArray<UVision_VisualComp*> ULOSVisionSubsystem::GetProvidersForTeam(EVisionChannel TeamChannel) const
+TArray<UVision_VisualComp*> ULOSVisionSubsystem::GetProvidersForTeam(
+    EVisionChannel TeamChannel) const
 {
     TArray<UVision_VisualComp*> Out;
 
@@ -117,39 +119,67 @@ TArray<UVision_VisualComp*> ULOSVisionSubsystem::GetProvidersForTeam(EVisionChan
         Out.Append(Entry->RegisteredList);
     else
         UE_LOG(LOSVisionSubsystem, Verbose,
-            TEXT("GetProvidersForTeam >> No providers yet for channel %d"), (uint8)TeamChannel);
+            TEXT("GetProvidersForTeam >> No providers yet for channel %d"),
+            (uint8)TeamChannel);
 
     return Out;
 }
 
-TArray<UVision_VisualComp*> ULOSVisionSubsystem::GeAllProviders() const
+// Fixed typo: was GeAllProviders
+TArray<UVision_VisualComp*> ULOSVisionSubsystem::GetAllProviders() const
 {
     TArray<UVision_VisualComp*> Out;
-
     for (const TPair<EVisionChannel, FRegisteredProviders>& Pair : VisionMap)
-    {
         Out.Append(Pair.Value.RegisteredList);
+    return Out;
+}
+
+TArray<UVision_VisualComp*> ULOSVisionSubsystem::GetProvidersVisibleToLocalPlayer() const
+{
+    TArray<UVision_VisualComp*> AllProviders = GetAllProviders();
+
+    UVisionPlayerStateComp* LocalVisionPS = GetLocalVisionPS(GetWorld());
+    if (!LocalVisionPS)
+    {
+        // VisionPS not ready yet — return everything so the RT is not left
+        // blank. RefreshVisibility will correct state on the next tick.
+        UE_LOG(LOSVisionSubsystem, Verbose,
+            TEXT("GetProvidersVisibleToLocalPlayer >> VisionPS not ready, returning all providers"));
+        return AllProviders;
+    }
+
+    TArray<UVision_VisualComp*> Out;
+    Out.Reserve(AllProviders.Num());
+
+    for (UVision_VisualComp* Provider : AllProviders)
+    {
+        if (!Provider || !Provider->GetOwner())
+            continue;
+
+        if (LocalVisionPS->CanSeeTeam(Provider->GetVisionChannel()))
+            Out.Add(Provider);
     }
 
     return Out;
 }
 
 // -------------------------------------------------------------------------- //
-//  Provider reveal logic — was OnProviderRegistered in GameStateComp
+//  Provider reveal logic
 // -------------------------------------------------------------------------- //
 
-void ULOSVisionSubsystem::HandleProviderRegistered(UVision_VisualComp* NewProvider, EVisionChannel Channel)
+void ULOSVisionSubsystem::HandleProviderRegistered(
+    UVision_VisualComp* NewProvider, EVisionChannel Channel)
 {
     UVisionGameStateComp* GSComp = GetVisionGameStateComp();
     if (!GSComp)
         return;
 
-    // Reveal every same-team actor already tracked (including the new one itself)
     for (UVision_VisualComp* Existing : GetProvidersForTeam(Channel))
     {
         if (!Existing || !Existing->GetOwner())
             continue;
 
+        // Fixed: was SetActorVisibleByTeam
         GSComp->SetActorVisibleToTeam(Existing->GetOwner(), Channel);
 
         UE_LOG(LOSVisionSubsystem, Verbose,
@@ -157,9 +187,6 @@ void ULOSVisionSubsystem::HandleProviderRegistered(UVision_VisualComp* NewProvid
             *Existing->GetOwner()->GetName(), *UEnum::GetValueAsString(Channel));
     }
 
-    // Refresh local player if available.
-    // If VisionPS is still null here, VisionPlayerStateComp::BeginPlay
-    // schedules RefreshVisibility for next tick — that path is the safety net.
     if (UVisionPlayerStateComp* VisionPS = GetLocalVisionPS(GetWorld()))
     {
         UE_LOG(LOSVisionSubsystem, Verbose,
@@ -175,7 +202,21 @@ void ULOSVisionSubsystem::HandleProviderRegistered(UVision_VisualComp* NewProvid
 
 // -------------------------------------------------------------------------- //
 //  Visibility reporting
+//
+//  Uses a TSet of weak observer pointers per team instead of a vote counter.
+//  This makes add/remove idempotent — the same observer reporting twice does
+//  not inflate the count, and a stale observer (destroyed pawn) is cleaned up
+//  automatically without needing a matching Remove call.
 // -------------------------------------------------------------------------- //
+
+static void CleanInvalidObservers(TSet<TWeakObjectPtr<AActor>>& Set)
+{
+    for (auto It = Set.CreateIterator(); It; ++It)
+    {
+        if (!It->IsValid())
+            It.RemoveCurrent();
+    }
+}
 
 void ULOSVisionSubsystem::ReportTargetVisibility(
     AActor* Observer,
@@ -186,45 +227,63 @@ void ULOSVisionSubsystem::ReportTargetVisibility(
     if (!Observer || !Target || ObserverTeam == EVisionChannel::None)
         return;
 
-    UVisionGameStateComp* GSComp = GetVisionGameStateComp();
-    if (!GSComp)
-    {
-        UE_LOG(LOSVisionSubsystem, Warning,
-            TEXT("ReportTargetVisibility >> No VisionGameStateComp"));
-        return;
-    }
-
     const uint8 TeamID = (uint8)ObserverTeam;
 
     FTargetVisibilityVotes& Votes = VisibilityVotes.FindOrAdd(Target);
-    int32& VoteCount = Votes.VotesByTeam.FindOrAdd(TeamID, 0);
+    TSet<TWeakObjectPtr<AActor>>& Observers = Votes.ObserversByTeam.FindOrAdd(TeamID);
 
-    const bool bWasVisible = VoteCount > 0;
+    CleanInvalidObservers(Observers);
+    const bool bWasVisible = Observers.Num() > 0;
 
-    VoteCount = bVisible
-        ? FMath::Max(VoteCount + 1, 1)
-        : FMath::Max(VoteCount - 1, 0);
+    if (bVisible) Observers.Add(Observer);
+    else          Observers.Remove(Observer);
 
-    const bool bIsNowVisible = VoteCount > 0;
+    CleanInvalidObservers(Observers);
+    const bool bIsNowVisible = Observers.Num() > 0;
 
-    UE_LOG(LOSVisionSubsystem, Verbose,
-        TEXT("ReportTargetVisibility >> %s | Team:%d | Votes:%d | Was:%s | Now:%s"),
-        *Target->GetName(), TeamID, VoteCount,
-        bWasVisible   ? TEXT("Y") : TEXT("N"),
-        bIsNowVisible ? TEXT("Y") : TEXT("N"));
+    if (Observers.Num() == 0)
+    {
+        Votes.ObserversByTeam.Remove(TeamID);
+        if (Votes.ObserversByTeam.Num() == 0)
+            VisibilityVotes.Remove(Target);
+    }
 
-    if (!bWasVisible && bIsNowVisible)
+    if (bWasVisible == bIsNowVisible)
+        return;
+
+    // ------------------------------------------------------------------ //
+    //  CLIENT: apply locally right now. GSComp->GetVisibleActors() is a  //
+    //  server-replicated array — reading it here would stall until the   //
+    //  RPC makes a full round trip. Instead, trust the local vote map    //
+    //  (just updated above) and call ReevaluateTargetVisibility directly. //
+    //  The server RPC will update GSComp and replicate to other clients.  //
+    // ------------------------------------------------------------------ //
+    if (GetWorld()->GetNetMode() == NM_Client)
+    {
+        if (UVisionPlayerStateComp* VisionPS = GetLocalVisionPS(GetWorld()))
+            VisionPS->ReevaluateTargetVisibility(Target);
+        return;
+    }
+
+    // SERVER / STANDALONE: write through GSComp as the replication source.
+    UVisionGameStateComp* GSComp = GetVisionGameStateComp();
+    if (!GSComp) return;
+
+    if (bIsNowVisible)
         GSComp->SetActorVisibleToTeam(Target, ObserverTeam);
-    else if (bWasVisible && !bIsNowVisible)
+    else
         GSComp->ClearActorVisibleToTeam(Target, ObserverTeam);
 }
+
+// -------------------------------------------------------------------------- //
 
 UVisionGameStateComp* ULOSVisionSubsystem::GetVisionGameStateComp() const
 {
     AGameStateBase* GS = GetWorld()->GetGameState();
     if (!GS)
     {
-        UE_LOG(LOSVisionSubsystem, Warning, TEXT("GetVisionGameStateComp >> No GameState"));
+        UE_LOG(LOSVisionSubsystem, Warning,
+            TEXT("GetVisionGameStateComp >> No GameState"));
         return nullptr;
     }
 
@@ -232,7 +291,8 @@ UVisionGameStateComp* ULOSVisionSubsystem::GetVisionGameStateComp() const
     if (!Comp)
     {
         UE_LOG(LOSVisionSubsystem, Warning,
-            TEXT("GetVisionGameStateComp >> Not found on %s"), *GS->GetClass()->GetName());
+            TEXT("GetVisionGameStateComp >> Not found on %s"),
+            *GS->GetClass()->GetName());
     }
 
     return Comp;
