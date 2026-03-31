@@ -10,12 +10,18 @@ class UCharacterData;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPhaseChangedBP, int32, NewPhase);
 
+// this is for the mpc update
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHazardZonesChanged, const TArray<int32>&, NewDangerZoneIDs);
+
 UCLASS()
 class PROJECTER_API AER_GameState : public AGameStateBase
 {
 	GENERATED_BODY()
 	
 public:
+	
+	AER_GameState();
+	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	void BuildTeamCache();
@@ -46,6 +52,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Character Selection")
 	const TArray<TSoftObjectPtr<UCharacterData>>& GetAvailableCharacterData() const;
 
+	// MPC Update Reaction purpsoe
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_OnHazardPhaseChanged(const TArray<int32>& NewDangerZoneIDs);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Hazard")
+	void OnDangerZonesReceived(const TArray<int32>& NewDangerZoneIDs);
+
 
 public:
 	UPROPERTY(BlueprintReadOnly)
@@ -60,9 +73,13 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnPhaseChangedBP OnPhaseChanged;
 
+	UPROPERTY(BlueprintAssignable, Category = "Hazard")
+	FOnHazardZonesChanged OnHazardZonesChanged;
+
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Selection")
 	TArray<TSoftObjectPtr<UCharacterData>> AvailableCharacterData;
+
 
 private:
 	TArray<TArray<FString>> TeamCache;

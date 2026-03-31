@@ -819,6 +819,9 @@ void AER_InGameMode::HandlePhaseTimeUp()
 			AreaGSComp->SetPhase(ERGS->GetCurrentPhase());
 		}
 
+		/*//Updated -> Internally the ULevelAreaGameModeComponent does not make danger zone on first phase
+		AreaGSComp->SetPhase(ERGS->GetCurrentPhase());*/
+
 		//FString Text = "";
 		//for (auto& aa : AreaGSComp->HazardOrder)
 		//{

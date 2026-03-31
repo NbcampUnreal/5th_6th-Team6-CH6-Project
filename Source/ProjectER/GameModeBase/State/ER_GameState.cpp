@@ -5,12 +5,18 @@
 #include "CharacterSystem/Player/BasePlayerController.h"
 
 
+AER_GameState::AER_GameState()
+{
+	
+}
+
 void AER_GameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AER_GameState, CurrentPhase);
 	DOREPLIFETIME(AER_GameState, PhaseServerTime);
 	DOREPLIFETIME(AER_GameState, PhaseDuration);
+	
 }
 
 void AER_GameState::BuildTeamCache()
@@ -162,6 +168,13 @@ float AER_GameState::GetPhaseRemainingTime() const
 const TArray<TSoftObjectPtr<UCharacterData>>& AER_GameState::GetAvailableCharacterData() const
 {
 	return AvailableCharacterData;
+}
+
+void AER_GameState::Multicast_OnHazardPhaseChanged_Implementation(const TArray<int32>& NewDangerZoneIDs)
+{
+	OnHazardZonesChanged.Broadcast(NewDangerZoneIDs);
+
+	OnDangerZonesReceived(NewDangerZoneIDs);
 }
 
 void AER_GameState::Multicast_BroadcastChatMessage_Implementation(const FString& Message)
