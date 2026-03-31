@@ -52,7 +52,11 @@ private:
     UFUNCTION() void OnRep_TeamChannel();
     UFUNCTION() void OnRep_AllReveal();
 
-    /** Iterates all same-team providers and late-initializes their evaluators.
-     *  Called whenever TeamChannel is set or replicated. */
     void InitializeSameTeamEvaluators();
+
+    /** Pushes TeamChannel onto the owning pawn's Vision_VisualComp and
+     *  re-registers it with the subsystem. Players have VisionChannel=None
+     *  at Initialize() time because the team replicates later — this call
+     *  fixes that as soon as the team is known. */
+    void SyncPawnVisionChannel();
 };

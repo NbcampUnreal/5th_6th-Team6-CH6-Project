@@ -412,32 +412,20 @@ bool UMainVisionRTManager::GetVisibleProviders(
     UVisionPlayerStateComp* LocalVisionPS =
         ULOSVisionSubsystem::GetLocalVisionPS(GetWorld());
 
-    const EVisionChannel LocalTeam = LocalVisionPS
-        ? LocalVisionPS->GetTeamChannel()
-        : EVisionChannel::None;
-
-    // Stamp every same-team provider onto the RT regardless of whether their
-    // evaluator is running locally. Actor transforms replicate normally so
-    // teammate positions are always current — no vote system needed for the RT.
-    if (LocalTeam != EVisionChannel::None)
+    if (LocalVisionPS && LocalVisionPS->GetTeamChannel() != EVisionChannel::None)
     {
-        for (UVision_VisualComp* P : Subsystem->GetProvidersForTeam(LocalTeam))
-            if (P && P->GetOwner())
-                OutProviders.AddUnique(P);
-    }
-
-    // AlwaysVisible providers (objectives, neutrals, etc.)
-    for (UVision_VisualComp* P :
-        Subsystem->GetProvidersForTeam(EVisionChannel::AlwaysVisible))
-        if (P && P->GetOwner())
-            OutProviders.AddUnique(P);
-
-    // AllReveal — include every registered provider
-    if (LocalVisionPS && LocalVisionPS->IsAllReveal())
-    {
+        // Use CanSeeTeam across all providers — identical filter to what
+        // InitializeSameTeamEvaluators and ReevaluateTargetVisibility use.
+        // This ensures the RT stamps exactly the providers whose evaluators
+        // are running locally.
         for (UVision_VisualComp* P : Subsystem->GetAllProviders())
-            if (P && P->GetOwner())
+        {
+            if (!P || !P->GetOwner())
+                continue;
+
+            if (LocalVisionPS->CanSeeTeam(P->GetVisionChannel()))
                 OutProviders.AddUnique(P);
+        }
     }
 
     // Fallback — team not yet replicated, use the local pawn's own provider
