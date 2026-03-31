@@ -98,6 +98,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void NotifyPlayerDied(ACharacter* VictimCharacter, APlayerState* KillerPS, const TArray<APlayerState*>& Assists);
 
+	// [전민성 요구사항] 언포제스 후 PlayerState 분리 문제를 우회하기 위한 나간 유저 전용 승패 판정 함수
+	UFUNCTION(BlueprintCallable)
+	void NotifyDisconnectedPlayerDied(AER_PlayerState* TargetPS);
+
 	UFUNCTION(BlueprintCallable)
 	void NotifyNeutralDied(ACharacter* VictimCharacter);
 
