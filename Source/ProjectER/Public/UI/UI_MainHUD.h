@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -104,6 +104,7 @@ public:
 protected:
 	// 마우스 우클릭 확인용
 	virtual void NativeConstruct() override; // 생성자
+	virtual void NativeDestruct() override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
 	// 툴팁 클래스 (에디터에서 할당)
@@ -367,6 +368,10 @@ protected:
 	UFUNCTION()
 	void OnActivateSkillCoolTime(ESkillKey Skill_Index);
 
+	void ProcessCooldown(int32 SkillIndex, float Duration, float RemainingTime);
+
+	void OnCooldownTagChanged(const FGameplayTag Tag, int32 NewCount, int32 SkillIndex);
+
 	// cool down 관리
 protected:
 	FTimerHandle SkillTimerHandles[4];
@@ -464,5 +469,6 @@ private:
 
 	bool test = true;
 	int32 getSkillLevel(FGameplayTag SkillTag, bool levelUp);
+	bool GetCooldownRemainingForTag(const FGameplayTagContainer& CooldownTags, float& TimeRemaining, float& CooldownDuration);
 };
 
