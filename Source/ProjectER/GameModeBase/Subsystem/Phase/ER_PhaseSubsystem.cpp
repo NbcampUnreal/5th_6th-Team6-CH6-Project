@@ -115,13 +115,15 @@ void UER_PhaseSubsystem::OnPeriodicCheckTick()
         return;
     }
 
-    if (AER_GameState* ERGS = CachedGameState.Get())
+    if (AER_InGameMode* GM = Cast<AER_InGameMode>(World->GetAuthGameMode()))
     {
-        ULevelAreaGameModeComponent* AreaGSComp = ERGS->GetComponentByClass<ULevelAreaGameModeComponent>();
-        AER_InGameMode* GM = Cast<AER_InGameMode>(World->GetAuthGameMode());
+        ULevelAreaGameModeComponent* AreaGSComp = GM->GetComponentByClass<ULevelAreaGameModeComponent>();
+        
+        AER_GameState* ERGS = CachedGameState.Get();
 
-        if (AreaGSComp == nullptr || GM == nullptr)
+        if (AreaGSComp == nullptr || ERGS == nullptr)
         {
+            UE_LOG(LogTemp, Log, TEXT("[PSS] AreaGSComp = %s, ERGS = %s"), AreaGSComp ? TEXT("True") : TEXT("False"), GM ? TEXT("True") : TEXT("False"));
             return;
         }
 
@@ -129,13 +131,17 @@ void UER_PhaseSubsystem::OnPeriodicCheckTick()
         {
             if (AER_PlayerState* ERPS = Cast<AER_PlayerState>(PS))
             {
+                //UE_LOG(LogTemp, Log, TEXT("[PSS] ERPS = %s"), ERPS ? TEXT("True") : TEXT("False"));
                 if (APawn* Pawn = ERPS->GetPawn())
                 {
+                    //UE_LOG(LogTemp, Log, TEXT("[PSS] Pawn = %s"), Pawn ? TEXT("True") : TEXT("False"));
                     if (ULevelAreaTrackerComponent* Tracker = Pawn->FindComponentByClass<ULevelAreaTrackerComponent>())
                     {
+                        //UE_LOG(LogTemp, Log, TEXT("[PSS] Tracker = %s"), Tracker ? TEXT("True") : TEXT("False"));
                         // 활성화되는 금지구역 수량 제한 (Phase * HazardsPerPhase)
                         if (Tracker->CurrentHazardState == EAreaHazardState::Hazard)
                         {
+                            //UE_LOG(LogTemp, Log, TEXT("[PSS] Tracker->CurrentHazardState == EAreaHazardState::Hazard"));
                             if (ERPS->CurrentRestrictedTime <= 1.0f && !ERPS->bIsDead)
                             {
                                 if (UAbilitySystemComponent* ASC = ERPS->GetAbilitySystemComponent())
@@ -159,12 +165,14 @@ void UER_PhaseSubsystem::OnPeriodicCheckTick()
                             }
                             if (ERPS->CurrentRestrictedTime >= 1.0f)
                             {
+                                //UE_LOG(LogTemp, Log, TEXT("[PSS] Reduce CurrentRestrictedTime %f"), ERPS->CurrentRestrictedTime);
                                 ERPS->CurrentRestrictedTime -= 1.0f;
                                 ERPS->setUI_RestrictedTime();   // << UI 처리
                                 UE_LOG(LogTemp, Log, TEXT("[PS] CurrentRestrictedTime: %f"), ERPS->CurrentRestrictedTime);
                             }
                             else
                             {
+                                //UE_LOG(LogTemp, Log, TEXT("[PSS] setUI_RestrictedTime"));
                                 ERPS->setUI_RestrictedTime(); // 0초처리용
                             }
                         }
