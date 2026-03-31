@@ -3,6 +3,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "GameModeBase/State/ER_GameState.h"
 
 #include "LevelManagement/Requirements/LevelAreaGraphData.h"
 #include "LevelManagement/LevelAreaTrackerComponent.h"
@@ -347,11 +348,13 @@ void ULevelAreaGameModeComponent::ApplyHazards(int32 Phase, EAreaHazardState Sta
     NotifyBridgeActors(NewHazards, State);
     NotifyTrackers();
 
-    if (NewHazards.Num() > 0)// call delegate with new hazards
+    if (NewHazards.Num() > 0)
     {
-        bool bIsBound=OnPhaseChanged.IsBound();
-        
-        OnPhaseChanged.Broadcast(NewHazards);
+        // Notify all clients with only the NEW danger zone IDs this phase
+        if (AER_GameState* ERGS = World->GetGameState<AER_GameState>())
+        {
+            ERGS->Multicast_OnHazardPhaseChanged(NewHazards);
+        }
     }
 
     UE_LOG(LevelAreaGraphManagement, Log,
