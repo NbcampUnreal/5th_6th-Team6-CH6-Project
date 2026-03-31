@@ -1074,34 +1074,6 @@ void ABaseCharacter::UpdatePathFollowing()
 
 		SetActorRotation(NewRotation);
 	}
-	
-#if WITH_EDITOR
-	// [디버깅] 경로 및 이동 방향 시각화
-	// 1. 전체 경로 (초록색 선)
-	for (int32 i = 0; i < PathPoints.Num() - 1; ++i)
-	{
-		DrawDebugLine(GetWorld(), PathPoints[i], PathPoints[i + 1],
-			FColor::Green, false, -1.0f, 0, 3.0f);
-	}
-	// 2. 현재 목표 웨이포인트 (빨간색 구체)
-	if (PathPoints.IsValidIndex(CurrentPathIndex))
-	{
-		DrawDebugSphere(GetWorld(), PathPoints[CurrentPathIndex],
-			30.0f, 12, FColor::Red, false, -1.0f, 0, 2.0f);
-		// 3. 내 위치 → 목표 웨이포인트 (노란색 선)
-		DrawDebugLine(GetWorld(), GetActorLocation(), PathPoints[CurrentPathIndex],
-			FColor::Yellow, false, -1.0f, 0, 1.5f);
-	}
-	// 4. 실제 이동 방향 (파란색 화살표)
-	FVector Velocity = GetVelocity();
-	if (!Velocity.IsNearlyZero())
-	{
-		DrawDebugDirectionalArrow(GetWorld(),
-			GetActorLocation(),
-			GetActorLocation() + Velocity.GetSafeNormal() * 100.0f,
-			50.0f, FColor::Blue, false, -1.0f, 0, 5.0f);
-	}
-#endif
 }
 
 void ABaseCharacter::StopPathFollowing()
