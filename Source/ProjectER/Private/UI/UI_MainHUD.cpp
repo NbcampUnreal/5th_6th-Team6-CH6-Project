@@ -960,7 +960,7 @@ void UUI_MainHUD::UpdateSkillCoolDown(int32 SkillIndex)
     }
     else
     {
-        if (SkillCoolTexts[SkillIndex])
+        if (IsValid(SkillCoolTexts[SkillIndex]))
         {
             FNumberFormattingOptions Opts;
             Opts.MinimumFractionalDigits = 1;
