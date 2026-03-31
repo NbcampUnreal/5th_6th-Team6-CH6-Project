@@ -1,4 +1,4 @@
-﻿#include "GameModeBase/GameMode/ER_InGameMode.h"
+#include "GameModeBase/GameMode/ER_InGameMode.h"
 #include "GameModeBase/State/ER_PlayerState.h"
 #include "GameModeBase/State/ER_GameState.h"
 #include "GameModeBase/Subsystem/Respawn/ER_RespawnSubsystem.h"
@@ -193,9 +193,16 @@ void AER_InGameMode::Logout(AController* Exiting)
 				}
 
 				// 타임아웃 타이머 설정
+				TWeakObjectPtr<AER_InGameMode> WeakThis(this);
 				GetWorld()->GetTimerManager().SetTimer(
 					Data.TimeoutHandle, 
-					[this, UniqueIdStr]() { CleanupDisconnectedPlayer(UniqueIdStr); },
+					[WeakThis, UniqueIdStr]() 
+					{ 
+						if (WeakThis.IsValid())
+						{
+							WeakThis->CleanupDisconnectedPlayer(UniqueIdStr); 
+						}
+					},
 					ReconnectTimeoutSeconds, false);
 
 				DisconnectedPlayers.Add(UniqueIdStr, Data);
@@ -543,13 +550,20 @@ void AER_InGameMode::ShutdownServerForHost()
 
 	// 2. 1초 대기 후 호스트 본인도 로비로 이동하며 방 폭파
 	FTimerHandle ShutdownTimer;
-	GetWorld()->GetTimerManager().SetTimer(ShutdownTimer, [this]()
+	TWeakObjectPtr<AER_InGameMode> WeakThis(this);
+	GetWorld()->GetTimerManager().SetTimer(ShutdownTimer, [WeakThis]()
 	{
-		if (APlayerController* HostPC = GetWorld()->GetFirstPlayerController())
+		if (WeakThis.IsValid())
 		{
-			if (ABasePlayerController* HostERPC = Cast<ABasePlayerController>(HostPC))
+			if (UWorld* World = WeakThis->GetWorld())
 			{
-				HostERPC->Client_ReturnToMainMenu(TEXT("Server Shutdown Complete"));
+				if (APlayerController* HostPC = World->GetFirstPlayerController())
+				{
+					if (ABasePlayerController* HostERPC = Cast<ABasePlayerController>(HostPC))
+					{
+						HostERPC->Client_ReturnToMainMenu(TEXT("Server Shutdown Complete"));
+					}
+				}
 			}
 		}
 	}, 1.0f, false);
