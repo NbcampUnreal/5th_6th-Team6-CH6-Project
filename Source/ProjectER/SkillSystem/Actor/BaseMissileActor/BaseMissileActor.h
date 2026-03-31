@@ -36,7 +36,8 @@ public:
 		float InMaxSpeed,
 		float InHomingAcceleration,
 		float InReachThreshold,
-		bool bInDestroyOnHit
+		bool bInDestroyOnHit,
+		const FVector& InInitialDirection = FVector::ForwardVector
 	);
 
 protected:
@@ -80,6 +81,9 @@ protected:
 
 	UPROPERTY()
 	bool bDestroyOnHit = true;
+
+	UPROPERTY()
+	FRotator InitialTargetRotation; // 추가: 엔진에 의한 회전값 왜곡 방지용
 
 	bool bHasReached = false;
 };
