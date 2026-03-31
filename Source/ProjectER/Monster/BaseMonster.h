@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -110,6 +110,11 @@ private:
 	UFUNCTION() // SendTargetOffEvent()
 	void OnTargetLostHandle();
 
+	UFUNCTION()
+	void OnPlayerInOutSphereOneHandle();
+
+	UFUNCTION()
+	void OnPlayerInOutSphereZeroHandle();
 
 	// HealthBar 변경용
 	UFUNCTION()

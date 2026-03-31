@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -46,6 +46,11 @@ private:
 
 
 	UFUNCTION()
+	void OnPlayerOutBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+		bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
 	void OnPlayerOutEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
@@ -59,12 +64,25 @@ public:
 
 
 	UPROPERTY()
+	FOnPlayerCountChanged OnPlayerInOutSphereOne;
+
+	UPROPERTY()
+	FOnPlayerCountChanged OnPlayerInOutSphereZero;
+
+
+	UPROPERTY()
 	FOnPlayerCountChanged OnPlayerOut;
 
 private:
 
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "MonsterRange",meta = (AllowprivateAccess = "true"))
 	int32 PlayerCount = 0;
+
+	UPROPERTY(ReplicatedUsing = OnRep_PlayerCountInOutSphere, VisibleAnywhere, BlueprintReadOnly, Category = "MonsterRange",meta = (AllowprivateAccess = "true"))
+	int32 PlayerCountInOutSphere = 0;
+	
+	UFUNCTION()
+	void OnRep_PlayerCountInOutSphere();
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MonsterRange", meta = (AllowprivateAccess = "true"), meta = (ClampMin = "0.0"))
 	float PlayerCountSphereRadius = 500.f;
