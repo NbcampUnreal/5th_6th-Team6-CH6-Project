@@ -1,4 +1,4 @@
-#include "Monster/MonsterRangeComponent.h"
+﻿#include "Monster/MonsterRangeComponent.h"
 
 #include "Net/UnrealNetwork.h"
 #include "Components/SphereComponent.h"
@@ -17,7 +17,6 @@ void UMonsterRangeComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(UMonsterRangeComponent, PlayerCount);
-	DOREPLIFETIME(UMonsterRangeComponent, PlayerCountInOutSphere);
 }
 
 void UMonsterRangeComponent::BeginPlay()
@@ -49,8 +48,6 @@ void UMonsterRangeComponent::BeginPlay()
 	OutSphere->SetCollisionProfileName(TEXT("PlayerCounter"));
 	OutSphere->SetGenerateOverlapEvents(true);
 
-	OutSphere->OnComponentBeginOverlap.AddDynamic(
-		this, &UMonsterRangeComponent::OnPlayerOutBeginOverlap);
 	OutSphere->OnComponentEndOverlap.AddDynamic(
 		this, &UMonsterRangeComponent::OnPlayerOutEndOverlap);
 
@@ -124,21 +121,6 @@ void UMonsterRangeComponent::OnPlayerCountingBeginOverlap(UPrimitiveComponent* O
 		{
 			OnPlayerCountOne.Broadcast();	
 		}
-
-		//if (Debug)
-		//{
-		//	DrawDebugSphere(
-		//		GetWorld(),
-		//		RangeSphere->GetComponentLocation(),
-		//		RangeSphere->GetScaledSphereRadius(),
-		//		8,
-		//		FColor::Red,
-		//		false,
-		//		1.f,
-		//		0,
-		//		1.f
-		//	);
-		//}
 	}
 }
 
@@ -152,34 +134,6 @@ void UMonsterRangeComponent::OnPlayerCountingEndOverlap(UPrimitiveComponent* Ove
 		{
 			OnPlayerCountZero.Broadcast();
 		}
-
-		//if (Debug)
-		//{
-		//	DrawDebugSphere(
-		//		GetWorld(),
-		//		RangeSphere->GetComponentLocation(),
-		//		RangeSphere->GetScaledSphereRadius(),
-		//		8,
-		//		FColor::Green,
-		//		false,
-		//		1.f,
-		//		0,
-		//		1.f
-		//	);
-		//}
-	}
-}
-
-void UMonsterRangeComponent::OnPlayerOutBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	if (OtherActor && OtherActor->IsA<ABaseCharacter>())
-	{
-		PlayerCountInOutSphere = FMath::Max(0, PlayerCountInOutSphere + 1);
-
-		if (PlayerCountInOutSphere == 1)
-		{
-			OnPlayerInOutSphereOne.Broadcast();	
-		}
 	}
 }
 
@@ -188,13 +142,6 @@ void UMonsterRangeComponent::OnPlayerOutEndOverlap(UPrimitiveComponent* Overlapp
 {
 	if (OtherActor && OtherActor->IsA<ABaseCharacter>())
 	{
-		PlayerCountInOutSphere = FMath::Max(0, PlayerCountInOutSphere - 1);
-
-		if (PlayerCountInOutSphere == 0)
-		{
-			OnPlayerInOutSphereZero.Broadcast();
-		}
-
 		AActor* Target = Cast<ABaseMonster>(GetOwner())->GetTargetPlayer();
 		if (Target == OtherActor)
 		{
@@ -207,17 +154,5 @@ void UMonsterRangeComponent::OnPlayerOutEndOverlap(UPrimitiveComponent* Overlapp
 		{
 			OnPlayerOut.Broadcast();
 		}
-	}
-}
-
-void UMonsterRangeComponent::OnRep_PlayerCountInOutSphere()
-{
-	if (PlayerCountInOutSphere > 0)
-	{
-		OnPlayerInOutSphereOne.Broadcast();
-	}
-	else
-	{
-		OnPlayerInOutSphereZero.Broadcast();
 	}
 }

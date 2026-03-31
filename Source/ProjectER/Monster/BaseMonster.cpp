@@ -46,10 +46,7 @@ ABaseMonster::ABaseMonster()
 	// Collision 설정
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetMesh()->VisibilityBasedAnimTickOption
-		= EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
-	GetMesh()->SetComponentTickEnabled(false);
-	GetMesh()->bNoSkeletonUpdate = true;
-	GetMesh()->bPauseAnims = true;
+		= EVisibilityBasedAnimTickOption::OnlyTickMontagesWhenNotRendered;
 
 	GetCharacterMovement()->SetComponentTickEnabled(false);
 	GetCharacterMovement()->bOrientRotationToMovement = true;;
@@ -162,9 +159,6 @@ void ABaseMonster::BeginPlay()
 		StartLocation = GetActorLocation();
 		StartRotator = GetActorRotation();
 	}
-
-	MonsterRangeComp->OnPlayerInOutSphereOne.AddUniqueDynamic(this, &ABaseMonster::OnPlayerInOutSphereOneHandle);
-	MonsterRangeComp->OnPlayerInOutSphereZero.AddUniqueDynamic(this, &ABaseMonster::OnPlayerInOutSphereZeroHandle);
 
 	if (GetNetMode() != NM_DedicatedServer)
 	{
@@ -644,30 +638,6 @@ void ABaseMonster::OnTargetLostHandle()
 	
 	SendStateTreeEvent(MonsterTags.TargetOffEventTag);
 	TargetPlayer = nullptr;
-}
-
-void ABaseMonster::OnPlayerInOutSphereOneHandle()
-{
-	if (USkeletalMeshComponent* MeshComp = GetMesh())
-	{
-		MeshComp->VisibilityBasedAnimTickOption
-			= EVisibilityBasedAnimTickOption::OnlyTickMontagesWhenNotRendered;
-		MeshComp->SetComponentTickEnabled(true);
-		MeshComp->bNoSkeletonUpdate = false;
-		MeshComp->bPauseAnims = false;
-	}
-}
-
-void ABaseMonster::OnPlayerInOutSphereZeroHandle()
-{
-	if (USkeletalMeshComponent* MeshComp = GetMesh())
-	{
-		MeshComp->VisibilityBasedAnimTickOption
-			= EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
-		MeshComp->SetComponentTickEnabled(false);
-		MeshComp->bNoSkeletonUpdate = true;
-		MeshComp->bPauseAnims = true;
-	}
 }
 
 void ABaseMonster::OnPlayerCountOneHandle()
